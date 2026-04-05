@@ -4295,10 +4295,10 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
         {/* Desktop Sidebar */}
         <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-100 p-6 sticky top-0 h-screen">
           <div className="flex items-center gap-3 mb-10">
-            <div className="w-10 h-10 bg-orange-600 rounded-xl flex items-center justify-center text-white shadow-lg shadow-orange-200">
+            <div className="w-10 h-10 bg-gradient-to-tr from-[#FF3D00] to-[#FF9100] rounded-xl flex items-center justify-center text-white shadow-lg shadow-orange-200">
               <Building2 size={24} />
             </div>
-            <h1 className="text-xl font-bold text-slate-900">EmlakAsistan</h1>
+            <span className="text-2xl font-black italic font-logo text-transparent bg-clip-text bg-gradient-to-r from-[#FF3D00] to-[#FF9100] tracking-wide">Portfy</span>
           </div>
           
           <div className="space-y-2 flex-1">
