@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   LayoutDashboard, 
   MapPin, 
@@ -906,7 +906,124 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
 
 
 
-  function MainApp() {
+  const RegionSetupModal = ({ profile, onComplete }: { profile: UserProfile, onComplete: () => void }) => {
+  const queryClient = useQueryClient();
+  const [step, setStep] = useState(1);
+  const [region, setRegion] = useState({
+    city: 'İstanbul',
+    district: '',
+    neighborhoods: [] as string[]
+  });
+
+  const cities = locationService.getCities();
+  const districts = region.city ? locationService.getDistricts(region.city) : [];
+  const neighborhoods = (region.city && region.district) ? locationService.getNeighborhoods(region.city, region.district) : [];
+
+  const saveRegionMutation = useMutation({
+    mutationFn: (newRegion: any) => api.updateProfile(profile.uid, { region: newRegion }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      onComplete();
+    }
+  });
+
+  const handleSave = () => {
+    if (!region.city || !region.district || region.neighborhoods.length === 0) return;
+    saveRegionMutation.mutate(region);
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="fixed inset-0 bg-slate-900 z-[200] flex items-center justify-center p-6"
+    >
+      <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
+        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-orange-600 rounded-full blur-[120px]" />
+        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-600 rounded-full blur-[120px]" />
+      </div>
+
+      <motion.div 
+        initial={{ y: 20, opacity: 0 }}
+        animate={{ y: 0, opacity: 1 }}
+        className="bg-white w-full max-w-md rounded-[40px] p-8 relative z-10 shadow-2xl"
+      >
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600 mx-auto mb-4">
+            <MapPin size={32} />
+          </div>
+          <h2 className="text-2xl font-bold text-slate-900">Bölgeni Belirle</h2>
+          <p className="text-sm text-slate-500 mt-2">Uzman olduğun bölgeyi seçerek Portfy'ı kişiselleştir.</p>
+        </div>
+
+        <div className="space-y-6">
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Şehir</label>
+            <select 
+              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
+              value={region.city}
+              onChange={e => setRegion({...region, city: e.target.value, district: '', neighborhoods: []})}
+            >
+              {cities.map(c => <option key={c} value={c}>{c}</option>)}
+            </select>
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">İlçe (Maks. 1)</label>
+            <select 
+              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
+              value={region.district}
+              onChange={e => setRegion({...region, district: e.target.value, neighborhoods: []})}
+            >
+              <option value="">İlçe Seçiniz</option>
+              {districts.map(d => <option key={d} value={d}>{d}</option>)}
+            </select>
+          </div>
+
+          {region.district && (
+            <div className="space-y-2">
+              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mahalleler (Maks. 3)</label>
+              <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-1">
+                {neighborhoods.map(n => (
+                  <button
+                    key={n}
+                    onClick={() => {
+                      if (region.neighborhoods.includes(n)) {
+                        setRegion({...region, neighborhoods: region.neighborhoods.filter(item => item !== n)});
+                      } else if (region.neighborhoods.length < 3) {
+                        setRegion({...region, neighborhoods: [...region.neighborhoods, n]});
+                      }
+                    }}
+                    className={`p-3 rounded-xl text-xs font-bold transition-all border-2 ${
+                      region.neighborhoods.includes(n) 
+                        ? 'bg-orange-600 border-orange-600 text-white' 
+                        : 'bg-slate-50 border-slate-100 text-slate-600 hover:border-orange-200'
+                    }`}
+                  >
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <div className="text-[10px] text-slate-400 mt-1">
+                {region.neighborhoods.length}/3 mahalle seçildi
+              </div>
+            </div>
+          )}
+
+          <button 
+            onClick={handleSave}
+            disabled={!region.city || !region.district || region.neighborhoods.length === 0 || saveRegionMutation.isPending}
+            className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20 disabled:opacity-50"
+          >
+            {saveRegionMutation.isPending ? 'Kaydediliyor...' : 'Bölgemi Kaydet ve Başla'}
+          </button>
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+function MainApp() {
   const { categories } = useCategories();
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showQuickAdd, setShowQuickAdd] = useState(false);
@@ -1240,18 +1357,22 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
     return () => clearInterval(interval);
   }, [profile]);
 
+  const completingTasks = useRef<Set<string>>(new Set());
+
   // Auto-complete specific gamified tasks
   useEffect(() => {
     if (gamifiedTasks && gamifiedTasks.length > 0 && profile?.uid) {
       // 1. Peş peşe girişini sürdür
       const loginTask = gamifiedTasks.find(t => t.title === "Peş peşe girişini sürdür" && !t.isCompleted);
-      if (loginTask) {
+      if (loginTask && !completingTasks.current.has(loginTask.id)) {
+        completingTasks.current.add(loginTask.id);
         completeTaskMutation.mutate({ taskId: loginTask.id, points: loginTask.points });
       }
 
       // 2. Bugün 100 puan kazan
       const pointsTask = gamifiedTasks.find(t => t.title === "Bugün 100 puan kazan" && !t.isCompleted);
-      if (pointsTask && (gamifiedStats?.pointsToday || 0) >= 100) {
+      if (pointsTask && (gamifiedStats?.pointsToday || 0) >= 100 && !completingTasks.current.has(pointsTask.id)) {
+        completingTasks.current.add(pointsTask.id);
         completeTaskMutation.mutate({ taskId: pointsTask.id, points: pointsTask.points });
       }
     }
@@ -3173,121 +3294,7 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
     );
   };
 
-  const RegionSetupModal = ({ profile, onComplete }: { profile: UserProfile, onComplete: () => void }) => {
-    const [step, setStep] = useState(1);
-    const [region, setRegion] = useState({
-      city: 'İstanbul',
-      district: '',
-      neighborhoods: [] as string[]
-    });
 
-    const cities = locationService.getCities();
-    const districts = region.city ? locationService.getDistricts(region.city) : [];
-    const neighborhoods = (region.city && region.district) ? locationService.getNeighborhoods(region.city, region.district) : [];
-
-    const saveRegionMutation = useMutation({
-      mutationFn: (newRegion: any) => api.updateProfile(profile.uid, { region: newRegion }),
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['profile'] });
-        onComplete();
-      }
-    });
-
-    const handleSave = () => {
-      if (!region.city || !region.district || region.neighborhoods.length === 0) return;
-      saveRegionMutation.mutate(region);
-    };
-
-    return (
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="fixed inset-0 bg-slate-900 z-[200] flex items-center justify-center p-6"
-      >
-        <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
-          <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-orange-600 rounded-full blur-[120px]" />
-          <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-600 rounded-full blur-[120px]" />
-        </div>
-
-        <motion.div 
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          className="bg-white w-full max-w-md rounded-[40px] p-8 relative z-10 shadow-2xl"
-        >
-          <div className="text-center mb-8">
-            <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600 mx-auto mb-4">
-              <MapPin size={32} />
-            </div>
-            <h2 className="text-2xl font-bold text-slate-900">Bölgeni Belirle</h2>
-            <p className="text-sm text-slate-500 mt-2">Uzman olduğun bölgeyi seçerek Portfy'ı kişiselleştir.</p>
-          </div>
-
-          <div className="space-y-6">
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Şehir</label>
-              <select 
-                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                value={region.city}
-                onChange={e => setRegion({...region, city: e.target.value, district: '', neighborhoods: []})}
-              >
-                {cities.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">İlçe (Maks. 1)</label>
-              <select 
-                className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                value={region.district}
-                onChange={e => setRegion({...region, district: e.target.value, neighborhoods: []})}
-              >
-                <option value="">İlçe Seçiniz</option>
-                {districts.map(d => <option key={d} value={d}>{d}</option>)}
-              </select>
-            </div>
-
-            {region.district && (
-              <div className="space-y-2">
-                <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mahalleler (Maks. 3)</label>
-                <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-1">
-                  {neighborhoods.map(n => (
-                    <button
-                      key={n}
-                      onClick={() => {
-                        if (region.neighborhoods.includes(n)) {
-                          setRegion({...region, neighborhoods: region.neighborhoods.filter(item => item !== n)});
-                        } else if (region.neighborhoods.length < 3) {
-                          setRegion({...region, neighborhoods: [...region.neighborhoods, n]});
-                        }
-                      }}
-                      className={`p-3 rounded-xl text-xs font-bold transition-all border-2 ${
-                        region.neighborhoods.includes(n) 
-                          ? 'bg-orange-600 border-orange-600 text-white' 
-                          : 'bg-slate-50 border-slate-100 text-slate-600 hover:border-orange-200'
-                      }`}
-                    >
-                      {n}
-                    </button>
-                  ))}
-                </div>
-                <div className="text-[10px] text-slate-400 mt-1">
-                  {region.neighborhoods.length}/3 mahalle seçildi
-                </div>
-              </div>
-            )}
-
-            <button 
-              onClick={handleSave}
-              disabled={!region.city || !region.district || region.neighborhoods.length === 0 || saveRegionMutation.isPending}
-              className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20 disabled:opacity-50"
-            >
-              {saveRegionMutation.isPending ? 'Kaydediliyor...' : 'Bölgemi Kaydet ve Başla'}
-            </button>
-          </div>
-        </motion.div>
-      </motion.div>
-    );
-  };
 
   const VoiceQuickAddModal = () => {
     const [isListening, setIsListening] = useState(false);
