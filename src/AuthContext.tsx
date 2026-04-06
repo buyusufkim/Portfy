@@ -23,6 +23,8 @@ interface AuthContextType {
   loading: boolean;
   isSubscribed: boolean;
   login: () => Promise<void>;
+  loginWithEmail: (email: string, password: string) => Promise<void>;
+  registerWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
   subscribe: (type: '1-month' | '3-month' | '6-month' | '12-month') => Promise<void>;
   completeOnboarding: () => Promise<void>;
@@ -325,6 +327,27 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithEmail = async (email: string, password: string) => {
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+    if (error) throw error;
+  };
+
+  const registerWithEmail = async (email: string, password: string, displayName: string) => {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          full_name: displayName,
+        }
+      }
+    });
+    if (error) throw error;
+  };
+
   const logout = async () => {
     const { error } = await supabase.auth.signOut();
     if (error) console.error('Logout error:', error);
@@ -454,7 +477,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, isSubscribed, login, logout, subscribe, completeOnboarding, completeTour }}>
+    <AuthContext.Provider value={{ user, profile, loading, isSubscribed, login, loginWithEmail, registerWithEmail, logout, subscribe, completeOnboarding, completeTour }}>
       {children}
     </AuthContext.Provider>
   );
