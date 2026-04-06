@@ -29,6 +29,7 @@ interface AuthContextType {
   subscribe: (type: '1-month' | '3-month' | '6-month' | '12-month') => Promise<void>;
   completeOnboarding: () => Promise<void>;
   completeTour: () => Promise<void>;
+  updateProfileData: (data: Partial<UserProfile>) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -427,6 +428,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const updateProfileData = async (data: Partial<UserProfile>) => {
+    if (!user) return;
+    
+    // Optimistic update
+    setProfile(prev => prev ? { ...prev, ...data } : null);
+
+    const { error } = await supabase
+      .from('profiles')
+      .update(data)
+      .eq('uid', user.id);
+      
+    if (error) {
+      console.error('Error updating profile:', error);
+      fetchProfile(user.id, user.email || '');
+    }
+  };
+
   const isSubscribed = profile?.subscriptionEndDate 
     ? isAfter(parseISO(profile.subscriptionEndDate), new Date()) 
     : false;
@@ -477,7 +495,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, isSubscribed, login, loginWithEmail, registerWithEmail, logout, subscribe, completeOnboarding, completeTour }}>
+    <AuthContext.Provider value={{ user, profile, loading, isSubscribed, login, loginWithEmail, registerWithEmail, logout, subscribe, completeOnboarding, completeTour, updateProfileData }}>
       {children}
     </AuthContext.Provider>
   );

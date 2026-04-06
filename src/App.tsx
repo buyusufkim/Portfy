@@ -145,7 +145,19 @@ const LoginScreen = () => {
         await loginWithEmail(email, password);
       }
     } catch (err: any) {
-      setError(err.message || 'Bir hata oluştu.');
+      let errorMsg = err.message || 'Bir hata oluştu.';
+      if (errorMsg.includes('Password should be at least 6 characters')) {
+        errorMsg = 'Şifre en az 6 karakter olmalıdır.';
+      } else if (errorMsg.includes('User already registered')) {
+        errorMsg = 'Bu e-posta adresi zaten kayıtlı.';
+      } else if (errorMsg.includes('Invalid login credentials')) {
+        errorMsg = 'Geçersiz e-posta veya şifre.';
+      } else if (errorMsg.includes('Email not confirmed')) {
+        errorMsg = 'Lütfen e-posta adresinizi onaylayın.';
+      } else if (errorMsg.includes('rate limit')) {
+        errorMsg = 'Çok fazla deneme yaptınız, lütfen daha sonra tekrar deneyin.';
+      }
+      setError(errorMsg);
     } finally {
       setLoading(false);
     }
@@ -367,10 +379,10 @@ const AppTour = ({ onComplete }: { onComplete: () => void }) => {
       position: 'left'
     },
     {
-      id: 'bottom-nav',
+      id: window.innerWidth >= 768 ? 'desktop-sidebar' : 'bottom-nav',
       title: 'Navigasyon',
       desc: 'Dashboard, CRM, Harita ve Portföy arasında buradan geçiş yapın.',
-      position: 'top'
+      position: window.innerWidth >= 768 ? 'right' : 'top'
     }
   ];
 
@@ -388,9 +400,23 @@ const AppTour = ({ onComplete }: { onComplete: () => void }) => {
       }
     };
 
+    const el = document.getElementById(tourSteps[step].id);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
     updatePosition();
     window.addEventListener('resize', updatePosition);
-    return () => window.removeEventListener('resize', updatePosition);
+    window.addEventListener('scroll', updatePosition, true); // true for capturing phase to catch all scrolls
+    
+    // Also update position periodically in case layout shifts (e.g. images loading)
+    const interval = setInterval(updatePosition, 500);
+    
+    return () => {
+      window.removeEventListener('resize', updatePosition);
+      window.removeEventListener('scroll', updatePosition, true);
+      clearInterval(interval);
+    };
   }, [step]);
 
   const nextStep = () => {
@@ -420,16 +446,23 @@ const AppTour = ({ onComplete }: { onComplete: () => void }) => {
                targetPos.top + targetPos.height / 2 - 90,
           left: window.innerWidth < 640 ? 20 : (
                 tourSteps[step].position === 'left' ? targetPos.left - 300 : 
+                tourSteps[step].position === 'right' ? targetPos.left + targetPos.width + 20 :
                 Math.max(20, Math.min(window.innerWidth - 300, targetPos.left + targetPos.width / 2 - 140))
           ),
           width: window.innerWidth < 640 ? window.innerWidth - 40 : 280
         }}
       >
+        <button 
+          onClick={onComplete}
+          className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
+        >
+          <X size={16} />
+        </button>
         <div className="flex items-center gap-2 mb-3">
           <div className="w-8 h-8 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600 font-bold text-sm">
             {step + 1}
           </div>
-          <h3 className="font-bold text-slate-900">{tourSteps[step].title}</h3>
+          <h3 className="font-bold text-slate-900 pr-4">{tourSteps[step].title}</h3>
         </div>
         <p className="text-slate-500 text-sm leading-relaxed mb-6">
           {tourSteps[step].desc}
@@ -907,7 +940,7 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
 
 
   const RegionSetupModal = ({ profile, onComplete }: { profile: UserProfile, onComplete: () => void }) => {
-  const queryClient = useQueryClient();
+  const { updateProfileData } = useAuth();
   const [step, setStep] = useState(1);
   const [region, setRegion] = useState({
     city: 'İstanbul',
@@ -919,17 +952,19 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
   const districts = region.city ? locationService.getDistricts(region.city) : [];
   const neighborhoods = (region.city && region.district) ? locationService.getNeighborhoods(region.city, region.district) : [];
 
-  const saveRegionMutation = useMutation({
-    mutationFn: (newRegion: any) => api.updateProfile(profile.uid, { region: newRegion }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      onComplete();
-    }
-  });
+  const [isSaving, setIsSaving] = useState(false);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!region.city || !region.district || region.neighborhoods.length === 0) return;
-    saveRegionMutation.mutate(region);
+    setIsSaving(true);
+    try {
+      await updateProfileData({ region });
+      onComplete();
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -1012,10 +1047,10 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
 
           <button 
             onClick={handleSave}
-            disabled={!region.city || !region.district || region.neighborhoods.length === 0 || saveRegionMutation.isPending}
+            disabled={!region.city || !region.district || region.neighborhoods.length === 0 || isSaving}
             className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20 disabled:opacity-50"
           >
-            {saveRegionMutation.isPending ? 'Kaydediliyor...' : 'Bölgemi Kaydet ve Başla'}
+            {isSaving ? 'Kaydediliyor...' : 'Bölgemi Kaydet ve Başla'}
           </button>
         </div>
       </motion.div>
@@ -4376,7 +4411,7 @@ function MainApp() {
       {/* Main Content */}
       <div className="flex flex-col md:flex-row max-w-7xl mx-auto min-h-screen">
         {/* Desktop Sidebar */}
-        <aside className="hidden md:flex flex-col w-64 bg-white border-r border-slate-100 p-6 sticky top-0 h-screen">
+        <aside id="desktop-sidebar" className="hidden md:flex flex-col w-64 bg-white border-r border-slate-100 p-6 sticky top-0 h-screen">
           <div className="flex items-center gap-3 mb-10">
             <div className="w-10 h-10 bg-gradient-to-tr from-[#FF3D00] to-[#FF9100] rounded-xl flex items-center justify-center text-white shadow-lg shadow-orange-200">
               <Building2 size={24} />
