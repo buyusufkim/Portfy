@@ -50,7 +50,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Lead, Task, Building, Property, UserProfile, MessageTemplate, BrokerAccount, ExternalListing, GamifiedTask, UserStats, RescueSession, RescueTask, MissedOpportunity, VoiceParseResult } from './types';
+import { Lead, Task, Building, Property, UserProfile, MessageTemplate, BrokerAccount, ExternalListing, GamifiedTask, UserStats, RescueSession, RescueTask, MissedOpportunity, VoiceParseResult, PersonalTask, UserNote } from './types';
 import { api } from './services/api';
 import { locationService } from './services/locationService';
 import { AuthProvider, useAuth } from './AuthContext';
@@ -256,6 +256,48 @@ const LoginScreen = () => {
       </p>
     </div>
   );
+};
+
+// --- Notification Center ---
+const NotificationCenter = ({ 
+  personalTasks, 
+  gamifiedTasks, 
+  onNotify 
+}: { 
+  personalTasks: PersonalTask[], 
+  gamifiedTasks: GamifiedTask[],
+  onNotify: (task: PersonalTask | GamifiedTask, type: 'personal' | 'gamified') => void
+}) => {
+  useEffect(() => {
+    const checkReminders = () => {
+      const now = new Date();
+      
+      // Check personal tasks
+      personalTasks.forEach(task => {
+        if (task.reminderTime && !task.notified && !task.isCompleted) {
+          const reminderDate = new Date(task.reminderTime);
+          if (reminderDate <= now) {
+            onNotify(task, 'personal');
+          }
+        }
+      });
+
+      // Check gamified tasks
+      gamifiedTasks.forEach(task => {
+        if (task.reminderTime && !task.notified && !task.isCompleted) {
+          const reminderDate = new Date(task.reminderTime);
+          if (reminderDate <= now) {
+            onNotify(task, 'gamified');
+          }
+        }
+      });
+    };
+
+    const interval = setInterval(checkReminders, 10000); // Check every 10 seconds
+    return () => clearInterval(interval);
+  }, [personalTasks, gamifiedTasks, onNotify]);
+
+  return null;
 };
 
 // --- Intro Sequence Screen ---
@@ -736,6 +778,11 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
       onSuccess: () => queryClient.invalidateQueries({ queryKey: ['personalTasks'] })
     });
 
+    const updatePersonalTaskMutation = useMutation({
+      mutationFn: ({ id, data }: { id: string, data: Partial<PersonalTask> }) => api.updatePersonalTask(id, data),
+      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['personalTasks'] })
+    });
+
     return (
       <motion.div 
         initial={{ opacity: 0 }}
@@ -809,6 +856,11 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
                         <span className={`text-sm font-medium transition-all duration-300 ${task.isCompleted ? 'text-slate-400' : 'text-slate-700'}`}>
                           {task.title}
                         </span>
+                        {task.reminderTime && !task.isCompleted && (
+                          <div className="flex items-center gap-1 mt-0.5 text-[10px] text-orange-600 font-bold">
+                            <Clock size={10} /> {new Date(task.reminderTime).toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                          </div>
+                        )}
                         {task.isCompleted && (
                           <motion.div 
                             initial={{ width: 0 }}
@@ -818,12 +870,33 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
                         )}
                       </div>
                     </div>
-                    <button 
-                      onClick={() => deletePersonalTaskMutation.mutate(task.id)}
-                      className="p-2 text-slate-300 hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {!task.isCompleted && (
+                        <div className="relative group">
+                          <button className="p-2 text-slate-300 hover:text-orange-600 transition-colors">
+                            <Bell size={16} />
+                          </button>
+                          <input 
+                            type="datetime-local" 
+                            className="absolute inset-0 opacity-0 cursor-pointer"
+                            onChange={(e) => {
+                              if (e.target.value) {
+                                // Since updatePersonalTaskMutation is in MainApp, I'll need to use it here.
+                                // But I can just use a local mutation or call api directly.
+                                // Let's use a local mutation for consistency.
+                                updatePersonalTaskMutation.mutate({ id: task.id, data: { reminderTime: e.target.value, notified: false } });
+                              }
+                            }}
+                          />
+                        </div>
+                      )}
+                      <button 
+                        onClick={() => deletePersonalTaskMutation.mutate(task.id)}
+                        className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </Card>
                 </motion.div>
               ))}
@@ -915,15 +988,21 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
                 <form onSubmit={(e) => {
                   e.preventDefault();
                   const formData = new FormData(e.currentTarget);
+                  const reminderTime = formData.get('reminderTime') as string;
                   addPersonalTaskMutation.mutate({
                     title: formData.get('title') as string,
                     isCompleted: false,
-                    priority: 'medium'
+                    priority: 'medium',
+                    ...(reminderTime ? { reminderTime } : {})
                   });
                 }} className="space-y-6">
                   <div className="space-y-2">
                     <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Görev Tanımı</label>
                     <input name="title" required className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-orange-500" placeholder="Ne yapılması gerekiyor?" />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hatırlatıcı (İsteğe Bağlı)</label>
+                    <input type="datetime-local" name="reminderTime" className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-orange-500" />
                   </div>
                   <button type="submit" disabled={addPersonalTaskMutation.isPending} className="w-full py-4 bg-orange-600 text-white rounded-2xl font-bold shadow-lg shadow-orange-200 active:scale-95 transition-all">
                     {addPersonalTaskMutation.isPending ? 'Ekleniyor...' : 'Görevi Ekle'}
@@ -1078,6 +1157,120 @@ function MainApp() {
     queryFn: api.getProperties
   });
 
+  const { data: personalTasks = [] } = useQuery({
+    queryKey: ['personalTasks'],
+    queryFn: api.getPersonalTasks
+  });
+
+  const { data: gamifiedTasks = [], isLoading: isGamifiedTasksLoading } = useQuery({
+    queryKey: ['gamifiedTasks', profile?.uid],
+    queryFn: () => api.getDailyGamifiedTasks(),
+    enabled: !!profile?.uid
+  });
+
+  const [notification, setNotification] = useState<{ task: PersonalTask | GamifiedTask, type: 'personal' | 'gamified' } | null>(null);
+
+  const updatePersonalTaskMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: Partial<PersonalTask> }) => api.updatePersonalTask(id, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['personalTasks'] })
+  });
+
+  const updateGamifiedTaskMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: Partial<GamifiedTask> }) => api.updateGamifiedTask(id, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['gamifiedTasks'] })
+  });
+
+  const handleNotify = (task: PersonalTask | GamifiedTask, type: 'personal' | 'gamified') => {
+    setNotification({ task, type });
+    // Mark as notified
+    if (type === 'personal') {
+      updatePersonalTaskMutation.mutate({ id: task.id, data: { notified: true } });
+    } else {
+      updateGamifiedTaskMutation.mutate({ id: task.id, data: { notified: true } });
+    }
+  };
+
+  const [showMorningRitual, setShowMorningRitual] = useState(false);
+  const [showEveningRitual, setShowEveningRitual] = useState(false);
+  const [showWeeklyRecap, setShowWeeklyRecap] = useState(false);
+  const [weeklyRecapData, setWeeklyRecapData] = useState<any>(null);
+
+  const morningRitualMutation = useMutation({
+    mutationFn: api.completeMorningRitual,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] });
+      setShowMorningRitual(false);
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#FF3D00', '#FF9100', '#FFD600']
+      });
+    }
+  });
+
+  const eveningRitualMutation = useMutation({
+    mutationFn: api.completeEveningRitual,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] });
+      setShowEveningRitual(false);
+      confetti({
+        particleCount: 150,
+        spread: 100,
+        origin: { y: 0.6 },
+        colors: ['#4F46E5', '#7C3AED', '#EC4899']
+      });
+    }
+  });
+
+  const weeklyRecapQuery = useQuery({
+    queryKey: ['weeklyRecap', profile?.uid],
+    queryFn: api.getWeeklyRecap,
+    enabled: false
+  });
+
+  // Ritual Check Logic
+  useEffect(() => {
+    if (!profile) return;
+
+    const checkRituals = () => {
+      const now = new Date();
+      const today = now.toISOString().split('T')[0];
+      const currentHour = now.getHours();
+      const dayOfWeek = now.getDay(); // 0 is Sunday
+
+      // Morning Ritual: 08:00 - 12:00
+      const lastMorning = profile.lastMorningRitualAt?.split('T')[0];
+      if (lastMorning !== today && currentHour >= 8 && currentHour < 12) {
+        setShowMorningRitual(true);
+      }
+
+      // Evening Ritual: 18:00 - 23:59
+      const lastEvening = profile.lastEveningRitualAt?.split('T')[0];
+      if (lastEvening !== today && currentHour >= 18) {
+        setShowEveningRitual(true);
+      }
+
+      // Weekly Recap: Sunday
+      const lastWeekly = localStorage.getItem(`weekly_recap_shown_${profile.uid}`);
+      if (dayOfWeek === 0 && lastWeekly !== today && currentHour >= 10) {
+        weeklyRecapQuery.refetch().then(res => {
+          if (res.data) {
+            setWeeklyRecapData(res.data);
+            setShowWeeklyRecap(true);
+            localStorage.setItem(`weekly_recap_shown_${profile.uid}`, today);
+          }
+        });
+      }
+    };
+
+    const interval = setInterval(checkRituals, 60000);
+    checkRituals();
+    return () => clearInterval(interval);
+  }, [profile]);
+
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [showAddLead, setShowAddLead] = useState(false);
   const [showAddVisit, setShowAddVisit] = useState(false);
@@ -1125,8 +1318,14 @@ function MainApp() {
       queryClient.invalidateQueries({ queryKey: ['properties'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
       queryClient.invalidateQueries({ queryKey: ['regionScores'] });
+      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] }); // Update XP
       setShowAddProperty(false);
       setShowQuickAdd(false);
+      confetti({
+        particleCount: 50,
+        spread: 40,
+        origin: { y: 0.8 }
+      });
     }
   });
 
@@ -1136,8 +1335,14 @@ function MainApp() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['regionScores'] });
+      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] }); // Update XP
       setShowAddLead(false);
       setShowQuickAdd(false);
+      confetti({
+        particleCount: 30,
+        spread: 30,
+        origin: { y: 0.8 }
+      });
     }
   });
 
@@ -1229,12 +1434,6 @@ function MainApp() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['syncLink'] });
     }
-  });
-
-  const { data: gamifiedTasks = [], isLoading: isGamifiedTasksLoading } = useQuery({
-    queryKey: ['gamifiedTasks', profile?.uid],
-    queryFn: () => api.getDailyGamifiedTasks(),
-    enabled: !!profile?.uid
   });
 
   const refreshTasksMutation = useMutation({
@@ -3645,6 +3844,189 @@ function MainApp() {
   };
 
   // Quick Add Menüsü
+  // --- Ritual Modals ---
+  const MorningRitualModal = () => {
+    const [step, setStep] = useState(0);
+    const ritualSteps = [
+      {
+        title: "Günaydın Şampiyon!",
+        desc: "Bugün masada büyük fırsatlar var. Hazır mısın?",
+        icon: <Sparkles size={48} className="text-orange-500" />
+      },
+      {
+        title: "Günün Kazanç Potansiyeli",
+        desc: `Bugün tamamlayacağın aksiyonlarla tahmini ${(properties.reduce((acc, p) => acc + (p.price * p.commissionRate / 100), 0) * 0.01).toLocaleString()} TL değerinde fırsat yönetebilirsin.`,
+        icon: <DollarSign size={48} className="text-emerald-500" />
+      },
+      {
+        title: "3 Kritik Hamle",
+        desc: "Senin için bugün en yüksek öncelikli 3 görevi seçtik. Bunlara odaklan.",
+        icon: <Zap size={48} className="text-amber-500" />
+      }
+    ];
+
+    return (
+      <AnimatePresence>
+        {showMorningRitual && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-6 text-center"
+          >
+            <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
+              <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-orange-600 rounded-full blur-[120px]" />
+              <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600 rounded-full blur-[120px]" />
+            </div>
+
+            <motion.div 
+              key={step}
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 1.1, y: -20 }}
+              className="space-y-8 z-10 max-w-xs"
+            >
+              <div className="w-24 h-24 bg-white/10 backdrop-blur-xl rounded-[32px] flex items-center justify-center mx-auto shadow-2xl border border-white/10">
+                {ritualSteps[step].icon}
+              </div>
+              <div className="space-y-4">
+                <h2 className="text-3xl font-black text-white tracking-tight">
+                  {ritualSteps[step].title}
+                </h2>
+                <p className="text-slate-400 text-lg leading-relaxed">
+                  {ritualSteps[step].desc}
+                </p>
+              </div>
+              
+              <button 
+                onClick={() => {
+                  if (step < ritualSteps.length - 1) setStep(step + 1);
+                  else morningRitualMutation.mutate();
+                }}
+                className="w-full py-4 bg-orange-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-orange-900/40 active:scale-95 transition-all"
+              >
+                {step < ritualSteps.length - 1 ? 'Devam Et' : 'Radarı Başlat'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  };
+
+  const EveningRitualModal = () => {
+    const [revenue, setRevenue] = useState('');
+    const completedTasksCount = gamifiedTasks.filter(t => t.isCompleted).length;
+
+    return (
+      <AnimatePresence>
+        {showEveningRitual && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-6 text-center"
+          >
+            <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
+              <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-600 rounded-full blur-[120px]" />
+              <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-pink-600 rounded-full blur-[120px]" />
+            </div>
+
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              className="space-y-8 z-10 max-w-xs w-full"
+            >
+              <div className="w-24 h-24 bg-white/10 backdrop-blur-xl rounded-[32px] flex items-center justify-center mx-auto shadow-2xl border border-white/10">
+                <Trophy size={48} className="text-amber-400" />
+              </div>
+              <div className="space-y-4">
+                <h2 className="text-3xl font-black text-white tracking-tight">Günü Kapatıyoruz</h2>
+                <p className="text-slate-400 text-lg leading-relaxed">
+                  Bugün {completedTasksCount} görev tamamladın. Harika iş!
+                </p>
+              </div>
+
+              <div className="space-y-3">
+                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block text-left ml-2">Bugün Yönetilen Fırsat (TL)</label>
+                <input 
+                  type="number" 
+                  placeholder="Örn: 50000"
+                  value={revenue}
+                  onChange={(e) => setRevenue(e.target.value)}
+                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white text-xl font-bold focus:outline-none focus:border-orange-500"
+                />
+              </div>
+              
+              <button 
+                onClick={() => eveningRitualMutation.mutate({ tasksCompleted: completedTasksCount, revenue: Number(revenue) })}
+                disabled={eveningRitualMutation.isPending}
+                className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-purple-900/40 active:scale-95 transition-all disabled:opacity-50"
+              >
+                {eveningRitualMutation.isPending ? 'Kaydediliyor...' : 'Günü Bitir ve Dinlen'}
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  };
+
+  const WeeklyRecapModal = () => {
+    return (
+      <AnimatePresence>
+        {showWeeklyRecap && weeklyRecapData && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[110] bg-slate-900 flex items-center justify-center p-6 text-center"
+          >
+            <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
+              <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-emerald-600 rounded-full blur-[120px]" />
+              <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600 rounded-full blur-[120px]" />
+            </div>
+
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              className="space-y-8 z-10 max-w-sm w-full bg-white/5 backdrop-blur-2xl p-8 rounded-[40px] border border-white/10 shadow-2xl"
+            >
+              <div className="w-20 h-20 bg-emerald-500/20 rounded-3xl flex items-center justify-center mx-auto text-emerald-400">
+                <BarChart3 size={40} />
+              </div>
+              
+              <div className="space-y-2">
+                <h2 className="text-3xl font-black text-white tracking-tight">Haftalık Özet</h2>
+                <div className="flex items-center justify-center gap-2">
+                  <Badge variant="success" className="!bg-emerald-500 !text-white border-none">Skor: {weeklyRecapData.score}</Badge>
+                </div>
+              </div>
+
+              <div className="space-y-4 text-left">
+                {weeklyRecapData.summary.map((item: string, i: number) => (
+                  <div key={i} className="flex gap-3 items-start">
+                    <div className="w-6 h-6 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
+                      <Check size={14} />
+                    </div>
+                    <p className="text-slate-300 text-sm leading-relaxed font-medium">{item}</p>
+                  </div>
+                ))}
+              </div>
+              
+              <button 
+                onClick={() => setShowWeeklyRecap(false)}
+                className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-emerald-900/40 active:scale-95 transition-all"
+              >
+                Harika! Devam Et
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    );
+  };
+
   const QuickAddMenu = () => (
     <AnimatePresence>
       {showQuickAdd && (
@@ -3896,54 +4278,76 @@ function MainApp() {
                 Görevleri Oluştur
               </button>
             </div>
-          ) : [...gamifiedTasks].sort((a, b) => {
-            const coreTitles = ["Peş peşe girişini sürdür", "Bugün 100 puan kazan"];
-            const aIsCore = coreTitles.includes(a.title);
-            const bIsCore = coreTitles.includes(b.title);
-            if (aIsCore && !bIsCore) return -1;
-            if (!aIsCore && bIsCore) return 1;
-            return 0;
-          }).map(task => (
-            <Card 
-              key={task.id} 
-              className={`transition-all ${task.isCompleted ? 'opacity-60 bg-slate-50' : 'hover:border-orange-200'}`}
-            >
-              <div className="flex items-center gap-4">
-                <button 
-                  onClick={() => !task.isCompleted && completeTaskMutation.mutate({ taskId: task.id, points: task.points })}
-                  disabled={task.isCompleted || completeTaskMutation.isPending}
-                  className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                    task.isCompleted 
-                      ? 'bg-emerald-500 text-white' 
-                      : 'bg-slate-100 text-slate-500 hover:bg-orange-100 hover:text-orange-700'
-                  }`}
-                >
-                  {task.isCompleted ? <CheckCircle2 size={20} /> : <Circle size={20} />}
-                </button>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h4 className={`text-sm font-bold ${task.isCompleted ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
-                      {task.title}
-                    </h4>
-                    <Badge variant={task.category === 'main' ? 'warning' : task.category === 'smart' ? 'info' : 'default'}>
-                      {task.category === 'main' ? 'Ana' : task.category === 'smart' ? 'Akıllı' : 'Tatlı'}
-                    </Badge>
+          ) : (() => {
+            // 3-Task Sprint Logic: Show 3 top incomplete tasks, or all if less than 3
+            const incomplete = gamifiedTasks.filter(t => !t.isCompleted);
+            const displayTasks = incomplete.length > 0 ? incomplete.slice(0, 3) : gamifiedTasks.slice(0, 3);
+            
+            return displayTasks.map(task => (
+              <Card 
+                key={task.id} 
+                className={`transition-all ${task.isCompleted ? 'opacity-60 bg-slate-50' : 'hover:border-orange-200'}`}
+              >
+                <div className="flex items-center gap-4">
+                  <button 
+                    onClick={() => !task.isCompleted && completeTaskMutation.mutate({ taskId: task.id, points: task.points })}
+                    disabled={task.isCompleted || completeTaskMutation.isPending}
+                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
+                      task.isCompleted 
+                        ? 'bg-emerald-500 text-white' 
+                        : 'bg-slate-100 text-slate-500 hover:bg-orange-100 hover:text-orange-700'
+                    }`}
+                  >
+                    {task.isCompleted ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+                  </button>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <h4 className={`text-sm font-bold ${task.isCompleted ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
+                        {task.title}
+                      </h4>
+                      <Badge variant={task.category === 'main' ? 'warning' : task.category === 'smart' ? 'info' : 'default'}>
+                        {task.category === 'main' ? 'Ana' : task.category === 'smart' ? 'Akıllı' : 'Tatlı'}
+                      </Badge>
+                    </div>
+                    {task.aiReason && !task.isCompleted && (
+                      <p className="text-[10px] text-slate-700 mt-1 flex items-center gap-1 font-bold">
+                        <Sparkles size={10} className="text-orange-600" /> {task.aiReason}
+                      </p>
+                    )}
+                    {task.reminderTime && !task.isCompleted && (
+                      <div className="flex items-center gap-1 mt-1 text-[10px] text-orange-600 font-bold">
+                        <Clock size={10} /> {new Date(task.reminderTime).toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                      </div>
+                    )}
                   </div>
-                  {task.aiReason && !task.isCompleted && (
-                    <p className="text-[10px] text-slate-700 mt-1 flex items-center gap-1 font-bold">
-                      <Sparkles size={10} className="text-orange-600" /> {task.aiReason}
-                    </p>
-                  )}
-                </div>
-                <div className="text-right">
-                  <div className={`text-xs font-bold ${task.isCompleted ? 'text-slate-400' : 'text-orange-600'}`}>
-                    +{task.points}
+                  <div className="flex items-center gap-3">
+                    {!task.isCompleted && (
+                      <div className="relative group">
+                        <button className="p-2 text-slate-300 hover:text-orange-600 transition-colors">
+                          <Bell size={16} />
+                        </button>
+                        <input 
+                          type="datetime-local" 
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                          onChange={(e) => {
+                            if (e.target.value) {
+                              updateGamifiedTaskMutation.mutate({ id: task.id, data: { reminderTime: e.target.value, notified: false } });
+                            }
+                          }}
+                        />
+                      </div>
+                    )}
+                    <div className="text-right">
+                      <div className={`text-xs font-bold ${task.isCompleted ? 'text-slate-400' : 'text-orange-600'}`}>
+                        +{task.points}
+                      </div>
+                      <div className="text-[8px] text-slate-400 uppercase font-bold tracking-wider">Puan</div>
+                    </div>
                   </div>
-                  <div className="text-[8px] text-slate-400 uppercase font-bold tracking-wider">Puan</div>
                 </div>
-              </div>
-            </Card>
-          ))}
+              </Card>
+            ));
+          })()}
         </div>
       </section>
 
@@ -4492,6 +4896,41 @@ function MainApp() {
           )}
         </main>
       </div>
+
+      {/* Notification Center */}
+      <NotificationCenter 
+        personalTasks={personalTasks} 
+        gamifiedTasks={gamifiedTasks} 
+        onNotify={handleNotify} 
+      />
+
+      {/* Notification Toast */}
+      <AnimatePresence>
+        {notification && (
+          <motion.div
+            initial={{ y: -100, opacity: 0 }}
+            animate={{ y: 20, opacity: 1 }}
+            exit={{ y: -100, opacity: 0 }}
+            className="fixed top-0 left-1/2 -translate-x-1/2 z-[200] w-full max-w-sm px-4"
+          >
+            <div className="bg-slate-900 text-white p-6 rounded-[32px] shadow-2xl border border-slate-800 flex items-center gap-4">
+              <div className="w-12 h-12 bg-orange-600 rounded-2xl flex items-center justify-center shrink-0">
+                <Bell size={24} className="animate-bounce" />
+              </div>
+              <div className="flex-1">
+                <h4 className="font-bold text-sm">Görev Hatırlatıcısı</h4>
+                <p className="text-xs text-slate-400 mt-1">{notification.task.title}</p>
+              </div>
+              <button 
+                onClick={() => setNotification(null)}
+                className="p-2 hover:bg-slate-800 rounded-xl transition-colors"
+              >
+                <X size={20} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Quick Add Menu */}
       <QuickAddMenu />

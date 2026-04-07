@@ -8,11 +8,80 @@
         "uid": { "type": "string", "description": "Firebase Auth UID" },
         "email": { "type": "string", "description": "User email address" },
         "displayName": { "type": "string", "description": "User display name" },
-        "subscriptionType": { "type": "string", "enum": ["none", "1-month", "3-month", "6-month", "12-month"], "description": "Current subscription plan" },
+        "subscriptionType": { "type": "string", "enum": ["none", "trial", "1-month", "3-month", "6-month", "12-month"], "description": "Current subscription plan" },
         "subscriptionEndDate": { "type": "string", "format": "date-time", "description": "When the subscription expires" },
-        "role": { "type": "string", "enum": ["agent", "admin"], "description": "User role" }
+        "role": { "type": "string", "enum": ["agent", "admin"], "description": "User role" },
+        "xp": { "type": "number", "description": "Total experience points" },
+        "level": { "type": "number", "description": "Current level" },
+        "streak": { "type": "number", "description": "Current daily streak" },
+        "streakFreezeCount": { "type": "number", "description": "Number of streak freezes available" },
+        "lastMorningRitualAt": { "type": "string", "format": "date-time", "description": "Last time morning ritual was completed" },
+        "lastEveningRitualAt": { "type": "string", "format": "date-time", "description": "Last time evening ritual was completed" },
+        "hasSeenOnboarding": { "type": "boolean" },
+        "hasSeenTour": { "type": "boolean" }
       },
       "required": ["uid", "email"]
+    },
+    "gamified_tasks": {
+      "title": "Gamified Task",
+      "description": "Daily tasks generated for gamification.",
+      "type": "object",
+      "properties": {
+        "agentId": { "type": "string" },
+        "title": { "type": "string" },
+        "points": { "type": "number" },
+        "category": { "type": "string", "enum": ["sweet", "main", "smart"] },
+        "isCompleted": { "type": "boolean" },
+        "date": { "type": "string", "format": "date" },
+        "aiReason": { "type": "string" },
+        "reminderTime": { "type": "string", "format": "date-time" },
+        "notified": { "type": "boolean" }
+      },
+      "required": ["agentId", "title", "points", "category", "date"]
+    },
+    "personal_tasks": {
+      "title": "Personal Task",
+      "description": "User created personal tasks.",
+      "type": "object",
+      "properties": {
+        "agentId": { "type": "string" },
+        "title": { "type": "string" },
+        "isCompleted": { "type": "boolean" },
+        "priority": { "type": "string", "enum": ["low", "medium", "high"] },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "reminderTime": { "type": "string", "format": "date-time" },
+        "notified": { "type": "boolean" }
+      },
+      "required": ["agentId", "title", "isCompleted"]
+    },
+    "user_notes": {
+      "title": "User Note",
+      "description": "User personal notes.",
+      "type": "object",
+      "properties": {
+        "agentId": { "type": "string" },
+        "title": { "type": "string" },
+        "content": { "type": "string" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "color": { "type": "string" }
+      },
+      "required": ["agentId", "title", "content"]
+    },
+    "daily_stats": {
+      "title": "Daily Stats",
+      "description": "Daily performance metrics for the agent.",
+      "type": "object",
+      "properties": {
+        "agentId": { "type": "string" },
+        "date": { "type": "string", "format": "date" },
+        "tasksCompleted": { "type": "number" },
+        "potentialRevenueHandled": { "type": "number" },
+        "callsMade": { "type": "number" },
+        "visitsMade": { "type": "number" },
+        "xpEarned": { "type": "number" }
+      },
+      "required": ["agentId", "date"]
     },
     "field_visits": {
       "title": "Field Visit",
@@ -112,6 +181,10 @@
     "/field_visits/{visitId}": { "schema": "field_visits", "description": "Field visit records" },
     "/leads/{leadId}": { "schema": "leads", "description": "Lead records" },
     "/properties/{propertyId}": { "schema": "properties", "description": "Real estate property records" },
-    "/map_pins/{pinId}": { "schema": "map_pins", "description": "Map pins records" }
+    "/map_pins/{pinId}": { "schema": "map_pins", "description": "Map pins records" },
+    "/gamified_tasks/{taskId}": { "schema": "gamified_tasks", "description": "Gamified tasks" },
+    "/personal_tasks/{taskId}": { "schema": "personal_tasks", "description": "Personal tasks" },
+    "/user_notes/{noteId}": { "schema": "user_notes", "description": "User notes" },
+    "/daily_stats/{statId}": { "schema": "daily_stats", "description": "Daily stats" }
   }
 }

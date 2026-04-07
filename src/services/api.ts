@@ -564,6 +564,14 @@ export const api = {
     if (error) throw error;
   },
 
+  updatePersonalTask: async (id: string, data: Partial<PersonalTask>) => {
+    const { error } = await supabase
+      .from('personal_tasks')
+      .update(data)
+      .eq('id', id);
+    if (error) throw error;
+  },
+
   deletePersonalTask: async (id: string) => {
     const { error } = await supabase
       .from('personal_tasks')
@@ -818,12 +826,31 @@ export const api = {
     
     await supabase.from('gamified_tasks').update({ isCompleted: true }).eq('id', taskId);
 
-    // Update user points
-    const { data: profile } = await supabase.from('profiles').select('gamifiedPoints').eq('uid', agentId).maybeSingle();
+    // Update user points and XP
+    const { data: profile } = await supabase.from('profiles').select('gamifiedPoints, xp, level').eq('uid', agentId).maybeSingle();
     if (profile) {
       const currentPoints = profile.gamifiedPoints || 0;
-      await supabase.from('profiles').update({ gamifiedPoints: currentPoints + points }).eq('uid', agentId);
+      const currentXP = profile.xp || 0;
+      const currentLevel = profile.level || 1;
+      
+      const newXP = currentXP + points;
+      // Simple level up logic: level = floor(sqrt(xp / 100)) + 1
+      const newLevel = Math.floor(Math.sqrt(newXP / 100)) + 1;
+
+      await supabase.from('profiles').update({ 
+        gamifiedPoints: currentPoints + points,
+        xp: newXP,
+        level: newLevel
+      }).eq('uid', agentId);
     }
+  },
+
+  updateGamifiedTask: async (taskId: string, data: Partial<GamifiedTask>) => {
+    const { error } = await supabase
+      .from('gamified_tasks')
+      .update(data)
+      .eq('id', taskId);
+    if (error) throw error;
   },
 
   getGamifiedStats: async (): Promise<UserStats> => {
@@ -888,14 +915,15 @@ export const api = {
     const momentum = Math.round((completionRate * 50) + (mainCompletionRate * 30) + streakEffect);
 
     // Level Logic
-    let level = 1;
+    let level = profile?.level || 1;
     let levelName = "Başlangıç";
-    let nextLevelPoints = 1000;
+    let nextLevelPoints = Math.pow(level, 2) * 100;
 
-    if (points > 15000) { level = 5; levelName = "Kapanışa Yakın"; nextLevelPoints = 30000; }
-    else if (points > 7000) { level = 4; levelName = "Saha Oyuncusu"; nextLevelPoints = 15000; }
-    else if (points > 3000) { level = 3; levelName = "Üretici"; nextLevelPoints = 7000; }
-    else if (points > 1000) { level = 2; levelName = "Aktif"; nextLevelPoints = 3000; }
+    if (level >= 50) levelName = "Efsane";
+    else if (level >= 30) levelName = "Master";
+    else if (level >= 15) levelName = "Top Producer";
+    else if (level >= 5) levelName = "Profesyonel";
+    else levelName = "Çaylak";
 
     return {
       points,
@@ -909,6 +937,80 @@ export const api = {
       tasksCompletedToday: completedTasks.length,
       totalTasksToday: tasks.length
     };
+  },
+
+  completeMorningRitual: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+    const now = new Date().toISOString();
+    await supabase.from('profiles').update({ lastMorningRitualAt: now }).eq('uid', user.id);
+    // Award XP for starting the day
+    const { data: profile } = await supabase.from('profiles').select('xp').eq('uid', user.id).maybeSingle();
+    if (profile) {
+      const newXP = (profile.xp || 0) + 50;
+      const newLevel = Math.floor(Math.sqrt(newXP / 100)) + 1;
+      await supabase.from('profiles').update({ xp: newXP, level: newLevel }).eq('uid', user.id);
+    }
+  },
+
+  completeEveningRitual: async (stats: { tasksCompleted: number, revenue: number }) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+    const now = new Date().toISOString();
+    const today = now.split('T')[0];
+    
+    await supabase.from('profiles').update({ lastEveningRitualAt: now }).eq('uid', user.id);
+    
+    // Save daily stats
+    await supabase.from('daily_stats').upsert({
+      agentId: user.id,
+      date: today,
+      tasksCompleted: stats.tasksCompleted,
+      potentialRevenueHandled: stats.revenue,
+      xpEarned: 100 // Fixed XP for ritual
+    });
+
+    // Award XP
+    const { data: profile } = await supabase.from('profiles').select('xp').eq('uid', user.id).maybeSingle();
+    if (profile) {
+      const newXP = (profile.xp || 0) + 100;
+      const newLevel = Math.floor(Math.sqrt(newXP / 100)) + 1;
+      await supabase.from('profiles').update({ xp: newXP, level: newLevel }).eq('uid', user.id);
+    }
+  },
+
+  getWeeklyRecap: async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+    
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    const dateStr = sevenDaysAgo.toISOString().split('T')[0];
+
+    const { data: stats } = await supabase
+      .from('daily_stats')
+      .select('*')
+      .eq('agentId', user.id)
+      .gte('date', dateStr);
+
+    const s = (stats || []) as any[];
+    const totalTasks = s.reduce((acc, curr) => acc + (curr.tasksCompleted || 0), 0);
+    const totalRevenue = s.reduce((acc, curr) => acc + (curr.potentialRevenueHandled || 0), 0);
+    
+    const prompt = `Aşağıdaki haftalık performans verilerini analiz et ve danışmana 3 maddelik, motive edici bir haftalık özet çıkar.
+    Veriler: ${totalTasks} görev tamamlandı, ${totalRevenue.toLocaleString()} TL değerinde fırsat yönetildi.
+    Yanıtı JSON formatında ver: { "summary": ["madde 1", "madde 2", "madde 3"], "score": 0-100 }`;
+
+    try {
+      const response = await ai.models.generateContent({
+        model: 'gemini-3-flash-preview',
+        contents: prompt,
+        config: { responseMimeType: 'application/json' }
+      });
+      return JSON.parse(response.text);
+    } catch (e) {
+      return { summary: ["Harika bir haftaydı!", "Görevlerini aksatmadın.", "Gelecek hafta daha iyisini yapabilirsin."], score: 80 };
+    }
   },
 
   getAICoachInsight: async (): Promise<string> => {

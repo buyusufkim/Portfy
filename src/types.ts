@@ -16,6 +16,12 @@ export interface UserProfile {
     neighborhoods: string[]; // max 3
   };
   activeModules?: string[]; // Custom modules enabled for this user
+  xp?: number;
+  level?: number;
+  streak?: number;
+  streakFreezeCount?: number;
+  lastMorningRitualAt?: string;
+  lastEveningRitualAt?: string;
 }
 
 export interface GlobalSettings {
@@ -196,6 +202,8 @@ export interface GamifiedTask {
   isCompleted: boolean;
   date: string;
   aiReason?: string;
+  reminderTime?: string;
+  notified?: boolean;
 }
 
 export interface UserStats {
@@ -295,4 +303,6 @@ export interface PersonalTask {
   isCompleted: boolean;
   createdAt: string;
   priority: 'low' | 'medium' | 'high';
+  reminderTime?: string;
+  notified?: boolean;
 }
