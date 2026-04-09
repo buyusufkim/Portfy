@@ -7,14 +7,19 @@ import { Sparkles } from 'lucide-react';
 interface UserProfile {
   uid: string;
   email: string;
-  displayName: string;
-  subscriptionType: 'none' | '1-month' | '3-month' | '6-month' | '12-month';
-  subscriptionEndDate: string | null;
+  display_name: string;
+  subscription_type: 'none' | '1-month' | '3-month' | '6-month' | '12-month';
+  subscription_end_date: string | null;
   role: 'agent' | 'admin';
-  hasSeenOnboarding?: boolean;
-  hasSeenTour?: boolean;
-  notificationTime?: string;
+  has_seen_onboarding?: boolean;
+  has_seen_tour?: boolean;
+  notification_settings?: { push: boolean; email: boolean; time: string };
   region?: string;
+  tier: 'free' | 'pro' | 'elite' | 'master';
+  total_xp: number;
+  broker_level: number;
+  current_streak: number;
+  streak_freeze_count: number;
 }
 
 interface AuthContextType {
@@ -104,44 +109,20 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     // --- MAIN WINDOW LOGIC ---
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(prevUser => {
-        if (session?.user) {
-          if (!prevUser || prevUser.id !== session.user.id) {
-            fetchProfile(session.user.id, session.user.email || '', session.user.user_metadata?.full_name);
-            return session.user;
-          }
-          return prevUser;
-        } else {
-          setLoading(false);
-          return null;
-        }
-      });
-    }).catch(err => {
-      console.error("Supabase connection error:", err);
-      // If it's a fetch error, it might be because Supabase is not configured
-      setIsConfigured(false);
-      setLoading(false);
-    });
-
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(prevUser => {
-        if (session?.user) {
-          if (!prevUser || prevUser.id !== session.user.id) {
-            fetchProfile(session.user.id, session.user.email || '', session.user.user_metadata?.full_name);
-            return session.user;
-          }
-          return prevUser;
-        } else {
-          if (prevUser !== null) {
-            setProfile(null);
-            setLoading(false);
-          }
-          return null;
-        }
-      });
+    // Listen for auth changes - this will handle initial session and subsequent changes.
+    // We avoid calling getSession() here because it can race with onAuthStateChange 
+    // and cause "lock stolen" errors in Supabase.
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      console.log('AuthContext: onAuthStateChange', event, !!session);
+      
+      if (session?.user) {
+        setUser(session.user);
+        fetchProfile(session.user.id, session.user.email || '', session.user.user_metadata?.full_name);
+      } else {
+        setUser(null);
+        setProfile(null);
+        setLoading(false);
+      }
     });
 
     // Listen for popup success message
@@ -149,36 +130,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
         console.log('AuthContext: Received OAUTH_AUTH_SUCCESS', !!event.data.session);
         if (event.data.session) {
-          const { data, error } = await supabase.auth.setSession({
+          await supabase.auth.setSession({
             access_token: event.data.session.access_token,
             refresh_token: event.data.session.refresh_token
           });
-          if (data.session) {
-            setUser(prevUser => {
-              if (!prevUser || prevUser.id !== data.session!.user.id) {
-                fetchProfile(data.session!.user.id, data.session!.user.email || '', data.session!.user.user_metadata?.full_name);
-                return data.session!.user;
-              }
-              return prevUser;
-            });
-            return;
-          }
         }
-        
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (session) {
-            setUser(prevUser => {
-              if (!prevUser || prevUser.id !== session.user.id) {
-                fetchProfile(session.user.id, session.user.email || '', session.user.user_metadata?.full_name);
-                return session.user;
-              }
-              return prevUser;
-            });
-          } else {
-            // Force reload if session is still null after success message
-            window.location.reload();
-          }
-        });
       }
     };
     window.addEventListener('message', handleMessage);
@@ -187,51 +143,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'oauth_success') {
         console.log('AuthContext: Received oauth_success from storage');
-        supabase.auth.getSession().then(({ data: { session } }) => {
-          if (session) {
-            setUser(prevUser => {
-              if (!prevUser || prevUser.id !== session.user.id) {
-                fetchProfile(session.user.id, session.user.email || '', session.user.user_metadata?.full_name);
-                return session.user;
-              }
-              return prevUser;
-            });
-          } else {
-            // Force reload if session is still null after storage event
-            setTimeout(() => window.location.reload(), 500);
-          }
-        });
+        // No need to call getSession, onAuthStateChange will pick it up
       }
     };
     window.addEventListener('storage', handleStorage);
-
-    // Listen for window focus to sync auth state
-    const handleFocus = () => {
-      supabase.auth.getSession().then(({ data: { session } }) => {
-        if (session) {
-          setUser(prevUser => {
-            if (!prevUser || prevUser.id !== session.user.id) {
-              fetchProfile(session.user.id, session.user.email || '', session.user.user_metadata?.full_name);
-              return session.user;
-            }
-            return prevUser;
-          });
-        } else if (localStorage.getItem('oauth_success')) {
-          // If we have the success flag but no session, try reloading
-          const successTime = parseInt(localStorage.getItem('oauth_success') || '0');
-          if (Date.now() - successTime < 60000) { // Only if within last minute
-             window.location.reload();
-          }
-        }
-      });
-    };
-    window.addEventListener('focus', handleFocus);
 
     return () => {
       subscription.unsubscribe();
       window.removeEventListener('message', handleMessage);
       window.removeEventListener('storage', handleStorage);
-      window.removeEventListener('focus', handleFocus);
     };
   }, [isPopup]);
 
@@ -251,12 +171,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         return {
           uid,
           email,
-          displayName: displayName || 'İsimsiz Danışman',
-          subscriptionType: 'none',
-          subscriptionEndDate: null,
+          display_name: displayName || 'İsimsiz Danışman',
+          subscription_type: 'none',
+          subscription_end_date: null,
           role: 'agent',
-          hasSeenOnboarding: false,
-          hasSeenTour: false,
+          has_seen_onboarding: false,
+          has_seen_tour: false,
+          tier: 'free',
+          total_xp: 0,
+          broker_level: 1,
+          current_streak: 0,
+          streak_freeze_count: 0,
         };
       });
       setLoading(false);
@@ -270,10 +195,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         if (prev) {
           return {
             ...data as UserProfile,
-            hasSeenOnboarding: prev.hasSeenOnboarding || data.hasSeenOnboarding,
-            hasSeenTour: prev.hasSeenTour || data.hasSeenTour,
-            subscriptionType: prev.subscriptionType !== 'none' ? prev.subscriptionType : data.subscriptionType,
-            subscriptionEndDate: prev.subscriptionEndDate || data.subscriptionEndDate,
+            has_seen_onboarding: prev.has_seen_onboarding || data.has_seen_onboarding,
+            has_seen_tour: prev.has_seen_tour || data.has_seen_tour,
+            subscription_type: prev.subscription_type !== 'none' ? prev.subscription_type : data.subscription_type,
+            subscription_end_date: prev.subscription_end_date || data.subscription_end_date,
           };
         }
         return data as UserProfile;
@@ -283,12 +208,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const newProfile: UserProfile = {
         uid,
         email,
-        displayName: displayName || 'İsimsiz Danışman',
-        subscriptionType: 'none',
-        subscriptionEndDate: null,
+        display_name: displayName || 'İsimsiz Danışman',
+        subscription_type: 'none',
+        subscription_end_date: null,
         role: 'agent',
-        hasSeenOnboarding: false,
-        hasSeenTour: false,
+        has_seen_onboarding: false,
+        has_seen_tour: false,
+        tier: 'free',
+        total_xp: 0,
+        broker_level: 1,
+        current_streak: 0,
+        streak_freeze_count: 0,
       };
       const { error: insertError } = await supabase.from('profiles').insert(newProfile);
       if (insertError) console.error('Error creating profile:', insertError);
@@ -370,25 +300,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Optimistic update to immediately let the user in (especially helpful if Supabase RLS policies aren't fully configured yet)
     setProfile(prev => {
       if (prev) {
-        return { ...prev, subscriptionType: type, subscriptionEndDate: endDate };
+        return { ...prev, subscription_type: type, subscription_end_date: endDate };
       }
       return {
         uid: user.id,
         email: user.email || '',
-        displayName: user.user_metadata?.full_name || 'İsimsiz Danışman',
-        subscriptionType: type,
-        subscriptionEndDate: endDate,
+        display_name: user.user_metadata?.full_name || 'İsimsiz Danışman',
+        subscription_type: type,
+        subscription_end_date: endDate,
         role: 'agent',
-        hasSeenOnboarding: false,
-        hasSeenTour: false,
+        has_seen_onboarding: false,
+        has_seen_tour: false,
+        tier: 'free',
+        total_xp: 0,
+        broker_level: 1,
+        current_streak: 0,
+        streak_freeze_count: 0,
       };
     });
 
     const { error } = await supabase
       .from('profiles')
       .update({
-        subscriptionType: type,
-        subscriptionEndDate: endDate,
+        subscription_type: type,
+        subscription_end_date: endDate,
       })
       .eq('uid', user.id);
     
@@ -402,11 +337,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
     
     // Optimistic update
-    setProfile(prev => prev ? { ...prev, hasSeenOnboarding: true } : null);
+    setProfile(prev => prev ? { ...prev, has_seen_onboarding: true } : null);
 
     const { error } = await supabase
       .from('profiles')
-      .update({ hasSeenOnboarding: true })
+      .update({ has_seen_onboarding: true })
       .eq('uid', user.id);
     if (error) {
       console.error('Onboarding error:', error);
@@ -417,11 +352,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
     
     // Optimistic update
-    setProfile(prev => prev ? { ...prev, hasSeenTour: true } : null);
+    setProfile(prev => prev ? { ...prev, has_seen_tour: true } : null);
 
     const { error } = await supabase
       .from('profiles')
-      .update({ hasSeenTour: true })
+      .update({ has_seen_tour: true })
       .eq('uid', user.id);
     if (error) {
       console.error('Tour error:', error);
@@ -445,8 +380,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const isSubscribed = profile?.subscriptionEndDate 
-    ? isAfter(parseISO(profile.subscriptionEndDate), new Date()) 
+  const isSubscribed = profile?.subscription_end_date 
+    ? isAfter(parseISO(profile.subscription_end_date), new Date()) 
     : false;
 
   if (isPopup) {

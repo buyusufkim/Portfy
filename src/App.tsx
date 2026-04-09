@@ -46,7 +46,9 @@ import {
   Check,
   Mic,
   Brain,
-  Lock
+  Lock,
+  Moon,
+  ClipboardList
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -56,6 +58,13 @@ import { locationService } from './services/locationService';
 import { AuthProvider, useAuth } from './AuthContext';
 import { BolgemView } from './components/BolgemView';
 import { AdminPanel } from './components/AdminPanel';
+import { DailyRadar } from './components/habit/DailyRadar';
+import { DayCloser } from './components/habit/DayCloser';
+import { AICoachPanel } from './components/ai/AICoachPanel';
+import { RevenueOverview } from './components/revenue/RevenueOverview';
+import { PipelineFunnel } from './components/revenue/PipelineFunnel';
+import { useRevenueStats } from './hooks/useRevenueStats';
+import { formatCurrency } from './lib/revenueUtils';
 import { useCategories } from './hooks/useCategories';
 import { GoogleGenAI, Type } from "@google/genai";
 import confetti from 'canvas-confetti';
@@ -274,8 +283,8 @@ const NotificationCenter = ({
       
       // Check personal tasks
       personalTasks.forEach(task => {
-        if (task.reminderTime && !task.notified && !task.isCompleted) {
-          const reminderDate = new Date(task.reminderTime);
+        if (task.reminder_time && !task.notified && !task.is_completed) {
+          const reminderDate = new Date(task.reminder_time);
           if (reminderDate <= now) {
             onNotify(task, 'personal');
           }
@@ -284,8 +293,8 @@ const NotificationCenter = ({
 
       // Check gamified tasks
       gamifiedTasks.forEach(task => {
-        if (task.reminderTime && !task.notified && !task.isCompleted) {
-          const reminderDate = new Date(task.reminderTime);
+        if (task.reminder_time && !task.notified && !task.is_completed) {
+          const reminderDate = new Date(task.reminder_time);
           if (reminderDate <= now) {
             onNotify(task, 'gamified');
           }
@@ -639,18 +648,18 @@ const PropertyCard: React.FC<{ property: Property, onClick: () => void }> = ({ p
         />
         <div className="absolute top-3 left-3 flex flex-col gap-2">
           <Badge variant={property.status === 'Yayında' ? 'success' : 'info'}>{property.status}</Badge>
-          {property.marketAnalysis?.status === 'Fırsat' && (
+          {property.market_analysis?.status === 'Fırsat' && (
             <div className="bg-emerald-500 text-white text-[8px] font-bold px-2 py-1 rounded-lg shadow-lg uppercase tracking-widest">Fırsat</div>
           )}
         </div>
         <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
           <div className="bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
-            <Activity size={12} className={getHealthColor(property.healthScore)} />
-            <span className={`text-[10px] font-bold ${getHealthColor(property.healthScore)}`}>%{property.healthScore}</span>
+            <Activity size={12} className={getHealthColor(property.health_score)} />
+            <span className={`text-[10px] font-bold ${getHealthColor(property.health_score)}`}>%{property.health_score}</span>
           </div>
           <div className="bg-orange-600/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm text-white">
             <TrendingUp size={10} />
-            <span className="text-[10px] font-bold">%{Math.round((property.saleProbability || 0.5) * 100)} Satış</span>
+            <span className="text-[10px] font-bold">%{Math.round((property.sale_probability || 0.5) * 100)} Satış</span>
           </div>
         </div>
       </div>
@@ -671,17 +680,17 @@ const PropertyCard: React.FC<{ property: Property, onClick: () => void }> = ({ p
             </div>
             <div className="flex items-center gap-1 text-slate-500 text-[10px]">
               <Briefcase size={12} />
-              <span>{property.details.brutM2}m²</span>
+              <span>{property.details.brut_m2}m²</span>
             </div>
           </div>
           <div className="flex items-center gap-2">
             <div className="text-[10px] font-bold text-slate-400">
-              Gelir: ₺{(property.price * property.commissionRate / 100).toLocaleString()}
+              Gelir: ₺{(property.price * property.commission_rate / 100).toLocaleString()}
             </div>
             <button 
               onClick={(e) => {
                 e.stopPropagation();
-                const text = encodeURIComponent(`Merhaba, bu mülk ilginizi çekebilir: ${property.title}\nFiyat: ₺${property.price.toLocaleString()}\nKonum: ${property.address.district}, ${property.address.city}\nDetaylar: ${property.details.rooms}, ${property.details.brutM2}m²`);
+                const text = encodeURIComponent(`Merhaba, bu mülk ilginizi çekebilir: ${property.title}\nFiyat: ₺${property.price.toLocaleString()}\nKonum: ${property.address.district}, ${property.address.city}\nDetaylar: ${property.details.rooms}, ${property.details.brut_m2}m²`);
                 window.open(`https://wa.me/?text=${text}`, '_blank');
               }}
               className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors ml-2"
@@ -696,7 +705,7 @@ const PropertyCard: React.FC<{ property: Property, onClick: () => void }> = ({ p
 };
 
 const PipelineColumn: React.FC<{ title: string, properties: Property[], status: string, onPropertyClick: (p: Property) => void }> = ({ title, properties, status, onPropertyClick }) => {
-  const totalRevenue = properties.reduce((acc, p) => acc + (p.price * p.commissionRate / 100), 0);
+  const totalRevenue = properties.reduce((acc, p) => acc + (p.price * p.commission_rate / 100), 0);
   
   return (
     <div className="w-72 flex-shrink-0 flex flex-col gap-4">
@@ -754,10 +763,10 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
     });
 
     const toggleTaskMutation = useMutation({
-      mutationFn: ({ id, isCompleted }: { id: string, isCompleted: boolean }) => api.togglePersonalTask(id, isCompleted),
+      mutationFn: ({ id, is_completed }: { id: string, is_completed: boolean }) => api.togglePersonalTask(id, is_completed),
       onSuccess: (_, variables) => {
         queryClient.invalidateQueries({ queryKey: ['personalTasks'] });
-        if (variables.isCompleted) {
+        if (variables.is_completed) {
           confetti({
             particleCount: 100,
             spread: 70,
@@ -812,12 +821,21 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
           <div className="flex items-center justify-between">
             <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Yapılacaklar</h2>
             <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-lg">
-              {personalTasks.filter((t: any) => !t.isCompleted).length} Bekliyor
+              {personalTasks.filter((t: any) => !t.is_completed).length} Bekliyor
             </span>
           </div>
           <div className="space-y-3">
             <AnimatePresence mode="popLayout">
-              {personalTasks.length === 0 ? (
+              {tasksLoading ? (
+                <div className="py-12 text-center space-y-3">
+                  <motion.div 
+                    animate={{ rotate: 360 }}
+                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                    className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full mx-auto"
+                  />
+                  <p className="text-xs text-slate-400 font-medium">Görevler yükleniyor...</p>
+                </div>
+              ) : personalTasks.length === 0 ? (
                 <motion.p 
                   key="empty-tasks"
                   initial={{ opacity: 0 }}
@@ -835,14 +853,14 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
                   exit={{ opacity: 0, scale: 0.9 }}
                   transition={{ type: "spring", stiffness: 500, damping: 30 }}
                 >
-                  <Card className={`flex items-center justify-between p-4 transition-all duration-300 ${task.isCompleted ? 'bg-slate-50/50 border-slate-100' : 'bg-white'}`}>
+                  <Card className={`flex items-center justify-between p-4 transition-all duration-300 ${task.is_completed ? 'bg-slate-50/50 border-slate-100' : 'bg-white'}`}>
                     <div className="flex items-center gap-4">
                       <motion.button 
                         whileTap={{ scale: 0.8 }}
-                        onClick={() => toggleTaskMutation.mutate({ id: task.id, isCompleted: !task.isCompleted })}
-                        className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${task.isCompleted ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200'}`}
+                        onClick={() => toggleTaskMutation.mutate({ id: task.id, is_completed: !task.is_completed })}
+                        className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${task.is_completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200'}`}
                       >
-                        {task.isCompleted && (
+                        {task.is_completed && (
                           <motion.div
                             initial={{ scale: 0 }}
                             animate={{ scale: 1 }}
@@ -853,15 +871,15 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
                         )}
                       </motion.button>
                       <div className="relative">
-                        <span className={`text-sm font-medium transition-all duration-300 ${task.isCompleted ? 'text-slate-400' : 'text-slate-700'}`}>
+                        <span className={`text-sm font-medium transition-all duration-300 ${task.is_completed ? 'text-slate-400' : 'text-slate-700'}`}>
                           {task.title}
                         </span>
-                        {task.reminderTime && !task.isCompleted && (
+                        {task.reminder_time && !task.is_completed && (
                           <div className="flex items-center gap-1 mt-0.5 text-[10px] text-orange-600 font-bold">
-                            <Clock size={10} /> {new Date(task.reminderTime).toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
+                            <Clock size={10} /> {new Date(task.reminder_time).toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
                           </div>
                         )}
-                        {task.isCompleted && (
+                        {task.is_completed && (
                           <motion.div 
                             initial={{ width: 0 }}
                             animate={{ width: "100%" }}
@@ -871,7 +889,7 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      {!task.isCompleted && (
+                      {!task.is_completed && (
                         <div className="relative group">
                           <button className="p-2 text-slate-300 hover:text-orange-600 transition-colors">
                             <Bell size={16} />
@@ -884,7 +902,7 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
                                 // Since updatePersonalTaskMutation is in MainApp, I'll need to use it here.
                                 // But I can just use a local mutation or call api directly.
                                 // Let's use a local mutation for consistency.
-                                updatePersonalTaskMutation.mutate({ id: task.id, data: { reminderTime: e.target.value, notified: false } });
+                                updatePersonalTaskMutation.mutate({ id: task.id, data: { reminder_time: e.target.value, notified: false } });
                               }
                             }}
                           />
@@ -923,7 +941,7 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
                 </div>
                 <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{note.content}</p>
                 <div className="text-[10px] text-slate-400 font-medium">
-                  {new Date(note.updatedAt).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
+                  {new Date(note.updated_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
                 </div>
               </Card>
             ))}
@@ -988,12 +1006,12 @@ const PipelineColumn: React.FC<{ title: string, properties: Property[], status: 
                 <form onSubmit={(e) => {
                   e.preventDefault();
                   const formData = new FormData(e.currentTarget);
-                  const reminderTime = formData.get('reminderTime') as string;
+                  const reminder_time = formData.get('reminderTime') as string;
                   addPersonalTaskMutation.mutate({
                     title: formData.get('title') as string,
-                    isCompleted: false,
+                    is_completed: false,
                     priority: 'medium',
-                    ...(reminderTime ? { reminderTime } : {})
+                    ...(reminder_time ? { reminder_time } : {})
                   });
                 }} className="space-y-6">
                   <div className="space-y-2">
@@ -1148,37 +1166,46 @@ function MainApp() {
   const queryClient = useQueryClient();
 
   const { data: leads = [], isLoading: leadsLoading } = useQuery({
-    queryKey: ['leads'],
-    queryFn: api.getLeads
+    queryKey: ['leads', profile?.uid],
+    queryFn: api.getLeads,
+    enabled: !!profile?.uid
   });
 
   const { data: properties = [], isLoading: propertiesLoading } = useQuery({
-    queryKey: ['properties'],
-    queryFn: api.getProperties
+    queryKey: ['properties', profile?.uid],
+    queryFn: api.getProperties,
+    enabled: !!profile?.uid
   });
 
   const { data: personalTasks = [] } = useQuery({
-    queryKey: ['personalTasks'],
-    queryFn: api.getPersonalTasks
+    queryKey: ['personalTasks', profile?.uid],
+    queryFn: api.getPersonalTasks,
+    enabled: !!profile?.uid
   });
 
-  const { data: gamifiedTasks = [], isLoading: isGamifiedTasksLoading } = useQuery({
+  const { data: gamifiedTasks = [], isLoading: isGamifiedTasksLoading, isError: isGamifiedTasksError } = useQuery({
     queryKey: ['gamifiedTasks', profile?.uid],
     queryFn: () => api.getDailyGamifiedTasks(),
     enabled: !!profile?.uid
   });
 
+  useEffect(() => {
+    console.log("Current gamifiedTasks:", gamifiedTasks);
+  }, [gamifiedTasks]);
+
   const [notification, setNotification] = useState<{ task: PersonalTask | GamifiedTask, type: 'personal' | 'gamified' } | null>(null);
 
   const updatePersonalTaskMutation = useMutation({
     mutationFn: ({ id, data }: { id: string, data: Partial<PersonalTask> }) => api.updatePersonalTask(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['personalTasks'] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['personalTasks', profile?.uid] })
   });
 
   const updateGamifiedTaskMutation = useMutation({
     mutationFn: ({ id, data }: { id: string, data: Partial<GamifiedTask> }) => api.updateGamifiedTask(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['gamifiedTasks'] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['gamifiedTasks', profile?.uid] })
   });
+
+  const { data: revenueStats, isLoading: revenueLoading } = useRevenueStats();
 
   const handleNotify = (task: PersonalTask | GamifiedTask, type: 'personal' | 'gamified') => {
     setNotification({ task, type });
@@ -1190,91 +1217,63 @@ function MainApp() {
     }
   };
 
-  const [showMorningRitual, setShowMorningRitual] = useState(false);
-  const [showEveningRitual, setShowEveningRitual] = useState(false);
-  const [showWeeklyRecap, setShowWeeklyRecap] = useState(false);
-  const [weeklyRecapData, setWeeklyRecapData] = useState<any>(null);
-
-  const morningRitualMutation = useMutation({
-    mutationFn: api.completeMorningRitual,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] });
-      setShowMorningRitual(false);
-      confetti({
-        particleCount: 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: ['#FF3D00', '#FF9100', '#FFD600']
-      });
-    }
-  });
-
-  const eveningRitualMutation = useMutation({
-    mutationFn: api.completeEveningRitual,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] });
-      setShowEveningRitual(false);
-      confetti({
-        particleCount: 150,
-        spread: 100,
-        origin: { y: 0.6 },
-        colors: ['#4F46E5', '#7C3AED', '#EC4899']
-      });
-    }
-  });
-
-  const weeklyRecapQuery = useQuery({
-    queryKey: ['weeklyRecap', profile?.uid],
-    queryFn: api.getWeeklyRecap,
-    enabled: false
-  });
-
-  // Ritual Check Logic
-  useEffect(() => {
-    if (!profile) return;
-
-    const checkRituals = () => {
-      const now = new Date();
-      const today = now.toISOString().split('T')[0];
-      const currentHour = now.getHours();
-      const dayOfWeek = now.getDay(); // 0 is Sunday
-
-      // Morning Ritual: 08:00 - 12:00
-      const lastMorning = profile.lastMorningRitualAt?.split('T')[0];
-      if (lastMorning !== today && currentHour >= 8 && currentHour < 12) {
-        setShowMorningRitual(true);
-      }
-
-      // Evening Ritual: 18:00 - 23:59
-      const lastEvening = profile.lastEveningRitualAt?.split('T')[0];
-      if (lastEvening !== today && currentHour >= 18) {
-        setShowEveningRitual(true);
-      }
-
-      // Weekly Recap: Sunday
-      const lastWeekly = localStorage.getItem(`weekly_recap_shown_${profile.uid}`);
-      if (dayOfWeek === 0 && lastWeekly !== today && currentHour >= 10) {
-        weeklyRecapQuery.refetch().then(res => {
-          if (res.data) {
-            setWeeklyRecapData(res.data);
-            setShowWeeklyRecap(true);
-            localStorage.setItem(`weekly_recap_shown_${profile.uid}`, today);
-          }
-        });
-      }
-    };
-
-    const interval = setInterval(checkRituals, 60000);
-    checkRituals();
-    return () => clearInterval(interval);
-  }, [profile]);
-
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [showAddLead, setShowAddLead] = useState(false);
   const [showAddVisit, setShowAddVisit] = useState(false);
   const [showWhatsAppImport, setShowWhatsAppImport] = useState(false);
+  const [showDailyRadar, setShowDailyRadar] = useState(false);
+  const [showDayCloser, setShowDayCloser] = useState(false);
+
+  const { data: dailyRadarData } = useQuery({
+    queryKey: ['dailyRadar', profile?.uid],
+    queryFn: api.getDailyRadar,
+    enabled: !!profile?.uid && showDailyRadar
+  });
+
+  const completeMorningRitualMutation = useMutation({
+    mutationFn: api.completeMorningRitual,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      setShowDailyRadar(false);
+    }
+  });
+
+  const completeEveningRitualMutation = useMutation({
+    mutationFn: (stats: any) => {
+      console.log("Mutation triggered: completeEveningRitual", stats);
+      return api.completeEveningRitual(stats);
+    },
+    onSuccess: () => {
+      console.log("Mutation SUCCESS: completeEveningRitual");
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['dailyStats'] });
+      setShowDayCloser(false);
+      confetti({
+        particleCount: 150,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#FF3D00', '#3b82f6', '#10b981']
+      });
+    },
+    onError: (error: any) => {
+      console.error("Mutation ERROR: completeEveningRitual", error);
+      alert("Günü kapatırken bir hata oluştu: " + error.message);
+    }
+  });
+
+  useEffect(() => {
+    if (profile) {
+      const today = new Date().toISOString().split('T')[0];
+      const lastRitual = profile.last_ritual_completed_at ? profile.last_ritual_completed_at.split('T')[0] : null;
+      
+      if (lastRitual !== today) {
+        const hour = new Date().getHours();
+        if (hour >= 5 && hour < 12) {
+          setShowDailyRadar(true);
+        }
+      }
+    }
+  }, [profile]);
 
   // WhatsApp Import Mutation
   const whatsappImportMutation = useMutation({
@@ -1318,14 +1317,8 @@ function MainApp() {
       queryClient.invalidateQueries({ queryKey: ['properties'] });
       queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
       queryClient.invalidateQueries({ queryKey: ['regionScores'] });
-      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] }); // Update XP
       setShowAddProperty(false);
       setShowQuickAdd(false);
-      confetti({
-        particleCount: 50,
-        spread: 40,
-        origin: { y: 0.8 }
-      });
     }
   });
 
@@ -1335,14 +1328,8 @@ function MainApp() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['leads'] });
       queryClient.invalidateQueries({ queryKey: ['regionScores'] });
-      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] }); // Update XP
       setShowAddLead(false);
       setShowQuickAdd(false);
-      confetti({
-        particleCount: 30,
-        spread: 30,
-        origin: { y: 0.8 }
-      });
     }
   });
 
@@ -1439,8 +1426,13 @@ function MainApp() {
   const refreshTasksMutation = useMutation({
     mutationFn: () => api.getDailyGamifiedTasks(true),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['gamifiedTasks'] });
-      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] });
+      queryClient.invalidateQueries({ queryKey: ['gamifiedTasks', profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: ['gamifiedStats', profile?.uid] });
+      setToast({ message: 'Görevler başarıyla güncellendi', type: 'success' });
+    },
+    onError: (error: any) => {
+      console.error('Task refresh error:', error);
+      setToast({ message: 'Görevler oluşturulurken bir hata oluştu', type: 'error' });
     }
   });
 
@@ -1456,12 +1448,33 @@ function MainApp() {
     enabled: !!profile?.uid
   });
 
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
+
+  useEffect(() => {
+    if (toast) {
+      const timer = setTimeout(() => setToast(null), 3000);
+      return () => clearTimeout(timer);
+    }
+  }, [toast]);
+
   const completeTaskMutation = useMutation({
-    mutationFn: ({ taskId, points }: { taskId: string, points: number }) => api.completeGamifiedTask(taskId, points),
+    mutationFn: async ({ task }: { task: GamifiedTask }) => {
+      console.log("Görev tamamlama başlatıldı:", task.title);
+      const { verified, message } = await api.verifyGamifiedTask(task);
+      console.log("Doğrulama sonucu:", verified, message);
+      if (!verified) throw new Error(message || "Görev doğrulanamadı.");
+      return api.completeGamifiedTask(task.id, task.points);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['gamifiedTasks'] });
-      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] });
-      queryClient.invalidateQueries({ queryKey: ['coachInsights'] });
+      queryClient.invalidateQueries({ queryKey: ['gamifiedTasks', profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: ['gamifiedStats', profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: ['coachInsights', profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: ['profile', profile?.uid] });
+      setToast({ message: "Görev başarıyla tamamlandı!", type: 'success' });
+    },
+    onError: (error: any) => {
+      console.error("Görev tamamlama hatası:", error);
+      setToast({ message: error.message, type: 'error' });
     }
   });
 
@@ -1472,6 +1485,13 @@ function MainApp() {
 
   const startRescueMutation = useMutation({
     mutationFn: api.startRescueSession,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rescueSession'] });
+    }
+  });
+
+  const cancelRescueMutation = useMutation({
+    mutationFn: api.cancelRescueSession,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['rescueSession'] });
     }
@@ -1571,7 +1591,7 @@ function MainApp() {
       
       if (lastShown === today) return;
 
-      const targetTime = profile.notificationTime || "09:00";
+      const targetTime = profile.notification_settings?.time || "09:00";
       const [targetHours, targetMinutes] = targetTime.split(':').map(Number);
       
       const currentHours = now.getHours();
@@ -1597,20 +1617,20 @@ function MainApp() {
   useEffect(() => {
     if (gamifiedTasks && gamifiedTasks.length > 0 && profile?.uid) {
       // 1. Peş peşe girişini sürdür
-      const loginTask = gamifiedTasks.find(t => t.title === "Peş peşe girişini sürdür" && !t.isCompleted);
+      const loginTask = gamifiedTasks.find(t => t.title === "Peş peşe girişini sürdür" && !t.is_completed);
       if (loginTask && !completingTasks.current.has(loginTask.id)) {
         completingTasks.current.add(loginTask.id);
-        completeTaskMutation.mutate({ taskId: loginTask.id, points: loginTask.points });
+        completeTaskMutation.mutate({ task: loginTask });
       }
 
       // 2. Bugün 100 puan kazan
-      const pointsTask = gamifiedTasks.find(t => t.title === "Bugün 100 puan kazan" && !t.isCompleted);
-      if (pointsTask && (gamifiedStats?.pointsToday || 0) >= 100 && !completingTasks.current.has(pointsTask.id)) {
+      const pointsTask = gamifiedTasks.find(t => t.title === "Bugün 100 puan kazan" && !t.is_completed);
+      if (pointsTask && (gamifiedStats?.points_today || 0) >= 100 && !completingTasks.current.has(pointsTask.id)) {
         completingTasks.current.add(pointsTask.id);
-        completeTaskMutation.mutate({ taskId: pointsTask.id, points: pointsTask.points });
+        completeTaskMutation.mutate({ task: pointsTask });
       }
     }
-  }, [gamifiedTasks, profile?.uid, gamifiedStats?.pointsToday]);
+  }, [gamifiedTasks, profile?.uid, gamifiedStats?.points_today]);
 
   const handleWhatsAppShare = (property: Property, content?: string) => {
     if (content) {
@@ -1681,7 +1701,7 @@ function MainApp() {
                 <button 
                   onClick={() => {
                     if (newTemplate.name && newTemplate.content) {
-                      addTemplateMutation.mutate({ ...newTemplate, isDefault: false });
+                      addTemplateMutation.mutate({ ...newTemplate, is_default: false });
                       setNewTemplate({ name: '', content: '' });
                     }
                   }}
@@ -1887,7 +1907,7 @@ function MainApp() {
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-slate-900">Mağaza İlanları</h2>
-                  <p className="text-xs text-slate-500">{brokerAccount?.storeName}</p>
+                  <p className="text-xs text-slate-500">{brokerAccount?.store_name}</p>
                 </div>
               </div>
               <button onClick={() => setShowExternalListings(false)} className="p-2 bg-slate-100 rounded-full text-slate-400">
@@ -1901,7 +1921,7 @@ function MainApp() {
                   <div className="flex justify-between items-start">
                     <div>
                       <h4 className="text-sm font-bold text-slate-900">{listing.title}</h4>
-                      <p className="text-[10px] text-slate-400 mt-0.5">ID: {listing.extId} • {listing.district}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">ID: {listing.ext_id} • {listing.district}</p>
                     </div>
                     <Badge variant={listing.status === 'Yayında' ? 'success' : 'error'}>{listing.status}</Badge>
                   </div>
@@ -2038,7 +2058,7 @@ function MainApp() {
                 <div className="space-y-1">
                   <div className="flex gap-2 mb-2">
                     <Badge variant="success">{selectedProperty.status}</Badge>
-                    {selectedProperty.marketAnalysis?.status === 'Fırsat' && (
+                    {selectedProperty.market_analysis?.status === 'Fırsat' && (
                       <Badge variant="info" className="bg-emerald-500 border-none">FIRSAT</Badge>
                     )}
                   </div>
@@ -2048,7 +2068,7 @@ function MainApp() {
                   <span className="text-orange-600 font-bold text-lg">₺{selectedProperty.price.toLocaleString()}</span>
                   <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
                     <TrendingUp size={10} />
-                    <span>%{Math.round((selectedProperty.saleProbability || 0.5) * 100)} Satış Olasılığı</span>
+                    <span>%{Math.round((selectedProperty.sale_probability || 0.5) * 100)} Satış Olasılığı</span>
                   </div>
                 </div>
               </div>
@@ -2063,7 +2083,7 @@ function MainApp() {
                     <TrendingUp size={18} />
                     <span className="text-xs font-bold uppercase tracking-wider">Satış İhtimali</span>
                   </div>
-                  <div className="text-2xl font-black text-emerald-700">%{Math.round((selectedProperty.saleProbability || 0.5) * 100)}</div>
+                  <div className="text-2xl font-black text-emerald-700">%{Math.round((selectedProperty.sale_probability || 0.5) * 100)}</div>
                   <p className="text-[10px] text-emerald-600/80 font-medium">Bu fiyat bandında talep yüksek. Bugün paylaşım için çok uygun.</p>
                   <button 
                     onClick={() => { setAiMarketingType('whatsapp'); setIsGenerating(true); generateWhatsAppMutation.mutate(selectedProperty); }}
@@ -2095,7 +2115,7 @@ function MainApp() {
                 </div>
                 <div className="bg-slate-50 p-4 rounded-3xl text-center">
                   <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">M2</div>
-                  <div className="font-bold text-slate-900">{selectedProperty.details.brutM2}</div>
+                  <div className="font-bold text-slate-900">{selectedProperty.details.brut_m2}</div>
                 </div>
                 <div className="bg-slate-50 p-4 rounded-3xl text-center">
                   <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Kat</div>
@@ -2986,10 +3006,10 @@ function MainApp() {
                   <div className="flex items-center justify-between pt-2">
                     <div className="flex items-center gap-3">
                       <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                        {opp.daysDelayed > 0 ? `${opp.daysDelayed} Gün Gecikme` : 'Hemen Aksiyon'}
+                        {opp.days_delayed > 0 ? `${opp.days_delayed} Gün Gecikme` : 'Hemen Aksiyon'}
                       </span>
-                      {opp.potentialValue && (
-                        <span className="text-[10px] font-bold text-emerald-600">+{opp.potentialValue} Puan</span>
+                      {opp.potential_value && (
+                        <span className="text-[10px] font-bold text-emerald-600">+{opp.potential_value} Puan</span>
                       )}
                     </div>
                     <button 
@@ -3023,7 +3043,7 @@ function MainApp() {
   const RescueModeModal = () => {
     if (!rescueSession || rescueSession.status !== 'active') return null;
 
-    const completedCount = rescueSession.tasks.filter(t => t.isCompleted).length;
+    const completedCount = rescueSession.tasks.filter(t => t.is_completed).length;
     const totalCount = rescueSession.tasks.length;
     const progress = (completedCount / totalCount) * 100;
 
@@ -3043,6 +3063,13 @@ function MainApp() {
             {/* Background Glow */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full -mr-16 -mt-16 blur-3xl" />
             
+            <button 
+              onClick={() => cancelRescueMutation.mutate(rescueSession.id)}
+              className="absolute top-6 right-6 p-2 bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors z-20"
+            >
+              <X size={20} />
+            </button>
+
             <div className="text-center space-y-2 relative z-10">
               <div className="w-20 h-20 bg-orange-100 rounded-3xl flex items-center justify-center text-orange-600 mx-auto mb-4 shadow-lg shadow-orange-100">
                 <Zap size={40} />
@@ -3071,26 +3098,26 @@ function MainApp() {
               {rescueSession.tasks.map(task => (
                 <button
                   key={task.id}
-                  onClick={() => !task.isCompleted && completeRescueTaskMutation.mutate({ sessionId: rescueSession.id, taskId: task.id })}
-                  disabled={task.isCompleted || completeRescueTaskMutation.isPending}
+                  onClick={() => !task.is_completed && completeRescueTaskMutation.mutate({ sessionId: rescueSession.id, taskId: task.id })}
+                  disabled={task.is_completed || completeRescueTaskMutation.isPending}
                   className={`w-full p-5 rounded-3xl border-2 transition-all flex items-center gap-4 text-left ${
-                    task.isCompleted 
+                    task.is_completed 
                       ? 'bg-emerald-50 border-emerald-100 opacity-60' 
                       : 'bg-slate-50 border-slate-100 hover:border-orange-200 active:scale-95'
                   }`}
                 >
                   <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
-                    task.isCompleted ? 'bg-emerald-500 text-white' : 'bg-white text-slate-400 shadow-sm'
+                    task.is_completed ? 'bg-emerald-500 text-white' : 'bg-white text-slate-400 shadow-sm'
                   }`}>
-                    {task.isCompleted ? <Check size={20} /> : <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />}
+                    {task.is_completed ? <Check size={20} /> : <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />}
                   </div>
                   <div className="flex-1">
-                    <h4 className={`text-sm font-bold ${task.isCompleted ? 'text-emerald-900 line-through' : 'text-slate-900'}`}>
+                    <h4 className={`text-sm font-bold ${task.is_completed ? 'text-emerald-900 line-through' : 'text-slate-900'}`}>
                       {task.title}
                     </h4>
                     <div className="flex items-center gap-2 mt-1">
                       <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                        <Clock size={10} /> {task.estimatedMinutes} dk
+                        <Clock size={10} /> {task.estimated_minutes} dk
                       </span>
                       <span className="text-[10px] font-bold text-orange-600">+{task.points} Puan</span>
                     </div>
@@ -3215,14 +3242,14 @@ function MainApp() {
       price: '',
       status: 'Yeni',
       address: { city: 'İstanbul', district: '', neighborhood: '', fullAddress: '' },
-      details: { brutM2: '', netM2: '', rooms: '', floor: '', totalFloors: '', age: '' },
-      owner: { name: '', phone: '', trustScore: 80 },
-      commissionRate: 2,
+      details: { brut_m2: '', net_m2: '', rooms: '', floor: '', totalFloors: '', age: '' },
+      owner: { name: '', phone: '', trust_score: 80 },
+      commission_rate: 2,
       images: [] as string[],
-      healthScore: 75,
+      health_score: 75,
       notes: '',
-      targetCustomerType: '',
-      investmentSuitability: ''
+      target_customer_type: '',
+      investment_suitability: ''
     });
 
     const cities = locationService.getCities();
@@ -3245,8 +3272,8 @@ function MainApp() {
         price: Number(formData.price.toString().replace(/\D/g, '')),
         details: {
           ...formData.details,
-          brutM2: Number(formData.details.brutM2),
-          netM2: Number(formData.details.netM2),
+          brut_m2: Number(formData.details.brut_m2),
+          net_m2: Number(formData.details.net_m2),
           floor: Number(formData.details.floor),
           totalFloors: Number(formData.details.totalFloors),
           age: Number(formData.details.age)
@@ -3412,8 +3439,8 @@ function MainApp() {
                         type="number" 
                         placeholder="Örn: 120"
                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                        value={formData.details.brutM2}
-                        onChange={e => setFormData({...formData, details: {...formData.details, brutM2: e.target.value}})}
+                        value={formData.details.brut_m2}
+                        onChange={e => setFormData({...formData, details: {...formData.details, brut_m2: e.target.value}})}
                       />
                     </div>
                     <div className="space-y-2">
@@ -3422,8 +3449,8 @@ function MainApp() {
                         type="number" 
                         placeholder="Örn: 100"
                         className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                        value={formData.details.netM2}
-                        onChange={e => setFormData({...formData, details: {...formData.details, netM2: e.target.value}})}
+                        value={formData.details.net_m2}
+                        onChange={e => setFormData({...formData, details: {...formData.details, net_m2: e.target.value}})}
                       />
                     </div>
                   </div>
@@ -3484,16 +3511,16 @@ function MainApp() {
                       type="text" 
                       placeholder="Örn: Genç aileler, Yatırımcılar"
                       className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                      value={formData.targetCustomerType}
-                      onChange={e => setFormData({...formData, targetCustomerType: e.target.value})}
+                      value={formData.target_customer_type}
+                      onChange={e => setFormData({...formData, target_customer_type: e.target.value})}
                     />
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Yatırım Uygunluğu</label>
                     <select 
                       className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                      value={formData.investmentSuitability}
-                      onChange={e => setFormData({...formData, investmentSuitability: e.target.value})}
+                      value={formData.investment_suitability}
+                      onChange={e => setFormData({...formData, investment_suitability: e.target.value})}
                     >
                       <option value="">Seçiniz</option>
                       <option value="Yüksek">Yüksek</option>
@@ -3591,26 +3618,26 @@ function MainApp() {
       
       if (parsedResult.intent === 'lead') {
         await addLeadMutation.mutateAsync({
-          name: parsedResult.extractedData.name || 'İsimsiz Müşteri',
-          phone: parsedResult.extractedData.phone || '',
+          name: parsedResult.extracted_data.name || 'İsimsiz Müşteri',
+          phone: parsedResult.extracted_data.phone || '',
           type: 'Alıcı',
           status: 'Aday',
-          district: parsedResult.extractedData.location || '',
-          notes: parsedResult.extractedData.description || parsedResult.originalText
+          district: parsedResult.extracted_data.location || '',
+          notes: parsedResult.extracted_data.description || parsedResult.original_text
         } as any);
       } else if (parsedResult.intent === 'task') {
         await addTaskMutation.mutateAsync({
-          title: parsedResult.extractedData.description || 'Yeni Görev',
-          time: parsedResult.extractedData.dueDate || new Date().toISOString(),
+          title: parsedResult.extracted_data.description || 'Yeni Görev',
+          time: parsedResult.extracted_data.due_date || new Date().toISOString(),
           type: 'Arama',
           completed: false
         } as any);
       } else if (parsedResult.intent === 'note') {
         await addVisitMutation.mutateAsync({
-          address: parsedResult.extractedData.location || 'Bilinmeyen Adres',
-          district: parsedResult.extractedData.location || '',
+          address: parsedResult.extracted_data.location || 'Bilinmeyen Adres',
+          district: parsedResult.extracted_data.location || '',
           status: 'Potansiyel',
-          notes: parsedResult.extractedData.description || parsedResult.originalText
+          notes: parsedResult.extracted_data.description || parsedResult.original_text
         } as any);
       }
 
@@ -3701,7 +3728,7 @@ function MainApp() {
                     </Badge>
                   </div>
                   
-                  {Object.entries(parsedResult.extractedData).map(([key, value]) => {
+                  {Object.entries(parsedResult.extracted_data).map(([key, value]) => {
                     if (!value) return null;
                     return (
                       <div key={key} className="space-y-1">
@@ -3709,7 +3736,7 @@ function MainApp() {
                         <input 
                           type="text" 
                           value={value as string} 
-                          onChange={(e) => setParsedResult({...parsedResult, extractedData: {...parsedResult.extractedData, [key]: e.target.value}})}
+                          onChange={(e) => setParsedResult({...parsedResult, extracted_data: {...parsedResult.extracted_data, [key]: e.target.value}})}
                           className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-900 focus:ring-2 focus:ring-orange-500 outline-none"
                         />
                       </div>
@@ -3718,7 +3745,7 @@ function MainApp() {
                 </div>
 
                 <div className="p-3 bg-slate-50 rounded-xl">
-                  <p className="text-xs text-slate-500 italic">Orijinal metin: "{parsedResult.originalText}"</p>
+                  <p className="text-xs text-slate-500 italic">Orijinal metin: "{parsedResult.original_text}"</p>
                 </div>
 
                 <div className="flex gap-3">
@@ -3744,15 +3771,6 @@ function MainApp() {
   };
 
   const CoachView = () => {
-    if (coachLoading) {
-      return (
-        <div className="flex flex-col items-center justify-center h-[60vh] space-y-4">
-          <Brain size={48} className="text-orange-500 animate-pulse" />
-          <p className="text-slate-500 font-medium">Koç verilerinizi analiz ediyor...</p>
-        </div>
-      );
-    }
-
     return (
       <motion.div 
         initial={{ opacity: 0, y: 10 }}
@@ -3769,264 +3787,12 @@ function MainApp() {
           </div>
         </header>
 
-        {/* Daily Focus */}
-        <Card className="!bg-slate-900 !text-white border-none p-6 relative overflow-hidden shadow-xl shadow-slate-200">
-          <div className="relative z-10 space-y-4">
-            <div className="flex items-center gap-2 text-orange-400">
-              <Sparkles size={16} />
-              <span className="text-[10px] font-bold uppercase tracking-widest">Günün Odak Noktası</span>
-            </div>
-            <p className="text-lg font-bold leading-relaxed text-white">
-              "{coachInsights?.dailyTip || 'Bugün eski müşterilerinizi arayarak bağlarınızı güçlendirin.'}"
-            </p>
-          </div>
-          <div className="absolute top-0 right-0 w-48 h-48 bg-orange-500/10 rounded-full -mr-24 -mt-24 blur-3xl" />
-        </Card>
-
-        <div className="grid grid-cols-1 gap-4">
-          {/* Strength */}
-          <Card className="bg-emerald-50 border-emerald-100 p-5">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 shrink-0">
-                <Trophy size={20} />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-emerald-900 mb-1">
-                  Güçlü Yön: {coachInsights?.strength?.title || 'Saha Kaplanı'}
-                </h3>
-                <p className="text-xs text-emerald-700 leading-relaxed">
-                  {coachInsights?.strength?.description || 'Saha ziyaretlerini aksatmıyorsunuz ve bölge hakimiyetiniz yüksek.'}
-                </p>
-              </div>
-            </div>
-          </Card>
-
-          {/* Weakness */}
-          <Card className="bg-amber-50 border-amber-100 p-5">
-            <div className="flex items-start gap-4">
-              <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
-                <Activity size={20} />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-amber-900 mb-1">
-                  Gelişim Alanı: {coachInsights?.weakness?.title || 'Takip Eksikliği'}
-                </h3>
-                <p className="text-xs text-amber-700 leading-relaxed">
-                  {coachInsights?.weakness?.description || 'Müşterileri sisteme ekledikten sonra arama süreleriniz ortalamanın altında.'}
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-
-        {/* Premium Teaser */}
-        <Card className="bg-slate-50 border-slate-200 p-6 opacity-75 relative overflow-hidden">
-          <div className="absolute inset-0 bg-white/50 backdrop-blur-[2px] z-10 flex items-center justify-center">
-            <div className="bg-white px-6 py-3 rounded-full shadow-lg flex items-center gap-2">
-              <Lock size={16} className="text-slate-400" />
-              <span className="text-sm font-bold text-slate-700">Pro Plan'a Geç</span>
-            </div>
-          </div>
-          <div className="space-y-4 filter blur-[1px]">
-            <div className="flex items-center justify-between">
-              <h3 className="font-bold text-slate-900">Haftalık Detaylı Analiz</h3>
-              <Badge variant="warning">Kilitli</Badge>
-            </div>
-            <div className="space-y-3">
-              <div className="h-2 bg-slate-200 rounded-full w-full" />
-              <div className="h-2 bg-slate-200 rounded-full w-3/4" />
-              <div className="h-2 bg-slate-200 rounded-full w-5/6" />
-            </div>
-          </div>
-        </Card>
+        <AICoachPanel />
       </motion.div>
     );
   };
 
   // Quick Add Menüsü
-  // --- Ritual Modals ---
-  const MorningRitualModal = () => {
-    const [step, setStep] = useState(0);
-    const ritualSteps = [
-      {
-        title: "Günaydın Şampiyon!",
-        desc: "Bugün masada büyük fırsatlar var. Hazır mısın?",
-        icon: <Sparkles size={48} className="text-orange-500" />
-      },
-      {
-        title: "Günün Kazanç Potansiyeli",
-        desc: `Bugün tamamlayacağın aksiyonlarla tahmini ${(properties.reduce((acc, p) => acc + (p.price * p.commissionRate / 100), 0) * 0.01).toLocaleString()} TL değerinde fırsat yönetebilirsin.`,
-        icon: <DollarSign size={48} className="text-emerald-500" />
-      },
-      {
-        title: "3 Kritik Hamle",
-        desc: "Senin için bugün en yüksek öncelikli 3 görevi seçtik. Bunlara odaklan.",
-        icon: <Zap size={48} className="text-amber-500" />
-      }
-    ];
-
-    return (
-      <AnimatePresence>
-        {showMorningRitual && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-6 text-center"
-          >
-            <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
-              <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-orange-600 rounded-full blur-[120px]" />
-              <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600 rounded-full blur-[120px]" />
-            </div>
-
-            <motion.div 
-              key={step}
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 1.1, y: -20 }}
-              className="space-y-8 z-10 max-w-xs"
-            >
-              <div className="w-24 h-24 bg-white/10 backdrop-blur-xl rounded-[32px] flex items-center justify-center mx-auto shadow-2xl border border-white/10">
-                {ritualSteps[step].icon}
-              </div>
-              <div className="space-y-4">
-                <h2 className="text-3xl font-black text-white tracking-tight">
-                  {ritualSteps[step].title}
-                </h2>
-                <p className="text-slate-400 text-lg leading-relaxed">
-                  {ritualSteps[step].desc}
-                </p>
-              </div>
-              
-              <button 
-                onClick={() => {
-                  if (step < ritualSteps.length - 1) setStep(step + 1);
-                  else morningRitualMutation.mutate();
-                }}
-                className="w-full py-4 bg-orange-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-orange-900/40 active:scale-95 transition-all"
-              >
-                {step < ritualSteps.length - 1 ? 'Devam Et' : 'Radarı Başlat'}
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    );
-  };
-
-  const EveningRitualModal = () => {
-    const [revenue, setRevenue] = useState('');
-    const completedTasksCount = gamifiedTasks.filter(t => t.isCompleted).length;
-
-    return (
-      <AnimatePresence>
-        {showEveningRitual && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center p-6 text-center"
-          >
-            <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
-              <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-purple-600 rounded-full blur-[120px]" />
-              <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-pink-600 rounded-full blur-[120px]" />
-            </div>
-
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              className="space-y-8 z-10 max-w-xs w-full"
-            >
-              <div className="w-24 h-24 bg-white/10 backdrop-blur-xl rounded-[32px] flex items-center justify-center mx-auto shadow-2xl border border-white/10">
-                <Trophy size={48} className="text-amber-400" />
-              </div>
-              <div className="space-y-4">
-                <h2 className="text-3xl font-black text-white tracking-tight">Günü Kapatıyoruz</h2>
-                <p className="text-slate-400 text-lg leading-relaxed">
-                  Bugün {completedTasksCount} görev tamamladın. Harika iş!
-                </p>
-              </div>
-
-              <div className="space-y-3">
-                <label className="text-xs font-bold text-slate-500 uppercase tracking-widest block text-left ml-2">Bugün Yönetilen Fırsat (TL)</label>
-                <input 
-                  type="number" 
-                  placeholder="Örn: 50000"
-                  value={revenue}
-                  onChange={(e) => setRevenue(e.target.value)}
-                  className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-white text-xl font-bold focus:outline-none focus:border-orange-500"
-                />
-              </div>
-              
-              <button 
-                onClick={() => eveningRitualMutation.mutate({ tasksCompleted: completedTasksCount, revenue: Number(revenue) })}
-                disabled={eveningRitualMutation.isPending}
-                className="w-full py-4 bg-gradient-to-r from-purple-600 to-pink-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-purple-900/40 active:scale-95 transition-all disabled:opacity-50"
-              >
-                {eveningRitualMutation.isPending ? 'Kaydediliyor...' : 'Günü Bitir ve Dinlen'}
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    );
-  };
-
-  const WeeklyRecapModal = () => {
-    return (
-      <AnimatePresence>
-        {showWeeklyRecap && weeklyRecapData && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[110] bg-slate-900 flex items-center justify-center p-6 text-center"
-          >
-            <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
-              <div className="absolute top-[-10%] left-[-10%] w-[50%] h-[50%] bg-emerald-600 rounded-full blur-[120px]" />
-              <div className="absolute bottom-[-10%] right-[-10%] w-[50%] h-[50%] bg-blue-600 rounded-full blur-[120px]" />
-            </div>
-
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              className="space-y-8 z-10 max-w-sm w-full bg-white/5 backdrop-blur-2xl p-8 rounded-[40px] border border-white/10 shadow-2xl"
-            >
-              <div className="w-20 h-20 bg-emerald-500/20 rounded-3xl flex items-center justify-center mx-auto text-emerald-400">
-                <BarChart3 size={40} />
-              </div>
-              
-              <div className="space-y-2">
-                <h2 className="text-3xl font-black text-white tracking-tight">Haftalık Özet</h2>
-                <div className="flex items-center justify-center gap-2">
-                  <Badge variant="success" className="!bg-emerald-500 !text-white border-none">Skor: {weeklyRecapData.score}</Badge>
-                </div>
-              </div>
-
-              <div className="space-y-4 text-left">
-                {weeklyRecapData.summary.map((item: string, i: number) => (
-                  <div key={i} className="flex gap-3 items-start">
-                    <div className="w-6 h-6 bg-emerald-500/20 rounded-full flex items-center justify-center text-emerald-400 shrink-0 mt-0.5">
-                      <Check size={14} />
-                    </div>
-                    <p className="text-slate-300 text-sm leading-relaxed font-medium">{item}</p>
-                  </div>
-                ))}
-              </div>
-              
-              <button 
-                onClick={() => setShowWeeklyRecap(false)}
-                className="w-full py-4 bg-emerald-600 text-white rounded-2xl font-bold text-lg shadow-xl shadow-emerald-900/40 active:scale-95 transition-all"
-              >
-                Harika! Devam Et
-              </button>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    );
-  };
-
   const QuickAddMenu = () => (
     <AnimatePresence>
       {showQuickAdd && (
@@ -4094,373 +3860,368 @@ function MainApp() {
     </button>
   );
 
-  const renderDashboard = () => (
-    <motion.div 
-      initial={{ opacity: 0, y: 10 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="p-6 space-y-8 pb-32"
-    >
-      {/* Header */}
-      <header className="flex justify-between items-start">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <div className="w-7 h-7 bg-gradient-to-tr from-[#FF3D00] to-[#FF9100] rounded-lg flex items-center justify-center shadow-sm">
-              <Building2 size={16} className="text-white" />
-            </div>
-            <span className="text-xl font-black italic font-logo text-transparent bg-clip-text bg-gradient-to-r from-[#FF3D00] to-[#FF9100] tracking-wide">Portfy</span>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">İyi Çalışmalar, {profile?.displayName.split(' ')[0]}</h1>
-          <p className="text-slate-600 text-sm mt-1 font-medium">Bugün bölge hakimiyetini artırma zamanı.</p>
-        </div>
-        <div className="relative" onClick={() => setActiveTab('profil')}>
-          <div className="w-12 h-12 bg-slate-200 rounded-2xl overflow-hidden border-2 border-white shadow-sm">
-            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.uid}`} alt="Profile" referrerPolicy="no-referrer" />
-          </div>
-          <div className="absolute -bottom-1 -right-1 w-4 h-4 bg-emerald-500 border-2 border-white rounded-full" />
-        </div>
-      </header>
+  const renderDashboard = () => {
+    const [dashboardTab, setDashboardTab] = useState<'action' | 'analysis'>('action');
+    const activeGamifiedTasks = gamifiedTasks.filter(t => !t.is_completed).slice(0, 3);
+    const completedGamifiedTasksCount = gamifiedTasks.filter(t => t.is_completed).length;
+    
+    const potentialRevenue = properties.reduce((acc, p) => {
+      if (['Satıldı', 'Pasif'].includes(p.status)) return acc;
+      return acc + ((p.price * p.commission_rate) / 100) * (p.sale_probability || 0.5);
+    }, 0);
 
-      {/* Gamification Stats */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        {/* Missed Opportunities Trigger Card */}
-        {missedOpportunities.length > 0 && (
-          <Card 
-            onClick={() => setShowMissedOpportunities(true)}
-            className="sm:col-span-2 bg-red-50 border-red-100 p-6 relative overflow-hidden cursor-pointer active:scale-95 transition-all"
+    return (
+      <motion.div 
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="p-6 space-y-8 pb-32"
+      >
+        {/* Header */}
+        <header className="flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 bg-gradient-to-tr from-[#FF3D00] to-[#FF9100] rounded-xl flex items-center justify-center shadow-lg shadow-orange-200">
+              <Building2 size={20} className="text-white" />
+            </div>
+            <div>
+              <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">Portfy</h1>
+              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Bölge Hakimiyeti</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="text-right hidden sm:block">
+              <div className="text-xs font-bold text-slate-900">{profile?.display_name}</div>
+              <div className="text-[10px] font-bold text-orange-600 uppercase tracking-wider">{gamifiedStats?.level_name || 'Broker'}</div>
+            </div>
+            <div className="relative cursor-pointer active:scale-95 transition-transform" onClick={() => setActiveTab('profil')}>
+              <div className="w-10 h-10 bg-slate-200 rounded-xl overflow-hidden border-2 border-white shadow-sm">
+                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.uid}`} alt="Profile" referrerPolicy="no-referrer" />
+              </div>
+              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
+            </div>
+          </div>
+        </header>
+
+        {/* Dashboard Tabs */}
+        <div className="flex p-1 bg-slate-100 rounded-2xl">
+          <button 
+            onClick={() => setDashboardTab('action')}
+            className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${dashboardTab === 'action' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
           >
-            <div className="relative z-10 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 shadow-sm">
-                  <AlertCircle size={24} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-red-900">Kaçırılan Fırsatlar Var!</h4>
-                  <p className="text-xs text-red-700 mt-1">{missedOpportunities.length} kritik aksiyon bekliyor.</p>
-                </div>
-              </div>
-              <ChevronRight size={20} className="text-red-400" />
-            </div>
-            <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full -mr-12 -mt-12 blur-2xl" />
-          </Card>
-        )}
+            Aksiyon Merkezi
+          </button>
+          <button 
+            onClick={() => setDashboardTab('analysis')}
+            className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${dashboardTab === 'analysis' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
+          >
+            Gelir & Analiz
+          </button>
+        </div>
 
-        {/* Rescue Mode Trigger Card */}
-        {(() => {
-          const currentHour = new Date().getHours();
-          const isLowProgress = (gamifiedStats?.dailyProgress || 0) < 40;
-          const canRescue = currentHour >= 15 && isLowProgress && !rescueSession;
-          
-          if (!canRescue) return null;
-
-          return (
-            <Card className="sm:col-span-2 bg-orange-50 border-orange-100 p-6 relative overflow-hidden">
-              <div className="relative z-10 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600 shadow-sm">
-                    <Zap size={24} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-orange-900">Günü Kurtarma Zamanı!</h4>
-                    <p className="text-xs text-orange-700 mt-1">Günü %100 verimle kapatmak için hala vaktin var.</p>
-                  </div>
-                </div>
-                <button 
-                  onClick={() => startRescueMutation.mutate()}
-                  disabled={startRescueMutation.isPending}
-                  className="px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-orange-200 active:scale-95 transition-all"
-                >
-                  {startRescueMutation.isPending ? 'Hazırlanıyor...' : 'Başlat'}
-                </button>
-              </div>
-              <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/5 rounded-full -mr-12 -mt-12 blur-2xl" />
-            </Card>
-          );
-        })()}
-
-        <Card id="momentum-card" className="!bg-slate-900 !text-white border-none overflow-hidden relative sm:col-span-2">
-          <div className="relative z-10 flex items-center gap-6">
-            <div className="relative w-20 h-20 shrink-0">
-              <svg className="w-full h-full" viewBox="0 0 36 36">
-                <path
-                  className="text-slate-800 stroke-current"
-                  strokeWidth="3"
-                  fill="none"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-                <path
-                  className={`${gamifiedStats?.momentum && gamifiedStats.momentum < 40 ? 'text-red-500' : gamifiedStats?.momentum && gamifiedStats.momentum < 70 ? 'text-amber-500' : 'text-emerald-500'} stroke-current`}
-                  strokeWidth="3"
-                  strokeDasharray={`${gamifiedStats?.momentum || 0}, 100`}
-                  strokeLinecap="round"
-                  fill="none"
-                  d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                />
-              </svg>
-              <div className="absolute inset-0 flex items-center justify-center flex-col">
-                <span className="text-xl font-bold text-white">{gamifiedStats?.momentum || 0}</span>
-                <span className="text-[8px] uppercase font-bold text-slate-400">Momentum</span>
-              </div>
-            </div>
-            <div className="space-y-2">
-              <div className="flex items-center gap-2 text-orange-500">
-                <Sparkles size={16} />
-                <span className="text-[10px] font-bold uppercase tracking-widest">AI Koç Önerisi</span>
-              </div>
-              <p className="text-sm font-bold leading-relaxed text-white italic">
-                "{coachInsights?.dailyTip || 'Yükleniyor...'}"
-              </p>
-            </div>
-          </div>
-          <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/20 rounded-full -mr-16 -mt-16 blur-3xl" />
-        </Card>
-
-        <Card id="points-card" className="!bg-orange-600 !text-white border-none shadow-lg shadow-orange-200">
-          <div className="flex justify-between items-start">
-            <Trophy size={20} className="text-white opacity-80" />
-            <Badge variant="info" className="!bg-white !text-orange-600 border-none">{gamifiedStats?.levelName || '...'}</Badge>
-          </div>
-          <div className="mt-4">
-            <div className="text-2xl font-bold text-white">{gamifiedStats?.points.toLocaleString() || '0'}</div>
-            <div className="text-white font-bold text-[10px] uppercase tracking-wider mt-1">Toplam Puan</div>
-            {gamifiedStats && gamifiedStats.pointsToday > 0 && (
-              <div className="text-white/80 text-[8px] font-bold mt-1">Bugün: +{gamifiedStats.pointsToday}</div>
-            )}
-          </div>
-        </Card>
-
-        <Card id="streak-card">
-          <div className="flex justify-between items-start">
-            <Zap size={20} className="text-amber-500" />
-            <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Seri</div>
-          </div>
-          <div className="mt-4">
-            <div className="text-2xl font-bold text-slate-900">{gamifiedStats?.streak || 0} Gün</div>
-            <div className="text-slate-600 text-[10px] uppercase font-bold tracking-wider mt-1">Peş Peşe Seri</div>
-          </div>
-        </Card>
-      </section>
-
-      {/* Daily Tasks */}
-      <section id="daily-tasks" className="space-y-4">
-        <div className="flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-bold text-slate-900">Bugünkü Görevler</h2>
-            <button 
-              onClick={() => refreshTasksMutation.mutate()}
-              disabled={refreshTasksMutation.isPending}
-              className={`p-1.5 text-slate-400 hover:text-orange-600 transition-colors ${refreshTasksMutation.isPending ? 'animate-spin' : ''}`}
-              title="Görevleri Yenile"
+        <AnimatePresence mode="wait">
+          {dashboardTab === 'action' ? (
+            <motion.div 
+              key="action-tab"
+              initial={{ opacity: 0, x: -10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 10 }}
+              className="space-y-8"
             >
-              <RefreshCw size={16} />
-            </button>
-          </div>
-          <div className="text-xs font-bold text-orange-900 bg-orange-100 px-3 py-1 rounded-full border border-orange-300">
-            {gamifiedStats?.tasksCompletedToday}/{gamifiedStats?.totalTasksToday} Tamamlandı
-          </div>
-        </div>
-        <div className="space-y-3">
-          {isGamifiedTasksLoading ? (
-            <div className="p-10 text-center bg-white rounded-[40px] border border-slate-100 shadow-sm flex flex-col items-center gap-3">
-              <div className="w-8 h-8 border-4 border-orange-500 border-t-transparent rounded-full animate-spin" />
-              <p className="text-sm text-slate-500 font-medium">Görevler yükleniyor...</p>
-            </div>
-          ) : gamifiedTasks.length === 0 ? (
-            <div className="p-10 text-center bg-white rounded-[40px] border border-slate-100 shadow-sm">
-              <div className="w-16 h-16 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto mb-4 text-slate-300">
-                <RefreshCw size={32} />
-              </div>
-              <p className="text-slate-500 text-sm font-medium">Bugün için henüz görev oluşturulmadı.</p>
-              <button 
-                onClick={() => refreshTasksMutation.mutate()}
-                className="mt-4 px-6 py-2.5 bg-orange-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-orange-100 flex items-center gap-2 mx-auto active:scale-95 transition-all"
-              >
-                <RefreshCw size={14} className={refreshTasksMutation.isPending ? 'animate-spin' : ''} />
-                Görevleri Oluştur
-              </button>
-            </div>
-          ) : (() => {
-            // 3-Task Sprint Logic: Show 3 top incomplete tasks, or all if less than 3
-            const incomplete = gamifiedTasks.filter(t => !t.isCompleted);
-            const displayTasks = incomplete.length > 0 ? incomplete.slice(0, 3) : gamifiedTasks.slice(0, 3);
-            
-            return displayTasks.map(task => (
-              <Card 
-                key={task.id} 
-                className={`transition-all ${task.isCompleted ? 'opacity-60 bg-slate-50' : 'hover:border-orange-200'}`}
-              >
-                <div className="flex items-center gap-4">
-                  <button 
-                    onClick={() => !task.isCompleted && completeTaskMutation.mutate({ taskId: task.id, points: task.points })}
-                    disabled={task.isCompleted || completeTaskMutation.isPending}
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center transition-all ${
-                      task.isCompleted 
-                        ? 'bg-emerald-500 text-white' 
-                        : 'bg-slate-100 text-slate-500 hover:bg-orange-100 hover:text-orange-700'
-                    }`}
-                  >
-                    {task.isCompleted ? <CheckCircle2 size={20} /> : <Circle size={20} />}
-                  </button>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2">
-                      <h4 className={`text-sm font-bold ${task.isCompleted ? 'text-slate-400 line-through' : 'text-slate-900'}`}>
-                        {task.title}
-                      </h4>
-                      <Badge variant={task.category === 'main' ? 'warning' : task.category === 'smart' ? 'info' : 'default'}>
-                        {task.category === 'main' ? 'Ana' : task.category === 'smart' ? 'Akıllı' : 'Tatlı'}
-                      </Badge>
+              {/* AI Coach & Momentum (Moved here) */}
+              <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <Card className="!bg-slate-900 !text-white border-none overflow-hidden relative md:col-span-2">
+                  <div className="relative z-10 flex items-center gap-6">
+                    <div className="relative w-20 h-20 shrink-0">
+                      <svg className="w-full h-full" viewBox="0 0 36 36">
+                        <path className="text-slate-800 stroke-current" strokeWidth="3" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                        <path className={`${gamifiedStats?.momentum && gamifiedStats.momentum < 40 ? 'text-red-500' : gamifiedStats?.momentum && gamifiedStats.momentum < 70 ? 'text-amber-500' : 'text-emerald-500'} stroke-current`} strokeWidth="3" strokeDasharray={`${gamifiedStats?.momentum || 0}, 100`} strokeLinecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                      </svg>
+                      <div className="absolute inset-0 flex items-center justify-center flex-col">
+                        <span className="text-xl font-bold text-white">{gamifiedStats?.momentum || 0}</span>
+                        <span className="text-[8px] uppercase font-bold text-slate-400">Momentum</span>
+                      </div>
                     </div>
-                    {task.aiReason && !task.isCompleted && (
-                      <p className="text-[10px] text-slate-700 mt-1 flex items-center gap-1 font-bold">
-                        <Sparkles size={10} className="text-orange-600" /> {task.aiReason}
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-orange-500">
+                        <Sparkles size={16} />
+                        <span className="text-[10px] font-bold uppercase tracking-widest">AI Koç Önerisi</span>
+                      </div>
+                      <p className="text-sm font-bold leading-relaxed text-white italic">
+                        "{coachInsights?.daily_tip || 'Yükleniyor...'}"
                       </p>
-                    )}
-                    {task.reminderTime && !task.isCompleted && (
-                      <div className="flex items-center gap-1 mt-1 text-[10px] text-orange-600 font-bold">
-                        <Clock size={10} /> {new Date(task.reminderTime).toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
-                      </div>
-                    )}
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3">
-                    {!task.isCompleted && (
-                      <div className="relative group">
-                        <button className="p-2 text-slate-300 hover:text-orange-600 transition-colors">
-                          <Bell size={16} />
-                        </button>
-                        <input 
-                          type="datetime-local" 
-                          className="absolute inset-0 opacity-0 cursor-pointer"
-                          onChange={(e) => {
-                            if (e.target.value) {
-                              updateGamifiedTaskMutation.mutate({ id: task.id, data: { reminderTime: e.target.value, notified: false } });
-                            }
-                          }}
-                        />
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/20 rounded-full -mr-16 -mt-16 blur-3xl" />
+                </Card>
+
+                <Card className="!bg-orange-600 !text-white border-none shadow-lg shadow-orange-200">
+                  <div className="flex justify-between items-start">
+                    <Trophy size={20} className="text-white opacity-80" />
+                    <Badge variant="info" className="!bg-white !text-orange-600 border-none">{gamifiedStats?.level_name || '...'}</Badge>
+                  </div>
+                  <div className="mt-4">
+                    <div className="text-2xl font-bold text-white">{gamifiedStats?.points.toLocaleString() || '0'}</div>
+                    <div className="text-white font-bold text-[10px] uppercase tracking-wider mt-1">Toplam Puan</div>
+                  </div>
+                </Card>
+
+                <Card>
+                  <div className="flex justify-between items-start">
+                    <Zap size={20} className="text-amber-500" />
+                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Seri</div>
+                  </div>
+                  <div className="mt-4">
+                    <div className="text-2xl font-bold text-slate-900">{gamifiedStats?.streak || 0} Gün</div>
+                    <div className="text-slate-600 text-[10px] uppercase font-bold tracking-wider mt-1">Peş Peşe Seri</div>
+                  </div>
+                </Card>
+              </section>
+
+              {/* Rescue Mode Trigger Card */}
+              {(() => {
+                const currentHour = new Date().getHours();
+                const isLowProgress = (gamifiedStats?.daily_progress || 0) < 40;
+                const canRescue = currentHour >= 15 && isLowProgress && !rescueSession;
+                
+                if (!canRescue) return null;
+
+                return (
+                  <Card className="bg-orange-50 border-orange-100 p-6 relative overflow-hidden">
+                    <div className="relative z-10 flex items-center justify-between">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600 shadow-sm">
+                          <Zap size={24} />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-orange-900">Günü Kurtarma Zamanı!</h4>
+                          <p className="text-xs text-orange-700 mt-1">Günü %100 verimle kapatmak için hala vaktin var.</p>
+                        </div>
                       </div>
-                    )}
-                    <div className="text-right">
-                      <div className={`text-xs font-bold ${task.isCompleted ? 'text-slate-400' : 'text-orange-600'}`}>
-                        +{task.points}
+                      <button 
+                        onClick={() => startRescueMutation.mutate()}
+                        disabled={startRescueMutation.isPending}
+                        className="px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-orange-200 active:scale-95 transition-all"
+                      >
+                        {startRescueMutation.isPending ? 'Hazırlanıyor...' : 'Başlat'}
+                      </button>
+                    </div>
+                    <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/5 rounded-full -mr-12 -mt-12 blur-2xl" />
+                  </Card>
+                );
+              })()}
+
+              {/* Smart Insights Section */}
+              <section className="space-y-4">
+                <h2 className="text-lg font-bold text-slate-900">Akıllı Öneriler</h2>
+                {properties.some(p => p.market_analysis?.status === 'Pahalı' && p.status === 'Yayında') ? (
+                  properties.filter(p => p.market_analysis?.status === 'Pahalı' && p.status === 'Yayında').slice(0, 1).map(p => (
+                    <Card key={`alert-${p.id}`} className="bg-amber-50 border-amber-100">
+                      <div className="flex gap-4">
+                        <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
+                          <Sparkles size={20} />
+                        </div>
+                        <div>
+                          <h4 className="text-sm font-bold text-amber-900">Fiyat Revizesi Önerisi</h4>
+                          <p className="text-xs text-amber-700 mt-1">"{p.title}" portföyü piyasa ortalamasının üzerinde. %5 indirim satışı hızlandırabilir.</p>
+                        </div>
                       </div>
-                      <div className="text-[8px] text-slate-400 uppercase font-bold tracking-wider">Puan</div>
+                    </Card>
+                  ))
+                ) : (
+                  <Card className="bg-emerald-50 border-emerald-100">
+                    <div className="flex gap-4">
+                      <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 shrink-0">
+                        <CheckCircle2 size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-emerald-900">Her Şey Yolunda</h4>
+                        <p className="text-xs text-emerald-700 mt-1">Şu an acil aksiyon gerektiren bir portföyün bulunmuyor.</p>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+              </section>
+
+              {/* Daily Tasks List (Günün Görevleri) */}
+              <section className="space-y-4">
+                <div className="flex justify-between items-center px-1">
+                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">Günün Görevleri</h2>
+                  <div className="flex items-center gap-2">
+                    <button 
+                      onClick={() => refreshTasksMutation.mutate()}
+                      disabled={refreshTasksMutation.isPending || isGamifiedTasksLoading}
+                      className="p-1.5 text-slate-400 hover:text-orange-600 transition-colors disabled:opacity-50"
+                      title="Görevleri Yeniden Oluştur"
+                    >
+                      <RefreshCw size={14} className={refreshTasksMutation.isPending || isGamifiedTasksLoading ? 'animate-spin' : ''} />
+                    </button>
+                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-100 shadow-sm">
+                      <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" />
+                      <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
+                        {gamifiedStats?.tasks_completed_today}/{gamifiedStats?.total_tasks_today}
+                      </span>
                     </div>
                   </div>
                 </div>
-              </Card>
-            ));
-          })()}
-        </div>
-      </section>
+                <div className="grid grid-cols-1 gap-3">
+                  {isGamifiedTasksLoading ? (
+                    <div className="py-12 text-center space-y-3">
+                      <motion.div 
+                        animate={{ rotate: 360 }}
+                        transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+                        className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full mx-auto"
+                      />
+                      <p className="text-xs text-slate-400 font-medium">Görevler hazırlanıyor...</p>
+                    </div>
+                  ) : isGamifiedTasksError ? (
+                    <div className="py-12 text-center space-y-3 bg-red-50/50 rounded-[32px] border border-red-100/50 shadow-sm">
+                      <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 mx-auto mb-2">
+                        <AlertCircle size={24} />
+                      </div>
+                      <h4 className="text-sm font-bold text-red-900">Bir Hata Oluştu</h4>
+                      <p className="text-xs text-red-700 px-8">Görevler yüklenirken bir sorun oluştu.</p>
+                      <button 
+                        onClick={() => queryClient.invalidateQueries({ queryKey: ['gamifiedTasks', profile?.uid] })}
+                        className="mt-2 px-6 py-2.5 bg-red-600 text-white rounded-xl text-xs font-bold active:scale-95 transition-all"
+                      >
+                        Tekrar Dene
+                      </button>
+                    </div>
+                  ) : gamifiedTasks.length === 0 ? (
+                    <div className="py-12 text-center space-y-3 bg-white rounded-[32px] border border-slate-100 shadow-sm">
+                      <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mx-auto mb-2">
+                        <ClipboardList size={24} />
+                      </div>
+                      <h4 className="text-sm font-bold text-slate-900">Görevler Bulunamadı</h4>
+                      <p className="text-xs text-slate-400 px-8">Bugün için henüz görevlerin oluşturulmadı.</p>
+                      <button 
+                        onClick={() => refreshTasksMutation.mutate()}
+                        disabled={refreshTasksMutation.isPending}
+                        className="mt-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold active:scale-95 transition-all disabled:opacity-50"
+                      >
+                        {refreshTasksMutation.isPending ? 'Oluşturuluyor...' : 'Görevleri Oluştur'}
+                      </button>
+                    </div>
+                  ) : gamifiedTasks.filter(t => !t.is_completed).length === 0 ? (
+                    <Card className="p-8 text-center bg-emerald-50/30 border-emerald-100/50">
+                      <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600 mx-auto mb-3">
+                        <CheckCircle2 size={24} />
+                      </div>
+                      <h4 className="text-sm font-bold text-emerald-900">Harika İş!</h4>
+                      <p className="text-xs text-emerald-700 mt-1">Bugünkü tüm görevlerini tamamladın.</p>
+                    </Card>
+                  ) : (
+                    gamifiedTasks.filter(t => !t.is_completed).slice(0, 3).map(task => (
+                      <Card 
+                        key={task.id} 
+                        onClick={() => !completeTaskMutation.isPending && completeTaskMutation.mutate({ task })}
+                        className="p-5 transition-all border-none shadow-sm hover:shadow-md hover:ring-1 hover:ring-orange-100 cursor-pointer active:scale-[0.98] group"
+                      >
+                        <div className="flex items-center gap-5">
+                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all bg-slate-50 text-slate-400 group-hover:bg-orange-100 group-hover:text-orange-600">
+                            {completeTaskMutation.isPending ? (
+                              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Circle size={24} /></motion.div>
+                            ) : <Circle size={24} />}
+                          </div>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-sm font-bold text-slate-900">{task.title}</h4>
+                              {task.category === 'main' && <Badge variant="warning" className="text-[8px] px-1.5 py-0">Kritik</Badge>}
+                            </div>
+                            <p className="text-[10px] text-slate-400 mt-1 font-medium">{task.ai_reason || 'Günlük gelişim görevi'}</p>
+                          </div>
+                          <div className="text-right">
+                            <div className="text-sm font-black text-orange-600">+{task.points}</div>
+                            <div className="text-[8px] text-slate-400 uppercase font-bold tracking-wider">XP</div>
+                          </div>
+                        </div>
+                      </Card>
+                    ))
+                  )}
 
-      {/* Active Leads */}
-      <section className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-bold text-slate-900">Sıcak Müşteriler</h2>
-          <button onClick={() => setActiveTab('crm')} className="text-orange-600 text-xs font-bold">Tümünü Gör</button>
-        </div>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {leads.filter(l => l.behaviorMetrics?.isHot).length === 0 ? (
-            <div className="text-xs text-slate-400 bg-slate-50 p-4 rounded-2xl w-full text-center border border-dashed border-slate-200 col-span-full">
-              Şu an sıcak müşteri tespiti yok.
-            </div>
-          ) : (
-            leads.filter(l => l.behaviorMetrics?.isHot).map(lead => (
-              <Card key={lead.id} className="border-l-4 border-l-orange-500">
-                <div className="flex justify-between items-start mb-3">
-                  <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600">
-                    <Users size={20} />
-                  </div>
-                  <div className="flex flex-col items-end">
-                    <span className="text-[10px] font-bold text-orange-600 uppercase">Sıcak</span>
-                    <span className="text-[10px] text-slate-400">{lead.behaviorMetrics?.totalViews} Görüntüleme</span>
-                  </div>
+                  {/* Completed Tasks Summary (Horizontal Scroll) */}
+                  {gamifiedTasks.filter(t => t.is_completed).length > 0 && (
+                    <div className="mt-6 space-y-3">
+                      <div className="flex items-center justify-between px-1">
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tamamlananlar</div>
+                        <div className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
+                          {gamifiedTasks.filter(t => t.is_completed).length} Görev
+                        </div>
+                      </div>
+                      <div className="relative group">
+                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x">
+                          {gamifiedTasks.filter(t => t.is_completed).map(task => (
+                            <motion.div 
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              key={task.id} 
+                              className="flex-shrink-0 bg-white text-slate-600 px-4 py-2.5 rounded-2xl text-[11px] font-bold flex items-center gap-2 border border-slate-100 shadow-sm snap-start"
+                            >
+                              <div className="w-5 h-5 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center">
+                                <CheckCircle2 size={12} />
+                              </div>
+                              {task.title}
+                            </motion.div>
+                          ))}
+                        </div>
+                        {/* Fade effect for scroll */}
+                        <div className="absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-slate-50 to-transparent pointer-events-none" />
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <h4 className="font-bold text-slate-900 text-sm">{lead.name}</h4>
-                <p className="text-xs text-slate-500 mt-1">Son aktif: {lead.behaviorMetrics?.lastActive}</p>
-                <div className="flex gap-2 mt-4">
-                  <button className="flex-1 py-2 bg-orange-600 text-white rounded-xl text-[10px] font-bold flex items-center justify-center gap-1">
-                    <Phone size={12} /> Ara
-                  </button>
-                  <button className="flex-1 py-2 bg-emerald-500 text-white rounded-xl text-[10px] font-bold flex items-center justify-center gap-1">
-                    <MessageSquare size={12} /> WhatsApp
-                  </button>
-                </div>
-              </Card>
-            ))
-          )}
-        </div>
-      </section>
+              </section>
 
-      {/* Smart Actions / Alerts */}
-      <section className="space-y-4">
-        <h2 className="text-lg font-bold text-slate-900">Akıllı Öneriler</h2>
-        {properties.some(p => p.marketAnalysis?.status === 'Pahalı' && p.status === 'Yayında') ? (
-          properties.filter(p => p.marketAnalysis?.status === 'Pahalı' && p.status === 'Yayında').slice(0, 1).map(p => (
-            <Card key={`alert-${p.id}`} className="bg-amber-50 border-amber-100">
-              <div className="flex gap-4">
-                <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
-                  <Sparkles size={20} />
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-amber-900">Fiyat Revizesi Önerisi</h4>
-                  <p className="text-xs text-amber-700 mt-1">"{p.title}" portföyü piyasa ortalamasının üzerinde. %5 indirim satışı hızlandırabilir.</p>
-                  <button onClick={() => { setSelectedProperty(p); }} className="mt-3 text-xs font-bold text-amber-900 flex items-center gap-1">
-                    Aksiyon Al <ArrowRight size={14} />
-                  </button>
-                </div>
-              </div>
-            </Card>
-          ))
-        ) : (
-          <Card className="bg-emerald-50 border-emerald-100">
-            <div className="flex gap-4">
-              <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 shrink-0">
-                <CheckCircle2 size={20} />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-emerald-900">Her Şey Yolunda</h4>
-                <p className="text-xs text-emerald-700 mt-1">Şu an acil aksiyon gerektiren bir portföyün bulunmuyor.</p>
-              </div>
-            </div>
-          </Card>
-        )}
-      </section>
-
-      {/* Focus Task */}
-      <section className="space-y-4">
-        <div className="flex justify-between items-center">
-          <h2 className="text-lg font-bold text-slate-900">Sıradaki Odak</h2>
-          <button onClick={() => setActiveTab('crm')} className="text-orange-600 text-xs font-bold">Ajandaya Git</button>
-        </div>
-        {tasks.filter(t => !t.completed).length > 0 ? (
-          tasks.filter(t => !t.completed).slice(0, 1).map(task => (
-            <Card key={`focus-${task.id}`} className="border-l-4 border-l-orange-600">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600">
-                  {task.type === 'Arama' ? <Phone size={24} /> : task.type === 'Randevu' ? <Calendar size={24} /> : <MapPin size={24} />}
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-bold text-slate-900 text-sm">{task.title}</h3>
-                  <p className="text-slate-500 text-xs mt-0.5">{task.time}</p>
-                </div>
-                <button 
-                  onClick={() => api.updateTaskStatus(task.id, true).then(() => queryClient.invalidateQueries({ queryKey: ['tasks'] }))}
-                  className="p-2 bg-slate-50 rounded-xl text-slate-400"
+              {/* Day Closer Trigger (Improved UI) */}
+              <section className="pt-4">
+                <motion.button 
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => setShowDayCloser(true)}
+                  className="w-full bg-slate-900 text-white p-8 rounded-[40px] flex items-center justify-between group shadow-2xl shadow-slate-900/20 relative overflow-hidden"
                 >
-                  <CheckCircle2 size={20} />
-                </button>
-              </div>
-            </Card>
-          ))
-        ) : (
-          <Card className="bg-slate-50 border-dashed border-slate-200">
-            <div className="text-center py-4">
-              <p className="text-xs text-slate-400 italic">Şu an bekleyen bir görev yok.</p>
-            </div>
-          </Card>
-        )}
-      </section>
-    </motion.div>
-  );
+                  <div className="relative z-10 flex items-center gap-6">
+                    <div className="w-16 h-16 bg-slate-800 rounded-3xl flex items-center justify-center text-indigo-400 shadow-inner group-hover:scale-110 transition-transform">
+                      <Moon size={32} />
+                    </div>
+                    <div className="text-left">
+                      <h4 className="font-bold text-xl text-white">Günü Kapat</h4>
+                      <p className="text-xs text-slate-400 mt-1 font-medium">Bugünkü performansını mühürle ve serini koru.</p>
+                    </div>
+                  </div>
+                  <div className="relative z-10 w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                    <ArrowRight size={24} />
+                  </div>
+                  {/* Decorative element */}
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -mr-16 -mt-16 blur-3xl" />
+                </motion.button>
+              </section>
+            </motion.div>
+          ) : (
+            <motion.div 
+              key="analysis-tab"
+              initial={{ opacity: 0, x: 10 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -10 }}
+              className="space-y-8"
+            >
+              {/* Revenue Overview */}
+              <section className="space-y-4">
+                <div className="flex justify-between items-center">
+                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">Gelir Görünümü</h2>
+                  <div className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">Canlı Pipeline</div>
+                </div>
+                {revenueStats && <RevenueOverview stats={revenueStats} loading={revenueLoading} />}
+              </section>
+
+              {/* Pipeline Funnel */}
+              <section className="space-y-4">
+                <PipelineFunnel properties={properties} />
+              </section>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </motion.div>
+    );
+  };
 
   const renderPortfolios = () => {
     const statuses = ['Yeni', 'Hazırlanıyor', 'Yayında', 'İlgi Var', 'Pazarlık', 'Satıldı'];
@@ -4588,7 +4349,7 @@ function MainApp() {
           <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.uid}`} alt="Profile" />
         </div>
         <div>
-          <h2 className="text-2xl font-bold text-slate-900">{profile?.displayName}</h2>
+          <h2 className="text-2xl font-bold text-slate-900">{profile?.display_name}</h2>
           <p className="text-slate-500 text-sm">{profile?.email}</p>
         </div>
       </div>
@@ -4616,7 +4377,7 @@ function MainApp() {
           <div className="flex-1">
             <h4 className="text-sm font-bold text-slate-900">Üyelik Durumu</h4>
             <p className="text-xs text-slate-500">
-              {profile?.subscriptionType === 'none' ? 'Aktif Üyelik Yok' : `${profile?.subscriptionType.split('-')[0]} Aylık Plan`}
+              {profile?.subscription_type === 'none' ? 'Aktif Üyelik Yok' : `${profile?.subscription_type.split('-')[0]} Aylık Plan`}
             </p>
           </div>
           <Badge variant="success">Aktif</Badge>
@@ -4630,7 +4391,7 @@ function MainApp() {
             <div className="flex-1">
               <h4 className="text-sm font-bold text-slate-900">sahibinden.com Entegrasyonu</h4>
               <p className="text-xs text-slate-500">
-                {brokerAccount ? `${brokerAccount.storeName} Bağlı` : 'Resmi API ile bağla'}
+                {brokerAccount ? `${brokerAccount.store_name} Bağlı` : 'Resmi API ile bağla'}
               </p>
             </div>
             <button 
@@ -4668,10 +4429,18 @@ function MainApp() {
             <input 
               type="time" 
               className="flex-1 bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-orange-500"
-              defaultValue={profile?.notificationTime || "09:00"}
+              defaultValue={profile?.notification_settings?.time || "09:00"}
               onChange={(e) => {
                 if (profile) {
-                  updateProfileMutation.mutate({ uid: profile.uid, data: { notificationTime: e.target.value } });
+                  updateProfileMutation.mutate({ 
+                    uid: profile.uid, 
+                    data: { 
+                      notification_settings: { 
+                        ...(profile.notification_settings || { push: true, email: false, time: "09:00" }), 
+                        time: e.target.value 
+                      } 
+                    } 
+                  });
                 }
               }}
             />
@@ -4814,6 +4583,38 @@ function MainApp() {
       
       {/* Main Content */}
       <div className="flex flex-col md:flex-row max-w-7xl mx-auto min-h-screen">
+        {/* Modals & Overlays */}
+        <AnimatePresence>
+          {showDailyRadar && dailyRadarData && (
+            <DailyRadar 
+              tasks={dailyRadarData.tasks}
+              insight={dailyRadarData.insight}
+              onComplete={() => completeMorningRitualMutation.mutate()}
+            />
+          )}
+
+          {showDayCloser && (
+            <DayCloser 
+              isPending={completeEveningRitualMutation.isPending}
+              stats={{
+                tasksCompleted: gamifiedTasks.filter(t => t.is_completed).length,
+                revenue: properties.reduce((acc, p) => acc + ((p.price * p.commission_rate) / 100) * (p.sale_probability || 0.5), 0),
+                calls: tasks.filter(t => t.type === 'Arama' && t.completed).length,
+                visits: tasks.filter(t => t.type === 'Saha' && t.completed).length
+              }}
+              onComplete={() => {
+                console.log("onComplete triggered in App.tsx");
+                completeEveningRitualMutation.mutate({
+                  tasksCompleted: gamifiedTasks.filter(t => t.is_completed).length,
+                  revenue: properties.reduce((acc, p) => acc + ((p.price * p.commission_rate) / 100) * (p.sale_probability || 0.5), 0),
+                  calls: tasks.filter(t => t.type === 'Arama' && t.completed).length,
+                  visits: tasks.filter(t => t.type === 'Saha' && t.completed).length
+                });
+              }}
+            />
+          )}
+        </AnimatePresence>
+
         {/* Desktop Sidebar */}
         <aside id="desktop-sidebar" className="hidden md:flex flex-col w-64 bg-white border-r border-slate-100 p-6 sticky top-0 h-screen">
           <div className="flex items-center gap-3 mb-10">
@@ -5006,9 +4807,36 @@ function MainApp() {
       </nav>
 
       {/* Onboarding Tour */}
-      {profile && !profile.hasSeenTour && activeTab === 'dashboard' && (
+      {profile && !profile.has_seen_tour && activeTab === 'dashboard' && (
         <AppTour onComplete={() => completeTour()} />
       )}
+
+      {/* Toast Notifications */}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            initial={{ opacity: 0, y: 50, scale: 0.9 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 20, scale: 0.9 }}
+            style={{ zIndex: 9999 }}
+            className={`fixed bottom-24 left-1/2 -translate-x-1/2 px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-4 backdrop-blur-xl border ${
+              toast.type === 'error' 
+                ? 'bg-red-500 text-white border-red-400' 
+                : toast.type === 'success'
+                  ? 'bg-emerald-500 text-white border-emerald-400'
+                  : 'bg-slate-900 text-white border-slate-700'
+            }`}
+          >
+            <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+              {toast.type === 'error' ? <AlertCircle size={24} /> : <CheckCircle2 size={24} />}
+            </div>
+            <div className="flex flex-col">
+              <span className="text-sm font-black tracking-tight">{toast.type === 'error' ? 'Hata' : 'Başarılı'}</span>
+              <span className="text-xs font-medium opacity-90">{toast.message}</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
@@ -5064,7 +4892,7 @@ const AppContent = () => {
 
   if (!user) return <LoginScreen />;
   
-  if (profile && !profile.hasSeenOnboarding) {
+  if (profile && !profile.has_seen_onboarding) {
     return <IntroSequence onComplete={() => completeOnboarding()} />;
   }
 

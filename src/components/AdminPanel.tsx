@@ -17,10 +17,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
   // Global settings state
   const [globalSettings, setGlobalSettings] = useState({
-    appName: 'Portfy',
-    themeColor: '#FF3D00',
-    maintenanceMode: false,
-    globalModules: {
+    app_name: 'Portfy',
+    theme_color: '#FF3D00',
+    maintenance_mode: false,
+    global_modules: {
       crm: true,
       tasks: true,
       map: true,
@@ -31,7 +31,39 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
   useEffect(() => {
     fetchUsers();
+    fetchGlobalSettings();
   }, []);
+
+  const fetchGlobalSettings = async () => {
+    const { data, error } = await supabase
+      .from('global_settings')
+      .select('*')
+      .eq('id', 'default')
+      .maybeSingle();
+    
+    if (error) {
+      console.error('Error fetching global settings:', error);
+    } else if (data) {
+      setGlobalSettings(data as any);
+    }
+  };
+
+  const saveGlobalSettings = async () => {
+    const { error } = await supabase
+      .from('global_settings')
+      .upsert({
+        id: 'default',
+        ...globalSettings,
+        updated_at: new Date().toISOString()
+      });
+    
+    if (error) {
+      console.error('Error saving global settings:', error);
+      alert('Ayarlar kaydedilirken hata oluştu.');
+    } else {
+      alert('Ayarlar başarıyla kaydedildi.');
+    }
+  };
 
   const fetchUsers = async () => {
     setLoading(true);
@@ -49,10 +81,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const { error } = await supabase
       .from('profiles')
       .update({
-        subscriptionType: editingUser.subscriptionType,
-        subscriptionEndDate: editingUser.subscriptionEndDate,
+        subscription_type: editingUser.subscription_type,
+        subscription_end_date: editingUser.subscription_end_date,
         role: editingUser.role,
-        activeModules: editingUser.activeModules,
+        active_modules: editingUser.active_modules,
       })
       .eq('uid', editingUser.uid);
     
@@ -67,16 +99,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
   const toggleUserModule = (module: string) => {
     if (!editingUser) return;
-    const currentModules = editingUser.activeModules || [];
+    const currentModules = editingUser.active_modules || [];
     const newModules = currentModules.includes(module)
       ? currentModules.filter(m => m !== module)
       : [...currentModules, module];
-    setEditingUser({ ...editingUser, activeModules: newModules });
+    setEditingUser({ ...editingUser, active_modules: newModules });
   };
 
   const filteredUsers = users.filter(u => 
-    u.displayName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-    u.email.toLowerCase().includes(searchQuery.toLowerCase())
+    (u.display_name || '').toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (u.email || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -133,11 +165,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                   <div className="text-slate-500 text-sm font-medium mb-2">Aktif Aboneler</div>
-                  <div className="text-3xl font-bold text-slate-900">{users.filter(u => u.subscriptionType !== 'none' && u.subscriptionType !== 'trial').length}</div>
+                  <div className="text-3xl font-bold text-slate-900">{users.filter(u => u.subscription_type !== 'none' && u.subscription_type !== 'trial').length}</div>
                 </div>
                 <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100">
                   <div className="text-slate-500 text-sm font-medium mb-2">Deneme Sürümündekiler</div>
-                  <div className="text-3xl font-bold text-slate-900">{users.filter(u => u.subscriptionType === 'trial').length}</div>
+                  <div className="text-3xl font-bold text-slate-900">{users.filter(u => u.subscription_type === 'trial').length}</div>
                 </div>
               </div>
             </div>
@@ -176,7 +208,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                       {filteredUsers.map(user => (
                         <tr key={user.uid} className="hover:bg-slate-50 transition-colors">
                           <td className="px-6 py-4">
-                            <div className="font-bold text-slate-900">{user.displayName}</div>
+                            <div className="font-bold text-slate-900">{user.display_name}</div>
                             <div className="text-xs text-slate-500">{user.email}</div>
                           </td>
                           <td className="px-6 py-4">
@@ -185,8 +217,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             </span>
                           </td>
                           <td className="px-6 py-4">
-                            <span className={`px-2 py-1 rounded-md text-xs font-bold ${user.subscriptionType !== 'none' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
-                              {user.subscriptionType}
+                            <span className={`px-2 py-1 rounded-md text-xs font-bold ${user.subscription_type !== 'none' ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'}`}>
+                              {user.subscription_type}
                             </span>
                           </td>
                           <td className="px-6 py-4 text-right">
@@ -237,13 +269,13 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-1">Uygulama Adı</label>
-                    <input type="text" value={globalSettings.appName} onChange={e => setGlobalSettings({...globalSettings, appName: e.target.value})} className="w-full p-2 border border-slate-200 rounded-lg" />
+                    <input type="text" value={globalSettings.app_name} onChange={e => setGlobalSettings({...globalSettings, app_name: e.target.value})} className="w-full p-2 border border-slate-200 rounded-lg" />
                   </div>
                   <div>
                     <label className="block text-xs font-bold text-slate-500 mb-1">Ana Tema Rengi</label>
                     <div className="flex gap-2">
-                      <input type="color" value={globalSettings.themeColor} onChange={e => setGlobalSettings({...globalSettings, themeColor: e.target.value})} className="w-10 h-10 p-1 border border-slate-200 rounded-lg" />
-                      <input type="text" value={globalSettings.themeColor} onChange={e => setGlobalSettings({...globalSettings, themeColor: e.target.value})} className="flex-1 p-2 border border-slate-200 rounded-lg" />
+                      <input type="color" value={globalSettings.theme_color} onChange={e => setGlobalSettings({...globalSettings, theme_color: e.target.value})} className="w-10 h-10 p-1 border border-slate-200 rounded-lg" />
+                      <input type="text" value={globalSettings.theme_color} onChange={e => setGlobalSettings({...globalSettings, theme_color: e.target.value})} className="flex-1 p-2 border border-slate-200 rounded-lg" />
                     </div>
                   </div>
                 </div>
@@ -252,7 +284,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     <div className="font-bold text-slate-900">Bakım Modu</div>
                     <div className="text-xs text-slate-500">Uygulamayı geçici olarak kullanıma kapatır.</div>
                   </div>
-                  <input type="checkbox" checked={globalSettings.maintenanceMode} onChange={e => setGlobalSettings({...globalSettings, maintenanceMode: e.target.checked})} className="w-6 h-6 accent-orange-600" />
+                  <input type="checkbox" checked={globalSettings.maintenance_mode} onChange={e => setGlobalSettings({...globalSettings, maintenance_mode: e.target.checked})} className="w-6 h-6 accent-orange-600" />
                 </div>
               </div>
 
@@ -260,7 +292,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 <h3 className="font-bold text-lg border-b border-slate-100 pb-2">Global Modül Yönetimi</h3>
                 <p className="text-xs text-slate-500">Bu modülleri kapattığınızda tüm kullanıcılar için devre dışı kalır.</p>
                 <div className="space-y-3">
-                  {Object.entries(globalSettings.globalModules).map(([key, value]) => (
+                  {Object.entries(globalSettings.global_modules).map(([key, value]) => (
                     <div key={key} className="flex items-center justify-between p-3 border border-slate-100 rounded-lg">
                       <span className="font-medium capitalize">{key} Modülü</span>
                       <input 
@@ -268,7 +300,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                         checked={value} 
                         onChange={e => setGlobalSettings({
                           ...globalSettings, 
-                          globalModules: { ...globalSettings.globalModules, [key]: e.target.checked }
+                          global_modules: { ...globalSettings.global_modules, [key]: e.target.checked }
                         })} 
                         className="w-5 h-5 accent-orange-600" 
                       />
@@ -277,7 +309,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 </div>
               </div>
               
-              <button className="w-full py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-colors">
+              <button onClick={saveGlobalSettings} className="w-full py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-colors">
                 Tüm Ayarları Kaydet
               </button>
             </div>
@@ -294,7 +326,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             className="bg-white rounded-3xl w-full max-w-lg overflow-hidden shadow-2xl"
           >
             <div className="p-6 border-b border-slate-100 flex justify-between items-center">
-              <h3 className="text-xl font-bold text-slate-900">Üye Düzenle: {editingUser.displayName}</h3>
+              <h3 className="text-xl font-bold text-slate-900">Üye Düzenle: {editingUser.display_name}</h3>
               <button onClick={() => setEditingUser(null)} className="p-2 text-slate-400 hover:text-slate-600"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-6 max-h-[70vh] overflow-y-auto">
@@ -312,8 +344,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               <div>
                 <label className="block text-xs font-bold text-slate-500 mb-2">Abonelik Tipi</label>
                 <select 
-                  value={editingUser.subscriptionType} 
-                  onChange={e => setEditingUser({...editingUser, subscriptionType: e.target.value as any})}
+                  value={editingUser.subscription_type} 
+                  onChange={e => setEditingUser({...editingUser, subscription_type: e.target.value as any})}
                   className="w-full p-3 border border-slate-200 rounded-xl"
                 >
                   <option value="none">Yok</option>
@@ -328,8 +360,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 <label className="block text-xs font-bold text-slate-500 mb-2">Abonelik Bitiş Tarihi</label>
                 <input 
                   type="datetime-local" 
-                  value={editingUser.subscriptionEndDate ? new Date(editingUser.subscriptionEndDate).toISOString().slice(0, 16) : ''} 
-                  onChange={e => setEditingUser({...editingUser, subscriptionEndDate: new Date(e.target.value).toISOString()})}
+                  value={editingUser.subscription_end_date ? new Date(editingUser.subscription_end_date).toISOString().slice(0, 16) : ''} 
+                  onChange={e => setEditingUser({...editingUser, subscription_end_date: new Date(e.target.value).toISOString()})}
                   className="w-full p-3 border border-slate-200 rounded-xl"
                 />
               </div>
@@ -342,7 +374,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     <label key={mod} className="flex items-center gap-3 p-3 border border-slate-100 rounded-xl cursor-pointer hover:bg-slate-50">
                       <input 
                         type="checkbox" 
-                        checked={(editingUser.activeModules || []).includes(mod)}
+                        checked={(editingUser.active_modules || []).includes(mod)}
                         onChange={() => toggleUserModule(mod)}
                         className="w-5 h-5 accent-orange-600"
                       />

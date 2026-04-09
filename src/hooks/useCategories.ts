@@ -1,5 +1,6 @@
 import { Filter, Store, User, Building2, Home, Star, MapIcon } from 'lucide-react';
 import { useState, useEffect } from 'react';
+import { supabase } from '../lib/supabase';
 
 export const DEFAULT_CATEGORIES = [
   { id: 'mulk_sahibi', label: 'Mülk Sahibi', icon: Home, color: '#f97316' },
@@ -10,24 +11,57 @@ export const DEFAULT_CATEGORIES = [
 ];
 
 export const useCategories = () => {
-  const [customCategories, setCustomCategories] = useState<any[]>(() => {
-    const saved = localStorage.getItem('customCategories');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [customCategories, setCustomCategories] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    localStorage.setItem('customCategories', JSON.stringify(customCategories));
-  }, [customCategories]);
+    fetchCategories();
+  }, []);
 
-  const addCategory = (name: string, color: string) => {
+  const fetchCategories = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from('categories')
+      .select('*')
+      .eq('agent_id', user.id);
+    
+    if (error) {
+      console.error('Error fetching categories:', error);
+    } else if (data) {
+      setCustomCategories(data.map(c => ({
+        ...c,
+        icon: MapIcon // Default icon for custom categories
+      })));
+    }
+    setLoading(false);
+  };
+
+  const addCategory = async (name: string, color: string) => {
     if (!name.trim()) return;
+    
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+
     const newCategory = {
-      id: `custom_${Date.now()}`,
+      agent_id: user.id,
       label: name,
-      icon: MapIcon, // Default icon for custom categories
-      color: color
+      color: color,
+      icon: 'MapIcon'
     };
-    setCustomCategories([...customCategories, newCategory]);
+
+    const { data, error } = await supabase
+      .from('categories')
+      .insert(newCategory)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error adding category:', error);
+    } else if (data) {
+      setCustomCategories([...customCategories, { ...data, icon: MapIcon }]);
+    }
   };
 
   const allCategories = [...DEFAULT_CATEGORIES, ...customCategories];
@@ -35,6 +69,7 @@ export const useCategories = () => {
   return {
     categories: allCategories,
     customCategories,
-    addCategory
+    addCategory,
+    loading
   };
 };

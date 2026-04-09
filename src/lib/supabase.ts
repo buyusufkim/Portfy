@@ -9,4 +9,11 @@ if (supabaseUrl === 'https://placeholder.supabase.co') {
   console.warn('Supabase URL is not configured. Please set VITE_SUPABASE_URL in your environment variables.');
 }
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey);
+export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+  auth: {
+    autoRefreshToken: true,
+    persistSession: true,
+    detectSessionInUrl: true,
+    storageKey: 'portfy-auth-token'
+  }
+});

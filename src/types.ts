@@ -3,33 +3,41 @@ export type LeadStatus = 'Aday' | 'Sıcak' | 'Yetki Alındı' | 'Pasif';
 export interface UserProfile {
   uid: string;
   email: string;
-  displayName: string;
-  subscriptionType: 'none' | 'trial' | '1-month' | '3-month' | '6-month' | '12-month';
-  subscriptionEndDate: string | null;
+  display_name: string;
+  subscription_type: 'none' | 'trial' | '1-month' | '3-month' | '6-month' | '12-month';
+  subscription_end_date: string | null;
   role: 'agent' | 'admin';
-  notificationTime?: string; // e.g., "09:00"
-  hasSeenOnboarding?: boolean;
-  hasSeenTour?: boolean;
+  notification_settings?: {
+    push: boolean;
+    email: boolean;
+    time: string;
+  };
+  has_seen_onboarding?: boolean;
+  has_seen_tour?: boolean;
   region?: {
     city: string;
     district: string;
     neighborhoods: string[]; // max 3
   };
-  activeModules?: string[]; // Custom modules enabled for this user
-  xp?: number;
-  level?: number;
-  streak?: number;
-  streakFreezeCount?: number;
-  lastMorningRitualAt?: string;
-  lastEveningRitualAt?: string;
+  active_modules?: string[]; // Custom modules enabled for this user
+  current_streak: number;
+  longest_streak: number;
+  total_xp: number;
+  broker_level: number;
+  last_ritual_completed_at?: string;
+  streak_freeze_count: number;
+  last_active_date?: string;
+  created_at: string;
+  updated_at: string;
+  tier: 'free' | 'pro' | 'elite' | 'master';
 }
 
 export interface GlobalSettings {
   id: string;
-  appName: string;
-  themeColor: string;
-  maintenanceMode: boolean;
-  globalModules: {
+  app_name: string;
+  theme_color: string;
+  maintenance_mode: boolean;
+  global_modules: {
     crm: boolean;
     tasks: boolean;
     map: boolean;
@@ -42,32 +50,32 @@ export interface SubscriptionPackage {
   id: string;
   name: string;
   price: number;
-  durationMonths: number;
-  isActive: boolean;
+  duration_months: number;
+  is_active: boolean;
   features: string[];
 }
 
 export interface Lead {
   id: string;
-  agentId: string;
+  agent_id: string;
   name: string;
   phone: string;
   type: string;
   status: LeadStatus;
   district: string;
-  lastContact: string;
+  last_contact: string;
   notes: string;
-  behaviorMetrics?: {
-    totalViews: number;
-    avgDuration: number;
-    lastActive: string;
-    isHot: boolean;
+  behavior_metrics?: {
+    total_views: number;
+    avg_duration: number;
+    last_active: string;
+    is_hot: boolean;
   };
 }
 
 export interface Task {
   id: string;
-  agentId: string;
+  agent_id: string;
   title: string;
   time: string;
   type: 'Arama' | 'Randevu' | 'Saha';
@@ -76,12 +84,12 @@ export interface Task {
 
 export interface Property {
   id: string;
-  agentId: string;
+  agent_id: string;
   title: string;
   type: 'Daire' | 'Villa' | 'Arsa' | 'Ticari' | 'Fabrika' | 'Fabrika Arsası';
   category: 'Satılık' | 'Kiralık';
   price: number;
-  commissionRate: number;
+  commission_rate: number;
   status: 'Yeni' | 'Hazırlanıyor' | 'Yayında' | 'İlgi Var' | 'Pazarlık' | 'Satıldı' | 'Pasif';
   address: {
     city: string;
@@ -91,8 +99,8 @@ export interface Property {
     lng?: number;
   };
   details: {
-    brutM2: number;
-    netM2: number;
+    brut_m2: number;
+    net_m2: number;
     rooms: string;
     age: number;
     floor: number;
@@ -100,46 +108,46 @@ export interface Property {
   owner: {
     name: string;
     phone: string;
-    trustScore: number;
+    trust_score: number;
   };
-  healthScore: number;
-  saleProbability: number;
-  marketAnalysis?: {
-    avgPriceM2: number;
-    priceIndex: number; // 1.0 is market average
+  health_score: number;
+  sale_probability: number;
+  market_analysis?: {
+    avg_price_m2: number;
+    price_index: number; // 1.0 is market average
     status: 'Fırsat' | 'Normal' | 'Pahalı';
   };
   images: string[];
   notes: string;
-  targetCustomerType?: string;
-  investmentSuitability?: string;
-  createdAt: string;
-  updatedAt: string;
+  target_customer_type?: string;
+  investment_suitability?: string;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface MapPin {
   id: string;
-  agentId: string;
+  agent_id: string;
   lat: number;
   lng: number;
   type: string;
   title: string;
   address: string;
   notes: string;
-  createdAt: string;
+  created_at: string;
 }
 
 export interface DashboardStats {
   calls: number;
   appointments: number;
   exclusive: number;
-  targetProgress: number;
-  activeProperties: number;
-  totalLeads: number;
-  totalProperties: number;
-  estimatedRevenue: number;
-  disciplineScore: number;
-  aiInsight: string;
+  target_progress: number;
+  active_properties: number;
+  total_leads: number;
+  total_properties: number;
+  estimated_revenue: number;
+  discipline_score: number;
+  ai_insight: string;
 }
 
 export interface Building {
@@ -147,47 +155,48 @@ export interface Building {
   address: string;
   district: string;
   status: 'Görüşüldü' | 'Potansiyel' | 'Ret' | 'Boş';
-  lastVisit: string;
+  last_visit: string;
   notes: string;
 }
 
 export interface MessageTemplate {
   id: string;
-  agentId: string;
+  agent_id: string;
   name: string;
   content: string;
-  isDefault: boolean;
+  is_default: boolean;
 }
 
 export interface BrokerAccount {
   id: string;
-  agentId: string;
-  storeName: string;
-  apiKey: string;
-  connectedAt: string;
+  agent_id: string;
+  store_name: string;
+  api_key: string;
+  connected_at: string;
 }
 
 export interface ExternalListing {
   id: string;
-  extId: string;
+  agent_id: string;
+  ext_id: string;
   title: string;
   price: number;
   status: 'Yayında' | 'Pasif';
   url: string;
   district: string;
-  lastSync: string;
+  last_sync: string;
 }
 
 export interface PropertySyncLink {
-  propertyId: string;
-  externalListingId: string;
+  property_id: string;
+  external_listing_id: string;
 }
 
 export interface PriceHistory {
   id: string;
-  propertyId: string;
-  oldPrice: number;
-  newPrice: number;
+  property_id: string;
+  old_price: number;
+  new_price: number;
   date: string;
 }
 
@@ -195,55 +204,68 @@ export type GamifiedTaskCategory = 'sweet' | 'main' | 'smart';
 
 export interface GamifiedTask {
   id: string;
-  agentId: string;
+  agent_id: string;
   title: string;
   points: number;
   category: GamifiedTaskCategory;
-  isCompleted: boolean;
+  is_completed: boolean;
   date: string;
-  aiReason?: string;
-  reminderTime?: string;
+  ai_reason?: string;
+  reminder_time?: string;
   notified?: boolean;
 }
 
 export interface UserStats {
   points: number;
-  pointsToday: number;
+  points_today: number;
   streak: number;
   momentum: number;
   level: number;
-  levelName: string;
-  nextLevelPoints: number;
-  dailyProgress: number; // 0-100
-  tasksCompletedToday: number;
-  totalTasksToday: number;
+  level_name: string;
+  next_level_points: number;
+  daily_progress: number; // 0-100
+  tasks_completed_today: number;
+  total_tasks_today: number;
 }
 
 export interface DailyMomentum {
   date: string;
   score: number;
-  tasksCompleted: number;
-  mainTasksCompleted: number;
+  tasks_completed: number;
+  main_tasks_completed: number;
+}
+
+export interface DailyStats {
+  id: string;
+  agent_id: string;
+  date: string;
+  tasks_completed: number;
+  potential_revenue_handled: number;
+  calls_made: number;
+  visits_made: number;
+  xp_earned: number;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface RescueTask {
   id: string;
   title: string;
   type: 'call' | 'update' | 'visit' | 'note';
-  estimatedMinutes: number;
+  estimated_minutes: number;
   points: number;
-  isCompleted: boolean;
-  targetId?: string; // Lead or Property ID
+  is_completed: boolean;
+  target_id?: string; // Lead or Property ID
 }
 
 export interface RescueSession {
   id: string;
-  agentId: string;
+  agent_id: string;
   date: string;
   status: 'active' | 'completed' | 'expired';
   tasks: RescueTask[];
-  startedAt: string;
-  expiresAt: string;
+  started_at: string;
+  expires_at: string;
 }
 
 export type OpportunityType = 'lead_followup' | 'property_stale' | 'visit_stale' | 'price_drop_potential';
@@ -253,29 +275,29 @@ export interface MissedOpportunity {
   type: OpportunityType;
   title: string;
   description: string;
-  targetId: string;
-  daysDelayed: number;
+  target_id: string;
+  days_delayed: number;
   priority: 'high' | 'medium' | 'low';
-  potentialValue?: number; // Estimated commission or points
+  potential_value?: number; // Estimated commission or points
 }
 
 export interface VoiceParseResult {
-  originalText: string;
+  original_text: string;
   intent: 'lead' | 'task' | 'note' | 'unknown';
   confidence: number;
-  extractedData: {
+  extracted_data: {
     name?: string;
     phone?: string;
     budget?: number;
     location?: string;
-    dueDate?: string;
+    due_date?: string;
     description?: string;
   };
 }
 
 export interface CoachInsight {
   score: number;
-  dailyTip: string;
+  daily_tip: string;
   strength: {
     title: string;
     description: string;
@@ -288,21 +310,21 @@ export interface CoachInsight {
 
 export interface UserNote {
   id: string;
-  agentId: string;
+  agent_id: string;
   title: string;
   content: string;
-  createdAt: string;
-  updatedAt: string;
+  created_at: string;
+  updated_at: string;
   color?: string;
 }
 
 export interface PersonalTask {
   id: string;
-  agentId: string;
+  agent_id: string;
   title: string;
-  isCompleted: boolean;
-  createdAt: string;
+  is_completed: boolean;
+  created_at: string;
   priority: 'low' | 'medium' | 'high';
-  reminderTime?: string;
+  reminder_time?: string;
   notified?: boolean;
 }
