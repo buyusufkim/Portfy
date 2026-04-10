@@ -189,19 +189,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
 
     if (data) {
+      const localHasSeenOnboarding = localStorage.getItem(`has_seen_onboarding_${uid}`) === 'true';
+      const localHasSeenTour = localStorage.getItem(`has_seen_tour_${uid}`) === 'true';
+      const localSubType = localStorage.getItem(`subscription_type_${uid}`) as any || 'none';
+      const localSubEnd = localStorage.getItem(`subscription_end_date_${uid}`);
+
       setProfile(prev => {
         // If we have optimistic state that is "further along" than the DB, keep it
         // This prevents the UI from flashing back to the start screen if DB is slow or failing
         if (prev) {
           return {
             ...data as UserProfile,
-            has_seen_onboarding: prev.has_seen_onboarding || data.has_seen_onboarding,
-            has_seen_tour: prev.has_seen_tour || data.has_seen_tour,
-            subscription_type: prev.subscription_type !== 'none' ? prev.subscription_type : data.subscription_type,
-            subscription_end_date: prev.subscription_end_date || data.subscription_end_date,
+            has_seen_onboarding: prev.has_seen_onboarding || localHasSeenOnboarding || data.has_seen_onboarding,
+            has_seen_tour: prev.has_seen_tour || localHasSeenTour || data.has_seen_tour,
+            subscription_type: prev.subscription_type !== 'none' ? prev.subscription_type : (localSubType !== 'none' ? localSubType : data.subscription_type),
+            subscription_end_date: prev.subscription_end_date || localSubEnd || data.subscription_end_date,
           };
         }
-        return data as UserProfile;
+        return {
+          ...data as UserProfile,
+          has_seen_onboarding: localHasSeenOnboarding || data.has_seen_onboarding,
+          has_seen_tour: localHasSeenTour || data.has_seen_tour,
+          subscription_type: localSubType !== 'none' ? localSubType : data.subscription_type,
+          subscription_end_date: localSubEnd || data.subscription_end_date,
+        };
       });
     } else {
       // Create initial profile
@@ -220,7 +231,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         current_streak: 0,
         streak_freeze_count: 0,
       };
-      const { error: insertError } = await supabase.from('profiles').insert(newProfile);
+      
+      // Filter out columns that might be missing in the DB
+      const { subscription_type, subscription_end_date, has_seen_onboarding, has_seen_tour, ...dbProfile } = newProfile as any;
+      const { error: insertError } = await supabase.from('profiles').insert(dbProfile);
       if (insertError) console.error('Error creating profile:', insertError);
       
       setProfile(prev => {
@@ -297,6 +311,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       endDate = addMonths(new Date(), months).toISOString();
     }
     
+    localStorage.setItem(`subscription_type_${user.id}`, type);
+    localStorage.setItem(`subscription_end_date_${user.id}`, endDate);
+
     // Optimistic update to immediately let the user in (especially helpful if Supabase RLS policies aren't fully configured yet)
     setProfile(prev => {
       if (prev) {
@@ -322,8 +339,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error } = await supabase
       .from('profiles')
       .update({
-        subscription_type: type,
-        subscription_end_date: endDate,
+        // subscription_type: type,
+        // subscription_end_date: endDate,
       })
       .eq('uid', user.id);
     
@@ -336,31 +353,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const completeOnboarding = async () => {
     if (!user) return;
     
+    localStorage.setItem(`has_seen_onboarding_${user.id}`, 'true');
+    
     // Optimistic update
     setProfile(prev => prev ? { ...prev, has_seen_onboarding: true } : null);
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({ has_seen_onboarding: true })
-      .eq('uid', user.id);
-    if (error) {
-      console.error('Onboarding error:', error);
-    }
   };
 
   const completeTour = async () => {
     if (!user) return;
     
+    localStorage.setItem(`has_seen_tour_${user.id}`, 'true');
+    
     // Optimistic update
     setProfile(prev => prev ? { ...prev, has_seen_tour: true } : null);
-
-    const { error } = await supabase
-      .from('profiles')
-      .update({ has_seen_tour: true })
-      .eq('uid', user.id);
-    if (error) {
-      console.error('Tour error:', error);
-    }
   };
 
   const updateProfileData = async (data: Partial<UserProfile>) => {
@@ -369,9 +374,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // Optimistic update
     setProfile(prev => prev ? { ...prev, ...data } : null);
 
+    // Filter out columns that might be missing in the DB
+    const { subscription_type, subscription_end_date, has_seen_onboarding, has_seen_tour, ...dbData } = data as any;
+
     const { error } = await supabase
       .from('profiles')
-      .update(data)
+      .update(dbData)
       .eq('uid', user.id);
       
     if (error) {

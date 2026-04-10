@@ -21,19 +21,38 @@ export const HabitEnginePage: React.FC = () => {
   const [showRadar, setShowRadar] = useState(false);
   const [showCloser, setShowCloser] = useState(false);
 
+  const getTodayStr = () => {
+    const now = new Date();
+    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+  };
+
+  const todayISO = getTodayStr();
+  const localStarted = profile?.uid ? localStorage.getItem(`day_started_${profile.uid}_${todayISO}`) : null;
+  const localEnded = profile?.uid ? localStorage.getItem(`day_ended_${profile.uid}_${todayISO}`) : null;
+  
+  const isDayStarted = (profile?.last_day_started_at?.startsWith(todayISO)) || 
+                       (profile?.last_active_date === todayISO) || 
+                       !!localStarted;
+  
+  const dayStartTimestamp = profile?.last_day_started_at || localStarted || '';
+  const isDayEnded = !!localEnded || (
+    !!profile?.last_ritual_completed_at?.startsWith(todayISO) && 
+    profile.last_ritual_completed_at > dayStartTimestamp
+  );
+
   useEffect(() => {
     if (profile) {
-      const today = new Date().toISOString().split('T')[0];
-      const lastRitual = profile.last_ritual_completed_at ? profile.last_ritual_completed_at.split('T')[0] : null;
+      const today = getTodayStr();
+      const lastRitual = profile.last_ritual_completed_at ? profile.last_ritual_completed_at.split('T')[0] : (profile.last_active_date || null);
       
-      if (lastRitual !== today) {
+      if (lastRitual !== today && !localStarted) {
         const hour = new Date().getHours();
         if (hour >= 5 && hour < 12) {
           setShowRadar(true);
         }
       }
     }
-  }, [profile]);
+  }, [profile, localStarted]);
 
   if (isLoading || !profile) {
     return (
@@ -95,25 +114,27 @@ export const HabitEnginePage: React.FC = () => {
         </header>
 
         {/* Day Closer Trigger */}
-        <section>
-          <motion.button 
-            whileTap={{ scale: 0.98 }}
-            onClick={() => setShowCloser(true)}
-            className="w-full bg-slate-900 text-white p-8 rounded-[40px] flex items-center justify-between group shadow-2xl shadow-slate-900/20"
-          >
-            <div className="flex items-center gap-5 text-left">
-              <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center text-indigo-400 shadow-inner">
-                <Moon size={28} />
+        {isDayStarted && !isDayEnded && (
+          <section>
+            <motion.button 
+              whileTap={{ scale: 0.98 }}
+              onClick={() => setShowCloser(true)}
+              className="w-full bg-slate-900 text-white p-8 rounded-[40px] flex items-center justify-between group shadow-2xl shadow-slate-900/20"
+            >
+              <div className="flex items-center gap-5 text-left">
+                <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center text-indigo-400 shadow-inner">
+                  <Moon size={28} />
+                </div>
+                <div>
+                  <h4 className="font-bold text-lg text-white">Günü Kapat</h4>
+                </div>
               </div>
-              <div>
-                <h4 className="font-bold text-lg text-white">Günü Kapat</h4>
+              <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/20 transition-colors">
+                <ArrowRight size={24} />
               </div>
-            </div>
-            <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/20 transition-colors">
-              <ArrowRight size={24} />
-            </div>
-          </motion.button>
-        </section>
+            </motion.button>
+          </section>
+        )}
 
         {/* Weekly Stats Summary */}
         <section className="space-y-4">

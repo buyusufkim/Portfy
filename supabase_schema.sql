@@ -36,6 +36,10 @@ CREATE TABLE IF NOT EXISTS profiles (
     longest_streak INTEGER DEFAULT 0,
     streak_freeze_count INTEGER DEFAULT 0,
     last_active_date DATE,
+    has_seen_onboarding BOOLEAN DEFAULT FALSE,
+    has_seen_tour BOOLEAN DEFAULT FALSE,
+    subscription_type TEXT DEFAULT 'none',
+    subscription_end_date TIMESTAMPTZ,
     notification_settings JSONB DEFAULT '{"push": true, "email": false, "time": "09:00"}'::JSONB,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -73,6 +77,21 @@ BEGIN
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='last_active_date') THEN
         ALTER TABLE profiles ADD COLUMN last_active_date DATE;
     END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='last_ritual_completed_at') THEN
+        ALTER TABLE profiles ADD COLUMN last_ritual_completed_at TIMESTAMPTZ;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='has_seen_onboarding') THEN
+        ALTER TABLE profiles ADD COLUMN has_seen_onboarding BOOLEAN DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='has_seen_tour') THEN
+        ALTER TABLE profiles ADD COLUMN has_seen_tour BOOLEAN DEFAULT FALSE;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='subscription_type') THEN
+        ALTER TABLE profiles ADD COLUMN subscription_type TEXT DEFAULT 'none';
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='subscription_end_date') THEN
+        ALTER TABLE profiles ADD COLUMN subscription_end_date TIMESTAMPTZ;
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='notification_settings') THEN
         ALTER TABLE profiles ADD COLUMN notification_settings JSONB DEFAULT '{"push": true, "email": false, "time": "09:00"}'::JSONB;
     END IF;
@@ -82,7 +101,7 @@ END $$;
 -- Note: Code expects 'agentId' as the foreign key column name
 CREATE TABLE IF NOT EXISTS tasks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    "agentId" UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
     title TEXT NOT NULL,
     type TEXT CHECK (type IN ('Arama', 'Randevu', 'Saha', 'Diğer')),
     category TEXT DEFAULT 'main' CHECK (category IN ('main', 'smart', 'sweet')),
@@ -107,7 +126,7 @@ CREATE TABLE IF NOT EXISTS task_completions (
 -- LEADS: Leads and customer management (Code uses 'leads' table)
 CREATE TABLE IF NOT EXISTS leads (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    "agentId" UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
     name TEXT NOT NULL,
     phone TEXT,
     email TEXT,
@@ -124,7 +143,7 @@ CREATE TABLE IF NOT EXISTS leads (
 -- PROPERTIES: Real estate portfolios
 CREATE TABLE IF NOT EXISTS properties (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    "agentId" UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
     title TEXT NOT NULL,
     type TEXT NOT NULL,
     category TEXT CHECK (category IN ('Satılık', 'Kiralık')),
@@ -209,6 +228,17 @@ CREATE TABLE IF NOT EXISTS gamified_tasks (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- CATEGORIES: Custom categories for map pins and leads
+CREATE TABLE IF NOT EXISTS categories (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    label TEXT NOT NULL,
+    color TEXT NOT NULL,
+    icon TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- USER_STATS: Daily performance metrics for agents
 CREATE TABLE IF NOT EXISTS user_stats (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
@@ -281,9 +311,9 @@ CREATE TABLE IF NOT EXISTS personal_tasks (
 );
 
 -- 4. Indexes for Performance
-CREATE INDEX IF NOT EXISTS idx_tasks_agent_date ON tasks("agentId", time);
-CREATE INDEX IF NOT EXISTS idx_leads_agent_status ON leads("agentId", status);
-CREATE INDEX IF NOT EXISTS idx_properties_agent_status ON properties("agentId", status);
+CREATE INDEX IF NOT EXISTS idx_tasks_agent_date ON tasks(agent_id, time);
+CREATE INDEX IF NOT EXISTS idx_leads_agent_status ON leads(agent_id, status);
+CREATE INDEX IF NOT EXISTS idx_properties_agent_status ON properties(agent_id, status);
 CREATE INDEX IF NOT EXISTS idx_gamified_tasks_agent_date ON gamified_tasks(agent_id, date);
 CREATE INDEX IF NOT EXISTS idx_user_stats_agent_date ON user_stats(agent_id, date);
 CREATE INDEX IF NOT EXISTS idx_ai_insights_agent_unread ON ai_insights(agent_id) WHERE is_read = FALSE;
@@ -425,35 +455,56 @@ BEGIN
         END IF;
     END IF;
 
+    -- Categories
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='categories' AND column_name='agent_id') THEN
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='categories' AND column_name='agentId') THEN
+            ALTER TABLE categories RENAME COLUMN "agentId" TO agent_id;
+        END IF;
+    END IF;
+
     -- User Stats
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_stats' AND column_name='agent_id') THEN
         IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_stats' AND column_name='agentId') THEN
             ALTER TABLE user_stats RENAME COLUMN "agentId" TO agent_id;
         END IF;
     END IF;
+    -- date kontrolü ve ekleme
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_stats' AND column_name='date') THEN
+        ALTER TABLE user_stats ADD COLUMN date DATE DEFAULT CURRENT_DATE;
+    END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_stats' AND column_name='tasks_completed') THEN
         IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_stats' AND column_name='tasksCompleted') THEN
             ALTER TABLE user_stats RENAME COLUMN "tasksCompleted" TO tasks_completed;
+        ELSE
+            ALTER TABLE user_stats ADD COLUMN tasks_completed INTEGER DEFAULT 0;
         END IF;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_stats' AND column_name='potential_revenue_handled') THEN
         IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_stats' AND column_name='potentialRevenueHandled') THEN
             ALTER TABLE user_stats RENAME COLUMN "potentialRevenueHandled" TO potential_revenue_handled;
+        ELSE
+            ALTER TABLE user_stats ADD COLUMN potential_revenue_handled NUMERIC DEFAULT 0;
         END IF;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_stats' AND column_name='calls_made') THEN
         IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_stats' AND column_name='callsMade') THEN
             ALTER TABLE user_stats RENAME COLUMN "callsMade" TO calls_made;
+        ELSE
+            ALTER TABLE user_stats ADD COLUMN calls_made INTEGER DEFAULT 0;
         END IF;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_stats' AND column_name='visits_made') THEN
         IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_stats' AND column_name='visitsMade') THEN
             ALTER TABLE user_stats RENAME COLUMN "visitsMade" TO visits_made;
+        ELSE
+            ALTER TABLE user_stats ADD COLUMN visits_made INTEGER DEFAULT 0;
         END IF;
     END IF;
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_stats' AND column_name='xp_earned') THEN
         IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='user_stats' AND column_name='xpEarned') THEN
             ALTER TABLE user_stats RENAME COLUMN "xpEarned" TO xp_earned;
+        ELSE
+            ALTER TABLE user_stats ADD COLUMN xp_earned INTEGER DEFAULT 0;
         END IF;
     END IF;
 

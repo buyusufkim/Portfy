@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import confetti from 'canvas-confetti';
 import { 
   LayoutDashboard, 
   MapPin, 
@@ -56,7 +57,15 @@ import { Lead, Task, Building, Property, UserProfile, MessageTemplate, BrokerAcc
 import { api } from './services/api';
 import { locationService } from './services/locationService';
 import { AuthProvider, useAuth } from './AuthContext';
+import { Badge, Card, StatCard } from './components/UI';
+import { PropertyCard, PipelineColumn } from './components/PropertyComponents';
+import { DashboardView } from './components/DashboardView';
+import { PortfoliosView } from './components/PortfoliosView';
+import { ProfilView } from './components/ProfilView';
+import { CRMView } from './components/CRMView';
+import { NotesView } from './components/NotesView';
 import { BolgemView } from './components/BolgemView';
+import { RegionSetupModal } from './components/RegionSetupModal';
 import { AdminPanel } from './components/AdminPanel';
 import { DailyRadar } from './components/habit/DailyRadar';
 import { DayCloser } from './components/habit/DayCloser';
@@ -67,7 +76,6 @@ import { useRevenueStats } from './hooks/useRevenueStats';
 import { formatCurrency } from './lib/revenueUtils';
 import { useCategories } from './hooks/useCategories';
 import { GoogleGenAI, Type } from "@google/genai";
-import confetti from 'canvas-confetti';
 
 // --- React Query Client ---
 const queryClient = new QueryClient({
@@ -78,58 +86,6 @@ const queryClient = new QueryClient({
     },
   },
 });
-
-// --- Tasarım Sistemi Bileşenleri ---
-const Badge = ({ children, variant = 'default', className = "" }: { children: React.ReactNode, variant?: 'default' | 'success' | 'warning' | 'info' | 'error', className?: string }) => {
-  const variants = {
-    default: 'bg-slate-100 text-slate-700',
-    success: 'bg-emerald-100 text-emerald-800 border border-emerald-200',
-    warning: 'bg-amber-100 text-amber-800 border border-amber-200',
-    info: 'bg-orange-100 text-orange-900 border border-orange-200',
-    error: 'bg-red-100 text-red-800 border border-red-200',
-  };
-  return (
-    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${variants[variant]} ${className}`}>
-      {children}
-    </span>
-  );
-};
-
-const Card: React.FC<{ children: React.ReactNode, className?: string, onClick?: () => void }> = ({ children, className = "", onClick }) => (
-  <div 
-    onClick={onClick}
-    className={`bg-white rounded-3xl border border-slate-100 shadow-sm shadow-slate-200/50 p-4 ${className} ${onClick ? 'cursor-pointer active:scale-[0.98] transition-transform' : ''}`}
-  >
-    {children}
-  </div>
-);
-
-const StatCard: React.FC<{ id?: string, label: string, value: string | number, icon: React.ReactNode, trend?: string, color: 'orange' | 'purple' | 'emerald' | 'blue' }> = ({ id, label, value, icon, trend, color }) => {
-  const colors = {
-    orange: 'bg-orange-50 text-orange-600',
-    purple: 'bg-purple-50 text-purple-600',
-    emerald: 'bg-emerald-50 text-emerald-600',
-    blue: 'bg-blue-50 text-blue-600',
-  };
-  return (
-    <Card id={id} className="flex flex-col gap-3">
-      <div className="flex justify-between items-start">
-        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${colors[color]}`}>
-          {icon}
-        </div>
-        {trend && (
-          <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">
-            {trend}
-          </span>
-        )}
-      </div>
-      <div>
-        <div className="text-2xl font-black text-slate-900">{value}</div>
-        <div className="text-xs font-bold text-slate-400 uppercase tracking-wider">{label}</div>
-      </div>
-    </Card>
-  );
-};
 
 // --- Login Screen ---
 const LoginScreen = () => {
@@ -630,531 +586,6 @@ const PricingScreen = () => {
   );
 };
 
-// --- Portfolio Components ---
-const PropertyCard: React.FC<{ property: Property, onClick: () => void }> = ({ property, onClick }) => {
-  const getHealthColor = (score: number) => {
-    if (score >= 80) return 'text-emerald-500';
-    if (score >= 50) return 'text-amber-500';
-    return 'text-red-500';
-  };
-
-  return (
-    <Card className="overflow-hidden p-0 group transition-all" onClick={onClick}>
-      <div className="relative h-40 bg-slate-100">
-        <img 
-          src={property.images[0] || `https://picsum.photos/seed/${property.id}/400/300`} 
-          alt={property.title}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute top-3 left-3 flex flex-col gap-2">
-          <Badge variant={property.status === 'Yayında' ? 'success' : 'info'}>{property.status}</Badge>
-          {property.market_analysis?.status === 'Fırsat' && (
-            <div className="bg-emerald-500 text-white text-[8px] font-bold px-2 py-1 rounded-lg shadow-lg uppercase tracking-widest">Fırsat</div>
-          )}
-        </div>
-        <div className="absolute top-3 right-3 flex flex-col items-end gap-2">
-          <div className="bg-white/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm">
-            <Activity size={12} className={getHealthColor(property.health_score)} />
-            <span className={`text-[10px] font-bold ${getHealthColor(property.health_score)}`}>%{property.health_score}</span>
-          </div>
-          <div className="bg-orange-600/90 backdrop-blur-sm px-2 py-1 rounded-lg flex items-center gap-1 shadow-sm text-white">
-            <TrendingUp size={10} />
-            <span className="text-[10px] font-bold">%{Math.round((property.sale_probability || 0.5) * 100)} Satış</span>
-          </div>
-        </div>
-      </div>
-      <div className="p-4 space-y-2">
-        <div className="flex justify-between items-start">
-          <h3 className="font-bold text-slate-900 text-sm line-clamp-1 flex-1">{property.title}</h3>
-          <span className="text-orange-600 font-bold text-sm ml-2">₺{property.price.toLocaleString()}</span>
-        </div>
-        <div className="flex items-center gap-2 text-slate-400 text-[10px] font-medium">
-          <MapPin size={12} />
-          <span>{property.address.district}, {property.address.city}</span>
-        </div>
-        <div className="flex items-center justify-between pt-2 border-t border-slate-50">
-          <div className="flex gap-3">
-            <div className="flex items-center gap-1 text-slate-500 text-[10px]">
-              <Home size={12} />
-              <span>{property.details.rooms}</span>
-            </div>
-            <div className="flex items-center gap-1 text-slate-500 text-[10px]">
-              <Briefcase size={12} />
-              <span>{property.details.brut_m2}m²</span>
-            </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="text-[10px] font-bold text-slate-400">
-              Gelir: ₺{(property.price * property.commission_rate / 100).toLocaleString()}
-            </div>
-            <button 
-              onClick={(e) => {
-                e.stopPropagation();
-                const text = encodeURIComponent(`Merhaba, bu mülk ilginizi çekebilir: ${property.title}\nFiyat: ₺${property.price.toLocaleString()}\nKonum: ${property.address.district}, ${property.address.city}\nDetaylar: ${property.details.rooms}, ${property.details.brut_m2}m²`);
-                window.open(`https://wa.me/?text=${text}`, '_blank');
-              }}
-              className="p-1.5 bg-emerald-50 text-emerald-600 rounded-lg hover:bg-emerald-100 transition-colors ml-2"
-            >
-              <MessageSquare size={14} />
-            </button>
-          </div>
-        </div>
-      </div>
-    </Card>
-  );
-};
-
-const PipelineColumn: React.FC<{ title: string, properties: Property[], status: string, onPropertyClick: (p: Property) => void }> = ({ title, properties, status, onPropertyClick }) => {
-  const totalRevenue = properties.reduce((acc, p) => acc + (p.price * p.commission_rate / 100), 0);
-  
-  return (
-    <div className="w-72 flex-shrink-0 flex flex-col gap-4">
-      <div className="flex justify-between items-center px-2">
-        <div className="flex items-center gap-2">
-          <h3 className="font-bold text-slate-900 text-sm">{title}</h3>
-          <span className="bg-slate-200 text-slate-600 text-[10px] font-bold px-2 py-0.5 rounded-full">{properties.length}</span>
-        </div>
-        <span className="text-[10px] font-bold text-orange-600">₺{totalRevenue.toLocaleString()}</span>
-      </div>
-      <div className="flex flex-col gap-3 h-full pb-4">
-        {properties.map(p => (
-          <PropertyCard key={p.id} property={p} onClick={() => onPropertyClick(p)} />
-        ))}
-        {properties.length === 0 && (
-          <div className="border-2 border-dashed border-slate-200 rounded-3xl h-32 flex items-center justify-center text-slate-300 text-xs font-medium">
-            Portföy Yok
-          </div>
-        )}
-      </div>
-    </div>
-  );
-};
-
-// --- Main App Content ---
-  const NotesView = () => {
-    const [showAddNote, setShowAddNote] = useState(false);
-    const [showAddTask, setShowAddTask] = useState(false);
-    const queryClient = useQueryClient();
-
-    const { data: notes = [], isLoading: notesLoading } = useQuery({
-      queryKey: ['notes'],
-      queryFn: api.getNotes
-    });
-
-    const { data: personalTasks = [], isLoading: tasksLoading } = useQuery({
-      queryKey: ['personalTasks'],
-      queryFn: api.getPersonalTasks
-    });
-
-    const addNoteMutation = useMutation({
-      mutationFn: api.addNote,
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['notes'] });
-        setShowAddNote(false);
-      }
-    });
-
-    const addPersonalTaskMutation = useMutation({
-      mutationFn: api.addPersonalTask,
-      onSuccess: () => {
-        queryClient.invalidateQueries({ queryKey: ['personalTasks'] });
-        setShowAddTask(false);
-      }
-    });
-
-    const toggleTaskMutation = useMutation({
-      mutationFn: ({ id, is_completed }: { id: string, is_completed: boolean }) => api.togglePersonalTask(id, is_completed),
-      onSuccess: (_, variables) => {
-        queryClient.invalidateQueries({ queryKey: ['personalTasks'] });
-        if (variables.is_completed) {
-          confetti({
-            particleCount: 100,
-            spread: 70,
-            origin: { y: 0.6 },
-            colors: ['#ea580c', '#f97316', '#fb923c']
-          });
-        }
-      }
-    });
-
-    const deleteNoteMutation = useMutation({
-      mutationFn: api.deleteNote,
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['notes'] })
-    });
-
-    const deletePersonalTaskMutation = useMutation({
-      mutationFn: api.deletePersonalTask,
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['personalTasks'] })
-    });
-
-    const updatePersonalTaskMutation = useMutation({
-      mutationFn: ({ id, data }: { id: string, data: Partial<PersonalTask> }) => api.updatePersonalTask(id, data),
-      onSuccess: () => queryClient.invalidateQueries({ queryKey: ['personalTasks'] })
-    });
-
-    return (
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="p-6 space-y-8 pb-32"
-      >
-        <header className="flex justify-between items-center">
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Notlar & Görevler</h1>
-          <div className="flex gap-2">
-            <button 
-              onClick={() => setShowAddTask(true)}
-              className="p-3 bg-slate-100 rounded-2xl text-slate-600"
-            >
-              <CheckCircle2 size={20} />
-            </button>
-            <button 
-              onClick={() => setShowAddNote(true)}
-              className="p-3 bg-orange-600 rounded-2xl text-white shadow-lg shadow-orange-200"
-            >
-              <Plus size={20} />
-            </button>
-          </div>
-        </header>
-
-        {/* Personal Tasks Section */}
-        <section className="space-y-4">
-          <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Yapılacaklar</h2>
-            <span className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-lg">
-              {personalTasks.filter((t: any) => !t.is_completed).length} Bekliyor
-            </span>
-          </div>
-          <div className="space-y-3">
-            <AnimatePresence mode="popLayout">
-              {tasksLoading ? (
-                <div className="py-12 text-center space-y-3">
-                  <motion.div 
-                    animate={{ rotate: 360 }}
-                    transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                    className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full mx-auto"
-                  />
-                  <p className="text-xs text-slate-400 font-medium">Görevler yükleniyor...</p>
-                </div>
-              ) : personalTasks.length === 0 ? (
-                <motion.p 
-                  key="empty-tasks"
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  className="text-center py-8 text-slate-400 text-sm italic"
-                >
-                  Henüz bir görev eklenmedi.
-                </motion.p>
-              ) : personalTasks.map((task: any) => (
-                <motion.div
-                  key={task.id}
-                  layout
-                  initial={{ opacity: 0, x: -20 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, scale: 0.9 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                >
-                  <Card className={`flex items-center justify-between p-4 transition-all duration-300 ${task.is_completed ? 'bg-slate-50/50 border-slate-100' : 'bg-white'}`}>
-                    <div className="flex items-center gap-4">
-                      <motion.button 
-                        whileTap={{ scale: 0.8 }}
-                        onClick={() => toggleTaskMutation.mutate({ id: task.id, is_completed: !task.is_completed })}
-                        className={`w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${task.is_completed ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-200'}`}
-                      >
-                        {task.is_completed && (
-                          <motion.div
-                            initial={{ scale: 0 }}
-                            animate={{ scale: 1 }}
-                            transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                          >
-                            <Check size={14} />
-                          </motion.div>
-                        )}
-                      </motion.button>
-                      <div className="relative">
-                        <span className={`text-sm font-medium transition-all duration-300 ${task.is_completed ? 'text-slate-400' : 'text-slate-700'}`}>
-                          {task.title}
-                        </span>
-                        {task.reminder_time && !task.is_completed && (
-                          <div className="flex items-center gap-1 mt-0.5 text-[10px] text-orange-600 font-bold">
-                            <Clock size={10} /> {new Date(task.reminder_time).toLocaleString('tr-TR', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })}
-                          </div>
-                        )}
-                        {task.is_completed && (
-                          <motion.div 
-                            initial={{ width: 0 }}
-                            animate={{ width: "100%" }}
-                            className="absolute left-0 top-1/2 h-[1px] bg-slate-300 -translate-y-1/2"
-                          />
-                        )}
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      {!task.is_completed && (
-                        <div className="relative group">
-                          <button className="p-2 text-slate-300 hover:text-orange-600 transition-colors">
-                            <Bell size={16} />
-                          </button>
-                          <input 
-                            type="datetime-local" 
-                            className="absolute inset-0 opacity-0 cursor-pointer"
-                            onChange={(e) => {
-                              if (e.target.value) {
-                                // Since updatePersonalTaskMutation is in MainApp, I'll need to use it here.
-                                // But I can just use a local mutation or call api directly.
-                                // Let's use a local mutation for consistency.
-                                updatePersonalTaskMutation.mutate({ id: task.id, data: { reminder_time: e.target.value, notified: false } });
-                              }
-                            }}
-                          />
-                        </div>
-                      )}
-                      <button 
-                        onClick={() => deletePersonalTaskMutation.mutate(task.id)}
-                        className="p-2 text-slate-300 hover:text-red-500 transition-colors"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </Card>
-                </motion.div>
-              ))}
-            </AnimatePresence>
-          </div>
-        </section>
-
-        {/* Notes Section */}
-        <section className="space-y-4">
-          <h2 className="text-sm font-bold text-slate-400 uppercase tracking-wider">Notlarım</h2>
-          <div className="grid grid-cols-1 gap-4">
-            {notes.length === 0 ? (
-              <p className="text-center py-8 text-slate-400 text-sm italic">Henüz bir not eklenmedi.</p>
-            ) : notes.map((note: any) => (
-              <Card key={note.id} className="p-5 space-y-3">
-                <div className="flex justify-between items-start">
-                  <h3 className="font-bold text-slate-900">{note.title}</h3>
-                  <button 
-                    onClick={() => deleteNoteMutation.mutate(note.id)}
-                    className="p-1 text-slate-300 hover:text-red-500"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-                <p className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{note.content}</p>
-                <div className="text-[10px] text-slate-400 font-medium">
-                  {new Date(note.updated_at).toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', hour: '2-digit', minute: '2-digit' })}
-                </div>
-              </Card>
-            ))}
-          </div>
-        </section>
-
-        {/* Add Note Modal */}
-        <AnimatePresence>
-          {showAddNote && (
-            <>
-              <motion.div 
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60]"
-                onClick={() => setShowAddNote(false)}
-              />
-              <motion.div 
-                initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-                className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[40px] p-8 z-[70] max-h-[90vh] overflow-y-auto"
-              >
-                <div className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-8" />
-                <h3 className="text-xl font-bold text-slate-900 mb-6">Yeni Not Ekle</h3>
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  addNoteMutation.mutate({
-                    title: formData.get('title') as string,
-                    content: formData.get('content') as string
-                  });
-                }} className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Başlık</label>
-                    <input name="title" required className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-orange-500" placeholder="Not başlığı..." />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">İçerik</label>
-                    <textarea name="content" required className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm min-h-[150px] outline-none focus:ring-2 focus:ring-orange-500" placeholder="Notunuzu buraya yazın..." />
-                  </div>
-                  <button type="submit" disabled={addNoteMutation.isPending} className="w-full py-4 bg-orange-600 text-white rounded-2xl font-bold shadow-lg shadow-orange-200 active:scale-95 transition-all">
-                    {addNoteMutation.isPending ? 'Kaydediliyor...' : 'Notu Kaydet'}
-                  </button>
-                </form>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-
-        {/* Add Task Modal */}
-        <AnimatePresence>
-          {showAddTask && (
-            <>
-              <motion.div 
-                initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-                className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60]"
-                onClick={() => setShowAddTask(false)}
-              />
-              <motion.div 
-                initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-                className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[40px] p-8 z-[70]"
-              >
-                <div className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-8" />
-                <h3 className="text-xl font-bold text-slate-900 mb-6">Yeni Görev Ekle</h3>
-                <form onSubmit={(e) => {
-                  e.preventDefault();
-                  const formData = new FormData(e.currentTarget);
-                  const reminder_time = formData.get('reminderTime') as string;
-                  addPersonalTaskMutation.mutate({
-                    title: formData.get('title') as string,
-                    is_completed: false,
-                    priority: 'medium',
-                    ...(reminder_time ? { reminder_time } : {})
-                  });
-                }} className="space-y-6">
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Görev Tanımı</label>
-                    <input name="title" required className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-orange-500" placeholder="Ne yapılması gerekiyor?" />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider">Hatırlatıcı (İsteğe Bağlı)</label>
-                    <input type="datetime-local" name="reminderTime" className="w-full bg-slate-50 border border-slate-100 rounded-2xl p-4 text-sm outline-none focus:ring-2 focus:ring-orange-500" />
-                  </div>
-                  <button type="submit" disabled={addPersonalTaskMutation.isPending} className="w-full py-4 bg-orange-600 text-white rounded-2xl font-bold shadow-lg shadow-orange-200 active:scale-95 transition-all">
-                    {addPersonalTaskMutation.isPending ? 'Ekleniyor...' : 'Görevi Ekle'}
-                  </button>
-                </form>
-              </motion.div>
-            </>
-          )}
-        </AnimatePresence>
-      </motion.div>
-    );
-  };
-
-
-
-  const RegionSetupModal = ({ profile, onComplete }: { profile: UserProfile, onComplete: () => void }) => {
-  const { updateProfileData } = useAuth();
-  const [step, setStep] = useState(1);
-  const [region, setRegion] = useState({
-    city: 'İstanbul',
-    district: '',
-    neighborhoods: [] as string[]
-  });
-
-  const cities = locationService.getCities();
-  const districts = region.city ? locationService.getDistricts(region.city) : [];
-  const neighborhoods = (region.city && region.district) ? locationService.getNeighborhoods(region.city, region.district) : [];
-
-  const [isSaving, setIsSaving] = useState(false);
-
-  const handleSave = async () => {
-    if (!region.city || !region.district || region.neighborhoods.length === 0) return;
-    setIsSaving(true);
-    try {
-      await updateProfileData({ region });
-      onComplete();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  return (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="fixed inset-0 bg-slate-900 z-[200] flex items-center justify-center p-6"
-    >
-      <div className="absolute top-0 left-0 w-full h-full opacity-20 pointer-events-none">
-        <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-orange-600 rounded-full blur-[120px]" />
-        <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-emerald-600 rounded-full blur-[120px]" />
-      </div>
-
-      <motion.div 
-        initial={{ y: 20, opacity: 0 }}
-        animate={{ y: 0, opacity: 1 }}
-        className="bg-white w-full max-w-md rounded-[40px] p-8 relative z-10 shadow-2xl"
-      >
-        <div className="text-center mb-8">
-          <div className="w-16 h-16 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600 mx-auto mb-4">
-            <MapPin size={32} />
-          </div>
-          <h2 className="text-2xl font-bold text-slate-900">Bölgeni Belirle</h2>
-          <p className="text-sm text-slate-500 mt-2">Uzman olduğun bölgeyi seçerek Portfy'ı kişiselleştir.</p>
-        </div>
-
-        <div className="space-y-6">
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Şehir</label>
-            <select 
-              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-              value={region.city}
-              onChange={e => setRegion({...region, city: e.target.value, district: '', neighborhoods: []})}
-            >
-              {cities.map(c => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </div>
-
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">İlçe (Maks. 1)</label>
-            <select 
-              className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-              value={region.district}
-              onChange={e => setRegion({...region, district: e.target.value, neighborhoods: []})}
-            >
-              <option value="">İlçe Seçiniz</option>
-              {districts.map(d => <option key={d} value={d}>{d}</option>)}
-            </select>
-          </div>
-
-          {region.district && (
-            <div className="space-y-2">
-              <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mahalleler (Maks. 3)</label>
-              <div className="grid grid-cols-2 gap-2 max-h-40 overflow-y-auto p-1">
-                {neighborhoods.map(n => (
-                  <button
-                    key={n}
-                    onClick={() => {
-                      if (region.neighborhoods.includes(n)) {
-                        setRegion({...region, neighborhoods: region.neighborhoods.filter(item => item !== n)});
-                      } else if (region.neighborhoods.length < 3) {
-                        setRegion({...region, neighborhoods: [...region.neighborhoods, n]});
-                      }
-                    }}
-                    className={`p-3 rounded-xl text-xs font-bold transition-all border-2 ${
-                      region.neighborhoods.includes(n) 
-                        ? 'bg-orange-600 border-orange-600 text-white' 
-                        : 'bg-slate-50 border-slate-100 text-slate-600 hover:border-orange-200'
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-              <div className="text-[10px] text-slate-400 mt-1">
-                {region.neighborhoods.length}/3 mahalle seçildi
-              </div>
-            </div>
-          )}
-
-          <button 
-            onClick={handleSave}
-            disabled={!region.city || !region.district || region.neighborhoods.length === 0 || isSaving}
-            className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20 disabled:opacity-50"
-          >
-            {isSaving ? 'Kaydediliyor...' : 'Bölgemi Kaydet ve Başla'}
-          </button>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-};
-
 function MainApp() {
   const { categories } = useCategories();
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -1231,23 +662,44 @@ function MainApp() {
   });
 
   const completeMorningRitualMutation = useMutation({
-    mutationFn: api.completeMorningRitual,
+    mutationFn: async () => {
+      await api.startDay();
+      return api.completeMorningRitual();
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] });
       setShowDailyRadar(false);
+      setToast({ message: "Güne harika bir başlangıç yaptın!", type: 'success' });
+    }
+  });
+
+  const startDayMutation = useMutation({
+    mutationFn: api.startDay,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] });
+      setToast({ message: "Günün başarıyla başlatıldı!", type: 'success' });
+    },
+    onError: (error: any) => {
+      console.error("Günü başlatma hatası:", error);
+      setToast({ message: "Günü başlatırken bir hata oluştu: " + (error.message || "Bilinmeyen hata"), type: 'error' });
     }
   });
 
   const completeEveningRitualMutation = useMutation({
-    mutationFn: (stats: any) => {
+    mutationFn: async (stats: any) => {
       console.log("Mutation triggered: completeEveningRitual", stats);
+      await api.endDay(stats);
       return api.completeEveningRitual(stats);
     },
     onSuccess: () => {
       console.log("Mutation SUCCESS: completeEveningRitual");
       queryClient.invalidateQueries({ queryKey: ['profile'] });
       queryClient.invalidateQueries({ queryKey: ['dailyStats'] });
+      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] });
       setShowDayCloser(false);
+      setToast({ message: "Günü başarıyla kapattın. İyi dinlenmeler!", type: 'success' });
       confetti({
         particleCount: 150,
         spread: 70,
@@ -1257,16 +709,21 @@ function MainApp() {
     },
     onError: (error: any) => {
       console.error("Mutation ERROR: completeEveningRitual", error);
-      alert("Günü kapatırken bir hata oluştu: " + error.message);
+      setToast({ message: "Günü kapatırken bir hata oluştu: " + error.message, type: 'error' });
     }
   });
 
   useEffect(() => {
     if (profile) {
-      const today = new Date().toISOString().split('T')[0];
-      const lastRitual = profile.last_ritual_completed_at ? profile.last_ritual_completed_at.split('T')[0] : null;
+      const getTodayStr = () => {
+        const now = new Date();
+        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      };
+      const today = getTodayStr();
+      const localStarted = localStorage.getItem(`day_started_${profile.uid}_${today}`);
+      const lastStarted = profile.last_day_started_at ? profile.last_day_started_at.split('T')[0] : (profile.last_active_date || null);
       
-      if (lastRitual !== today) {
+      if (lastStarted !== today && !localStarted) {
         const hour = new Date().getHours();
         if (hour >= 5 && hour < 12) {
           setShowDailyRadar(true);
@@ -1471,6 +928,14 @@ function MainApp() {
       queryClient.invalidateQueries({ queryKey: ['coachInsights', profile?.uid] });
       queryClient.invalidateQueries({ queryKey: ['profile', profile?.uid] });
       setToast({ message: "Görev başarıyla tamamlandı!", type: 'success' });
+      
+      // Subtle confetti celebration
+      confetti({
+        particleCount: 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: ['#ea580c', '#f97316', '#fb923c', '#fdba74'] // Orange shades matching the theme
+      });
     },
     onError: (error: any) => {
       console.error("Görev tamamlama hatası:", error);
@@ -3792,6 +3257,15 @@ function MainApp() {
     );
   };
 
+  const QuickAddBtn = ({ icon, label, color, onClick }: { icon: React.ReactNode, label: string, color: string, onClick?: () => void }) => (
+    <button onClick={onClick} className="flex flex-col items-center gap-3 group">
+      <div className={`w-16 h-16 ${color} rounded-3xl flex items-center justify-center transition-transform group-active:scale-90`}>
+        {icon}
+      </div>
+      <span className="text-xs font-bold text-slate-600">{label}</span>
+    </button>
+  );
+
   // Quick Add Menüsü
   const QuickAddMenu = () => (
     <AnimatePresence>
@@ -3851,728 +3325,6 @@ function MainApp() {
     </AnimatePresence>
   );
 
-  const QuickAddBtn = ({ icon, label, color, onClick }: { icon: React.ReactNode, label: string, color: string, onClick?: () => void }) => (
-    <button onClick={onClick} className="flex flex-col items-center gap-3 group">
-      <div className={`w-16 h-16 ${color} rounded-3xl flex items-center justify-center transition-transform group-active:scale-90`}>
-        {icon}
-      </div>
-      <span className="text-xs font-bold text-slate-600">{label}</span>
-    </button>
-  );
-
-  const renderDashboard = () => {
-    const [dashboardTab, setDashboardTab] = useState<'action' | 'analysis'>('action');
-    const activeGamifiedTasks = gamifiedTasks.filter(t => !t.is_completed).slice(0, 3);
-    const completedGamifiedTasksCount = gamifiedTasks.filter(t => t.is_completed).length;
-    
-    const potentialRevenue = properties.reduce((acc, p) => {
-      if (['Satıldı', 'Pasif'].includes(p.status)) return acc;
-      return acc + ((p.price * p.commission_rate) / 100) * (p.sale_probability || 0.5);
-    }, 0);
-
-    return (
-      <motion.div 
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="p-6 space-y-8 pb-32"
-      >
-        {/* Header */}
-        <header className="flex justify-between items-center">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 bg-gradient-to-tr from-[#FF3D00] to-[#FF9100] rounded-xl flex items-center justify-center shadow-lg shadow-orange-200">
-              <Building2 size={20} className="text-white" />
-            </div>
-            <div>
-              <h1 className="text-xl font-black text-slate-900 tracking-tight leading-none">Portfy</h1>
-              <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Bölge Hakimiyeti</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-3">
-            <div className="text-right hidden sm:block">
-              <div className="text-xs font-bold text-slate-900">{profile?.display_name}</div>
-              <div className="text-[10px] font-bold text-orange-600 uppercase tracking-wider">{gamifiedStats?.level_name || 'Broker'}</div>
-            </div>
-            <div className="relative cursor-pointer active:scale-95 transition-transform" onClick={() => setActiveTab('profil')}>
-              <div className="w-10 h-10 bg-slate-200 rounded-xl overflow-hidden border-2 border-white shadow-sm">
-                <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.uid}`} alt="Profile" referrerPolicy="no-referrer" />
-              </div>
-              <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
-            </div>
-          </div>
-        </header>
-
-        {/* Dashboard Tabs */}
-        <div className="flex p-1 bg-slate-100 rounded-2xl">
-          <button 
-            onClick={() => setDashboardTab('action')}
-            className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${dashboardTab === 'action' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
-          >
-            Aksiyon Merkezi
-          </button>
-          <button 
-            onClick={() => setDashboardTab('analysis')}
-            className={`flex-1 py-3 rounded-xl text-xs font-bold transition-all ${dashboardTab === 'analysis' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500'}`}
-          >
-            Gelir & Analiz
-          </button>
-        </div>
-
-        <AnimatePresence mode="wait">
-          {dashboardTab === 'action' ? (
-            <motion.div 
-              key="action-tab"
-              initial={{ opacity: 0, x: -10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: 10 }}
-              className="space-y-8"
-            >
-              {/* AI Coach & Momentum (Moved here) */}
-              <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="!bg-slate-900 !text-white border-none overflow-hidden relative md:col-span-2">
-                  <div className="relative z-10 flex items-center gap-6">
-                    <div className="relative w-20 h-20 shrink-0">
-                      <svg className="w-full h-full" viewBox="0 0 36 36">
-                        <path className="text-slate-800 stroke-current" strokeWidth="3" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                        <path className={`${gamifiedStats?.momentum && gamifiedStats.momentum < 40 ? 'text-red-500' : gamifiedStats?.momentum && gamifiedStats.momentum < 70 ? 'text-amber-500' : 'text-emerald-500'} stroke-current`} strokeWidth="3" strokeDasharray={`${gamifiedStats?.momentum || 0}, 100`} strokeLinecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
-                      </svg>
-                      <div className="absolute inset-0 flex items-center justify-center flex-col">
-                        <span className="text-xl font-bold text-white">{gamifiedStats?.momentum || 0}</span>
-                        <span className="text-[8px] uppercase font-bold text-slate-400">Momentum</span>
-                      </div>
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-2 text-orange-500">
-                        <Sparkles size={16} />
-                        <span className="text-[10px] font-bold uppercase tracking-widest">AI Koç Önerisi</span>
-                      </div>
-                      <p className="text-sm font-bold leading-relaxed text-white italic">
-                        "{coachInsights?.daily_tip || 'Yükleniyor...'}"
-                      </p>
-                    </div>
-                  </div>
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/20 rounded-full -mr-16 -mt-16 blur-3xl" />
-                </Card>
-
-                <Card className="!bg-orange-600 !text-white border-none shadow-lg shadow-orange-200">
-                  <div className="flex justify-between items-start">
-                    <Trophy size={20} className="text-white opacity-80" />
-                    <Badge variant="info" className="!bg-white !text-orange-600 border-none">{gamifiedStats?.level_name || '...'}</Badge>
-                  </div>
-                  <div className="mt-4">
-                    <div className="text-2xl font-bold text-white">{gamifiedStats?.points.toLocaleString() || '0'}</div>
-                    <div className="text-white font-bold text-[10px] uppercase tracking-wider mt-1">Toplam Puan</div>
-                  </div>
-                </Card>
-
-                <Card>
-                  <div className="flex justify-between items-start">
-                    <Zap size={20} className="text-amber-500" />
-                    <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Seri</div>
-                  </div>
-                  <div className="mt-4">
-                    <div className="text-2xl font-bold text-slate-900">{gamifiedStats?.streak || 0} Gün</div>
-                    <div className="text-slate-600 text-[10px] uppercase font-bold tracking-wider mt-1">Peş Peşe Seri</div>
-                  </div>
-                </Card>
-              </section>
-
-              {/* Rescue Mode Trigger Card */}
-              {(() => {
-                const currentHour = new Date().getHours();
-                const isLowProgress = (gamifiedStats?.daily_progress || 0) < 40;
-                const canRescue = currentHour >= 15 && isLowProgress && !rescueSession;
-                
-                if (!canRescue) return null;
-
-                return (
-                  <Card className="bg-orange-50 border-orange-100 p-6 relative overflow-hidden">
-                    <div className="relative z-10 flex items-center justify-between">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600 shadow-sm">
-                          <Zap size={24} />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-orange-900">Günü Kurtarma Zamanı!</h4>
-                          <p className="text-xs text-orange-700 mt-1">Günü %100 verimle kapatmak için hala vaktin var.</p>
-                        </div>
-                      </div>
-                      <button 
-                        onClick={() => startRescueMutation.mutate()}
-                        disabled={startRescueMutation.isPending}
-                        className="px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-orange-200 active:scale-95 transition-all"
-                      >
-                        {startRescueMutation.isPending ? 'Hazırlanıyor...' : 'Başlat'}
-                      </button>
-                    </div>
-                    <div className="absolute top-0 right-0 w-24 h-24 bg-orange-500/5 rounded-full -mr-12 -mt-12 blur-2xl" />
-                  </Card>
-                );
-              })()}
-
-              {/* Smart Insights Section */}
-              <section className="space-y-4">
-                <h2 className="text-lg font-bold text-slate-900">Akıllı Öneriler</h2>
-                {properties.some(p => p.market_analysis?.status === 'Pahalı' && p.status === 'Yayında') ? (
-                  properties.filter(p => p.market_analysis?.status === 'Pahalı' && p.status === 'Yayında').slice(0, 1).map(p => (
-                    <Card key={`alert-${p.id}`} className="bg-amber-50 border-amber-100">
-                      <div className="flex gap-4">
-                        <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
-                          <Sparkles size={20} />
-                        </div>
-                        <div>
-                          <h4 className="text-sm font-bold text-amber-900">Fiyat Revizesi Önerisi</h4>
-                          <p className="text-xs text-amber-700 mt-1">"{p.title}" portföyü piyasa ortalamasının üzerinde. %5 indirim satışı hızlandırabilir.</p>
-                        </div>
-                      </div>
-                    </Card>
-                  ))
-                ) : (
-                  <Card className="bg-emerald-50 border-emerald-100">
-                    <div className="flex gap-4">
-                      <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600 shrink-0">
-                        <CheckCircle2 size={20} />
-                      </div>
-                      <div>
-                        <h4 className="text-sm font-bold text-emerald-900">Her Şey Yolunda</h4>
-                        <p className="text-xs text-emerald-700 mt-1">Şu an acil aksiyon gerektiren bir portföyün bulunmuyor.</p>
-                      </div>
-                    </div>
-                  </Card>
-                )}
-              </section>
-
-              {/* Daily Tasks List (Günün Görevleri) */}
-              <section className="space-y-4">
-                <div className="flex justify-between items-center px-1">
-                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">Günün Görevleri</h2>
-                  <div className="flex items-center gap-2">
-                    <button 
-                      onClick={() => refreshTasksMutation.mutate()}
-                      disabled={refreshTasksMutation.isPending || isGamifiedTasksLoading}
-                      className="p-1.5 text-slate-400 hover:text-orange-600 transition-colors disabled:opacity-50"
-                      title="Görevleri Yeniden Oluştur"
-                    >
-                      <RefreshCw size={14} className={refreshTasksMutation.isPending || isGamifiedTasksLoading ? 'animate-spin' : ''} />
-                    </button>
-                    <div className="flex items-center gap-2 bg-white px-3 py-1.5 rounded-full border border-slate-100 shadow-sm">
-                      <div className="w-1.5 h-1.5 bg-orange-500 rounded-full animate-pulse" />
-                      <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">
-                        {gamifiedStats?.tasks_completed_today}/{gamifiedStats?.total_tasks_today}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-                <div className="grid grid-cols-1 gap-3">
-                  {isGamifiedTasksLoading ? (
-                    <div className="py-12 text-center space-y-3">
-                      <motion.div 
-                        animate={{ rotate: 360 }}
-                        transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                        className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full mx-auto"
-                      />
-                      <p className="text-xs text-slate-400 font-medium">Görevler hazırlanıyor...</p>
-                    </div>
-                  ) : isGamifiedTasksError ? (
-                    <div className="py-12 text-center space-y-3 bg-red-50/50 rounded-[32px] border border-red-100/50 shadow-sm">
-                      <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 mx-auto mb-2">
-                        <AlertCircle size={24} />
-                      </div>
-                      <h4 className="text-sm font-bold text-red-900">Bir Hata Oluştu</h4>
-                      <p className="text-xs text-red-700 px-8">Görevler yüklenirken bir sorun oluştu.</p>
-                      <button 
-                        onClick={() => queryClient.invalidateQueries({ queryKey: ['gamifiedTasks', profile?.uid] })}
-                        className="mt-2 px-6 py-2.5 bg-red-600 text-white rounded-xl text-xs font-bold active:scale-95 transition-all"
-                      >
-                        Tekrar Dene
-                      </button>
-                    </div>
-                  ) : gamifiedTasks.length === 0 ? (
-                    <div className="py-12 text-center space-y-3 bg-white rounded-[32px] border border-slate-100 shadow-sm">
-                      <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mx-auto mb-2">
-                        <ClipboardList size={24} />
-                      </div>
-                      <h4 className="text-sm font-bold text-slate-900">Görevler Bulunamadı</h4>
-                      <p className="text-xs text-slate-400 px-8">Bugün için henüz görevlerin oluşturulmadı.</p>
-                      <button 
-                        onClick={() => refreshTasksMutation.mutate()}
-                        disabled={refreshTasksMutation.isPending}
-                        className="mt-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold active:scale-95 transition-all disabled:opacity-50"
-                      >
-                        {refreshTasksMutation.isPending ? 'Oluşturuluyor...' : 'Görevleri Oluştur'}
-                      </button>
-                    </div>
-                  ) : gamifiedTasks.filter(t => !t.is_completed).length === 0 ? (
-                    <Card className="p-8 text-center bg-emerald-50/30 border-emerald-100/50">
-                      <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600 mx-auto mb-3">
-                        <CheckCircle2 size={24} />
-                      </div>
-                      <h4 className="text-sm font-bold text-emerald-900">Harika İş!</h4>
-                      <p className="text-xs text-emerald-700 mt-1">Bugünkü tüm görevlerini tamamladın.</p>
-                    </Card>
-                  ) : (
-                    gamifiedTasks.filter(t => !t.is_completed).slice(0, 3).map(task => (
-                      <Card 
-                        key={task.id} 
-                        onClick={() => !completeTaskMutation.isPending && completeTaskMutation.mutate({ task })}
-                        className="p-5 transition-all border-none shadow-sm hover:shadow-md hover:ring-1 hover:ring-orange-100 cursor-pointer active:scale-[0.98] group"
-                      >
-                        <div className="flex items-center gap-5">
-                          <div className="w-12 h-12 rounded-2xl flex items-center justify-center transition-all bg-slate-50 text-slate-400 group-hover:bg-orange-100 group-hover:text-orange-600">
-                            {completeTaskMutation.isPending ? (
-                              <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Circle size={24} /></motion.div>
-                            ) : <Circle size={24} />}
-                          </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2">
-                              <h4 className="text-sm font-bold text-slate-900">{task.title}</h4>
-                              {task.category === 'main' && <Badge variant="warning" className="text-[8px] px-1.5 py-0">Kritik</Badge>}
-                            </div>
-                            <p className="text-[10px] text-slate-400 mt-1 font-medium">{task.ai_reason || 'Günlük gelişim görevi'}</p>
-                          </div>
-                          <div className="text-right">
-                            <div className="text-sm font-black text-orange-600">+{task.points}</div>
-                            <div className="text-[8px] text-slate-400 uppercase font-bold tracking-wider">XP</div>
-                          </div>
-                        </div>
-                      </Card>
-                    ))
-                  )}
-
-                  {/* Completed Tasks Summary (Horizontal Scroll) */}
-                  {gamifiedTasks.filter(t => t.is_completed).length > 0 && (
-                    <div className="mt-6 space-y-3">
-                      <div className="flex items-center justify-between px-1">
-                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tamamlananlar</div>
-                        <div className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                          {gamifiedTasks.filter(t => t.is_completed).length} Görev
-                        </div>
-                      </div>
-                      <div className="relative group">
-                        <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x">
-                          {gamifiedTasks.filter(t => t.is_completed).map(task => (
-                            <motion.div 
-                              initial={{ opacity: 0, scale: 0.9 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              key={task.id} 
-                              className="flex-shrink-0 bg-white text-slate-600 px-4 py-2.5 rounded-2xl text-[11px] font-bold flex items-center gap-2 border border-slate-100 shadow-sm snap-start"
-                            >
-                              <div className="w-5 h-5 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center">
-                                <CheckCircle2 size={12} />
-                              </div>
-                              {task.title}
-                            </motion.div>
-                          ))}
-                        </div>
-                        {/* Fade effect for scroll */}
-                        <div className="absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-slate-50 to-transparent pointer-events-none" />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              </section>
-
-              {/* Day Closer Trigger (Improved UI) */}
-              <section className="pt-4">
-                <motion.button 
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => setShowDayCloser(true)}
-                  className="w-full bg-slate-900 text-white p-8 rounded-[40px] flex items-center justify-between group shadow-2xl shadow-slate-900/20 relative overflow-hidden"
-                >
-                  <div className="relative z-10 flex items-center gap-6">
-                    <div className="w-16 h-16 bg-slate-800 rounded-3xl flex items-center justify-center text-indigo-400 shadow-inner group-hover:scale-110 transition-transform">
-                      <Moon size={32} />
-                    </div>
-                    <div className="text-left">
-                      <h4 className="font-bold text-xl text-white">Günü Kapat</h4>
-                      <p className="text-xs text-slate-400 mt-1 font-medium">Bugünkü performansını mühürle ve serini koru.</p>
-                    </div>
-                  </div>
-                  <div className="relative z-10 w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center group-hover:bg-white/20 transition-colors">
-                    <ArrowRight size={24} />
-                  </div>
-                  {/* Decorative element */}
-                  <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/10 rounded-full -mr-16 -mt-16 blur-3xl" />
-                </motion.button>
-              </section>
-            </motion.div>
-          ) : (
-            <motion.div 
-              key="analysis-tab"
-              initial={{ opacity: 0, x: 10 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: -10 }}
-              className="space-y-8"
-            >
-              {/* Revenue Overview */}
-              <section className="space-y-4">
-                <div className="flex justify-between items-center">
-                  <h2 className="text-lg font-bold text-slate-900 tracking-tight">Gelir Görünümü</h2>
-                  <div className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">Canlı Pipeline</div>
-                </div>
-                {revenueStats && <RevenueOverview stats={revenueStats} loading={revenueLoading} />}
-              </section>
-
-              {/* Pipeline Funnel */}
-              <section className="space-y-4">
-                <PipelineFunnel properties={properties} />
-              </section>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </motion.div>
-    );
-  };
-
-  const renderPortfolios = () => {
-    const statuses = ['Yeni', 'Hazırlanıyor', 'Yayında', 'İlgi Var', 'Pazarlık', 'Satıldı'];
-    
-    const filteredProperties = properties.filter(p => {
-      const matchesDistrict = selectedDistrict === 'all' || p.address.district === selectedDistrict;
-      return matchesDistrict;
-    });
-
-    return (
-      <motion.div 
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        className="flex flex-col h-screen"
-      >
-        {/* Sub Header */}
-        <div className="p-6 pb-2 space-y-4 bg-white border-b border-slate-100">
-          <div className="flex justify-between items-center">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Portföylerim</h1>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => setShowImportUrlModal(true)}
-                className="p-2 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 transition-all flex items-center gap-2 text-xs font-bold"
-              >
-                <Globe size={18} /> URL İçe Aktar
-              </button>
-              <button 
-                onClick={() => setViewMode('list')}
-                className={`p-2 rounded-xl transition-all ${viewMode === 'list' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'}`}
-              >
-                <LayoutDashboard size={20} />
-              </button>
-              <button 
-                onClick={() => setViewMode('pipeline')}
-                className={`p-2 rounded-xl transition-all ${viewMode === 'pipeline' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'}`}
-              >
-                <BarChart3 size={20} />
-              </button>
-            </div>
-          </div>
-          
-          {/* Search & Filter */}
-          <div className="space-y-4">
-            <div className="flex gap-3">
-              <div className="flex-1 relative">
-                <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                <input 
-                  type="text" 
-                  placeholder="Portföy ara..." 
-                  className="w-full bg-slate-100 border-none rounded-2xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-orange-500"
-                />
-              </div>
-              <button className="p-3 bg-slate-100 rounded-2xl text-slate-600">
-                <Filter size={20} />
-              </button>
-            </div>
-
-            {/* District Filter (Sorted by Efficiency) */}
-            <div className="flex gap-2 overflow-x-auto pb-2 -mx-6 px-6 no-scrollbar">
-              <button 
-                onClick={() => setSelectedDistrict('all')}
-                className={`px-4 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all ${selectedDistrict === 'all' ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-400'}`}
-              >
-                Tümü
-              </button>
-              {regionScores.map((region: any) => (
-                <button 
-                  key={region.district}
-                  onClick={() => setSelectedDistrict(region.district)}
-                  className={`px-4 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap flex items-center gap-2 transition-all ${selectedDistrict === region.district ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-400'}`}
-                >
-                  {region.district}
-                  <span className={`text-[8px] px-1.5 py-0.5 rounded-md ${selectedDistrict === region.district ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-600'}`}>
-                    %{region.score}
-                  </span>
-                </button>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Content Area */}
-        <div className="flex-1 overflow-auto bg-slate-50">
-          {viewMode === 'list' ? (
-            <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {propertiesLoading ? (
-                <div className="text-center p-12 text-slate-400 col-span-full">Yükleniyor...</div>
-              ) : filteredProperties.length === 0 ? (
-                <div className="text-center p-20 space-y-4 col-span-full">
-                  <div className="w-20 h-20 bg-slate-100 rounded-[32px] flex items-center justify-center mx-auto text-slate-300">
-                    <Home size={40} />
-                  </div>
-                  <p className="text-slate-500 text-sm">Bu bölgede henüz portföy yok.</p>
-                </div>
-              ) : filteredProperties.map(p => (
-                <PropertyCard key={p.id} property={p} onClick={() => setSelectedProperty(p)} />
-              ))}
-            </div>
-          ) : (
-            <div className="p-6 flex gap-6 overflow-x-auto h-full items-start">
-              {statuses.map(status => (
-                <PipelineColumn 
-                  key={status} 
-                  title={status} 
-                  status={status}
-                  properties={filteredProperties.filter(p => p.status === status)} 
-                  onPropertyClick={(p) => setSelectedProperty(p)}
-                />
-              ))}
-            </div>
-          )}
-        </div>
-      </motion.div>
-    );
-  };
-
-  const renderProfil = () => (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="p-6 space-y-8"
-    >
-      <div className="text-center space-y-4">
-        <div className="w-24 h-24 bg-slate-200 rounded-[32px] mx-auto overflow-hidden border-4 border-white shadow-xl">
-          <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.uid}`} alt="Profile" />
-        </div>
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900">{profile?.display_name}</h2>
-          <p className="text-slate-500 text-sm">{profile?.email}</p>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        {profile?.role === 'admin' && (
-          <Card className="flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors border-purple-100" onClick={() => setShowAdminPanel(true)}>
-            <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600">
-              <ShieldCheck size={24} />
-            </div>
-            <div className="flex-1">
-              <h4 className="text-sm font-bold text-slate-900">Admin Paneli</h4>
-              <p className="text-xs text-slate-500">
-                Kullanıcıları ve sistem ayarlarını yönet
-              </p>
-            </div>
-            <ArrowRight size={20} className="text-slate-400" />
-          </Card>
-        )}
-
-        <Card className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600">
-            <CreditCard size={24} />
-          </div>
-          <div className="flex-1">
-            <h4 className="text-sm font-bold text-slate-900">Üyelik Durumu</h4>
-            <p className="text-xs text-slate-500">
-              {profile?.subscription_type === 'none' ? 'Aktif Üyelik Yok' : `${profile?.subscription_type.split('-')[0]} Aylık Plan`}
-            </p>
-          </div>
-          <Badge variant="success">Aktif</Badge>
-        </Card>
-
-        <Card className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600">
-              <Globe size={24} />
-            </div>
-            <div className="flex-1">
-              <h4 className="text-sm font-bold text-slate-900">sahibinden.com Entegrasyonu</h4>
-              <p className="text-xs text-slate-500">
-                {brokerAccount ? `${brokerAccount.store_name} Bağlı` : 'Resmi API ile bağla'}
-              </p>
-            </div>
-            <button 
-              onClick={() => brokerAccount ? setShowExternalListings(true) : setShowIntegrationModal(true)}
-              className="p-2 bg-slate-100 rounded-xl text-slate-600"
-            >
-              {brokerAccount ? <ExternalLink size={18} /> : <Plus size={18} />}
-            </button>
-          </div>
-          {brokerAccount && (
-            <div className="flex gap-2">
-              <button 
-                onClick={() => syncListingsMutation.mutate()}
-                disabled={syncListingsMutation.isPending}
-                className="flex-1 py-2 bg-slate-50 border border-slate-100 rounded-xl text-[10px] font-bold text-slate-600 flex items-center justify-center gap-2"
-              >
-                <RefreshCw size={12} className={syncListingsMutation.isPending ? 'animate-spin' : ''} />
-                Şimdi Senkronize Et
-              </button>
-            </div>
-          )}
-        </Card>
-
-        <Card className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600">
-              <Bell size={24} />
-            </div>
-            <div className="flex-1">
-              <h4 className="text-sm font-bold text-slate-900">Günlük Bildirim</h4>
-              <p className="text-xs text-slate-500">Hatırlatma saati ayarla</p>
-            </div>
-          </div>
-          <div className="flex gap-2">
-            <input 
-              type="time" 
-              className="flex-1 bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-orange-500"
-              defaultValue={profile?.notification_settings?.time || "09:00"}
-              onChange={(e) => {
-                if (profile) {
-                  updateProfileMutation.mutate({ 
-                    uid: profile.uid, 
-                    data: { 
-                      notification_settings: { 
-                        ...(profile.notification_settings || { push: true, email: false, time: "09:00" }), 
-                        time: e.target.value 
-                      } 
-                    } 
-                  });
-                }
-              }}
-            />
-          </div>
-        </Card>
-
-        <Card className="space-y-4">
-          <div className="flex items-center gap-4">
-            <div className="w-12 h-12 bg-emerald-50 rounded-2xl flex items-center justify-center text-emerald-600">
-              <MessageSquare size={24} />
-            </div>
-            <div className="flex-1">
-              <h4 className="text-sm font-bold text-slate-900">Mesaj Şablonları</h4>
-              <p className="text-xs text-slate-500">Hızlı paylaşım mesajlarını yönet</p>
-            </div>
-            <button 
-              onClick={() => setShowTemplateManager(true)}
-              className="p-2 bg-slate-100 rounded-xl text-slate-600"
-            >
-              <Plus size={18} />
-            </button>
-          </div>
-        </Card>
-
-        <button 
-          onClick={logout}
-          className="w-full p-4 bg-red-50 text-red-600 rounded-2xl font-bold text-sm flex items-center justify-center gap-2"
-        >
-          <LogOut size={18} /> Çıkış Yap
-        </button>
-      </div>
-    </motion.div>
-  );
-
-
-  const renderCRM = () => (
-    <motion.div 
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      className="p-6 space-y-6"
-    >
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Müşteri Rehberi</h1>
-        <div className="flex gap-2">
-          <button 
-            onClick={() => setShowWhatsAppImport(true)} 
-            className="p-3 bg-emerald-50 rounded-2xl text-emerald-600 shadow-sm border border-emerald-100 flex items-center gap-2 text-xs font-bold"
-          >
-            <MessageSquare size={18} />
-            WhatsApp'tan Aktar
-          </button>
-          <button onClick={() => setShowAddLead(true)} className="p-3 bg-orange-600 rounded-2xl text-white shadow-lg shadow-orange-200">
-            <Plus size={20} />
-          </button>
-        </div>
-      </div>
-
-      <div className="flex gap-3">
-        <div className="flex-1 relative">
-          <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-          <input 
-            type="text" 
-            placeholder="Müşteri ara..." 
-            className="w-full bg-white border border-slate-100 rounded-2xl py-3 pl-10 pr-4 text-sm shadow-sm"
-          />
-        </div>
-        <button 
-          onClick={() => { setIsAnalyzingLeads(true); analyzeLeadsMutation.mutate(leads); }}
-          disabled={isAnalyzingLeads || leads.length === 0}
-          className="p-3 bg-emerald-50 rounded-2xl text-emerald-600 flex items-center gap-2 text-xs font-bold disabled:opacity-50"
-        >
-          {isAnalyzingLeads ? (
-            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Sparkles size={16} /></motion.div>
-          ) : <Sparkles size={16} />}
-          Rehber Analizi
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {leadsLoading ? (
-          <div className="text-center p-12 text-slate-400 col-span-full">Yükleniyor...</div>
-        ) : leads.length === 0 ? (
-          <div className="text-center p-20 space-y-4 col-span-full">
-            <div className="w-20 h-20 bg-slate-100 rounded-[32px] flex items-center justify-center mx-auto text-slate-300">
-              <Users size={40} />
-            </div>
-            <p className="text-slate-500 text-sm">Henüz müşteri kaydetmedin.</p>
-          </div>
-        ) : leads.map(lead => {
-          const category = categories.find(c => c.label === lead.type);
-          const iconColor = category ? category.color : (lead.type === 'Alıcı' ? '#ea580c' : '#9333ea');
-          const iconBg = category ? `${category.color}20` : (lead.type === 'Alıcı' ? '#fff7ed' : '#faf5ff');
-          
-          return (
-          <Card key={lead.id} className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <div 
-                className="w-12 h-12 rounded-2xl flex items-center justify-center"
-                style={{ backgroundColor: iconBg, color: iconColor }}
-              >
-                <UserIcon size={24} />
-              </div>
-              <div>
-                <h4 className="font-bold text-slate-900 text-sm">{lead.name}</h4>
-                <div className="flex items-center gap-2 mt-1">
-                  <Badge variant={lead.status === 'Sıcak' ? 'warning' : 'default'}>{lead.status}</Badge>
-                  <span className="text-[10px] text-slate-400">{lead.type}</span>
-                </div>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <a 
-                href={`tel:${lead.phone}`}
-                className="p-2 bg-slate-50 rounded-xl text-orange-600"
-              >
-                <Phone size={18} />
-              </a>
-              <a 
-                href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`}
-                target="_blank"
-                rel="noreferrer"
-                className="p-2 bg-slate-50 rounded-xl text-emerald-500"
-              >
-                <MessageSquare size={18} />
-              </a>
-            </div>
-          </Card>
-        )})}
-      </div>
-    </motion.div>
-  );
-
 
   return (
     <div className="min-h-screen bg-slate-50 pb-28 font-sans text-slate-900 selection:bg-orange-100">
@@ -4597,7 +3349,7 @@ function MainApp() {
             <DayCloser 
               isPending={completeEveningRitualMutation.isPending}
               stats={{
-                tasksCompleted: gamifiedTasks.filter(t => t.is_completed).length,
+                tasks_completed: gamifiedTasks.filter(t => t.is_completed).length + personalTasks.filter(t => t.is_completed).length,
                 revenue: properties.reduce((acc, p) => acc + ((p.price * p.commission_rate) / 100) * (p.sale_probability || 0.5), 0),
                 calls: tasks.filter(t => t.type === 'Arama' && t.completed).length,
                 visits: tasks.filter(t => t.type === 'Saha' && t.completed).length
@@ -4605,7 +3357,7 @@ function MainApp() {
               onComplete={() => {
                 console.log("onComplete triggered in App.tsx");
                 completeEveningRitualMutation.mutate({
-                  tasksCompleted: gamifiedTasks.filter(t => t.is_completed).length,
+                  tasks_completed: gamifiedTasks.filter(t => t.is_completed).length + personalTasks.filter(t => t.is_completed).length,
                   revenue: properties.reduce((acc, p) => acc + ((p.price * p.commission_rate) / 100) * (p.sale_probability || 0.5), 0),
                   calls: tasks.filter(t => t.type === 'Arama' && t.completed).length,
                   visits: tasks.filter(t => t.type === 'Saha' && t.completed).length
@@ -4681,17 +3433,70 @@ function MainApp() {
           </div>
         </aside>
 
-        <main className="flex-1 w-full max-w-md md:max-w-none mx-auto px-4 md:px-8 py-6">
+        <main className="flex-1 w-full mx-auto px-4 md:px-8 py-6">
           {showAdminPanel ? (
             <AdminPanel onClose={() => setShowAdminPanel(false)} />
           ) : (
             <AnimatePresence mode="wait">
-              {activeTab === 'dashboard' && renderDashboard()}
+              {activeTab === 'dashboard' && (
+                <DashboardView 
+                  gamifiedTasks={gamifiedTasks}
+                  properties={properties}
+                  profile={profile}
+                  gamifiedStats={gamifiedStats}
+                  coachInsights={coachInsights}
+                  tasks={tasks}
+                  personalTasks={personalTasks}
+                  startRescueMutation={startRescueMutation}
+                  rescueSession={rescueSession}
+                  completeMorningRitualMutation={completeMorningRitualMutation}
+                  setActiveTab={setActiveTab}
+                  setShowAdminPanel={setShowAdminPanel}
+                  refreshTasksMutation={refreshTasksMutation}
+                  completeTaskMutation={completeTaskMutation}
+                  setShowDailyRadar={setShowDailyRadar}
+                  setShowDayCloser={setShowDayCloser}
+                  setShowMissedOpportunities={setShowMissedOpportunities}
+                  missedOpportunities={missedOpportunities}
+                  startDayMutation={startDayMutation}
+                />
+              )}
               {activeTab === 'bolgem' && <BolgemView profile={profile} />}
-              {activeTab === 'portfoyler' && renderPortfolios()}
-              {activeTab === 'crm' && renderCRM()}
+              {activeTab === 'portfoyler' && (
+                <PortfoliosView 
+                  properties={properties}
+                  selectedDistrict={selectedDistrict}
+                  setSelectedDistrict={setSelectedDistrict}
+                  viewMode={viewMode}
+                  setViewMode={setViewMode}
+                  setShowImportUrlModal={setShowImportUrlModal}
+                  regionScores={regionScores}
+                  propertiesLoading={propertiesLoading}
+                  setSelectedProperty={setSelectedProperty}
+                />
+              )}
+              {activeTab === 'crm' && (
+                <CRMView 
+                  setShowWhatsAppImport={setShowWhatsAppImport}
+                  setShowAddLead={setShowAddLead}
+                  setIsAnalyzingLeads={setIsAnalyzingLeads}
+                  analyzeLeadsMutation={analyzeLeadsMutation}
+                  leads={leads}
+                  leadsLoading={leadsLoading}
+                  categories={categories}
+                />
+              )}
               {activeTab === 'notes' && <NotesView />}
-              {activeTab === 'profil' && renderProfil()}
+              {activeTab === 'profil' && (
+                <ProfilView 
+                  profile={profile}
+                  setShowAdminPanel={setShowAdminPanel}
+                  brokerAccount={brokerAccount}
+                  setShowExternalListings={setShowExternalListings}
+                  setShowIntegrationModal={setShowIntegrationModal}
+                  logout={logout}
+                />
+              )}
               {activeTab === 'koc' && <CoachView />}
             </AnimatePresence>
           )}

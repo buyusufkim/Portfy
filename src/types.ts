@@ -25,6 +25,7 @@ export interface UserProfile {
   total_xp: number;
   broker_level: number;
   last_ritual_completed_at?: string;
+  last_day_started_at?: string;
   streak_freeze_count: number;
   last_active_date?: string;
   created_at: string;
@@ -244,6 +245,8 @@ export interface DailyStats {
   calls_made: number;
   visits_made: number;
   xp_earned: number;
+  day_started_at?: string;
+  day_ended_at?: string;
   created_at: string;
   updated_at: string;
 }

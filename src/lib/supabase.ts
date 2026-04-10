@@ -9,10 +9,18 @@ if (supabaseUrl === 'https://placeholder.supabase.co') {
   console.warn('Supabase URL is not configured. Please set VITE_SUPABASE_URL in your environment variables.');
 }
 
+const isPopup = typeof window !== 'undefined' && (
+  window.location.search.includes('popup=true') || 
+  window.location.hash.includes('access_token=') ||
+  window.location.hash.includes('error=') ||
+  window.name === 'oauth_popup' ||
+  (!!window.opener && window.opener !== window)
+);
+
 export const supabase = createClient(supabaseUrl, supabaseAnonKey, {
   auth: {
-    autoRefreshToken: true,
-    persistSession: true,
+    autoRefreshToken: !isPopup,
+    persistSession: !isPopup,
     detectSessionInUrl: true,
     storageKey: 'portfy-auth-token'
   }

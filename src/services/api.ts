@@ -29,6 +29,11 @@ const getUserId = async () => {
   return _cachedUserId;
 };
 
+const getTodayStr = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+};
+
 export const api = {
   // Profil Verileri
   getProfile: async (): Promise<UserProfile | null> => {
@@ -81,7 +86,7 @@ export const api = {
     const disciplineScore = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100;
 
     // Calculate real stats from tasks
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayStr();
     const callsToday = tks.filter(t => t.type === 'Arama' && t.completed).length;
     const appointmentsToday = tks.filter(t => t.type === 'Randevu' && t.completed).length;
 
@@ -691,59 +696,80 @@ export const api = {
     if (!user) throw new Error('Not authenticated');
     
     const now = new Date().toISOString();
+    const today = getTodayStr();
+    
     const { error } = await supabase
       .from('profiles')
-      .update({ last_ritual_completed_at: now })
+      .update({ 
+        last_day_started_at: now,
+        last_active_date: today
+      })
       .eq('uid', user.id);
     
-    if (error) throw error;
+    // If column missing, we still want to proceed
+    if (error) {
+      console.warn("Morning ritual profile update error:", error);
+      localStorage.setItem(`day_started_${user.id}_${today}`, now);
+      
+      // Try updating only last_active_date if that exists
+      try {
+        await supabase.from('profiles').update({ last_active_date: today }).eq('uid', user.id);
+      } catch (e) {
+        // Ignore
+      }
+    }
     
     await api.earnXP(50);
   },
 
-  completeEveningRitual: async (stats: { tasks_completed: number, revenue: number, calls: number, visits: number }) => {
+  completeEveningRitual: async (stats: { tasksCompleted?: number, tasks_completed?: number, revenue: number, calls: number, visits: number }) => {
     console.log("api.completeEveningRitual started with:", stats);
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
     
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayStr();
+    const tasksCompleted = stats.tasksCompleted !== undefined ? stats.tasksCompleted : (stats.tasks_completed || 0);
     
     try {
       // 1. Save daily stats (Safe Upsert)
       console.log("Step 1: Saving daily stats...");
-      const { data: existingStats } = await supabase
-        .from('user_stats')
-        .select('id')
-        .eq('agent_id', user.id)
-        .eq('date', today)
-        .maybeSingle();
+      try {
+        const { data: existingStats } = await supabase
+          .from('user_stats')
+          .select('id')
+          .eq('agent_id', user.id)
+          .eq('date', today)
+          .maybeSingle();
 
-      if (existingStats) {
-        console.log("Updating existing daily stats row:", existingStats.id);
-        const { error: updateError } = await supabase
-          .from('user_stats')
-          .update({
-            tasks_completed: stats.tasks_completed,
-            potential_revenue_handled: stats.revenue,
-            calls_made: stats.calls,
-            visits_made: stats.visits
-          })
-          .eq('id', existingStats.id);
-        if (updateError) throw updateError;
-      } else {
-        console.log("Inserting new daily stats row");
-        const { error: insertError } = await supabase
-          .from('user_stats')
-          .insert({
-            agent_id: user.id,
-            date: today,
-            tasks_completed: stats.tasks_completed,
-            potential_revenue_handled: stats.revenue,
-            calls_made: stats.calls,
-            visits_made: stats.visits,
-            xp_earned: 100
-          });
-        if (insertError) throw insertError;
+        if (existingStats) {
+          console.log("Updating existing daily stats row:", existingStats.id);
+          const { error: updateError } = await supabase
+            .from('user_stats')
+            .update({
+              tasks_completed: tasksCompleted,
+              potential_revenue_handled: stats.revenue,
+              calls_made: stats.calls,
+              visits_made: stats.visits
+            })
+            .eq('id', existingStats.id);
+          if (updateError) console.error("Error updating user_stats:", updateError);
+        } else {
+          console.log("Inserting new daily stats row");
+          const { error: insertError } = await supabase
+            .from('user_stats')
+            .insert({
+              agent_id: user.id,
+              date: today,
+              tasks_completed: tasksCompleted,
+              potential_revenue_handled: stats.revenue,
+              calls_made: stats.calls,
+              visits_made: stats.visits,
+              xp_earned: 100
+            });
+          if (insertError) console.error("Error inserting user_stats:", insertError);
+        }
+      } catch (statsError) {
+        console.error("user_stats table might be missing columns:", statsError);
       }
       console.log("Daily stats processed.");
 
@@ -821,12 +847,16 @@ export const api = {
       })
       .eq('uid', user.id);
 
-    const today = new Date().toISOString().split('T')[0];
-    const { data: daily } = await supabase.from('user_stats').select('*').eq('agent_id', user.id).eq('date', today).maybeSingle();
-    if (daily) {
-      await supabase.from('user_stats').update({ xp_earned: (daily.xp_earned || 0) + amount }).eq('id', daily.id);
-    } else {
-      await supabase.from('user_stats').insert({ agent_id: user.id, date: today, xp_earned: amount });
+    const today = getTodayStr();
+    try {
+      const { data: daily } = await supabase.from('user_stats').select('*').eq('agent_id', user.id).eq('date', today).maybeSingle();
+      if (daily) {
+        await supabase.from('user_stats').update({ xp_earned: (daily.xp_earned || 0) + amount }).eq('id', daily.id);
+      } else {
+        await supabase.from('user_stats').insert({ agent_id: user.id, date: today, xp_earned: amount });
+      }
+    } catch (e) {
+      console.error("user_stats error in earnXP:", e);
     }
   },
 
@@ -834,14 +864,19 @@ export const api = {
     const userId = await getUserId();
     if (!userId) return [];
     
-    const { data } = await supabase
-      .from('user_stats')
-      .select('*')
-      .eq('agent_id', userId)
-      .order('date', { ascending: false })
-      .limit(days);
-    
-    return (data || []) as DailyStats[];
+    try {
+      const { data } = await supabase
+        .from('user_stats')
+        .select('*')
+        .eq('agent_id', userId)
+        .order('date', { ascending: false })
+        .limit(days);
+      
+      return (data || []) as DailyStats[];
+    } catch (e) {
+      console.error("user_stats error in getDailyStats:", e);
+      return [];
+    }
   },
 
   // Mesaj Şablonları
@@ -1024,18 +1059,14 @@ export const api = {
       }
       
       // Use ISO date string for "today" to ensure consistency with Postgres DATE type
-      const now = new Date();
-      const today = now.toISOString().split('T')[0];
-      const localToday = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-
-      console.log('Date Debug - UTC:', today, 'Local:', localToday);
+      const today = getTodayStr();
 
       console.log('Fetching existing tasks for:', today);
       const { data: existingTasksData, error: fetchError } = await supabase
         .from('gamified_tasks')
         .select('*')
-        .eq('agentId', agentId)
-        .or(`date.eq.${today},date.eq.${localToday}`);
+        .eq('agent_id', agentId)
+        .eq('date', today);
       
       if (fetchError) {
         console.error('Error fetching existing tasks:', fetchError);
@@ -1044,9 +1075,9 @@ export const api = {
       
       let existingTasks = (existingTasksData || []).map((t: any) => ({
         ...t,
-        agent_id: t.agentId,
-        is_completed: t.isCompleted,
-        ai_reason: t.aiReason
+        agent_id: t.agent_id,
+        is_completed: t.isCompleted || t.is_completed,
+        ai_reason: t.aiReason || t.ai_reason
       })) as GamifiedTask[];
       console.log(`Found ${existingTasks.length} existing tasks for today:`, existingTasks.map(t => t.title));
 
@@ -1061,10 +1092,13 @@ export const api = {
         if (missingCore.length > 0) {
           console.log('Adding missing core tasks:', missingCore.map(c => c.title));
           for (const ct of missingCore) {
-            const newTask = { agentId: agentId, ...ct, isCompleted: false, date: today };
+            const newTask = { agent_id: agentId, ...ct, isCompleted: false, date: today };
             const { data: created, error: coreInsertError } = await supabase.from('gamified_tasks').insert(newTask).select().single();
             if (coreInsertError) console.error('Error inserting core task:', coreInsertError);
-            if (created) existingTasks.push(created as any);
+            if (created) existingTasks.push({
+              ...created,
+              is_completed: (created as any).isCompleted
+            } as any);
           }
         }
         return existingTasks;
@@ -1076,8 +1110,8 @@ export const api = {
         const { error: deleteError } = await supabase
           .from('gamified_tasks')
           .delete()
-          .eq('agentId', agentId)
-          .or(`date.eq.${today},date.eq.${localToday}`);
+          .eq('agent_id', agentId)
+          .eq('date', today);
         if (deleteError) {
           console.error('Error deleting existing tasks:', deleteError);
           throw deleteError;
@@ -1109,16 +1143,16 @@ export const api = {
       const tasks: any[] = [];
       
       // Always include these two tasks
-      tasks.push({ agentId: agentId, title: "Peş peşe girişini sürdür", points: 10, category: 'sweet', isCompleted: false, date: today });
-      tasks.push({ agentId: agentId, title: "Bugün 100 puan kazan", points: 20, category: 'sweet', isCompleted: false, date: today });
+      tasks.push({ agent_id: agentId, title: "Peş peşe girişini sürdür", points: 10, category: 'sweet', isCompleted: false, date: today });
+      tasks.push({ agent_id: agentId, title: "Bugün 100 puan kazan", points: 20, category: 'sweet', isCompleted: false, date: today });
 
       // 3 Sweet
       const shuffledSweet = [...sweetTemplates].sort(() => 0.5 - Math.random());
-      shuffledSweet.slice(0, 3).forEach(t => tasks.push({ agentId: agentId, title: t, points: 10, category: 'sweet', isCompleted: false, date: today }));
+      shuffledSweet.slice(0, 3).forEach(t => tasks.push({ agent_id: agentId, title: t, points: 10, category: 'sweet', isCompleted: false, date: today }));
 
       // 2 Main
       const shuffledMain = [...mainTemplates].sort(() => 0.5 - Math.random());
-      shuffledMain.slice(0, 2).forEach(t => tasks.push({ agentId: agentId, title: t, points: 50, category: 'main', isCompleted: false, date: today }));
+      shuffledMain.slice(0, 2).forEach(t => tasks.push({ agent_id: agentId, title: t, points: 50, category: 'main', isCompleted: false, date: today }));
 
       // 1 Smart
       console.log('Fetching leads for smart task...');
@@ -1138,7 +1172,7 @@ export const api = {
       if (neglectedLeads.length > 0) {
         const targetLead = neglectedLeads[0];
         tasks.push({ 
-          agentId: agentId, 
+          agent_id: agentId, 
           title: `"${targetLead.name}" isimli müşteriyi ara`, 
           points: 100, 
           category: 'smart', 
@@ -1148,7 +1182,7 @@ export const api = {
         });
       } else {
         tasks.push({ 
-          agentId: agentId, 
+          agent_id: agentId, 
           title: "Bölgendeki yeni bir esnafla tanış", 
           points: 100, 
           category: 'smart', 
@@ -1182,9 +1216,9 @@ export const api = {
       console.log(`Successfully created ${createdTasks.length} tasks`);
       return createdTasks.map((t: any) => ({
         ...t,
-        agent_id: t.agentId,
-        is_completed: t.isCompleted,
-        ai_reason: t.aiReason
+        agent_id: t.agent_id,
+        is_completed: t.isCompleted || t.is_completed,
+        ai_reason: t.aiReason || t.ai_reason
       })) as GamifiedTask[];
     } catch (error) {
       console.error("Error in getDailyGamifiedTasks:", error);
@@ -1224,51 +1258,281 @@ export const api = {
     return { success: true };
   },
 
+  startDay: async () => {
+    console.log("api.startDay called");
+    const userId = await getUserId();
+    if (!userId) throw new Error('Not authenticated');
+    const now = new Date().toISOString();
+    const today = getTodayStr();
+
+    try {
+      // Update profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          last_day_started_at: now,
+          last_active_date: today
+        })
+        .eq('uid', userId);
+      
+      if (profileError) {
+        console.warn("Profile update error (might be missing column):", profileError);
+        // Try updating only last_active_date if that exists
+        try {
+          await supabase.from('profiles').update({ last_active_date: today }).eq('uid', userId);
+        } catch (e) {
+          // Ignore
+        }
+      }
+      
+      localStorage.setItem(`day_started_${userId}_${today}`, now);
+
+      // Update user stats
+      const { data: stats } = await supabase
+        .from('user_stats')
+        .select('*')
+        .eq('agent_id', userId)
+        .eq('date', today)
+        .maybeSingle();
+
+      if (stats) {
+        const { error: statsUpdateError } = await supabase
+          .from('user_stats')
+          .update({ day_started_at: now })
+          .eq('id', stats.id);
+        if (statsUpdateError) console.warn("Stats update error:", statsUpdateError);
+      } else {
+        const { error: statsInsertError } = await supabase
+          .from('user_stats')
+          .insert({
+            agent_id: userId,
+            date: today,
+            day_started_at: now,
+            tasks_completed: 0,
+            potential_revenue_handled: 0,
+            calls_made: 0,
+            visits_made: 0,
+            xp_earned: 0
+          });
+        if (statsInsertError) console.warn("Stats insert error:", statsInsertError);
+      }
+    } catch (err) {
+      console.error("Critical error in startDay:", err);
+      localStorage.setItem(`day_started_${userId}_${today}`, now);
+    }
+    
+    return { success: true };
+  },
+
+  endDay: async (stats: any) => {
+    console.log("api.endDay called", stats);
+    const userId = await getUserId();
+    if (!userId) throw new Error('Not authenticated');
+    const now = new Date().toISOString();
+    const today = getTodayStr();
+
+    try {
+      // Update profile
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({ 
+          last_ritual_completed_at: now,
+          last_active_date: today
+        })
+        .eq('uid', userId);
+      
+      if (profileError) {
+        console.warn("Profile update error (might be missing column):", profileError);
+        // Try updating only last_active_date if that exists
+        try {
+          await supabase.from('profiles').update({ last_active_date: today }).eq('uid', userId);
+        } catch (e) {
+          // Ignore
+        }
+      }
+
+      localStorage.setItem(`day_ended_${userId}_${today}`, now);
+
+      // Update user stats
+      const { data: dailyStats } = await supabase
+        .from('user_stats')
+        .select('*')
+        .eq('agent_id', userId)
+        .eq('date', today)
+        .maybeSingle();
+
+      if (dailyStats) {
+        const { error: statsUpdateError } = await supabase
+          .from('user_stats')
+          .update({ 
+            day_ended_at: now,
+            tasks_completed: stats.tasks_completed,
+            calls_made: stats.calls,
+            visits_made: stats.visits,
+            potential_revenue_handled: stats.revenue
+          })
+          .eq('id', dailyStats.id);
+        if (statsUpdateError) console.warn("Stats update error:", statsUpdateError);
+      } else {
+        const { error: statsInsertError } = await supabase
+          .from('user_stats')
+          .insert({
+            agent_id: userId,
+            date: today,
+            day_ended_at: now,
+            tasks_completed: stats.tasks_completed,
+            calls_made: stats.calls,
+            visits_made: stats.visits,
+            potential_revenue_handled: stats.revenue,
+            xp_earned: 150
+          });
+        if (statsInsertError) console.warn("Stats insert error:", statsInsertError);
+      }
+    } catch (err) {
+      console.error("Critical error in endDay:", err);
+      localStorage.setItem(`day_ended_${userId}_${today}`, now);
+    }
+    
+    return { success: true };
+  },
+
   verifyGamifiedTask: async (task: GamifiedTask): Promise<{ verified: boolean, message?: string }> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
     const agentId = user.id;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayStr();
 
     // Check if task is already completed
     if (task.is_completed) return { verified: true };
 
     try {
-      if (task.title.includes("malik araması")) {
+      const title = task.title.toLowerCase();
+
+      // 1. Malik Araması (5 calls)
+      if (title.includes("malik araması") || title.includes("5 malik araması")) {
         const { data: tasks } = await supabase.from('tasks').select('id').eq('agent_id', agentId).eq('type', 'Arama').eq('completed', true).gte('created_at', today);
         const count = tasks?.length || 0;
         if (count >= 5) return { verified: true };
         return { verified: false, message: `Henüz ${count}/5 arama yaptın. 5 arama tamamlamalısın.` };
       }
 
-      if (task.title.includes("saha ziyareti")) {
+      // 2. Saha Ziyareti
+      if (title.includes("saha ziyareti")) {
         const { data: visits } = await supabase.from('tasks').select('id').eq('agent_id', agentId).eq('type', 'Saha').eq('completed', true).gte('created_at', today);
         if (visits && visits.length >= 1) return { verified: true };
         return { verified: false, message: "Henüz bir saha ziyareti tamamlamadın." };
       }
 
-      if (task.title.includes("yeni portföy ekle")) {
+      // 3. Yeni Portföy Ekle
+      if (title.includes("yeni portföy ekle")) {
         const { data: props } = await supabase.from('properties').select('id').eq('agent_id', agentId).gte('created_at', today);
         if (props && props.length >= 1) return { verified: true };
         return { verified: false, message: "Henüz yeni bir portföy eklemedin." };
       }
 
-      if (task.title.includes("müşteri takibi")) {
+      // 4. Müşteri Takibi (2 follow-ups)
+      if (title.includes("müşteri takibi")) {
         const { data: tasks } = await supabase.from('tasks').select('id').eq('agent_id', agentId).eq('type', 'Takip').eq('completed', true).gte('created_at', today);
         const count = tasks?.length || 0;
         if (count >= 2) return { verified: true };
         return { verified: false, message: `Henüz ${count}/2 takip yaptın.` };
       }
 
-      if (task.title.includes("randevu oluştur")) {
+      // 5. Randevu Oluştur
+      if (title.includes("randevu oluştur")) {
         const { data: tasks } = await supabase.from('tasks').select('id').eq('agent_id', agentId).eq('type', 'Randevu').gte('created_at', today);
         if (tasks && tasks.length >= 1) return { verified: true };
         return { verified: false, message: "Henüz bir randevu oluşturmadın." };
       }
 
-      // Sweet tasks are verified by action or simple click for now
-      console.log("Task verification successful for:", task.title);
-      return { verified: true };
+      // 6. Peş peşe girişini sürdür
+      if (title.includes("peş peşe girişini sürdür")) {
+        const { data: profile } = await supabase.from('profiles').select('current_streak').eq('uid', agentId).maybeSingle();
+        if (profile && profile.current_streak > 0) return { verified: true };
+        return { verified: false, message: "Bugün henüz giriş yapmamış görünüyorsun." };
+      }
+
+      // 7. Bugün 100 puan kazan
+      if (title.includes("100 puan kazan")) {
+        const { data: completedToday } = await supabase.from('gamified_tasks').select('points').eq('agent_id', agentId).eq('isCompleted', true).eq('date', today);
+        const totalPointsToday = completedToday?.reduce((acc, t) => acc + t.points, 0) || 0;
+        if (totalPointsToday >= 100) return { verified: true };
+        return { verified: false, message: `Bugün henüz ${totalPointsToday}/100 puan topladın.` };
+      }
+
+      // 8. Bugünkü hedefini belirle
+      if (title.includes("hedefini belirle")) {
+        const { data: personalTasks } = await supabase.from('personal_tasks').select('id').eq('agent_id', agentId).gte('created_at', today);
+        if (personalTasks && personalTasks.length >= 1) return { verified: true };
+        return { verified: false, message: "Bugün henüz bir kişisel hedef (görev) belirlemedin." };
+      }
+
+      // 9. Portföy notu güncelle
+      if (title.includes("portföy notu güncelle")) {
+        const { data: props } = await supabase.from('properties').select('id').eq('agent_id', agentId).gte('updated_at', today);
+        if (props && props.length >= 1) return { verified: true };
+        return { verified: false, message: "Bugün henüz bir portföy notu güncellemedin." };
+      }
+
+      // 10. Müşteriye dönüş yap
+      if (title.includes("müşteriye dönüş yap")) {
+        const { data: leads } = await supabase.from('leads').select('id').eq('agent_id', agentId).gte('last_contact', today);
+        if (leads && leads.length >= 1) return { verified: true };
+        return { verified: false, message: "Bugün henüz bir müşteriye dönüş yapmadın." };
+      }
+
+      // 11. Eski bir müşterini ara
+      if (title.includes("eski bir müşterini ara")) {
+        const { data: tasks } = await supabase.from('tasks').select('id').eq('agent_id', agentId).eq('type', 'Arama').eq('completed', true).gte('created_at', today);
+        if (tasks && tasks.length >= 1) return { verified: true };
+        return { verified: false, message: "Bugün henüz eski bir müşterini aramadın." };
+      }
+
+      // 12. Specific lead call (Smart Task)
+      if (title.includes("isimli müşteriyi ara")) {
+        const match = task.title.match(/"([^"]+)"/);
+        if (match) {
+          const leadName = match[1];
+          const { data: lead } = await supabase.from('leads').select('id').eq('agent_id', agentId).eq('name', leadName).maybeSingle();
+          if (lead) {
+            const { data: tasks } = await supabase.from('tasks').select('id').eq('agent_id', agentId).eq('type', 'Arama').eq('completed', true).gte('created_at', today);
+            if (tasks && tasks.length >= 1) return { verified: true };
+          }
+        }
+        return { verified: false, message: "Belirtilen müşteriyi henüz aramadın." };
+      }
+
+      // 13. Gün sonu raporunu tamamla
+      if (title.includes("gün sonu raporu")) {
+        const { data: profile } = await supabase.from('profiles').select('last_ritual_completed_at').eq('uid', agentId).maybeSingle();
+        if (profile?.last_ritual_completed_at && profile.last_ritual_completed_at.startsWith(today)) return { verified: true };
+        return { verified: false, message: "Gün sonu ritüelini henüz tamamlamadın." };
+      }
+
+      // 14. Cevapsız mesajlarını temizle
+      if (title.includes("cevapsız mesaj")) {
+        const { data: leads } = await supabase.from('leads').select('id').eq('agent_id', agentId).gte('last_contact', today);
+        if (leads && leads.length >= 1) return { verified: true };
+        return { verified: false, message: "Bugün henüz bir müşteriye dönüş yapmadın." };
+      }
+
+      // 15. Bölge esnafı ziyareti / Esnafla tanış
+      if (title.includes("esnafı ziyareti") || title.includes("esnafla tanış")) {
+        const { data: visits } = await supabase.from('tasks').select('id').eq('agent_id', agentId).eq('type', 'Saha').eq('completed', true).gte('created_at', today);
+        if (visits && visits.length >= 1) return { verified: true };
+        return { verified: false, message: "Bugün henüz bir esnaf ziyareti kaydetmedin." };
+      }
+
+      // 16. İlan fiyat analizi yap
+      if (title.includes("fiyat analizi")) {
+        const { data: props } = await supabase.from('properties').select('id').eq('agent_id', agentId).gte('updated_at', today);
+        if (props && props.length >= 1) return { verified: true };
+        return { verified: false, message: "Bugün henüz bir portföy analizi/güncellemesi yapmadın." };
+      }
+
+      // Default for other tasks - make it false to be stricter
+      console.log("Task verification fallback for:", task.title);
+      return { verified: false, message: "Bu görev henüz tamamlanmamış görünüyor." };
     } catch (error) {
       console.error("Verification error:", error);
       return { verified: false, message: "Doğrulama sırasında bir hata oluştu." };
@@ -1296,8 +1560,7 @@ export const api = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
     const agentId = user.id;
-    const now = new Date();
-    const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    const today = getTodayStr();
 
     const { data: profile } = await supabase.from('profiles').select('*').eq('uid', agentId).maybeSingle();
     const points = profile ? (profile.total_xp || 0) : 0;
@@ -1305,19 +1568,19 @@ export const api = {
     const { data: tasksData, error: tasksError } = await supabase
       .from('gamified_tasks')
       .select('*')
-      .eq('agentId', agentId)
+      .eq('agent_id', agentId)
       .eq('date', today);
     
     if (tasksError) {
       console.error('Error fetching tasks for stats:', tasksError);
     }
     
-    // Map DB camelCase to interface snake_case
+    // Map DB snake_case to interface
     const tasks = (tasksData || []).map((t: any) => ({
       ...t,
-      agent_id: t.agentId,
-      is_completed: t.isCompleted,
-      ai_reason: t.aiReason
+      agent_id: t.agent_id,
+      is_completed: t.is_completed,
+      ai_reason: t.ai_reason
     })) as GamifiedTask[];
     
     console.log(`Stats: Found ${tasks.length} tasks for ${today}`);
