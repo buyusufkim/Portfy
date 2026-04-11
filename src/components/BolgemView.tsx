@@ -635,3 +635,5 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
     </motion.div>
   );
 };
+
+export default BolgemView;

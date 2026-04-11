@@ -396,3 +396,5 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     </div>
   );
 };
+
+export default AdminPanel;

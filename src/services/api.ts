@@ -4,37 +4,51 @@ import { GoogleGenAI } from "@google/genai";
 
 const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
 
-// Cache user ID to avoid concurrent getUser() calls which cause "lock stolen" errors
-let _cachedUserId: string | null = null;
+import { getUserId, getTodayStr } from './core/utils';
 
-// Listen for auth changes to keep cache in sync
-supabase.auth.onAuthStateChange((event, session) => {
-  if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
-    _cachedUserId = session?.user?.id || null;
-  } else if (event === 'SIGNED_OUT') {
-    _cachedUserId = null;
-  }
-});
-
-const getUserId = async () => {
-  if (_cachedUserId) return _cachedUserId;
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session?.user) {
-    _cachedUserId = session.user.id;
-    return _cachedUserId;
-  }
-  // Fallback to getUser if session is not available but might be valid
-  const { data: { user } } = await supabase.auth.getUser();
-  _cachedUserId = user?.id || null;
-  return _cachedUserId;
-};
-
-const getTodayStr = () => {
-  const now = new Date();
-  return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-};
+import { leadService } from './leadService';
+import { propertyService } from './propertyService';
+import { taskService } from './taskService';
 
 export const api = {
+  // Lead / Aday Yönetimi
+  getLeads: leadService.getLeads,
+  addLead: leadService.addLead,
+  analyzeLeads: leadService.analyzeLeads,
+
+  // Portföy Yönetimi
+  getProperties: propertyService.getProperties,
+  addProperty: propertyService.addProperty,
+  updatePropertyStatus: propertyService.updatePropertyStatus,
+  calculatePropertyScores: propertyService.calculatePropertyScores,
+
+  // AI İçerik Üretimi
+  generatePropertyContent: propertyService.generatePropertyContent,
+  generateInstagramCaptions: propertyService.generateInstagramCaptions,
+  generateWhatsAppMessages: propertyService.generateWhatsAppMessages,
+  generateMarketingModule: propertyService.generateMarketingModule,
+
+  // sahibinden.com Entegrasyonu
+  connectSahibinden: propertyService.connectSahibinden,
+  getBrokerAccount: propertyService.getBrokerAccount,
+  getExternalListings: propertyService.getExternalListings,
+  syncExternalListings: propertyService.syncExternalListings,
+  linkPropertyToExternal: propertyService.linkPropertyToExternal,
+  getSyncLink: propertyService.getSyncLink,
+  importListingFromUrl: propertyService.importListingFromUrl,
+
+  // Görev Yönetimi
+  getTasks: taskService.getTasks,
+  addTask: taskService.addTask,
+  updateTaskStatus: taskService.updateTaskStatus,
+
+  // Kişisel Görevler
+  getPersonalTasks: taskService.getPersonalTasks,
+  addPersonalTask: taskService.addPersonalTask,
+  togglePersonalTask: taskService.togglePersonalTask,
+  updatePersonalTask: taskService.updatePersonalTask,
+  deletePersonalTask: taskService.deletePersonalTask,
+
   // Profil Verileri
   getProfile: async (): Promise<UserProfile | null> => {
     const userId = await getUserId();
@@ -127,37 +141,6 @@ export const api = {
     };
   },
 
-  // Calculate Property Scores
-  calculatePropertyScores: (property: Partial<Property>, allProperties: Property[] = []) => {
-    const price = property.price || 0;
-    
-    // Calculate real average price from properties in the same district, or fallback to 5M
-    const districtProps = allProperties.filter(p => p.address?.district === property.address?.district && p.id !== property.id);
-    const avgPrice = districtProps.length > 0 
-      ? districtProps.reduce((sum, p) => sum + p.price, 0) / districtProps.length 
-      : 5000000; 
-      
-    const priceIndex = price / avgPrice;
-    
-    let status: 'Fırsat' | 'Normal' | 'Pahalı' = 'Normal';
-    if (priceIndex < 0.9) status = 'Fırsat';
-    if (priceIndex > 1.1) status = 'Pahalı';
-
-    // Probability Logic: Price (50%) + Health (30%) + Status (20%)
-    const priceScore = priceIndex < 1 ? 100 : Math.max(0, 100 - (priceIndex - 1) * 200);
-    const healthScore = property.health_score || 70;
-    const probability = (priceScore * 0.5 + healthScore * 0.3 + 20) / 100;
-
-    return {
-      sale_probability: Math.min(0.99, Math.max(0.1, probability)),
-      market_analysis: {
-        avg_price_m2: 45000,
-        price_index: priceIndex,
-        status
-      }
-    };
-  },
-
   // Map Pins
   getMapPins: async (): Promise<MapPin[]> => {
     const userId = await getUserId();
@@ -196,31 +179,6 @@ export const api = {
     return (data || []) as Building[];
   },
 
-  getTasks: async () => {
-    const userId = await getUserId();
-    if (!userId) return [];
-    const { data } = await supabase
-      .from('tasks')
-      .select('*')
-      .eq('agent_id', userId);
-    return (data || []) as Task[];
-  },
-
-  addTask: async (task: Omit<Task, 'id' | 'agent_id'>) => {
-    const userId = await getUserId();
-    if (!userId) throw new Error('Not authenticated');
-    const { data, error } = await supabase
-      .from('tasks')
-      .insert({
-        ...task,
-        agent_id: userId
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return data.id;
-  },
-
   addVisit: async (visit: Omit<Building, 'id'>) => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
@@ -235,247 +193,6 @@ export const api = {
       .single();
     if (error) throw error;
     return data.id;
-  },
-
-  // Lead / Aday Yönetimi
-  getLeads: async () => {
-    const userId = await getUserId();
-    if (!userId) return [];
-    const { data } = await supabase
-      .from('leads')
-      .select('*')
-      .eq('agent_id', userId);
-    return (data || []) as Lead[];
-  },
-
-  addLead: async (lead: Omit<Lead, 'id' | 'agent_id' | 'last_contact'>) => {
-    const userId = await getUserId();
-    if (!userId) throw new Error('Not authenticated');
-    const { data, error } = await supabase
-      .from('leads')
-      .insert({
-        ...lead,
-        agent_id: userId,
-        last_contact: new Date().toISOString(),
-        behavior_metrics: {
-          total_views: 0,
-          avg_duration: 0,
-          last_active: new Date().toISOString(),
-          is_hot: false
-        }
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return data.id;
-  },
-
-  // Portföy Yönetimi
-  getProperties: async (): Promise<Property[]> => {
-    const userId = await getUserId();
-    if (!userId) return [];
-    const { data } = await supabase
-      .from('properties')
-      .select('*')
-      .eq('agent_id', userId)
-      .order('created_at', { ascending: false });
-    return (data || []) as Property[];
-  },
-
-  addProperty: async (property: Omit<Property, 'id' | 'created_at' | 'updated_at' | 'agent_id' | 'sale_probability' | 'market_analysis'>) => {
-    const userId = await getUserId();
-    if (!userId) throw new Error('Not authenticated');
-    
-    const scores = api.calculatePropertyScores(property);
-
-    const { data, error } = await supabase
-      .from('properties')
-      .insert({
-        ...property,
-        ...scores,
-        agent_id: userId,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return data.id;
-  },
-
-  updatePropertyStatus: async (id: string, status: Property['status']) => {
-    const { error } = await supabase
-      .from('properties')
-      .update({ 
-        status,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', id);
-    if (error) throw error;
-  },
-
-  // AI İçerik Üretimi
-  generatePropertyContent: async (property: Property) => {
-    const prompt = `
-      Aşağıdaki gayrimenkul özelliklerine dayanarak profesyonel bir ilan metni oluştur:
-      Başlık: ${property.title}
-      Tip: ${property.type}
-      Kategori: ${property.category}
-      Fiyat: ${property.price} TL
-      Konum: ${property.address.district}, ${property.address.city}
-      Metrekare: ${property.details.brut_m2} m2
-      Oda Sayısı: ${property.details.rooms}
-      Bina Yaşı: ${property.details.age}
-      Kat: ${property.details.floor}
-      
-      Lütfen Sahibinden.com için detaylı ve profesyonel bir açıklama üret.
-    `;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-    });
-
-    return response.text;
-  },
-
-  generateInstagramCaptions: async (property: Property) => {
-    const prompt = `
-      Aşağıdaki gayrimenkul için 3 farklı tonda Instagram paylaşım metni üret:
-      Başlık: ${property.title}
-      Fiyat: ${property.price} TL
-      Konum: ${property.address.district}, ${property.address.city}
-      Oda: ${property.details.rooms}
-      M2: ${property.details.brut_m2}
-      
-      Varyasyonlar:
-      1. Kurumsal ton (Profesyonel, güven verici)
-      2. Satış odaklı ton (Fırsat vurgulu, heyecan verici)
-      3. Sıcak/Samimi ton (Yaşam alanı vurgulu, duygusal)
-      
-      Her varyasyonda:
-      - Dikkat çekici başlık
-      - Kısa açıklama
-      - CTA (örnek: "Detaylar için DM")
-      - Uygun emoji kullanımı (abartısız)
-      - 3-8 arası hashtag
-      
-      Yanıtı JSON formatında ver:
-      {
-        "corporate": "metin",
-        "sales": "metin",
-        "warm": "metin"
-      }
-    `;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: { responseMimeType: "application/json" }
-    });
-
-    return JSON.parse(response.text);
-  },
-
-  generateWhatsAppMessages: async (property: Property) => {
-    const prompt = `
-      Aşağıdaki gayrimenkul için 3 farklı senaryoda WhatsApp mesajı üret:
-      Başlık: ${property.title}
-      Fiyat: ${property.price} TL
-      Konum: ${property.address.district}, ${property.address.city}
-      Oda: ${property.details.rooms}
-      
-      Senaryolar:
-      1. Tek müşteriye özel kısa mesaj
-      2. WhatsApp durum/toplu paylaşım mesajı
-      3. Yatırımcı müşteriye profesyonel mesaj
-      
-      Her mesaj:
-      - Kısa ve etkili olmalı
-      - CTA içermeli
-      - [ilan_linki] placeholder'ını kullanmalı
-      
-      Yanıtı JSON formatında ver:
-      {
-        "single": "metin",
-        "status": "metin",
-        "investor": "metin"
-      }
-    `;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: { responseMimeType: "application/json" }
-    });
-
-    return JSON.parse(response.text);
-  },
-
-  generateMarketingModule: async (property: Property) => {
-    const prompt = `
-      Sen Portfy emlak asistanısın. Aşağıdaki gayrimenkul bilgilerini kullanarak profesyonel pazarlama içerikleri üret.
-      
-      Girdi Bilgileri:
-      - İlan Başlığı: ${property.title}
-      - İlan Tipi: ${property.type}
-      - Oda Sayısı: ${property.details.rooms}
-      - Metrekare: ${property.details.brut_m2} m2
-      - Kat Bilgisi: ${property.details.floor}. Kat
-      - Fiyat: ${property.price.toLocaleString()} TL
-      - Konum: ${property.address.neighborhood} / ${property.address.district} / ${property.address.city}
-      - Portföy Özeti: ${property.notes}
-      - Hedef Müşteri Tipi: ${property.target_customer_type || 'Belirtilmemiş'}
-      - Yatırım Uygunluğu: ${property.investment_suitability || 'Belirtilmemiş'}
-      - Satış/Kiralama Durumu: ${property.category}
-      
-      Üretilecek İçerikler:
-      1. Instagram post metni (3 alternatif: Kurumsal, Satış Odaklı, Samimi)
-      2. WhatsApp kısa müşteri mesajı (3 alternatif)
-      3. WhatsApp durum / toplu paylaşım metni (3 alternatif)
-      4. Yatırımcıya özel profesyonel mesaj (3 alternatif)
-      5. Kısa ilan özeti (3 alternatif)
-      6. Çağrı metni (CTA) (3 alternatif)
-      
-      Kurallar:
-      - Türkçe yaz.
-      - Fazla uzun olma, vurucu ol.
-      - Satış odaklı ve güven verici ol.
-      - Yapay zeka gibi kokma, doğal bir emlak danışmanı dili kullan.
-      - Boş övgü yapma, veriye ve özelliğe odaklan.
-      - Fiyat ve temel özellikleri asla saklama.
-      - Her içerikte net bir aksiyon çağrısı (CTA) olsun.
-      - WhatsApp mesajlarında [ilan_linki] placeholder'ını kullan.
-      
-      Yanıtı tam olarak şu JSON formatında ver:
-      {
-        "instagram_posts": [
-          { "tone": "kurumsal", "headline": "...", "caption": "...", "cta": "...", "hashtags": ["...", "..."] },
-          { "tone": "satis_odakli", "headline": "...", "caption": "...", "cta": "...", "hashtags": ["...", "..."] },
-          { "tone": "samimi", "headline": "...", "caption": "...", "cta": "...", "hashtags": ["...", "..."] }
-        ],
-        "whatsapp_messages": [
-          { "type": "kisa_musteri_mesaji", "text": "...", "alternative_texts": ["...", "..."] },
-          { "type": "durum_toplu_paylasim", "text": "...", "alternative_texts": ["...", "..."] },
-          { "type": "yatirimciya_ozel", "text": "...", "alternative_texts": ["...", "..."] }
-        ],
-        "summaries": ["...", "...", "..."],
-        "cta_options": ["...", "...", "..."]
-      }
-    `;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: { responseMimeType: "application/json" }
-    });
-
-    return JSON.parse(response.text);
-  },
-
-  // Görev Güncelleme
-  updateTaskStatus: async (taskId: string, completed: boolean) => {
-    await supabase.from('tasks').update({ completed }).eq('id', taskId);
   },
 
   // Region Efficiency Analysis
@@ -513,21 +230,6 @@ export const api = {
         ...stats
       };
     }).sort((a, b) => b.score - a.score);
-  },
-
-  // Lead Analizi
-  analyzeLeads: async (leads: Lead[]) => {
-    const prompt = `
-      Aşağıdaki gayrimenkul leadlerini analiz et ve bir emlak danışmanı için stratejik öneriler sun.
-      Hangi leadler daha sıcak? Hangi leadler için ne yapılmalı?
-      Kısa, öz ve aksiyon odaklı bir analiz yap.
-      Leadler: ${JSON.stringify(leads)}
-    `;
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-    });
-    return response.text;
   },
 
   // Profil Güncelleme
@@ -583,67 +285,6 @@ export const api = {
   deleteNote: async (id: string) => {
     const { error } = await supabase
       .from('notes')
-      .delete()
-      .eq('id', id);
-    if (error) throw error;
-  },
-
-  getPersonalTasks: async (): Promise<PersonalTask[]> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
-    const { data } = await supabase
-      .from('personal_tasks')
-      .select('*')
-      .eq('agent_id', user.id)
-      .order('created_at', { ascending: false });
-    
-    return (data || []).map((t: any) => ({
-      ...t,
-      is_completed: t.isCompleted
-    })) as PersonalTask[];
-  },
-
-  addPersonalTask: async (task: Omit<PersonalTask, 'id' | 'agent_id' | 'created_at'>) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-    const { data, error } = await supabase
-      .from('personal_tasks')
-      .insert({
-        ...task,
-        agent_id: user.id,
-        created_at: new Date().toISOString()
-      })
-      .select()
-      .single();
-    if (error) throw error;
-    return data.id;
-  },
-
-  togglePersonalTask: async (id: string, is_completed: boolean) => {
-    const { error } = await supabase
-      .from('personal_tasks')
-      .update({ isCompleted: is_completed })
-      .eq('id', id);
-    if (error) throw error;
-  },
-
-  updatePersonalTask: async (id: string, data: Partial<PersonalTask>) => {
-    const dbData: any = { ...data };
-    if (data.is_completed !== undefined) {
-      dbData.isCompleted = data.is_completed;
-      delete dbData.is_completed;
-    }
-
-    const { error } = await supabase
-      .from('personal_tasks')
-      .update(dbData)
-      .eq('id', id);
-    if (error) throw error;
-  },
-
-  deletePersonalTask: async (id: string) => {
-    const { error } = await supabase
-      .from('personal_tasks')
       .delete()
       .eq('id', id);
     if (error) throw error;
@@ -913,118 +554,6 @@ export const api = {
     if (error) throw error;
   },
 
-  // sahibinden.com Entegrasyonu
-  connectSahibinden: async (apiKey: string) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-    const agent_id = user.id;
-    
-    if (apiKey.length < 10) throw new Error('Geçersiz API anahtarı');
-
-    const account: Omit<BrokerAccount, 'id'> = {
-      agent_id,
-      store_name: "Emlak Mağazası",
-      api_key: apiKey.substring(0, 4) + "****",
-      connected_at: new Date().toISOString()
-    };
-
-    const { data, error } = await supabase
-      .from('broker_accounts')
-      .insert(account)
-      .select()
-      .single();
-    if (error) throw error;
-    return { id: data.id, ...account };
-  },
-
-  getBrokerAccount: async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-    const { data } = await supabase
-      .from('broker_accounts')
-      .select('*')
-      .eq('agent_id', user.id)
-      .maybeSingle();
-    return data as BrokerAccount | null;
-  },
-
-  getExternalListings: async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return [];
-    const { data } = await supabase
-      .from('external_listings')
-      .select('*')
-      .eq('agent_id', user.id);
-    return (data || []) as ExternalListing[];
-  },
-
-  syncExternalListings: async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-    const agent_id = user.id;
-
-    const account = await api.getBrokerAccount();
-    if (!account) return [];
-
-    // Simulate fetching from external API
-    const simulatedListings: Omit<ExternalListing, 'id'>[] = [
-      {
-        agent_id,
-        ext_id: '123456789',
-        title: 'Sahibinden Satılık Lüks Daire',
-        price: 4500000,
-        status: 'Yayında',
-        url: 'https://sahibinden.com/123456789',
-        district: 'Kadıköy',
-        last_sync: new Date().toISOString()
-      },
-      {
-        agent_id,
-        ext_id: '987654321',
-        title: 'Kiralık Modern Ofis',
-        price: 25000,
-        status: 'Yayında',
-        url: 'https://sahibinden.com/987654321',
-        district: 'Beşiktaş',
-        last_sync: new Date().toISOString()
-      }
-    ];
-
-    const results: ExternalListing[] = [];
-    for (const listing of simulatedListings) {
-      const { data, error } = await supabase
-        .from('external_listings')
-        .upsert(listing, { onConflict: 'agent_id,ext_id' })
-        .select()
-        .single();
-      if (data) results.push(data as ExternalListing);
-    }
-
-    return results;
-  },
-
-  linkPropertyToExternal: async (property_id: string, external_listing_id: string) => {
-    await supabase
-      .from('property_sync_links')
-      .upsert({ property_id, external_listing_id }, { onConflict: 'property_id' });
-  },
-
-  getSyncLink: async (property_id: string) => {
-    const { data } = await supabase
-      .from('property_sync_links')
-      .select('*')
-      .eq('property_id', property_id)
-      .maybeSingle();
-    return data as PropertySyncLink | null;
-  },
-
-  importListingFromUrl: async (url: string) => {
-    if (!url.includes('sahibinden.com')) throw new Error('Sadece sahibinden.com linkleri desteklenir');
-    
-    // Gerçek URL ayrıştırma ve veri çekme işlemi burada yapılacak
-    throw new Error('Bu özellik şu anda yapım aşamasındadır.');
-  },
-
   // Gamification MVP
   getDailyGamifiedTasks: async (force: boolean = false): Promise<GamifiedTask[]> => {
     try {
@@ -1073,12 +602,7 @@ export const api = {
         throw fetchError;
       }
       
-      let existingTasks = (existingTasksData || []).map((t: any) => ({
-        ...t,
-        agent_id: t.agent_id,
-        is_completed: t.isCompleted || t.is_completed,
-        ai_reason: t.aiReason || t.ai_reason
-      })) as GamifiedTask[];
+      let existingTasks = (existingTasksData || []) as GamifiedTask[];
       console.log(`Found ${existingTasks.length} existing tasks for today:`, existingTasks.map(t => t.title));
 
       const coreTasks = [
@@ -1092,13 +616,10 @@ export const api = {
         if (missingCore.length > 0) {
           console.log('Adding missing core tasks:', missingCore.map(c => c.title));
           for (const ct of missingCore) {
-            const newTask = { agent_id: agentId, ...ct, isCompleted: false, date: today };
+            const newTask = { agent_id: agentId, ...ct, is_completed: false, date: today };
             const { data: created, error: coreInsertError } = await supabase.from('gamified_tasks').insert(newTask).select().single();
             if (coreInsertError) console.error('Error inserting core task:', coreInsertError);
-            if (created) existingTasks.push({
-              ...created,
-              is_completed: (created as any).isCompleted
-            } as any);
+            if (created) existingTasks.push(created as any);
           }
         }
         return existingTasks;
@@ -1143,16 +664,16 @@ export const api = {
       const tasks: any[] = [];
       
       // Always include these two tasks
-      tasks.push({ agent_id: agentId, title: "Peş peşe girişini sürdür", points: 10, category: 'sweet', isCompleted: false, date: today });
-      tasks.push({ agent_id: agentId, title: "Bugün 100 puan kazan", points: 20, category: 'sweet', isCompleted: false, date: today });
+      tasks.push({ agent_id: agentId, title: "Peş peşe girişini sürdür", points: 10, category: 'sweet', is_completed: false, date: today });
+      tasks.push({ agent_id: agentId, title: "Bugün 100 puan kazan", points: 20, category: 'sweet', is_completed: false, date: today });
 
       // 3 Sweet
       const shuffledSweet = [...sweetTemplates].sort(() => 0.5 - Math.random());
-      shuffledSweet.slice(0, 3).forEach(t => tasks.push({ agent_id: agentId, title: t, points: 10, category: 'sweet', isCompleted: false, date: today }));
+      shuffledSweet.slice(0, 3).forEach(t => tasks.push({ agent_id: agentId, title: t, points: 10, category: 'sweet', is_completed: false, date: today }));
 
       // 2 Main
       const shuffledMain = [...mainTemplates].sort(() => 0.5 - Math.random());
-      shuffledMain.slice(0, 2).forEach(t => tasks.push({ agent_id: agentId, title: t, points: 50, category: 'main', isCompleted: false, date: today }));
+      shuffledMain.slice(0, 2).forEach(t => tasks.push({ agent_id: agentId, title: t, points: 50, category: 'main', is_completed: false, date: today }));
 
       // 1 Smart
       console.log('Fetching leads for smart task...');
@@ -1176,9 +697,9 @@ export const api = {
           title: `"${targetLead.name}" isimli müşteriyi ara`, 
           points: 100, 
           category: 'smart', 
-          isCompleted: false, 
+          is_completed: false, 
           date: today,
-          aiReason: `Bu müşteri ${targetLead.status} statüsünde ama uzun süredir temas kurulmadı.`
+          ai_reason: `Bu müşteri ${targetLead.status} statüsünde ama uzun süredir temas kurulmadı.`
         });
       } else {
         tasks.push({ 
@@ -1186,9 +707,9 @@ export const api = {
           title: "Bölgendeki yeni bir esnafla tanış", 
           points: 100, 
           category: 'smart', 
-          isCompleted: false, 
+          is_completed: false, 
           date: today,
-          aiReason: "Tüm müşterilerinle güncel iletişimdesin, yeni bağlantılar kurma zamanı."
+          ai_reason: "Tüm müşterilerinle güncel iletişimdesin, yeni bağlantılar kurma zamanı."
         });
       }
 
@@ -1214,12 +735,7 @@ export const api = {
       }
 
       console.log(`Successfully created ${createdTasks.length} tasks`);
-      return createdTasks.map((t: any) => ({
-        ...t,
-        agent_id: t.agent_id,
-        is_completed: t.isCompleted || t.is_completed,
-        ai_reason: t.aiReason || t.ai_reason
-      })) as GamifiedTask[];
+      return createdTasks as GamifiedTask[];
     } catch (error) {
       console.error("Error in getDailyGamifiedTasks:", error);
       throw error;
@@ -1232,7 +748,7 @@ export const api = {
     if (!userId) throw new Error('Not authenticated');
     const agentId = userId;
     
-    const { error: taskError } = await supabase.from('gamified_tasks').update({ isCompleted: true }).eq('id', taskId);
+    const { error: taskError } = await supabase.from('gamified_tasks').update({ is_completed: true }).eq('id', taskId);
     if (taskError) {
       console.error("Task update error:", taskError);
       throw taskError;
@@ -1454,7 +970,7 @@ export const api = {
 
       // 7. Bugün 100 puan kazan
       if (title.includes("100 puan kazan")) {
-        const { data: completedToday } = await supabase.from('gamified_tasks').select('points').eq('agent_id', agentId).eq('isCompleted', true).eq('date', today);
+        const { data: completedToday } = await supabase.from('gamified_tasks').select('points').eq('agent_id', agentId).eq('is_completed', true).eq('date', today);
         const totalPointsToday = completedToday?.reduce((acc, t) => acc + t.points, 0) || 0;
         if (totalPointsToday >= 100) return { verified: true };
         return { verified: false, message: `Bugün henüz ${totalPointsToday}/100 puan topladın.` };
@@ -1540,14 +1056,15 @@ export const api = {
   },
 
   updateGamifiedTask: async (taskId: string, data: Partial<GamifiedTask>) => {
-    // Map camelCase to snake_case if needed, but here we assume the DB wants camelCase
     const dbData: any = {};
-    if (data.is_completed !== undefined) dbData.isCompleted = data.is_completed;
-    if (data.ai_reason !== undefined) dbData.aiReason = data.ai_reason;
+    if (data.is_completed !== undefined) dbData.is_completed = data.is_completed;
+    if (data.ai_reason !== undefined) dbData.ai_reason = data.ai_reason;
     if (data.title !== undefined) dbData.title = data.title;
     if (data.points !== undefined) dbData.points = data.points;
     if (data.category !== undefined) dbData.category = data.category;
     if (data.date !== undefined) dbData.date = data.date;
+    if (data.notified !== undefined) dbData.notified = data.notified;
+    if (data.reminder_time !== undefined) dbData.reminder_time = data.reminder_time;
 
     const { error } = await supabase
       .from('gamified_tasks')
