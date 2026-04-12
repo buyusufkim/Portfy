@@ -1,9 +1,7 @@
 import { Property, BrokerAccount, ExternalListing, PropertySyncLink } from '../types';
 import { supabase } from '../lib/supabase';
-import { GoogleGenAI } from "@google/genai";
 import { getUserId } from './core/utils';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { generateContent } from '../lib/aiClient';
 
 export const propertyService = {
   // Calculate Property Scores
@@ -98,10 +96,10 @@ export const propertyService = {
       Lütfen Sahibinden.com için detaylı ve profesyonel bir açıklama üret.
     `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-    });
+    const response = await generateContent(
+      "gemini-3-flash-preview",
+      prompt
+    );
 
     return response.text;
   },
@@ -135,11 +133,11 @@ export const propertyService = {
       }
     `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: { responseMimeType: "application/json" }
-    });
+    const response = await generateContent(
+      "gemini-3-flash-preview",
+      prompt,
+      { responseMimeType: "application/json" }
+    );
 
     return JSON.parse(response.text);
   },
@@ -170,11 +168,11 @@ export const propertyService = {
       }
     `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: { responseMimeType: "application/json" }
-    });
+    const response = await generateContent(
+      "gemini-3-flash-preview",
+      prompt,
+      { responseMimeType: "application/json" }
+    );
 
     return JSON.parse(response.text);
   },
@@ -231,11 +229,11 @@ export const propertyService = {
       }
     `;
 
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-      config: { responseMimeType: "application/json" }
-    });
+    const response = await generateContent(
+      "gemini-3-flash-preview",
+      prompt,
+      { responseMimeType: "application/json" }
+    );
 
     return JSON.parse(response.text);
   },

@@ -49,6 +49,10 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
   };
 
   const handleSubmit = () => {
+    if (!formData.title || !formData.price || !formData.address.district) {
+      alert('Lütfen zorunlu alanları doldurunuz (Başlık, Fiyat, İlçe)');
+      return;
+    }
     const payload = {
       ...formData,
       price: Number(formData.price.toString().replace(/\D/g, '')),

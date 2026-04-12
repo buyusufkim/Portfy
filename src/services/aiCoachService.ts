@@ -1,10 +1,8 @@
-import { GoogleGenAI, Type } from "@google/genai";
 import { AICoachResponse } from "../types/ai";
 import { AI_COACH_SCHEMA, buildCoachPrompt } from "../lib/aiPromptBuilder";
 import { api } from "./api";
 import { supabase } from "../lib/supabase";
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { generateContent } from '../lib/aiClient';
 
 export const aiCoachService = {
   getCoachInsight: async (): Promise<AICoachResponse> => {
@@ -28,15 +26,15 @@ export const aiCoachService = {
     });
 
     try {
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: prompt,
-        config: {
+      const response = await generateContent(
+        "gemini-3-flash-preview",
+        prompt,
+        {
           responseMimeType: "application/json",
           // @ts-ignore - Gemini SDK schema type support
           responseSchema: AI_COACH_SCHEMA
         }
-      });
+      );
 
       const result = JSON.parse(response.text || '{}') as AICoachResponse;
       return result;

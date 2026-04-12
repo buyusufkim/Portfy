@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { aiCoachService } from '../services/aiCoachService';
+import { QUERY_KEYS } from '../constants/queryKeys';
 import { useAuth } from '../AuthContext';
 import { AICoachAction } from '../types/ai';
 import confetti from 'canvas-confetti';
@@ -9,7 +10,7 @@ export const useAICoach = () => {
   const queryClient = useQueryClient();
 
   const { data: insight, isLoading, error, refetch } = useQuery({
-    queryKey: ['aiCoachInsight', profile?.uid],
+    queryKey: [QUERY_KEYS.AI_COACH_INSIGHT, profile?.uid],
     queryFn: aiCoachService.getCoachInsight,
     enabled: !!profile?.uid,
     staleTime: 1000 * 60 * 15, // 15 dakika cache
@@ -18,7 +19,7 @@ export const useAICoach = () => {
   const convertToTaskMutation = useMutation({
     mutationFn: (action: AICoachAction) => aiCoachService.convertActionToTask(action),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS] });
       confetti({
         particleCount: 50,
         spread: 40,

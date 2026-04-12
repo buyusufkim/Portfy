@@ -2,8 +2,8 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { MessageSquare, RefreshCw, Sparkles } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { GoogleGenAI, Type } from "@google/genai";
 import { api } from '../services/api';
+import { QUERY_KEYS } from '../constants/queryKeys';
 
 interface WhatsAppImportModalProps {
   showWhatsAppImport: boolean;
@@ -19,34 +19,10 @@ export const WhatsAppImportModal: React.FC<WhatsAppImportModalProps> = ({
 
   const whatsappImportMutation = useMutation({
     mutationFn: async (text: string) => {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
-        contents: `Aşağıdaki WhatsApp mesajından emlak müşterisi bilgilerini çıkar. 
-        JSON formatında şu alanları döndür: name (isim), phone (telefon), type (Alıcı/Satıcı/Kiracı/Kiralayan), status (Aday/Sıcak/Pasif), notes (notlar).
-        
-        Mesaj: "${text}"`,
-        config: {
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              name: { type: Type.STRING },
-              phone: { type: Type.STRING },
-              type: { type: Type.STRING, enum: ['Alıcı', 'Satıcı', 'Kiracı', 'Kiralayan'] },
-              status: { type: Type.STRING, enum: ['Aday', 'Sıcak', 'Pasif'] },
-              notes: { type: Type.STRING }
-            },
-            required: ["name", "phone", "type", "status", "notes"]
-          }
-        }
-      });
-      
-      const result = JSON.parse(response.text);
-      return api.addLead(result);
+      return api.importLeadFromText(text);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
       setShowWhatsAppImport(false);
     }
   });

@@ -27,6 +27,10 @@ export const Card: React.FC<{ children: React.ReactNode, className?: string, onC
   </div>
 );
 
+export const Skeleton = ({ className = "" }: { className?: string }) => (
+  <span className={`animate-pulse bg-slate-200 rounded-xl inline-block ${className}`} />
+);
+
 export const StatCard: React.FC<{ id?: string, label: string, value: string | number, icon: React.ReactNode, trend?: string, color: 'orange' | 'purple' | 'emerald' | 'blue' }> = ({ id, label, value, icon, trend, color }) => {
   const colors = {
     orange: 'from-orange-500 to-orange-600 shadow-orange-200',

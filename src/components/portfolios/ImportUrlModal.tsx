@@ -60,9 +60,12 @@ export const ImportUrlModal: React.FC<ImportUrlModalProps> = ({
               />
             </div>
             <button 
-              onClick={() => onImport(url)}
-              disabled={isImporting || !url}
-              className="w-full py-4 bg-orange-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-orange-200"
+              onClick={() => {
+                if (!url.startsWith('http')) return;
+                onImport(url);
+              }}
+              disabled={isImporting || !url || !url.startsWith('http')}
+              className="w-full py-4 bg-orange-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-orange-200 disabled:opacity-50"
             >
               {isImporting ? 'Veriler Çekiliyor...' : 'Verileri Getir'}
             </button>

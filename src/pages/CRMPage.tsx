@@ -7,7 +7,6 @@ import {
   Sparkles, 
   RefreshCw 
 } from 'lucide-react';
-import { GoogleGenAI, Type } from "@google/genai";
 import { api } from '../services/api';
 import { CRMView } from '../components/CRMView';
 import { Lead, UserProfile } from '../types';

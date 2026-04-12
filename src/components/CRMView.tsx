@@ -10,7 +10,7 @@ import {
   Phone 
 } from 'lucide-react';
 import { Lead } from '../types';
-import { Card, Badge } from './UI';
+import { Card, Badge, Skeleton } from './UI';
 
 interface CRMViewProps {
   leads: Lead[];
@@ -77,7 +77,21 @@ export const CRMView: React.FC<CRMViewProps> = ({
 
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
       {leadsLoading ? (
-        <div className="text-center p-12 text-slate-400 col-span-full">Yükleniyor...</div>
+        Array.from({ length: 6 }).map((_, i) => (
+          <Card key={`skeleton-${i}`} className="flex items-center justify-between p-4">
+            <div className="flex items-center gap-4">
+              <Skeleton className="w-12 h-12 rounded-2xl" />
+              <div className="space-y-2">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-3 w-20" />
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Skeleton className="w-9 h-9 rounded-xl" />
+              <Skeleton className="w-9 h-9 rounded-xl" />
+            </div>
+          </Card>
+        ))
       ) : leads.length === 0 ? (
         <div className="text-center p-20 space-y-4 col-span-full">
           <div className="w-20 h-20 bg-slate-100 rounded-[32px] flex items-center justify-center mx-auto text-slate-300">

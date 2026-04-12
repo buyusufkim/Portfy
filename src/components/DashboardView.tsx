@@ -13,9 +13,10 @@ import {
   AlertCircle,
   ClipboardList
 } from 'lucide-react';
-import { Card, Badge } from './UI';
+import { Card, Badge, Skeleton } from './UI';
 import { RevenueOverview } from './revenue/RevenueOverview';
 import { PipelineFunnel } from './revenue/PipelineFunnel';
+import { QUERY_KEYS } from '../constants/queryKeys';
 import { UserProfile, GamifiedTask, Property, Task, PersonalTask, RescueSession } from '../types';
 
 interface DashboardViewProps {
@@ -199,9 +200,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <Sparkles size={16} />
                       <span className="text-[10px] font-bold uppercase tracking-widest">AI Koç Önerisi</span>
                     </div>
-                    <p className="text-sm font-bold leading-relaxed text-white italic">
-                      "{coachInsights?.daily_tip || 'Yükleniyor...'}"
-                    </p>
+                    <div className="text-sm font-bold leading-relaxed text-white italic">
+                      {coachInsights?.daily_tip ? `"${coachInsights.daily_tip}"` : <Skeleton className="h-4 w-48 bg-white/20" />}
+                    </div>
                   </div>
                 </div>
                 <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/20 rounded-full -mr-16 -mt-16 blur-3xl" />
@@ -213,7 +214,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <Badge variant="info" className="!bg-white !text-orange-600 border-none">{gamifiedStats?.level_name || '...'}</Badge>
                 </div>
                 <div className="mt-4">
-                  <div className="text-2xl font-bold text-white">{gamifiedStats?.points.toLocaleString() || '0'}</div>
+                  <div className="text-2xl font-bold text-white">
+                    {gamifiedStats ? gamifiedStats.points.toLocaleString() : <Skeleton className="h-8 w-20 bg-white/20" />}
+                  </div>
                   <div className="text-white font-bold text-[10px] uppercase tracking-wider mt-1">Toplam Puan</div>
                 </div>
               </Card>
@@ -224,7 +227,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Seri</div>
                 </div>
                 <div className="mt-4">
-                  <div className="text-2xl font-bold text-slate-900">{gamifiedStats?.streak || 0} Gün</div>
+                  <div className="text-2xl font-bold text-slate-900">
+                    {gamifiedStats ? `${gamifiedStats.streak} Gün` : <Skeleton className="h-8 w-16" />}
+                  </div>
                   <div className="text-slate-600 text-[10px] uppercase font-bold tracking-wider mt-1">Peş Peşe Seri</div>
                 </div>
               </Card>
@@ -318,13 +323,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
               <div className="grid grid-cols-1 gap-3">
                 {isGamifiedTasksLoading ? (
-                  <div className="py-12 text-center space-y-3">
-                    <motion.div 
-                      animate={{ rotate: 360 }}
-                      transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-                      className="w-8 h-8 border-2 border-orange-500 border-t-transparent rounded-full mx-auto"
-                    />
-                    <p className="text-xs text-slate-400 font-medium">Görevler hazırlanıyor...</p>
+                  <div className="space-y-3">
+                    {[1, 2, 3].map(i => (
+                      <Card key={`skeleton-${i}`} className="p-4 md:p-5 border-none shadow-sm">
+                        <div className="flex items-center gap-4 md:gap-5">
+                          <Skeleton className="w-12 h-12 rounded-2xl" />
+                          <div className="flex-1 space-y-2">
+                            <Skeleton className="h-4 w-1/2" />
+                            <Skeleton className="h-3 w-1/3" />
+                          </div>
+                          <Skeleton className="w-8 h-8 rounded-lg" />
+                        </div>
+                      </Card>
+                    ))}
                   </div>
                 ) : isGamifiedTasksError ? (
                   <div className="py-12 text-center space-y-3 bg-red-50/50 rounded-[32px] border border-red-100/50 shadow-sm">
@@ -334,7 +345,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <h4 className="text-sm font-bold text-red-900">Bir Hata Oluştu</h4>
                     <p className="text-xs text-red-700 px-8">Görevler yüklenirken bir sorun oluştu.</p>
                     <button 
-                      onClick={() => queryClient.invalidateQueries({ queryKey: ['gamifiedTasks', profile?.uid] })}
+                      onClick={() => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] })}
                       className="mt-2 px-6 py-2.5 bg-red-600 text-white rounded-xl text-xs font-bold active:scale-95 transition-all"
                     >
                       Tekrar Dene

@@ -2,6 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import confetti from 'canvas-confetti';
 import { api } from '../services/api';
+import { QUERY_KEYS } from '../constants/queryKeys';
 import { DashboardView } from '../components/DashboardView';
 import { useRevenueStats } from '../hooks/useRevenueStats';
 import { UserProfile, Property, GamifiedTask, Task, PersonalTask, RescueSession, MissedOpportunity } from '../types';
@@ -45,13 +46,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const { data: revenueStats, isLoading: revenueLoading } = useRevenueStats();
 
   const { data: gamifiedStats } = useQuery({
-    queryKey: ['gamifiedStats', profile?.uid],
+    queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.uid],
     queryFn: api.getGamifiedStats,
     enabled: !!profile?.uid
   });
 
   const { data: coachInsights } = useQuery({
-    queryKey: ['coachInsights', profile?.uid],
+    queryKey: [QUERY_KEYS.COACH_INSIGHTS, profile?.uid],
     queryFn: api.getCoachInsights,
     enabled: !!profile?.uid
   });
@@ -60,8 +61,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const refreshTasksMutation = useMutation({
     mutationFn: () => api.getDailyGamifiedTasks(true),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['gamifiedTasks', profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: ['gamifiedStats', profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.uid] });
       setToast({ message: 'Görevler başarıyla güncellendi', type: 'success' });
     },
     onError: (error: any) => {
@@ -79,10 +80,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       return api.completeGamifiedTask(task.id, task.points);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['gamifiedTasks', profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: ['gamifiedStats', profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: ['coachInsights', profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: ['profile', profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.COACH_INSIGHTS, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
       setToast({ message: "Görev başarıyla tamamlandı!", type: 'success' });
       
       confetti({
@@ -101,8 +102,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const startDayMutation = useMutation({
     mutationFn: api.startDay,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS] });
       setToast({ message: "Günün başarıyla başlatıldı!", type: 'success' });
     },
     onError: (error: any) => {
@@ -114,7 +115,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const startRescueMutation = useMutation({
     mutationFn: api.startRescueSession,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rescueSession'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION] });
     }
   });
 

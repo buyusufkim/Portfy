@@ -1,9 +1,7 @@
 import { Lead } from '../types';
 import { supabase } from '../lib/supabase';
-import { GoogleGenAI } from "@google/genai";
 import { getUserId } from './core/utils';
-
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+import { generateContent } from '../lib/aiClient';
 
 export const leadService = {
   getLeads: async () => {
@@ -45,10 +43,10 @@ export const leadService = {
       Kısa, öz ve aksiyon odaklı bir analiz yap.
       Leadler: ${JSON.stringify(leads)}
     `;
-    const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
-      contents: prompt,
-    });
+    const response = await generateContent(
+      "gemini-3-flash-preview",
+      prompt
+    );
     return response.text;
   },
 };

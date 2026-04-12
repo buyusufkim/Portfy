@@ -74,9 +74,12 @@ export const IntegrationModal: React.FC<IntegrationModalProps> = ({
               />
             </div>
             <button 
-              onClick={() => onConnect(apiKey)}
-              disabled={isPending}
-              className="w-full py-4 bg-orange-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-orange-200"
+              onClick={() => {
+                if (!apiKey || !apiSecret) return;
+                onConnect(apiKey);
+              }}
+              disabled={isPending || !apiKey || !apiSecret}
+              className="w-full py-4 bg-orange-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-orange-200 disabled:opacity-50"
             >
               {isPending ? 'Bağlanıyor...' : 'Entegrasyonu Tamamla'}
             </button>

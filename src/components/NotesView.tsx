@@ -14,6 +14,7 @@ import {
 } from 'lucide-react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
+import { QUERY_KEYS } from '../constants/queryKeys';
 import { UserNote, PersonalTask } from '../types';
 import { Card, Badge } from './UI';
 
@@ -23,19 +24,19 @@ export const NotesView = () => {
   const queryClient = useQueryClient();
 
   const { data: notes = [], isLoading: notesLoading } = useQuery({
-    queryKey: ['personal-notes'],
+    queryKey: [QUERY_KEYS.PERSONAL_NOTES],
     queryFn: api.getNotes
   });
 
   const { data: personalTasks = [], isLoading: tasksLoading } = useQuery({
-    queryKey: ['personal-tasks'],
+    queryKey: [QUERY_KEYS.PERSONAL_TASKS],
     queryFn: api.getPersonalTasks
   });
 
   const addNoteMutation = useMutation({
     mutationFn: (content: string) => api.addNote({ title: 'Hızlı Not', content }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['personal-notes'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_NOTES] });
       setShowAddNote(false);
     }
   });
@@ -43,24 +44,24 @@ export const NotesView = () => {
   const addPersonalTaskMutation = useMutation({
     mutationFn: api.addPersonalTask,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['personal-tasks'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_TASKS] });
       setShowAddTask(false);
     }
   });
 
   const toggleTaskMutation = useMutation({
     mutationFn: (task: PersonalTask) => api.updatePersonalTask(task.id, { is_completed: !task.is_completed }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['personal-tasks'] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_TASKS] })
   });
 
   const deleteNoteMutation = useMutation({
     mutationFn: api.deleteNote,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['personal-notes'] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_NOTES] })
   });
 
   const deletePersonalTaskMutation = useMutation({
     mutationFn: api.deletePersonalTask,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['personal-tasks'] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_TASKS] })
   });
 
   return (

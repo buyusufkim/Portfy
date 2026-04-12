@@ -62,7 +62,9 @@ export const ExternalListingsModal: React.FC<ExternalListingsModalProps> = ({
           </div>
 
           <div className="grid grid-cols-1 gap-4">
-            {listings.map((listing: any) => (
+            {listings.length === 0 ? (
+              <div className="text-center py-12 text-slate-400">Henüz ilan bulunamadı.</div>
+            ) : listings.map((listing: any) => (
               <div key={listing.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex gap-4 items-center">
                 <img src={listing.imageUrl} className="w-20 h-20 rounded-xl object-cover" alt="" referrerPolicy="no-referrer" />
                 <div className="flex-1">

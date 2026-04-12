@@ -73,21 +73,16 @@ import { PipelineFunnel } from './components/revenue/PipelineFunnel';
 import { useRevenueStats } from './hooks/useRevenueStats';
 import { formatCurrency } from './lib/revenueUtils';
 import { useCategories } from './hooks/useCategories';
-import { GoogleGenAI, Type } from "@google/genai";
+import { QUERY_KEYS } from './constants/queryKeys';
+
+import { MainContentRouter, NavigationProps, LeadProps, PortfolioProps, UtilityProps } from './components/app/MainContentRouter';
+import { AppModals } from './components/app/AppModals';
+import { LoadingFallback } from './components/app/LoadingFallback';
+import { CoachView } from './components/app/CoachView';
 
 const AdminPanel = React.lazy(() => import('./components/AdminPanel'));
 const BolgemView = React.lazy(() => import('./components/BolgemView'));
 const PricingScreen = React.lazy(() => import('./components/PricingScreen'));
-
-const LoadingFallback = () => (
-  <div className="w-full h-full flex items-center justify-center p-12">
-    <motion.div 
-      animate={{ rotate: 360 }}
-      transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
-      className="w-10 h-10 border-4 border-orange-600 border-t-transparent rounded-full"
-    />
-  </div>
-);
 
 // --- React Query Client ---
 const queryClient = new QueryClient({
@@ -515,79 +510,567 @@ const AppTour = ({ onComplete }: { onComplete: () => void }) => {
   );
 };
 
+const QuickAddBtn = ({ icon, label, color, onClick }: { icon: React.ReactNode, label: string, color: string, onClick?: () => void }) => (
+  <button onClick={onClick} className="flex flex-col items-center gap-3 group">
+    <div className={`w-16 h-16 ${color} rounded-3xl flex items-center justify-center transition-transform group-active:scale-90`}>
+      {icon}
+    </div>
+    <span className="text-xs font-bold text-slate-600">{label}</span>
+  </button>
+);
+
+const QuickAddMenu = ({ 
+  show, 
+  onClose, 
+  onVoice, 
+  onVisit, 
+  onLead, 
+  onPortfolio 
+}: { 
+  show: boolean, 
+  onClose: () => void, 
+  onVoice: () => void, 
+  onVisit: () => void, 
+  onLead: () => void, 
+  onPortfolio: () => void 
+}) => (
+  <AnimatePresence>
+    {show && (
+      <>
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60]"
+        />
+        <motion.div 
+          initial={{ y: "100%" }}
+          animate={{ y: 0 }}
+          exit={{ y: "100%" }}
+          transition={{ type: "spring", damping: 25, stiffness: 200 }}
+          className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[40px] p-8 z-[70] shadow-2xl"
+        >
+          <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8" />
+          <h2 className="text-xl font-bold text-slate-900 mb-6 text-center">Hızlı Kayıt</h2>
+          <div className="grid grid-cols-4 gap-4">
+            <QuickAddBtn 
+              onClick={onVoice}
+              icon={<Mic size={24} />} 
+              label="Sesli" 
+              color="bg-red-50 text-red-600" 
+            />
+            <QuickAddBtn 
+              onClick={onVisit}
+              icon={<MapPin size={24} />} 
+              label="Ziyaret" 
+              color="bg-orange-50 text-orange-600" 
+            />
+            <QuickAddBtn 
+              onClick={onLead}
+              icon={<Users size={24} />} 
+              label="Lead" 
+              color="bg-emerald-50 text-emerald-600" 
+            />
+            <QuickAddBtn 
+              onClick={onPortfolio}
+              icon={<Home size={24} />} 
+              label="Portföy" 
+              color="bg-purple-50 text-purple-600" 
+            />
+          </div>
+          <button 
+            onClick={onClose}
+            className="w-full mt-8 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm"
+          >
+            Vazgeç
+          </button>
+        </motion.div>
+      </>
+    )}
+  </AnimatePresence>
+);
+
+const RitualOverlays = ({ 
+  showDailyRadar, 
+  dailyRadarData, 
+  showDayCloser, 
+  completeMorningRitualMutation, 
+  completeEveningRitualMutation, 
+  gamifiedTasks, 
+  personalTasks, 
+  properties, 
+  tasks 
+}: { 
+  showDailyRadar: boolean, 
+  dailyRadarData: { tasks: string[], insight: string } | null, 
+  showDayCloser: boolean, 
+  completeMorningRitualMutation: any, 
+  completeEveningRitualMutation: any, 
+  gamifiedTasks: GamifiedTask[], 
+  personalTasks: PersonalTask[], 
+  properties: Property[], 
+  tasks: Task[] 
+}) => (
+  <AnimatePresence>
+    {showDailyRadar && (
+      dailyRadarData ? (
+        <DailyRadar 
+          tasks={dailyRadarData.tasks}
+          insight={dailyRadarData.insight}
+          onComplete={() => completeMorningRitualMutation.mutate()}
+        />
+      ) : (
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          className="fixed inset-0 z-[100] bg-slate-900 flex items-center justify-center"
+        >
+          <div className="text-center space-y-4">
+            <motion.div 
+              animate={{ rotate: 360 }}
+              transition={{ repeat: Infinity, duration: 1, ease: "linear" }}
+              className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full mx-auto"
+            />
+            <p className="text-orange-500 font-bold animate-pulse">Radar Hazırlanıyor...</p>
+          </div>
+        </motion.div>
+      )
+    )}
+
+    {showDayCloser && (
+      <DayCloser 
+        isPending={completeEveningRitualMutation.isPending}
+        stats={{
+          tasks_completed: gamifiedTasks.filter(t => t.is_completed).length + personalTasks.filter(t => t.is_completed).length,
+          revenue: properties.reduce((acc, p) => acc + ((p.price * p.commission_rate) / 100) * (p.sale_probability || 0.5), 0),
+          calls: tasks.filter(t => t.type === 'Arama' && t.completed).length,
+          visits: tasks.filter(t => t.type === 'Saha' && t.completed).length
+        }}
+        onComplete={() => {
+          completeEveningRitualMutation.mutate({
+            tasks_completed: gamifiedTasks.filter(t => t.is_completed).length + personalTasks.filter(t => t.is_completed).length,
+            revenue: properties.reduce((acc, p) => acc + ((p.price * p.commission_rate) / 100) * (p.sale_probability || 0.5), 0),
+            calls: tasks.filter(t => t.type === 'Arama' && t.completed).length,
+            visits: tasks.filter(t => t.type === 'Saha' && t.completed).length
+          });
+        }}
+      />
+    )}
+  </AnimatePresence>
+);
+
+const DesktopSidebar = ({ 
+  activeTab, 
+  showAdminPanel, 
+  profile, 
+  onTabChange, 
+  onAdminClick 
+}: { 
+  activeTab: string, 
+  showAdminPanel: boolean, 
+  profile: UserProfile | null, 
+  onTabChange: (tab: string) => void, 
+  onAdminClick: () => void 
+}) => (
+  <aside id="desktop-sidebar" className="hidden md:flex flex-col w-64 shrink-0 bg-white border-r border-slate-100 p-6 sticky top-0 h-screen">
+    <div className="flex items-center gap-3 mb-10">
+      <div className="w-10 h-10 bg-gradient-to-tr from-[#FF3D00] to-[#FF9100] rounded-xl flex items-center justify-center text-white shadow-lg shadow-orange-200">
+        <Building2 size={24} />
+      </div>
+      <span className="text-2xl font-black italic font-logo text-transparent bg-clip-text bg-gradient-to-r from-[#FF3D00] to-[#FF9100] tracking-wide">Portfy</span>
+    </div>
+    
+    <div className="space-y-2 flex-1">
+      <SidebarLink 
+        icon={<LayoutDashboard size={20} />} 
+        label="Dashboard" 
+        active={activeTab === 'dashboard' && !showAdminPanel} 
+        onClick={() => onTabChange('dashboard')} 
+      />
+      <SidebarLink 
+        icon={<MapIcon size={20} />} 
+        label="Bölgem" 
+        active={activeTab === 'bolgem' && !showAdminPanel} 
+        onClick={() => onTabChange('bolgem')} 
+      />
+      <SidebarLink 
+        icon={<Briefcase size={20} />} 
+        label="Portföyler" 
+        active={activeTab === 'portfoyler' && !showAdminPanel} 
+        onClick={() => onTabChange('portfoyler')} 
+      />
+      <SidebarLink 
+        icon={<Users size={20} />} 
+        label="CRM" 
+        active={activeTab === 'crm' && !showAdminPanel} 
+        onClick={() => onTabChange('crm')} 
+      />
+      <SidebarLink 
+        icon={<MessageSquare size={20} />} 
+        label="Notlar" 
+        active={activeTab === 'notes' && !showAdminPanel} 
+        onClick={() => onTabChange('notes')} 
+      />
+      <SidebarLink 
+        icon={<Brain size={20} />} 
+        label="AI Koç" 
+        active={activeTab === 'koc' && !showAdminPanel} 
+        onClick={() => onTabChange('koc')} 
+      />
+    </div>
+
+    <div className="pt-6 border-t border-slate-100">
+      {profile?.role === 'admin' && (
+        <SidebarLink 
+          icon={<ShieldCheck size={20} />} 
+          label="Admin Paneli" 
+          active={showAdminPanel} 
+          onClick={onAdminClick} 
+        />
+      )}
+      <SidebarLink 
+        icon={<UserIcon size={20} />} 
+        label="Profilim" 
+        active={activeTab === 'profil' && !showAdminPanel} 
+        onClick={() => onTabChange('profil')} 
+      />
+    </div>
+  </aside>
+);
+
+const MobileNav = ({ 
+  activeTab, 
+  showAdminPanel, 
+  profile, 
+  onTabChange, 
+  onAdminClick 
+}: { 
+  activeTab: string, 
+  showAdminPanel: boolean, 
+  profile: UserProfile | null, 
+  onTabChange: (tab: string) => void, 
+  onAdminClick: () => void 
+}) => (
+  <nav id="bottom-nav" className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-slate-100 px-6 py-4 flex justify-between items-center z-40 pb-safe">
+    <NavButton 
+      id="nav-dashboard"
+      icon={<LayoutDashboard size={24} />} 
+      active={activeTab === 'dashboard' && !showAdminPanel} 
+      onClick={() => onTabChange('dashboard')} 
+    />
+    <NavButton 
+      id="nav-map"
+      icon={<MapIcon size={24} />} 
+      active={activeTab === 'bolgem' && !showAdminPanel} 
+      onClick={() => onTabChange('bolgem')} 
+    />
+    <NavButton 
+      id="nav-portfolio"
+      icon={<Briefcase size={24} />} 
+      active={activeTab === 'portfoyler' && !showAdminPanel} 
+      onClick={() => onTabChange('portfoyler')} 
+    />
+    <NavButton 
+      id="nav-crm"
+      icon={<Users size={24} />} 
+      active={activeTab === 'crm' && !showAdminPanel} 
+      onClick={() => onTabChange('crm')} 
+    />
+    <NavButton 
+      id="nav-notes"
+      icon={<MessageSquare size={24} />} 
+      active={activeTab === 'notes' && !showAdminPanel} 
+      onClick={() => onTabChange('notes')} 
+    />
+    {profile?.role === 'admin' && (
+      <NavButton 
+        id="nav-admin"
+        icon={<ShieldCheck size={24} />} 
+        active={showAdminPanel} 
+        onClick={onAdminClick} 
+      />
+    )}
+  </nav>
+);
+
+const Header = ({ 
+  activeTab, 
+  profile 
+}: { 
+  activeTab: string, 
+  profile: UserProfile | null 
+}) => (
+  <header className="h-20 bg-white/80 backdrop-blur-md border-b border-slate-200 flex items-center justify-between px-6 md:px-10 sticky top-0 z-40">
+    <div className="flex flex-col">
+      <h1 className="text-xl font-bold text-slate-900">
+        {activeTab === 'dashboard' && 'Hoş Geldin, ' + (profile?.display_name?.split(' ')[0] || 'Danışman')}
+        {activeTab === 'bolgem' && 'Bölge Analizi'}
+        {activeTab === 'portfoyler' && 'Portföylerim'}
+        {activeTab === 'crm' && 'Müşteri Yönetimi'}
+        {activeTab === 'notes' && 'Notlarım'}
+        {activeTab === 'profil' && 'Profilim'}
+        {activeTab === 'koc' && 'Yapay Zeka Koçu'}
+      </h1>
+      <p className="text-xs text-slate-500 font-medium">
+        {new Date().toLocaleDateString('tr-TR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+      </p>
+    </div>
+    
+    <div className="flex items-center gap-4">
+      <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-600 font-bold border border-slate-200">
+        {profile?.display_name?.[0] || 'U'}
+      </div>
+    </div>
+  </header>
+);
+
+const NotificationToast = ({ notification, onClose }: { notification: { task: PersonalTask | GamifiedTask, type: 'personal' | 'gamified' } | null, onClose: () => void }) => (
+  <AnimatePresence>
+    {notification && (
+      <motion.div
+        initial={{ y: -100, opacity: 0 }}
+        animate={{ y: 20, opacity: 1 }}
+        exit={{ y: -100, opacity: 0 }}
+        className="fixed top-0 left-1/2 -translate-x-1/2 z-[200] w-full max-w-sm px-4"
+      >
+        <div className="bg-slate-900 text-white p-6 rounded-[32px] shadow-2xl border border-slate-800 flex items-center gap-4">
+          <div className="w-12 h-12 bg-orange-600 rounded-2xl flex items-center justify-center shrink-0">
+            <Bell size={24} className="animate-bounce" />
+          </div>
+          <div className="flex-1">
+            <h4 className="font-bold text-sm">Görev Hatırlatıcısı</h4>
+            <p className="text-xs text-slate-400 mt-1">{notification.task.title}</p>
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-2 hover:bg-slate-800 rounded-xl transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
+
+const GlobalToast = ({ toast }: { toast: { message: string, type: 'success' | 'error' | 'info' } | null }) => (
+  <AnimatePresence>
+    {toast && (
+      <motion.div
+        initial={{ opacity: 0, y: 50, scale: 0.9 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 20, scale: 0.9 }}
+        style={{ zIndex: 9999 }}
+        className={`fixed bottom-24 left-1/2 -translate-x-1/2 px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-4 backdrop-blur-xl border ${
+          toast.type === 'error' 
+            ? 'bg-red-500 text-white border-red-400' 
+            : toast.type === 'success'
+              ? 'bg-emerald-500 text-white border-emerald-400'
+              : 'bg-slate-900 text-white border-slate-700'
+        }`}
+      >
+        <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
+          {toast.type === 'error' ? <AlertCircle size={24} /> : <CheckCircle2 size={24} />}
+        </div>
+        <div className="flex flex-col">
+          <span className="text-sm font-black tracking-tight">{toast.type === 'error' ? 'Hata' : 'Başarılı'}</span>
+          <span className="text-xs font-medium opacity-90">{toast.message}</span>
+        </div>
+      </motion.div>
+    )}
+  </AnimatePresence>
+);
+
+const FloatingActionButton = ({ onClick }: { onClick: () => void }) => (
+  <button 
+    id="quick-add-fab"
+    onClick={onClick}
+    className="fixed bottom-24 right-6 w-14 h-14 bg-slate-900 rounded-full shadow-2xl shadow-slate-900/40 flex items-center justify-center text-white active:scale-90 transition-all hover:bg-orange-600 z-50"
+  >
+    <Plus size={32} />
+  </button>
+);
+
 function MainApp() {
+  const queryClient = useQueryClient();
+  const { profile, logout, completeTour } = useAuth();
   const { categories } = useCategories();
+
+  // --- UI State ---
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [showVoiceQuickAdd, setShowVoiceQuickAdd] = useState(false);
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'pipeline'>('list');
-  const { profile, logout, completeTour } = useAuth();
-  const queryClient = useQueryClient();
-
-  const { data: leads = [], isLoading: leadsLoading } = useQuery({
-    queryKey: ['leads', profile?.uid],
-    queryFn: api.getLeads,
-    enabled: !!profile?.uid
-  });
-
-  const { data: properties = [], isLoading: propertiesLoading } = useQuery({
-    queryKey: ['properties', profile?.uid],
-    queryFn: api.getProperties,
-    enabled: !!profile?.uid
-  });
-
-  const { data: personalTasks = [] } = useQuery({
-    queryKey: ['personalTasks', profile?.uid],
-    queryFn: api.getPersonalTasks,
-    enabled: !!profile?.uid
-  });
-
-  const { data: gamifiedTasks = [], isLoading: isGamifiedTasksLoading, isError: isGamifiedTasksError } = useQuery({
-    queryKey: ['gamifiedTasks', profile?.uid],
-    queryFn: () => api.getDailyGamifiedTasks(),
-    enabled: !!profile?.uid
-  });
-
-  useEffect(() => {
-    console.log("Current gamifiedTasks:", gamifiedTasks);
-  }, [gamifiedTasks]);
-
+  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
   const [notification, setNotification] = useState<{ task: PersonalTask | GamifiedTask, type: 'personal' | 'gamified' } | null>(null);
 
-  const updatePersonalTaskMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string, data: Partial<PersonalTask> }) => api.updatePersonalTask(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['personalTasks', profile?.uid] })
-  });
-
-  const updateGamifiedTaskMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string, data: Partial<GamifiedTask> }) => api.updateGamifiedTask(id, data),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ['gamifiedTasks', profile?.uid] })
-  });
-
-  const handleNotify = (task: PersonalTask | GamifiedTask, type: 'personal' | 'gamified') => {
-    setNotification({ task, type });
-    // Mark as notified
-    if (type === 'personal') {
-      updatePersonalTaskMutation.mutate({ id: task.id, data: { notified: true } });
-    } else {
-      updateGamifiedTaskMutation.mutate({ id: task.id, data: { notified: true } });
-    }
-  };
-
+  // --- Modal Visibility State ---
+  const [showQuickAdd, setShowQuickAdd] = useState(false);
+  const [showVoiceQuickAdd, setShowVoiceQuickAdd] = useState(false);
   const [showAddProperty, setShowAddProperty] = useState(false);
   const [showAddLead, setShowAddLead] = useState(false);
   const [showAddVisit, setShowAddVisit] = useState(false);
   const [showWhatsAppImport, setShowWhatsAppImport] = useState(false);
   const [showDailyRadar, setShowDailyRadar] = useState(false);
   const [showDayCloser, setShowDayCloser] = useState(false);
+  const [showDailyBriefing, setShowDailyBriefing] = useState(false);
+  const [showTemplateManager, setShowTemplateManager] = useState(false);
+  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
+  const [showIntegrationModal, setShowIntegrationModal] = useState(false);
+  const [showExternalListings, setShowExternalListings] = useState(false);
+  const [showImportUrlModal, setShowImportUrlModal] = useState(false);
+  const [showMissedOpportunities, setShowMissedOpportunities] = useState(false);
+
+  const closeAllModals = () => {
+    setShowQuickAdd(false);
+    setShowVoiceQuickAdd(false);
+    setShowAddProperty(false);
+    setShowAddLead(false);
+    setShowAddVisit(false);
+    setShowWhatsAppImport(false);
+    setShowDailyRadar(false);
+    setShowDayCloser(false);
+    setShowDailyBriefing(false);
+    setShowTemplateManager(false);
+    setShowTemplateSelector(false);
+    setShowIntegrationModal(false);
+    setShowExternalListings(false);
+    setShowImportUrlModal(false);
+    setShowMissedOpportunities(false);
+  };
+
+  // --- Data Selection & Analysis State ---
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [selectedDistrict, setSelectedDistrict] = useState<string | 'all'>('all');
   const [leadAnalysis, setLeadAnalysis] = useState<string | null>(null);
   const [isAnalyzingLeads, setIsAnalyzingLeads] = useState(false);
 
+  // --- Queries ---
+  const { data: leads = [], isLoading: leadsLoading } = useQuery({
+    queryKey: [QUERY_KEYS.LEADS, profile?.uid],
+    queryFn: api.getLeads,
+    enabled: !!profile?.uid
+  });
+
+  const { data: properties = [], isLoading: propertiesLoading } = useQuery({
+    queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid],
+    queryFn: api.getProperties,
+    enabled: !!profile?.uid
+  });
+
+  const { data: personalTasks = [] } = useQuery({
+    queryKey: [QUERY_KEYS.PERSONAL_TASKS, profile?.uid],
+    queryFn: api.getPersonalTasks,
+    enabled: !!profile?.uid
+  });
+
+  const { data: gamifiedTasks = [], isLoading: isGamifiedTasksLoading } = useQuery({
+    queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid],
+    queryFn: () => api.getDailyGamifiedTasks(),
+    enabled: !!profile?.uid
+  });
+
+  const { data: fieldVisits = [] } = useQuery({
+    queryKey: [QUERY_KEYS.FIELD_VISITS, profile?.uid],
+    queryFn: api.getFieldVisits,
+    enabled: !!profile?.uid
+  });
+
+  const { data: tasks = [] } = useQuery({
+    queryKey: [QUERY_KEYS.TASKS, profile?.uid],
+    queryFn: api.getTasks,
+    enabled: !!profile?.uid
+  });
+
+  const { data: regionScores = [] } = useQuery({
+    queryKey: [QUERY_KEYS.REGION_SCORES, profile?.uid],
+    queryFn: api.getRegionEfficiencyScores,
+    enabled: !!profile?.uid
+  });
+
+  const { data: templates = [] } = useQuery({
+    queryKey: [QUERY_KEYS.TEMPLATES, profile?.uid],
+    queryFn: api.getMessageTemplates,
+    enabled: !!profile?.uid
+  });
+
+  const { data: brokerAccount } = useQuery({
+    queryKey: [QUERY_KEYS.BROKER_ACCOUNT],
+    queryFn: api.getBrokerAccount
+  });
+
+  const { data: externalListings = [] } = useQuery({
+    queryKey: [QUERY_KEYS.EXTERNAL_LISTINGS],
+    queryFn: api.getExternalListings
+  });
+
+  const { data: rescueSession } = useQuery({
+    queryKey: [QUERY_KEYS.RESCUE_SESSION],
+    queryFn: api.getRescueSession
+  });
+
+  const { data: missedOpportunities = [] } = useQuery({
+    queryKey: [QUERY_KEYS.MISSED_OPPORTUNITIES],
+    queryFn: api.getMissedOpportunities
+  });
+
   const { data: dailyRadarData } = useQuery({
-    queryKey: ['dailyRadar', profile?.uid],
+    queryKey: [QUERY_KEYS.DAILY_RADAR, profile?.uid],
     queryFn: api.getDailyRadar,
     enabled: !!profile?.uid && showDailyRadar
+  });
+
+  // --- Mutations ---
+  const addLeadMutation = useMutation({
+    mutationFn: api.addLead,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REGION_SCORES] });
+      setShowAddLead(false);
+      setShowQuickAdd(false);
+    }
+  });
+
+  const addVisitMutation = useMutation({
+    mutationFn: api.addVisit,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.FIELD_VISITS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REGION_SCORES] });
+      setShowAddVisit(false);
+      setShowQuickAdd(false);
+    }
+  });
+
+  const addTaskMutation = useMutation({
+    mutationFn: api.addTask,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS] });
+    }
+  });
+
+  const addTemplateMutation = useMutation({
+    mutationFn: api.addMessageTemplate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TEMPLATES] });
+    }
+  });
+
+  const deleteTemplateMutation = useMutation({
+    mutationFn: api.deleteMessageTemplate,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TEMPLATES] });
+    }
+  });
+
+  const updatePersonalTaskMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: Partial<PersonalTask> }) => api.updatePersonalTask(id, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_TASKS, profile?.uid] })
+  });
+
+  const updateGamifiedTaskMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: Partial<GamifiedTask> }) => api.updateGamifiedTask(id, data),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] })
   });
 
   const completeMorningRitualMutation = useMutation({
@@ -596,8 +1079,8 @@ function MainApp() {
       return api.completeMorningRitual();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS] });
       setShowDailyRadar(false);
       setToast({ message: "Güne harika bir başlangıç yaptın!", type: 'success' });
     }
@@ -605,15 +1088,13 @@ function MainApp() {
 
   const completeEveningRitualMutation = useMutation({
     mutationFn: async (stats: any) => {
-      console.log("Mutation triggered: completeEveningRitual", stats);
       await api.endDay(stats);
       return api.completeEveningRitual(stats);
     },
     onSuccess: () => {
-      console.log("Mutation SUCCESS: completeEveningRitual");
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
-      queryClient.invalidateQueries({ queryKey: ['dailyStats'] });
-      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DAILY_STATS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS] });
       setShowDayCloser(false);
       setToast({ message: "Günü başarıyla kapattın. İyi dinlenmeler!", type: 'success' });
       confetti({
@@ -624,152 +1105,24 @@ function MainApp() {
       });
     },
     onError: (error: any) => {
-      console.error("Mutation ERROR: completeEveningRitual", error);
       setToast({ message: "Günü kapatırken bir hata oluştu: " + error.message, type: 'error' });
     }
-  });
-
-  useEffect(() => {
-    if (profile) {
-      const getTodayStr = () => {
-        const now = new Date();
-        return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      };
-      const today = getTodayStr();
-      const localStarted = localStorage.getItem(`day_started_${profile.uid}_${today}`);
-      const lastStarted = profile.last_day_started_at ? profile.last_day_started_at.split('T')[0] : (profile.last_active_date || null);
-      
-      if (lastStarted !== today && !localStarted) {
-        const hour = new Date().getHours();
-        if (hour >= 5 && hour < 12) {
-          setShowDailyRadar(true);
-        }
-      }
-    }
-  }, [profile]);
-
-  // Add Lead Mutation
-  const addLeadMutation = useMutation({
-    mutationFn: api.addLead,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
-      queryClient.invalidateQueries({ queryKey: ['regionScores'] });
-      setShowAddLead(false);
-      setShowQuickAdd(false);
-    }
-  });
-
-  // Add Visit Mutation
-  const addVisitMutation = useMutation({
-    mutationFn: api.addVisit,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['fieldVisits'] });
-      queryClient.invalidateQueries({ queryKey: ['regionScores'] });
-      setShowAddVisit(false);
-      setShowQuickAdd(false);
-    }
-  });
-
-  // Add Task Mutation
-  const addTaskMutation = useMutation({
-    mutationFn: api.addTask,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
-    }
-  });
-
-  const { data: fieldVisits = [], isLoading: visitsLoading } = useQuery({
-    queryKey: ['fieldVisits', profile?.uid],
-    queryFn: api.getFieldVisits,
-    enabled: !!profile?.uid
-  });
-
-  const { data: tasks = [], isLoading: tasksLoading } = useQuery({
-    queryKey: ['tasks', profile?.uid],
-    queryFn: api.getTasks,
-    enabled: !!profile?.uid
-  });
-
-  const { data: regionScores = [], isLoading: scoresLoading } = useQuery({
-    queryKey: ['regionScores', profile?.uid],
-    queryFn: api.getRegionEfficiencyScores,
-    enabled: !!profile?.uid
-  });
-
-  const { data: templates = [], isLoading: templatesLoading } = useQuery({
-    queryKey: ['templates', profile?.uid],
-    queryFn: api.getMessageTemplates,
-    enabled: !!profile?.uid
-  });
-
-  const addTemplateMutation = useMutation({
-    mutationFn: api.addMessageTemplate,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] });
-    }
-  });
-
-  const deleteTemplateMutation = useMutation({
-    mutationFn: api.deleteMessageTemplate,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['templates'] });
-    }
-  });
-
-  const { data: brokerAccount } = useQuery({
-    queryKey: ['brokerAccount'],
-    queryFn: api.getBrokerAccount
-  });
-
-  const { data: externalListings = [] } = useQuery({
-    queryKey: ['externalListings'],
-    queryFn: api.getExternalListings
-  });
-
-  const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
-
-  useEffect(() => {
-    if (toast) {
-      const timer = setTimeout(() => setToast(null), 3000);
-      return () => clearTimeout(timer);
-    }
-  }, [toast]);
-
-  const { data: rescueSession } = useQuery({
-    queryKey: ['rescueSession'],
-    queryFn: api.getRescueSession
   });
 
   const cancelRescueMutation = useMutation({
     mutationFn: api.cancelRescueSession,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rescueSession'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION] });
     }
   });
 
   const completeRescueTaskMutation = useMutation({
     mutationFn: ({ sessionId, taskId }: { sessionId: string, taskId: string }) => api.completeRescueTask(sessionId, taskId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['rescueSession'] });
-      queryClient.invalidateQueries({ queryKey: ['gamifiedStats'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS] });
     }
   });
-
-  const { data: missedOpportunities = [] } = useQuery({
-    queryKey: ['missedOpportunities'],
-    queryFn: api.getMissedOpportunities
-  });
-
-  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
-  const [selectedDistrict, setSelectedDistrict] = useState<string | 'all'>('all');
-  const [showDailyBriefing, setShowDailyBriefing] = useState(false);
-  const [showTemplateManager, setShowTemplateManager] = useState(false);
-  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
-  const [showIntegrationModal, setShowIntegrationModal] = useState(false);
-  const [showExternalListings, setShowExternalListings] = useState(false);
-  const [showImportUrlModal, setShowImportUrlModal] = useState(false);
-  const [showMissedOpportunities, setShowMissedOpportunities] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null);
 
   const analyzeLeadsMutation = useMutation({
     mutationFn: api.analyzeLeads,
@@ -782,14 +1135,14 @@ function MainApp() {
   const updateProfileMutation = useMutation({
     mutationFn: ({ uid, data }: { uid: string, data: Partial<UserProfile> }) => api.updateProfile(uid, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['profile'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE] });
     }
   });
 
   const syncListingsMutation = useMutation({
     mutationFn: api.syncExternalListings,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['externalListings'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.EXTERNAL_LISTINGS] });
     }
   });
 
@@ -797,15 +1150,15 @@ function MainApp() {
     mutationFn: ({ propertyId, externalId }: { propertyId: string, externalId: string }) => 
       api.linkPropertyToExternal(propertyId, externalId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['properties'] });
-      queryClient.invalidateQueries({ queryKey: ['externalListings'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.EXTERNAL_LISTINGS] });
     }
   });
 
   const connectIntegrationMutation = useMutation({
     mutationFn: api.connectSahibinden,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['brokerAccount'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BROKER_ACCOUNT] });
     }
   });
 
@@ -856,1104 +1209,190 @@ function MainApp() {
     }
   };
 
-  const TemplateManagerModal = () => {
-    const [newTemplate, setNewTemplate] = useState({ name: '', content: '' });
-
-    if (!showTemplateManager) return null;
-
-    return (
-      <AnimatePresence>
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[150] flex items-center justify-center p-4"
-        >
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white w-full max-w-lg rounded-[40px] p-8 space-y-6 shadow-2xl flex flex-col max-h-[80vh]"
-          >
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
-                  <MessageSquare size={24} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Mesaj Şablonları</h2>
-                  <p className="text-xs text-slate-500">Hızlı paylaşım için şablon oluştur</p>
-                </div>
-              </div>
-              <button onClick={() => setShowTemplateManager(false)} className="p-2 bg-slate-100 rounded-full text-slate-400">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-4 overflow-y-auto pr-2 no-scrollbar">
-              <div className="space-y-3 p-4 bg-slate-50 rounded-3xl border border-slate-100">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Yeni Şablon Ekle</h3>
-                <input 
-                  type="text" 
-                  placeholder="Şablon Adı (Örn: İlk Tanıtım)" 
-                  className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500"
-                  value={newTemplate.name}
-                  onChange={e => setNewTemplate({ ...newTemplate, name: e.target.value })}
-                />
-                <textarea 
-                  placeholder="Mesaj içeriği... {title}, {price}, {district} gibi değişkenler kullanabilirsiniz." 
-                  className="w-full bg-white border border-slate-200 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-emerald-500 min-h-[100px]"
-                  value={newTemplate.content}
-                  onChange={e => setNewTemplate({ ...newTemplate, content: e.target.value })}
-                />
-                <button 
-                  onClick={() => {
-                    if (newTemplate.name && newTemplate.content) {
-                      addTemplateMutation.mutate({ ...newTemplate, is_default: false });
-                      setNewTemplate({ name: '', content: '' });
-                    }
-                  }}
-                  className="w-full py-3 bg-emerald-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-emerald-100"
-                >
-                  Şablonu Kaydet
-                </button>
-              </div>
-
-              <div className="space-y-3">
-                <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest">Kayıtlı Şablonlar ({templates.length})</h3>
-                {templates.map(template => (
-                  <div key={template.id} className="p-4 bg-white border border-slate-100 rounded-3xl flex justify-between items-start group">
-                    <div className="space-y-1">
-                      <div className="text-sm font-bold text-slate-900">{template.name}</div>
-                      <p className="text-xs text-slate-500 line-clamp-2">{template.content}</p>
-                    </div>
-                    <button 
-                      onClick={() => deleteTemplateMutation.mutate(template.id)}
-                      className="p-2 text-slate-300 hover:text-red-500 transition-colors"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </motion.div>
-        </motion.div>
-      </AnimatePresence>
-    );
+  const handleNotify = (task: PersonalTask | GamifiedTask, type: 'personal' | 'gamified') => {
+    setNotification({ task, type });
+    if (type === 'personal') {
+      updatePersonalTaskMutation.mutate({ id: task.id, data: { notified: true } });
+    } else {
+      updateGamifiedTaskMutation.mutate({ id: task.id, data: { notified: true } });
+    }
   };
 
-
-
-  const AddVisitModal = () => {
-    const [formData, setFormData] = useState({
-      address: '',
-      district: 'Beşiktaş',
-      status: 'Görüşüldü' as any,
-      notes: ''
-    });
-
-    return (
-      <AnimatePresence>
-        {showAddVisit && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[100] flex items-end sm:items-center justify-center"
-          >
-            <motion.div 
-              initial={{ y: "100%" }}
-              animate={{ y: 0 }}
-              exit={{ y: "100%" }}
-              className="bg-white w-full max-w-md rounded-t-[40px] sm:rounded-[40px] p-8 max-h-[90vh] overflow-auto"
-            >
-              <div className="flex justify-between items-center mb-8">
-                <h2 className="text-xl font-bold text-slate-900">Saha Ziyareti Kaydı</h2>
-                <button onClick={() => setShowAddVisit(false)} className="p-2 bg-slate-100 rounded-full text-slate-400">
-                  <X size={20} />
-                </button>
-              </div>
-              <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Adres / Bina Bilgisi</label>
-                    <input 
-                      type="text" 
-                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                      value={formData.address}
-                      onChange={e => setFormData({...formData, address: e.target.value})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bölge (İlçe)</label>
-                    <input 
-                      type="text" 
-                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                      value={formData.district}
-                      onChange={e => setFormData({...formData, district: e.target.value})}
-                    />
-                  </div>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Durum</label>
-                  <select 
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                    value={formData.status}
-                    onChange={e => setFormData({...formData, status: e.target.value as any})}
-                  >
-                    <option>Görüşüldü</option>
-                    <option>Potansiyel</option>
-                    <option>Ret</option>
-                    <option>Boş</option>
-                  </select>
-                </div>
-                <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Notlar</label>
-                  <textarea 
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none h-24"
-                    value={formData.notes}
-                    onChange={e => setFormData({...formData, notes: e.target.value})}
-                  />
-                </div>
-                <button 
-                  onClick={() => addVisitMutation.mutate(formData)}
-                  disabled={addVisitMutation.isPending}
-                  className="w-full py-4 bg-orange-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-orange-200"
-                >
-                  {addVisitMutation.isPending ? 'Kaydediliyor...' : 'Ziyareti Kaydet'}
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-    );
-  };
-  const DailyBriefingModal = () => {
-    if (!showDailyBriefing) return null;
-    
-    const todayTasks = tasks.filter(t => !t.completed);
-    const todayVisits = fieldVisits.filter(v => v.status === 'Potansiyel');
-
-    return (
-      <AnimatePresence>
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[150] flex items-center justify-center p-4"
-        >
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white w-full max-w-lg rounded-[40px] p-8 space-y-6 shadow-2xl"
-          >
-            <div className="flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-gradient-to-tr from-[#FF3D00] to-[#FF9100] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-orange-200">
-                  <Bell size={24} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Günlük Özet</h2>
-                  <p className="text-xs text-slate-500">Bugün seni neler bekliyor?</p>
-                </div>
-              </div>
-              <button onClick={() => setShowDailyBriefing(false)} className="p-2 bg-slate-100 rounded-full text-slate-400">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Yapılacak Görevler ({todayTasks.length})</h3>
-                {todayTasks.length > 0 ? (
-                  <div className="space-y-2">
-                    {todayTasks.slice(0, 3).map(task => (
-                      <div key={task.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl">
-                        <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-orange-600 shadow-sm">
-                          {task.type === 'Arama' ? <Phone size={14} /> : <Calendar size={14} />}
-                        </div>
-                        <span className="text-sm font-bold text-slate-900">{task.title}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-500 italic">Bugün için bekleyen görev yok.</p>
-                )}
-              </div>
-
-              <div className="space-y-2">
-                <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Saha Ziyaretleri ({todayVisits.length})</h3>
-                {todayVisits.length > 0 ? (
-                  <div className="space-y-2">
-                    {todayVisits.slice(0, 2).map(visit => (
-                      <div key={visit.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl">
-                        <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-emerald-600 shadow-sm">
-                          <MapPin size={14} />
-                        </div>
-                        <span className="text-sm font-bold text-slate-900">{visit.address}</span>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-slate-500 italic">Planlanmış saha ziyareti yok.</p>
-                )}
-              </div>
-            </div>
-
-            <button 
-              onClick={() => setShowDailyBriefing(false)}
-              className="w-full py-4 bg-orange-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-orange-200"
-            >
-              Hadi Başlayalım!
-            </button>
-          </motion.div>
-        </motion.div>
-      </AnimatePresence>
-    );
+  // --- Grouped Props ---
+  const navigationProps: NavigationProps = {
+    activeTab,
+    setActiveTab,
+    showAdminPanel,
+    setShowAdminPanel,
+    logout,
+    profile
   };
 
-  const MissedOpportunitiesModal = () => {
-    if (!showMissedOpportunities) return null;
-
-    return (
-      <AnimatePresence>
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[180] flex items-center justify-center p-4"
-        >
-          <motion.div 
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            className="bg-white w-full max-w-lg rounded-[40px] p-8 space-y-6 shadow-2xl max-h-[80vh] overflow-y-auto"
-          >
-            <div className="flex justify-between items-center sticky top-0 bg-white pb-4 z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 shadow-sm">
-                  <AlertCircle size={24} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Kaçırılan Fırsatlar</h2>
-                  <p className="text-xs text-slate-500">Gözden kaçan {missedOpportunities.length} kritik aksiyon</p>
-                </div>
-              </div>
-              <button onClick={() => setShowMissedOpportunities(false)} className="p-2 bg-slate-100 rounded-full text-slate-400">
-                <X size={20} />
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {missedOpportunities.length === 0 ? (
-                <div className="text-center py-12 space-y-4">
-                  <div className="w-20 h-20 bg-emerald-50 rounded-full flex items-center justify-center mx-auto text-emerald-500">
-                    <ShieldCheck size={40} />
-                  </div>
-                  <p className="text-slate-500 text-sm font-medium">Harika! Şu an kaçan bir fırsat görünmüyor.</p>
-                </div>
-              ) : missedOpportunities.map(opp => (
-                <div key={opp.id} className={`p-5 rounded-3xl border-2 transition-all space-y-3 ${
-                  opp.priority === 'high' ? 'bg-red-50/50 border-red-100' : 'bg-slate-50 border-slate-100'
-                }`}>
-                  <div className="flex justify-between items-start">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <h4 className="text-sm font-bold text-slate-900">{opp.title}</h4>
-                        {opp.priority === 'high' && <Badge variant="error">Kritik</Badge>}
-                      </div>
-                      <p className="text-xs text-slate-500 leading-relaxed">{opp.description}</p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center justify-between pt-2">
-                    <div className="flex items-center gap-3">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                        {opp.days_delayed > 0 ? `${opp.days_delayed} Gün Gecikme` : 'Hemen Aksiyon'}
-                      </span>
-                      {opp.potential_value && (
-                        <span className="text-[10px] font-bold text-emerald-600">+{opp.potential_value} Puan</span>
-                      )}
-                    </div>
-                    <button 
-                      onClick={() => {
-                        setShowMissedOpportunities(false);
-                        if (opp.type === 'lead_followup') setActiveTab('crm');
-                        if (opp.type === 'property_stale' || opp.type === 'price_drop_potential') setActiveTab('portfoyler');
-                        if (opp.type === 'visit_stale') setActiveTab('bolgem');
-                      }}
-                      className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-700 shadow-sm active:scale-95 transition-all"
-                    >
-                      Hemen Düzelt
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <button 
-              onClick={() => setShowMissedOpportunities(false)}
-              className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-200"
-            >
-              Anladım, Aksiyona Geçiyorum
-            </button>
-          </motion.div>
-        </motion.div>
-      </AnimatePresence>
-    );
+  const leadProps: LeadProps = {
+    leads,
+    leadsLoading,
+    categories,
+    setShowWhatsAppImport,
+    setShowAddLead,
+    setIsAnalyzingLeads,
+    analyzeLeadsMutation,
+    isAnalyzingLeads,
+    addLeadMutation,
+    leadAnalysis,
+    setLeadAnalysis,
+    showAddLead,
+    showWhatsAppImport
   };
 
-  const RescueModeModal = () => {
-    if (!rescueSession || rescueSession.status !== 'active') return null;
-
-    const completedCount = rescueSession.tasks.filter(t => t.is_completed).length;
-    const totalCount = rescueSession.tasks.length;
-    const progress = (completedCount / totalCount) * 100;
-
-    return (
-      <AnimatePresence>
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-slate-900/80 backdrop-blur-xl z-[200] flex items-center justify-center p-4"
-        >
-          <motion.div 
-            initial={{ scale: 0.9, y: 20 }}
-            animate={{ scale: 1, y: 0 }}
-            className="bg-white w-full max-w-md rounded-[40px] p-8 space-y-8 shadow-2xl relative overflow-hidden"
-          >
-            {/* Background Glow */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full -mr-16 -mt-16 blur-3xl" />
-            
-            <button 
-              onClick={() => cancelRescueMutation.mutate(rescueSession.id)}
-              className="absolute top-6 right-6 p-2 bg-slate-100 rounded-full text-slate-400 hover:text-slate-600 transition-colors z-20"
-            >
-              <X size={20} />
-            </button>
-
-            <div className="text-center space-y-2 relative z-10">
-              <div className="w-20 h-20 bg-orange-100 rounded-3xl flex items-center justify-center text-orange-600 mx-auto mb-4 shadow-lg shadow-orange-100">
-                <Zap size={40} />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900">Günü Kurtar Modu</h2>
-              <p className="text-sm text-slate-500">Henüz her şey bitmedi! Bu 3 kritik görevi tamamla, günü %100 verimle kapat.</p>
-            </div>
-
-            {/* Progress Bar */}
-            <div className="space-y-2">
-              <div className="flex justify-between text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                <span>İlerleme</span>
-                <span>%{Math.round(progress)}</span>
-              </div>
-              <div className="w-full bg-slate-100 h-3 rounded-full overflow-hidden">
-                <motion.div 
-                  initial={{ width: 0 }}
-                  animate={{ width: `${progress}%` }}
-                  className="bg-orange-500 h-full shadow-sm"
-                />
-              </div>
-            </div>
-
-            {/* Tasks */}
-            <div className="space-y-3">
-              {rescueSession.tasks.map(task => (
-                <button
-                  key={task.id}
-                  onClick={() => !task.is_completed && completeRescueTaskMutation.mutate({ sessionId: rescueSession.id, taskId: task.id })}
-                  disabled={task.is_completed || completeRescueTaskMutation.isPending}
-                  className={`w-full p-5 rounded-3xl border-2 transition-all flex items-center gap-4 text-left ${
-                    task.is_completed 
-                      ? 'bg-emerald-50 border-emerald-100 opacity-60' 
-                      : 'bg-slate-50 border-slate-100 hover:border-orange-200 active:scale-95'
-                  }`}
-                >
-                  <div className={`w-10 h-10 rounded-2xl flex items-center justify-center shrink-0 ${
-                    task.is_completed ? 'bg-emerald-500 text-white' : 'bg-white text-slate-400 shadow-sm'
-                  }`}>
-                    {task.is_completed ? <Check size={20} /> : <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse" />}
-                  </div>
-                  <div className="flex-1">
-                    <h4 className={`text-sm font-bold ${task.is_completed ? 'text-emerald-900 line-through' : 'text-slate-900'}`}>
-                      {task.title}
-                    </h4>
-                    <div className="flex items-center gap-2 mt-1">
-                      <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                        <Clock size={10} /> {task.estimated_minutes} dk
-                      </span>
-                      <span className="text-[10px] font-bold text-orange-600">+{task.points} Puan</span>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            <div className="pt-4">
-              <p className="text-[10px] text-center text-slate-400 italic">
-                "Disiplin, vazgeçmediğin her an yeniden başlar."
-              </p>
-            </div>
-          </motion.div>
-        </motion.div>
-      </AnimatePresence>
-    );
+  const portfolioProps: PortfolioProps = {
+    properties,
+    propertiesLoading,
+    setSelectedProperty,
+    selectedDistrict,
+    setSelectedDistrict,
+    viewMode,
+    setViewMode,
+    setShowImportUrlModal,
+    regionScores,
+    brokerAccount,
+    setShowExternalListings,
+    setShowIntegrationModal,
+    syncListingsMutation,
+    linkPropertyMutation,
+    connectIntegrationMutation,
+    templates,
+    showTemplateSelector,
+    setShowTemplateSelector,
+    showTemplateManager,
+    setShowTemplateManager,
+    addTemplateMutation,
+    deleteTemplateMutation,
+    showAddProperty,
+    setShowAddProperty,
+    showImportUrlModal,
+    showIntegrationModal,
+    showExternalListings,
+    selectedProperty,
+    externalListings
   };
 
-
-
-
-  const VoiceQuickAddModal = () => {
-    const [isListening, setIsListening] = useState(false);
-    const [transcript, setTranscript] = useState('');
-    const [isParsing, setIsParsing] = useState(false);
-    const [parsedResult, setParsedResult] = useState<VoiceParseResult | null>(null);
-    const [recognition, setRecognition] = useState<any>(null);
-
-    useEffect(() => {
-      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-      if (SpeechRecognition) {
-        const rec = new SpeechRecognition();
-        rec.lang = 'tr-TR';
-        rec.continuous = true;
-        rec.interimResults = true;
-        
-        rec.onresult = (event: any) => {
-          let currentTranscript = '';
-          for (let i = event.resultIndex; i < event.results.length; i++) {
-            currentTranscript += event.results[i][0].transcript;
-          }
-          setTranscript(prev => prev + ' ' + currentTranscript);
-        };
-
-        rec.onerror = (event: any) => {
-          console.error('Speech recognition error', event.error);
-          setIsListening(false);
-        };
-
-        rec.onend = () => {
-          setIsListening(false);
-        };
-
-        setRecognition(rec);
-      }
-    }, []);
-
-    const toggleListening = () => {
-      if (isListening) {
-        recognition?.stop();
-        setIsListening(false);
-      } else {
-        setTranscript('');
-        setParsedResult(null);
-        recognition?.start();
-        setIsListening(true);
-      }
-    };
-
-    const handleParse = async () => {
-      if (!transcript.trim()) return;
-      setIsParsing(true);
-      const result = await api.parseVoiceCommand(transcript);
-      setParsedResult(result);
-      setIsParsing(false);
-    };
-
-    const handleSave = async () => {
-      if (!parsedResult) return;
-      
-      if (parsedResult.intent === 'lead') {
-        await addLeadMutation.mutateAsync({
-          name: parsedResult.extracted_data.name || 'İsimsiz Müşteri',
-          phone: parsedResult.extracted_data.phone || '',
-          type: 'Alıcı',
-          status: 'Aday',
-          district: parsedResult.extracted_data.location || '',
-          notes: parsedResult.extracted_data.description || parsedResult.original_text
-        } as any);
-      } else if (parsedResult.intent === 'task') {
-        await addTaskMutation.mutateAsync({
-          title: parsedResult.extracted_data.description || 'Yeni Görev',
-          time: parsedResult.extracted_data.due_date || new Date().toISOString(),
-          type: 'Arama',
-          completed: false
-        } as any);
-      } else if (parsedResult.intent === 'note') {
-        await addVisitMutation.mutateAsync({
-          address: parsedResult.extracted_data.location || 'Bilinmeyen Adres',
-          district: parsedResult.extracted_data.location || '',
-          status: 'Potansiyel',
-          notes: parsedResult.extracted_data.description || parsedResult.original_text
-        } as any);
-      }
-
-      setShowVoiceQuickAdd(false);
-      setTranscript('');
-      setParsedResult(null);
-    };
-
-    if (!showVoiceQuickAdd) return null;
-
-    return (
-      <AnimatePresence>
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[180] flex items-end sm:items-center justify-center p-0 sm:p-4"
-        >
-          <motion.div 
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            className="bg-white w-full max-w-lg rounded-t-[40px] sm:rounded-[40px] p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto"
-          >
-            <div className="flex justify-between items-center sticky top-0 bg-white pb-4 z-10">
-              <div className="flex items-center gap-3">
-                <div className="w-12 h-12 bg-red-50 rounded-2xl flex items-center justify-center text-red-600 shadow-sm">
-                  <Mic size={24} />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-slate-900">Sesli Hızlı Kayıt</h2>
-                  <p className="text-xs text-slate-500">Konuşarak CRM'e veri ekleyin</p>
-                </div>
-              </div>
-              <button onClick={() => setShowVoiceQuickAdd(false)} className="p-2 bg-slate-100 rounded-full text-slate-400">
-                <X size={20} />
-              </button>
-            </div>
-
-            {!parsedResult ? (
-              <div className="flex flex-col items-center justify-center py-8 space-y-8">
-                <button 
-                  onClick={toggleListening}
-                  className={`w-32 h-32 rounded-full flex items-center justify-center transition-all ${isListening ? 'bg-red-500 text-white shadow-[0_0_40px_rgba(239,68,68,0.5)] animate-pulse' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-                >
-                  <Mic size={48} />
-                </button>
-                
-                <div className="text-center space-y-2">
-                  <p className="text-sm font-bold text-slate-900">
-                    {isListening ? 'Dinleniyor...' : 'Konuşmak için dokunun'}
-                  </p>
-                  <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                    Örn: "Yarın saat 3'te Mehmet Bey'i ara" veya "Yeni müşteri Zeynep Hanım, bütçesi 3 milyon"
-                  </p>
-                </div>
-
-                {transcript && (
-                  <div className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                    <p className="text-sm text-slate-700 italic">"{transcript}"</p>
-                  </div>
-                )}
-
-                {isParsing && (
-                  <div className="flex items-center gap-2 text-orange-600">
-                    <RefreshCw size={16} className="animate-spin" />
-                    <span className="text-sm font-bold">Yapay zeka notunuzu düzenliyor...</span>
-                  </div>
-                )}
-
-                {transcript && !isListening && !isParsing && (
-                  <button 
-                    onClick={handleParse}
-                    className="px-6 py-3 bg-orange-600 text-white rounded-xl font-bold text-sm shadow-lg shadow-orange-200"
-                  >
-                    Metni İşle
-                  </button>
-                )}
-              </div>
-            ) : (
-              <div className="space-y-6">
-                <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 space-y-4">
-                  <div className="flex items-center gap-2 mb-2">
-                    <Badge variant="info" className="bg-orange-50 text-orange-700 border-orange-200">
-                      {parsedResult.intent === 'lead' ? '👤 Müşteri' : 
-                       parsedResult.intent === 'task' ? '📅 Görev' : 
-                       parsedResult.intent === 'note' ? '📝 Saha Notu' : '❓ Bilinmeyen'}
-                    </Badge>
-                  </div>
-                  
-                  {Object.entries(parsedResult.extracted_data).map(([key, value]) => {
-                    if (!value) return null;
-                    return (
-                      <div key={key} className="space-y-1">
-                        <label className="text-xs font-bold text-slate-500 uppercase">{key}</label>
-                        <input 
-                          type="text" 
-                          value={value as string} 
-                          onChange={(e) => setParsedResult({...parsedResult, extracted_data: {...parsedResult.extracted_data, [key]: e.target.value}})}
-                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-900 focus:ring-2 focus:ring-orange-500 outline-none"
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-
-                <div className="p-3 bg-slate-50 rounded-xl">
-                  <p className="text-xs text-slate-500 italic">Orijinal metin: "{parsedResult.original_text}"</p>
-                </div>
-
-                <div className="flex gap-3">
-                  <button 
-                    onClick={() => { setParsedResult(null); setTranscript(''); }}
-                    className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm"
-                  >
-                    İptal
-                  </button>
-                  <button 
-                    onClick={handleSave}
-                    className="flex-1 py-4 bg-orange-600 text-white rounded-2xl font-bold text-sm shadow-xl shadow-orange-200"
-                  >
-                    Kaydet
-                  </button>
-                </div>
-              </div>
-            )}
-          </motion.div>
-        </motion.div>
-      </AnimatePresence>
-    );
+  const utilityProps: UtilityProps = {
+    gamifiedTasks,
+    personalTasks,
+    tasks,
+    rescueSession,
+    missedOpportunities,
+    setShowDailyRadar,
+    setShowDayCloser,
+    setShowMissedOpportunities,
+    setToast,
+    completeMorningRitualMutation,
+    showVoiceQuickAdd,
+    setShowVoiceQuickAdd,
+    addTaskMutation,
+    showAddVisit,
+    setShowAddVisit,
+    addVisitMutation,
+    showDailyBriefing,
+    setShowDailyBriefing,
+    fieldVisits,
+    cancelRescueMutation,
+    completeRescueTaskMutation,
+    showMissedOpportunities,
+    setActiveTab
   };
 
-  const CoachView = () => {
-    return (
-      <motion.div 
-        initial={{ opacity: 0, y: 10 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="p-6 space-y-6 pb-32"
-      >
-        <header className="flex items-center gap-4 mb-8">
-          <div className="w-14 h-14 bg-gradient-to-tr from-[#FF3D00] to-[#FF9100] rounded-2xl flex items-center justify-center text-white shadow-lg shadow-orange-200">
-            <Brain size={28} />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-slate-900">Portfy AI Koç</h1>
-            <p className="text-slate-500 text-sm">Davranışsal gelişim asistanı</p>
-          </div>
-        </header>
-
-        <AICoachPanel />
-      </motion.div>
-    );
+  const appProps = {
+    navigation: navigationProps,
+    leads: leadProps,
+    portfolios: portfolioProps,
+    utilities: utilityProps
   };
-
-  const QuickAddBtn = ({ icon, label, color, onClick }: { icon: React.ReactNode, label: string, color: string, onClick?: () => void }) => (
-    <button onClick={onClick} className="flex flex-col items-center gap-3 group">
-      <div className={`w-16 h-16 ${color} rounded-3xl flex items-center justify-center transition-transform group-active:scale-90`}>
-        {icon}
-      </div>
-      <span className="text-xs font-bold text-slate-600">{label}</span>
-    </button>
-  );
-
-  // Quick Add Menüsü
-  const QuickAddMenu = () => (
-    <AnimatePresence>
-      {showQuickAdd && (
-        <>
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setShowQuickAdd(false)}
-            className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[60]"
-          />
-          <motion.div 
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[40px] p-8 z-[70] shadow-2xl"
-          >
-            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8" />
-            <h2 className="text-xl font-bold text-slate-900 mb-6 text-center">Hızlı Kayıt</h2>
-            <div className="grid grid-cols-4 gap-4">
-              <QuickAddBtn 
-                onClick={() => { setShowQuickAdd(false); setShowVoiceQuickAdd(true); }}
-                icon={<Mic size={24} />} 
-                label="Sesli" 
-                color="bg-red-50 text-red-600" 
-              />
-              <QuickAddBtn 
-                onClick={() => { setShowQuickAdd(false); setShowAddVisit(true); }}
-                icon={<MapPin size={24} />} 
-                label="Ziyaret" 
-                color="bg-orange-50 text-orange-600" 
-              />
-              <QuickAddBtn 
-                onClick={() => { setShowQuickAdd(false); setShowAddLead(true); }}
-                icon={<Users size={24} />} 
-                label="Lead" 
-                color="bg-emerald-50 text-emerald-600" 
-              />
-              <QuickAddBtn 
-                onClick={() => { setShowQuickAdd(false); setShowAddProperty(true); }}
-                icon={<Home size={24} />} 
-                label="Portföy" 
-                color="bg-purple-50 text-purple-600" 
-              />
-            </div>
-            <button 
-              onClick={() => setShowQuickAdd(false)}
-              className="w-full mt-8 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm"
-            >
-              Vazgeç
-            </button>
-          </motion.div>
-        </>
-      )}
-    </AnimatePresence>
-  );
-
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-28 font-sans text-slate-900 selection:bg-orange-100">
+    <div className="min-h-screen bg-slate-50 pb-28 md:pb-0 font-sans text-slate-900 selection:bg-orange-100 overflow-x-hidden">
       {/* Mandatory Region Setup */}
       {profile && !profile.region && (
-        <RegionSetupModal profile={profile} onComplete={() => queryClient.invalidateQueries({ queryKey: ['profile'] })} />
+        <RegionSetupModal profile={profile} onComplete={() => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE] })} />
       )}
       
       {/* Main Content */}
-      <div className="flex flex-col md:flex-row max-w-7xl mx-auto min-h-screen">
-        {/* Modals & Overlays */}
-        <AnimatePresence>
-          {showDailyRadar && dailyRadarData && (
-            <DailyRadar 
-              tasks={dailyRadarData.tasks}
-              insight={dailyRadarData.insight}
-              onComplete={() => completeMorningRitualMutation.mutate()}
-            />
-          )}
+      <div className="flex flex-col md:flex-row w-full min-h-screen">
+        <RitualOverlays 
+          showDailyRadar={showDailyRadar}
+          dailyRadarData={dailyRadarData}
+          showDayCloser={showDayCloser}
+          completeMorningRitualMutation={completeMorningRitualMutation}
+          completeEveningRitualMutation={completeEveningRitualMutation}
+          gamifiedTasks={gamifiedTasks}
+          personalTasks={personalTasks}
+          properties={properties}
+          tasks={tasks}
+        />
 
-          {showDayCloser && (
-            <DayCloser 
-              isPending={completeEveningRitualMutation.isPending}
-              stats={{
-                tasks_completed: gamifiedTasks.filter(t => t.is_completed).length + personalTasks.filter(t => t.is_completed).length,
-                revenue: properties.reduce((acc, p) => acc + ((p.price * p.commission_rate) / 100) * (p.sale_probability || 0.5), 0),
-                calls: tasks.filter(t => t.type === 'Arama' && t.completed).length,
-                visits: tasks.filter(t => t.type === 'Saha' && t.completed).length
-              }}
-              onComplete={() => {
-                console.log("onComplete triggered in App.tsx");
-                completeEveningRitualMutation.mutate({
-                  tasks_completed: gamifiedTasks.filter(t => t.is_completed).length + personalTasks.filter(t => t.is_completed).length,
-                  revenue: properties.reduce((acc, p) => acc + ((p.price * p.commission_rate) / 100) * (p.sale_probability || 0.5), 0),
-                  calls: tasks.filter(t => t.type === 'Arama' && t.completed).length,
-                  visits: tasks.filter(t => t.type === 'Saha' && t.completed).length
-                });
-              }}
-            />
-          )}
-        </AnimatePresence>
+        <DesktopSidebar 
+          activeTab={activeTab}
+          showAdminPanel={showAdminPanel}
+          profile={profile}
+          onTabChange={(tab) => { setActiveTab(tab); setShowAdminPanel(false); }}
+          onAdminClick={() => setShowAdminPanel(true)}
+        />
 
-        {/* Desktop Sidebar */}
-        <aside id="desktop-sidebar" className="hidden md:flex flex-col w-64 bg-white border-r border-slate-100 p-6 sticky top-0 h-screen">
-          <div className="flex items-center gap-3 mb-10">
-            <div className="w-10 h-10 bg-gradient-to-tr from-[#FF3D00] to-[#FF9100] rounded-xl flex items-center justify-center text-white shadow-lg shadow-orange-200">
-              <Building2 size={24} />
-            </div>
-            <span className="text-2xl font-black italic font-logo text-transparent bg-clip-text bg-gradient-to-r from-[#FF3D00] to-[#FF9100] tracking-wide">Portfy</span>
-          </div>
-          
-          <div className="space-y-2 flex-1">
-            <SidebarLink 
-              icon={<LayoutDashboard size={20} />} 
-              label="Dashboard" 
-              active={activeTab === 'dashboard' && !showAdminPanel} 
-              onClick={() => { setActiveTab('dashboard'); setShowAdminPanel(false); }} 
-            />
-            <SidebarLink 
-              icon={<MapIcon size={20} />} 
-              label="Bölgem" 
-              active={activeTab === 'bolgem' && !showAdminPanel} 
-              onClick={() => { setActiveTab('bolgem'); setShowAdminPanel(false); }} 
-            />
-            <SidebarLink 
-              icon={<Briefcase size={20} />} 
-              label="Portföyler" 
-              active={activeTab === 'portfoyler' && !showAdminPanel} 
-              onClick={() => { setActiveTab('portfoyler'); setShowAdminPanel(false); }} 
-            />
-            <SidebarLink 
-              icon={<Users size={20} />} 
-              label="CRM" 
-              active={activeTab === 'crm' && !showAdminPanel} 
-              onClick={() => { setActiveTab('crm'); setShowAdminPanel(false); }} 
-            />
-            <SidebarLink 
-              icon={<MessageSquare size={20} />} 
-              label="Notlar" 
-              active={activeTab === 'notes' && !showAdminPanel} 
-              onClick={() => { setActiveTab('notes'); setShowAdminPanel(false); }} 
-            />
-            <SidebarLink 
-              icon={<Brain size={20} />} 
-              label="AI Koç" 
-              active={activeTab === 'koc' && !showAdminPanel} 
-              onClick={() => { setActiveTab('koc'); setShowAdminPanel(false); }} 
-            />
-          </div>
+        <div className="flex-1 flex flex-col min-w-0">
+          <Header 
+            activeTab={activeTab}
+            profile={profile}
+          />
 
-          <div className="pt-6 border-t border-slate-100">
-            {profile?.role === 'admin' && (
-              <SidebarLink 
-                icon={<ShieldCheck size={20} />} 
-                label="Admin Paneli" 
-                active={showAdminPanel} 
-                onClick={() => setShowAdminPanel(true)} 
-              />
-            )}
-            <SidebarLink 
-              icon={<UserIcon size={20} />} 
-              label="Profilim" 
-              active={activeTab === 'profil' && !showAdminPanel} 
-              onClick={() => { setActiveTab('profil'); setShowAdminPanel(false); }} 
-            />
-          </div>
-        </aside>
-
-        <main className="flex-1 w-full mx-auto px-4 md:px-8 py-6">
-          {showAdminPanel ? (
-            <AdminPanel onClose={() => setShowAdminPanel(false)} />
-          ) : (
-            <AnimatePresence mode="wait">
-              {activeTab === 'dashboard' && (
-                <DashboardPage 
-                  profile={profile}
-                  properties={properties}
-                  gamifiedTasks={gamifiedTasks}
-                  personalTasks={personalTasks}
-                  tasks={tasks}
-                  rescueSession={rescueSession}
-                  missedOpportunities={missedOpportunities}
-                  setActiveTab={setActiveTab}
-                  setShowAdminPanel={setShowAdminPanel}
-                  setShowDailyRadar={setShowDailyRadar}
-                  setShowDayCloser={setShowDayCloser}
-                  setShowMissedOpportunities={setShowMissedOpportunities}
-                  setToast={setToast}
-                  completeMorningRitualMutation={completeMorningRitualMutation}
-                />
-              )}
-              {activeTab === 'bolgem' && (
-                <React.Suspense fallback={<LoadingFallback />}>
-                  <BolgemView profile={profile} />
-                </React.Suspense>
-              )}
-              {activeTab === 'portfoyler' && (
-                <PortfoliosPage 
-                  properties={properties}
-                  selectedDistrict={selectedDistrict}
-                  setSelectedDistrict={setSelectedDistrict}
-                  viewMode={viewMode}
-                  setViewMode={setViewMode}
-                  setShowImportUrlModal={setShowImportUrlModal}
-                  regionScores={regionScores}
-                  propertiesLoading={propertiesLoading}
-                  setSelectedProperty={setSelectedProperty}
-                />
-              )}
-              {activeTab === 'crm' && (
-                <CRMPage 
-                  profile={profile}
-                  leads={leads}
-                  leadsLoading={leadsLoading}
-                  categories={categories}
-                  setShowWhatsAppImport={setShowWhatsAppImport}
-                  setShowAddLead={setShowAddLead}
-                  setIsAnalyzingLeads={setIsAnalyzingLeads}
-                  analyzeLeadsMutation={analyzeLeadsMutation}
-                  isAnalyzingLeads={isAnalyzingLeads}
-                />
-              )}
-              {activeTab === 'notes' && <NotesView />}
-              {activeTab === 'profil' && (
-                <ProfilView 
-                  profile={profile}
-                  setShowAdminPanel={setShowAdminPanel}
-                  brokerAccount={brokerAccount}
-                  setShowExternalListings={setShowExternalListings}
-                  setShowIntegrationModal={setShowIntegrationModal}
-                  logout={logout}
-                />
-              )}
-              {activeTab === 'koc' && <CoachView />}
-            </AnimatePresence>
-          )}
-        </main>
+          <main className="flex-1 w-full px-4 md:px-8 py-6 max-w-[1600px] mx-auto">
+            <MainContentRouter {...appProps} />
+          </main>
+        </div>
       </div>
 
-      {/* Notification Center */}
+      {/* Background Logic */}
       <NotificationCenter 
         personalTasks={personalTasks} 
         gamifiedTasks={gamifiedTasks} 
         onNotify={handleNotify} 
       />
 
-      {/* Notification Toast */}
-      <AnimatePresence>
-        {notification && (
-          <motion.div
-            initial={{ y: -100, opacity: 0 }}
-            animate={{ y: 20, opacity: 1 }}
-            exit={{ y: -100, opacity: 0 }}
-            className="fixed top-0 left-1/2 -translate-x-1/2 z-[200] w-full max-w-sm px-4"
-          >
-            <div className="bg-slate-900 text-white p-6 rounded-[32px] shadow-2xl border border-slate-800 flex items-center gap-4">
-              <div className="w-12 h-12 bg-orange-600 rounded-2xl flex items-center justify-center shrink-0">
-                <Bell size={24} className="animate-bounce" />
-              </div>
-              <div className="flex-1">
-                <h4 className="font-bold text-sm">Görev Hatırlatıcısı</h4>
-                <p className="text-xs text-slate-400 mt-1">{notification.task.title}</p>
-              </div>
-              <button 
-                onClick={() => setNotification(null)}
-                className="p-2 hover:bg-slate-800 rounded-xl transition-colors"
-              >
-                <X size={20} />
-              </button>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {/* Overlays & Toasts */}
+      <NotificationToast 
+        notification={notification} 
+        onClose={() => setNotification(null)} 
+      />
+
+      <GlobalToast toast={toast} />
+
+      <FloatingActionButton onClick={() => setShowQuickAdd(true)} />
 
       {/* Quick Add Menu */}
-      <QuickAddMenu />
-      <VoiceQuickAddModal />
+      <QuickAddMenu 
+        show={showQuickAdd}
+        onClose={() => setShowQuickAdd(false)}
+        onVoice={() => { closeAllModals(); setShowVoiceQuickAdd(true); }}
+        onVisit={() => { closeAllModals(); setShowAddVisit(true); }}
+        onLead={() => { closeAllModals(); setShowAddLead(true); }}
+        onPortfolio={() => { closeAllModals(); setShowAddProperty(true); }}
+      />
       
       {/* Modals */}
-      <React.Suspense fallback={null}>
-        {showAdminPanel && (
-          <AdminPanel onClose={() => setShowAdminPanel(false)} />
-        )}
-      </React.Suspense>
-      <CRMModals 
-        categories={categories}
-        addLeadMutation={addLeadMutation}
-        showAddLead={showAddLead}
-        setShowAddLead={setShowAddLead}
-        showWhatsAppImport={showWhatsAppImport}
-        setShowWhatsAppImport={setShowWhatsAppImport}
-        leadAnalysis={leadAnalysis}
-        setLeadAnalysis={setLeadAnalysis}
-        analyzeLeadsMutation={analyzeLeadsMutation}
-      />
-      <PortfolioModals 
-        showAddProperty={showAddProperty}
-        setShowAddProperty={setShowAddProperty}
-        showImportUrlModal={showImportUrlModal}
-        setShowImportUrlModal={setShowImportUrlModal}
-        showIntegrationModal={showIntegrationModal}
-        setShowIntegrationModal={setShowIntegrationModal}
-        showExternalListings={showExternalListings}
-        setShowExternalListings={setShowExternalListings}
-        selectedProperty={selectedProperty}
-        setSelectedProperty={setSelectedProperty}
-        brokerAccount={brokerAccount}
-        externalListings={externalListings}
-        syncListingsMutation={syncListingsMutation}
-        linkPropertyMutation={linkPropertyMutation}
-        connectIntegrationMutation={connectIntegrationMutation}
-        templates={templates}
-        showTemplateSelector={showTemplateSelector}
-        setShowTemplateSelector={setShowTemplateSelector}
-        leads={leads}
-        regionScores={regionScores}
-      />
-      <AddVisitModal />
-      <DailyBriefingModal />
-      <TemplateManagerModal />
-      <RescueModeModal />
-      <MissedOpportunitiesModal />
-
-      {/* Floating Action Button */}
-      <button 
-        id="quick-add-fab"
-        onClick={() => setShowQuickAdd(true)}
-        className="fixed bottom-24 right-6 w-14 h-14 bg-slate-900 rounded-full shadow-2xl shadow-slate-900/40 flex items-center justify-center text-white active:scale-90 transition-all hover:bg-orange-600 z-50"
-      >
-        <Plus size={32} />
-      </button>
+      <AppModals {...appProps} />
 
       {/* Bottom Navigation (Mobile Only) */}
-      <nav id="bottom-nav" className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-slate-100 px-6 py-4 flex justify-between items-center z-40 pb-safe">
-        <NavButton 
-          id="nav-dashboard"
-          icon={<LayoutDashboard size={24} />} 
-          active={activeTab === 'dashboard' && !showAdminPanel} 
-          onClick={() => { setActiveTab('dashboard'); setShowAdminPanel(false); }} 
-        />
-        <NavButton 
-          id="nav-map"
-          icon={<MapIcon size={24} />} 
-          active={activeTab === 'bolgem' && !showAdminPanel} 
-          onClick={() => { setActiveTab('bolgem'); setShowAdminPanel(false); }} 
-        />
-        <NavButton 
-          id="nav-portfolio"
-          icon={<Briefcase size={24} />} 
-          active={activeTab === 'portfoyler' && !showAdminPanel} 
-          onClick={() => { setActiveTab('portfoyler'); setShowAdminPanel(false); }} 
-        />
-        <NavButton 
-          id="nav-crm"
-          icon={<Users size={24} />} 
-          active={activeTab === 'crm' && !showAdminPanel} 
-          onClick={() => { setActiveTab('crm'); setShowAdminPanel(false); }} 
-        />
-        <NavButton 
-          id="nav-notes"
-          icon={<MessageSquare size={24} />} 
-          active={activeTab === 'notes' && !showAdminPanel} 
-          onClick={() => { setActiveTab('notes'); setShowAdminPanel(false); }} 
-        />
-        {profile?.role === 'admin' && (
-          <NavButton 
-            id="nav-admin"
-            icon={<ShieldCheck size={24} />} 
-            active={showAdminPanel} 
-            onClick={() => setShowAdminPanel(true)} 
-          />
-        )}
-      </nav>
+      <MobileNav 
+        activeTab={activeTab}
+        showAdminPanel={showAdminPanel}
+        profile={profile}
+        onTabChange={(tab) => { setActiveTab(tab); setShowAdminPanel(false); }}
+        onAdminClick={() => setShowAdminPanel(true)}
+      />
 
       {/* Onboarding Tour */}
       {profile && !profile.has_seen_tour && activeTab === 'dashboard' && (
         <AppTour onComplete={() => completeTour()} />
       )}
-
-      {/* Toast Notifications */}
-      <AnimatePresence>
-        {toast && (
-          <motion.div
-            initial={{ opacity: 0, y: 50, scale: 0.9 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.9 }}
-            style={{ zIndex: 9999 }}
-            className={`fixed bottom-24 left-1/2 -translate-x-1/2 px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-4 backdrop-blur-xl border ${
-              toast.type === 'error' 
-                ? 'bg-red-500 text-white border-red-400' 
-                : toast.type === 'success'
-                  ? 'bg-emerald-500 text-white border-emerald-400'
-                  : 'bg-slate-900 text-white border-slate-700'
-            }`}
-          >
-            <div className="w-10 h-10 rounded-2xl bg-white/20 flex items-center justify-center shrink-0">
-              {toast.type === 'error' ? <AlertCircle size={24} /> : <CheckCircle2 size={24} />}
-            </div>
-            <div className="flex flex-col">
-              <span className="text-sm font-black tracking-tight">{toast.type === 'error' ? 'Hata' : 'Başarılı'}</span>
-              <span className="text-xs font-medium opacity-90">{toast.message}</span>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
     </div>
   );
 }

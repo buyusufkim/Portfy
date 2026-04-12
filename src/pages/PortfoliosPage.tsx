@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
 import { api } from '../services/api';
-import { PortfoliosView } from '../components/PortfoliosView';
+import { QUERY_KEYS } from '../constants/queryKeys';
 import { Property, MessageTemplate } from '../types';
 import { AddPropertyModal } from '../components/portfolios/AddPropertyModal';
 import { IntegrationModal } from '../components/portfolios/IntegrationModal';
@@ -12,6 +13,8 @@ import { SharePanel } from '../components/portfolios/SharePanel';
 import { MarketingHubModal } from '../components/portfolios/MarketingHubModal';
 import { AIContentModal } from '../components/portfolios/AIContentModal';
 import { TemplateSelectorModal } from '../components/portfolios/TemplateSelectorModal';
+import { PortfoliosToolbar } from '../components/portfolios/PortfoliosToolbar';
+import { PropertyGrid } from '../components/portfolios/PropertyGrid';
 
 interface PortfolioModalsProps {
   showAddProperty: boolean;
@@ -105,9 +108,9 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   const addPropertyMutation = useMutation({
     mutationFn: api.addProperty,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['properties'] });
-      queryClient.invalidateQueries({ queryKey: ['dashboardStats'] });
-      queryClient.invalidateQueries({ queryKey: ['regionScores'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD_STATS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REGION_SCORES] });
       setShowAddProperty(false);
     }
   });
@@ -115,7 +118,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   const importListingMutation = useMutation({
     mutationFn: api.importListingFromUrl,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES] });
       setShowImportUrlModal(false);
       setShowAddProperty(true);
     }
@@ -239,17 +242,31 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
   setShowImportUrlModal,
   setSelectedProperty
 }) => {
+  const filteredProperties = properties.filter(p => {
+    const matchesDistrict = selectedDistrict === 'all' || p.address.district === selectedDistrict;
+    return matchesDistrict;
+  });
+
   return (
-    <PortfoliosView 
-      properties={properties}
-      propertiesLoading={propertiesLoading}
-      selectedDistrict={selectedDistrict}
-      setSelectedDistrict={setSelectedDistrict}
-      regionScores={regionScores}
-      viewMode={viewMode}
-      setViewMode={setViewMode}
-      setShowImportUrlModal={setShowImportUrlModal}
-      setSelectedProperty={setSelectedProperty}
-    />
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="flex flex-col h-screen"
+    >
+      <PortfoliosToolbar 
+        viewMode={viewMode}
+        setViewMode={setViewMode}
+        selectedDistrict={selectedDistrict}
+        setSelectedDistrict={setSelectedDistrict}
+        regionScores={regionScores}
+        setShowImportUrlModal={setShowImportUrlModal}
+      />
+      <PropertyGrid 
+        viewMode={viewMode}
+        propertiesLoading={propertiesLoading}
+        filteredProperties={filteredProperties}
+        setSelectedProperty={setSelectedProperty}
+      />
+    </motion.div>
   );
 };

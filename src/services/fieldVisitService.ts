@@ -1,34 +1,31 @@
-import { Task, PersonalTask } from '../types';
+import { Building } from '../types';
 import { supabase } from '../lib/supabase';
 import { getUserId } from './core/utils';
 
-export const taskService = {
-  getTasks: async () => {
+export const fieldVisitService = {
+  getFieldVisits: async () => {
     const userId = await getUserId();
     if (!userId) return [];
     const { data } = await supabase
-      .from('tasks')
+      .from('field_visits')
       .select('*')
       .eq('agent_id', userId);
-    return (data || []) as Task[];
+    return (data || []) as Building[];
   },
 
-  addTask: async (task: Omit<Task, 'id' | 'agent_id'>) => {
+  addVisit: async (visit: Omit<Building, 'id'>) => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
     const { data, error } = await supabase
-      .from('tasks')
+      .from('field_visits')
       .insert({
-        ...task,
-        agent_id: userId
+        ...visit,
+        agent_id: userId,
+        last_visit: new Date().toISOString()
       })
       .select()
       .single();
     if (error) throw error;
     return data.id;
-  },
-
-  updateTaskStatus: async (taskId: string, completed: boolean) => {
-    await supabase.from('tasks').update({ completed }).eq('id', taskId);
-  },
+  }
 };

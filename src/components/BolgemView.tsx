@@ -6,6 +6,7 @@ import { MapIcon, LayoutDashboard, Store, User, Building2, Home, Star, Filter, S
 import { useCategories } from '../hooks/useCategories';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
+import { QUERY_KEYS } from '../constants/queryKeys';
 import { MapPin, UserProfile } from '../types';
 import { locationService } from '../services/locationService';
 
@@ -90,7 +91,7 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
   const [map, setMap] = useState<google.maps.Map | null>(null);
 
   const { data: pins = [], isLoading } = useQuery({
-    queryKey: ['mapPins'],
+    queryKey: [QUERY_KEYS.MAP_PINS],
     queryFn: api.getMapPins
   });
 
@@ -146,7 +147,7 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
   const addPinMutation = useMutation({
     mutationFn: api.addMapPin,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['mapPins'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MAP_PINS] });
       setShowAddPin(false);
       setNewPinData({
         title: '',

@@ -1,5 +1,6 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { whatsappService } from '../services/whatsappService';
+import { QUERY_KEYS } from '../constants/queryKeys';
 import { useAuth } from '../AuthContext';
 import { WhatsAppAnalysis } from '../types/whatsapp';
 import confetti from 'canvas-confetti';
@@ -22,7 +23,7 @@ export const useWhatsAppAnalysis = () => {
   const addToCRMMutation = useMutation({
     mutationFn: (analysis: WhatsAppAnalysis) => whatsappService.addToCRM(analysis),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
       confetti({
         particleCount: 100,
         spread: 70,
@@ -34,7 +35,7 @@ export const useWhatsAppAnalysis = () => {
   const createFollowUpMutation = useMutation({
     mutationFn: (analysis: WhatsAppAnalysis) => whatsappService.createFollowUpTask(analysis),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['tasks'] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS] });
     }
   });
 
