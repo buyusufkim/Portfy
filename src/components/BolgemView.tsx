@@ -91,8 +91,9 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
   const [map, setMap] = useState<google.maps.Map | null>(null);
 
   const { data: pins = [], isLoading } = useQuery({
-    queryKey: [QUERY_KEYS.MAP_PINS],
-    queryFn: api.getMapPins
+    queryKey: [QUERY_KEYS.MAP_PINS, profile?.uid],
+    queryFn: api.getMapPins,
+    enabled: !!profile?.uid
   });
 
   // Update map center when profile region changes
@@ -111,26 +112,26 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
   };
 
   const filteredPins = useMemo(() => {
-    return pins.filter((pin: MapPin) => {
+    return (pins || []).filter((pin: MapPin) => {
       const matchFilter = filter === 'all' || pin.type === filter;
-      const matchSearch = pin.title.toLowerCase().includes(search.toLowerCase()) || pin.address.toLowerCase().includes(search.toLowerCase());
+      const matchSearch = (pin.title || '').toLowerCase().includes(search.toLowerCase()) || (pin.address || '').toLowerCase().includes(search.toLowerCase());
       return matchFilter && matchSearch;
     });
   }, [filter, search, pins]);
 
   const fieldNotes = useMemo(() => {
-    return pins.filter((pin: MapPin) => pin.notes && pin.notes.trim().length > 0);
+    return (pins || []).filter((pin: MapPin) => pin.notes && pin.notes.trim().length > 0);
   }, [pins]);
 
   // Auto-focus on filtered pins
   useEffect(() => {
-    if (map && filteredPins.length > 0 && search.trim().length > 0) {
+    if (map && (filteredPins || []).length > 0 && search.trim().length > 0) {
       const bounds = new window.google.maps.LatLngBounds();
-      filteredPins.forEach((pin: MapPin) => {
+      (filteredPins || []).forEach((pin: MapPin) => {
         bounds.extend({ lat: pin.lat, lng: pin.lng });
       });
       
-      if (filteredPins.length === 1) {
+      if ((filteredPins || []).length === 1) {
         map.setCenter({ lat: filteredPins[0].lat, lng: filteredPins[0].lng });
         map.setZoom(17);
       } else {
@@ -147,7 +148,7 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
   const addPinMutation = useMutation({
     mutationFn: api.addMapPin,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MAP_PINS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MAP_PINS, profile?.uid] });
       setShowAddPin(false);
       setNewPinData({
         title: '',
@@ -227,7 +228,7 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
   });
 
   const getPinIcon = (type: string) => {
-    const typeObj = allPinTypes.find(t => t.id === type);
+    const typeObj = (allPinTypes || []).find(t => t.id === type);
     return createSvgPin(typeObj?.color || '#eab308', typeObj?.icon || Building2);
   };
 
@@ -264,7 +265,7 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
         </div>
 
         <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide items-center">
-          {allPinTypes.map(type => {
+          {(allPinTypes || []).map(type => {
             const Icon = type.icon;
             const isActive = filter === type.id;
             return (
@@ -380,11 +381,11 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
               </div>
               
               <div className="overflow-y-auto flex-1 space-y-4 pr-2">
-                {fieldNotes.length === 0 ? (
+                {(fieldNotes || []).length === 0 ? (
                   <div className="text-center py-8 text-slate-500 text-sm">Henüz saha notu bulunmuyor. Haritaya pin eklerken not girebilirsiniz.</div>
                 ) : (
-                  fieldNotes.map((pin: MapPin) => {
-                    const typeObj = allPinTypes.find(t => t.id === pin.type);
+                  (fieldNotes || []).map((pin: MapPin) => {
+                    const typeObj = (allPinTypes || []).find(t => t.id === pin.type);
                     const Icon = typeObj?.icon || Building2;
                     return (
                       <div key={pin.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
@@ -473,7 +474,7 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
                   styles: mapStyles
                 }}
               >
-                {filteredPins.map((pin: MapPin) => {
+                {(filteredPins || []).map((pin: MapPin) => {
                   const isHighlighted = search.trim().length > 0;
                   return (
                     <Marker
@@ -520,11 +521,11 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filteredPins.length === 0 ? (
+          {(filteredPins || []).length === 0 ? (
             <div className="text-center py-12 text-slate-500 text-sm col-span-full">Sonuç bulunamadı.</div>
           ) : (
-            filteredPins.map((pin: MapPin) => {
-              const typeObj = allPinTypes.find(t => t.id === pin.type);
+            (filteredPins || []).map((pin: MapPin) => {
+              const typeObj = (allPinTypes || []).find(t => t.id === pin.type);
               const Icon = typeObj?.icon || Building2;
               return (
                 <div key={pin.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex gap-4">
@@ -590,7 +591,7 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
                     onChange={(e) => setNewPinData({...newPinData, type: e.target.value})}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
                   >
-                    {categories.map(c => (
+                    {(categories || []).map(c => (
                       <option key={c.id} value={c.id}>{c.label}</option>
                     ))}
                   </select>

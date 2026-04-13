@@ -1,6 +1,8 @@
-import { Filter, Store, User, Building2, Home, Star, MapIcon } from 'lucide-react';
-import { useState, useEffect } from 'react';
+import { Home, User, Store, Building2, MapIcon } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
+import { useAuth } from '../AuthContext';
+import { QUERY_KEYS } from '../constants/queryKeys';
 
 export const DEFAULT_CATEGORIES = [
   { id: 'mulk_sahibi', label: 'Mülk Sahibi', icon: Home, color: '#f97316' },
@@ -11,65 +13,55 @@ export const DEFAULT_CATEGORIES = [
 ];
 
 export const useCategories = () => {
-  const [customCategories, setCustomCategories] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { profile } = useAuth();
+  const queryClient = useQueryClient();
 
-  useEffect(() => {
-    fetchCategories();
-  }, []);
-
-  const fetchCategories = async () => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const { data, error } = await supabase
-      .from('categories')
-      .select('*')
-      .eq('agent_id', user.id);
-    
-    if (error) {
-      console.error('Error fetching categories:', error);
-    } else if (data) {
-      setCustomCategories(data.map(c => ({
+  const { data: customCategories = [], isLoading: loading } = useQuery({
+    queryKey: [QUERY_KEYS.CATEGORIES, profile?.uid],
+    queryFn: async () => {
+      if (!profile?.uid) return [];
+      const { data, error } = await supabase
+        .from('categories')
+        .select('*')
+        .eq('agent_id', profile.uid);
+      
+      if (error) throw error;
+      return (data || []).map(c => ({
         ...c,
-        icon: MapIcon // Default icon for custom categories
-      })));
+        icon: MapIcon
+      }));
+    },
+    enabled: !!profile?.uid
+  });
+
+  const addCategoryMutation = useMutation({
+    mutationFn: async ({ name, color }: { name: string, color: string }) => {
+      if (!profile?.uid) throw new Error('Not authenticated');
+      const { data, error } = await supabase
+        .from('categories')
+        .insert({
+          agent_id: profile.uid,
+          label: name,
+          color: color,
+          icon: 'MapIcon'
+        })
+        .select()
+        .single();
+      
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CATEGORIES, profile?.uid] });
     }
-    setLoading(false);
-  };
-
-  const addCategory = async (name: string, color: string) => {
-    if (!name.trim()) return;
-    
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return;
-
-    const newCategory = {
-      agent_id: user.id,
-      label: name,
-      color: color,
-      icon: 'MapIcon'
-    };
-
-    const { data, error } = await supabase
-      .from('categories')
-      .insert(newCategory)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error adding category:', error);
-    } else if (data) {
-      setCustomCategories([...customCategories, { ...data, icon: MapIcon }]);
-    }
-  };
+  });
 
   const allCategories = [...DEFAULT_CATEGORIES, ...customCategories];
 
   return {
     categories: allCategories,
     customCategories,
-    addCategory,
+    addCategory: (name: string, color: string) => addCategoryMutation.mutate({ name, color }),
     loading
   };
 };

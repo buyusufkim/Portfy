@@ -77,7 +77,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       const { verified, message } = await api.verifyGamifiedTask(task);
       console.log("Doğrulama sonucu:", verified, message);
       if (!verified) throw new Error(message || "Görev doğrulanamadı.");
-      return api.completeGamifiedTask(task.id, task.points);
+      return api.completeGamifiedTask(task.id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] });
@@ -100,22 +100,44 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   });
 
   const startDayMutation = useMutation({
-    mutationFn: api.startDay,
+    mutationFn: async () => {
+      await api.startDay();
+      // Force refresh tasks to ensure they are created for today
+      return api.getDailyGamifiedTasks(true);
+    },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS] });
+      if (profile?.uid) {
+        const todayISO = new Date().toISOString().split('T')[0];
+        localStorage.setItem(`day_started_${profile.uid}_${todayISO}`, new Date().toISOString());
+      }
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] });
       setToast({ message: "Günün başarıyla başlatıldı!", type: 'success' });
     },
     onError: (error: any) => {
       console.error("Günü başlatma hatası:", error);
-      setToast({ message: "Günü başlatırken bir hata oluştu: " + (error.message || "Bilinmeyen hata"), type: 'error' });
+      // Even on error, we might want to check if it was already started
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] });
+      
+      if (error.message?.includes("already awarded")) {
+        if (profile?.uid) {
+          const todayISO = new Date().toISOString().split('T')[0];
+          localStorage.setItem(`day_started_${profile.uid}_${todayISO}`, new Date().toISOString());
+        }
+        setToast({ message: "Güne zaten başlamıştın, başarılar!", type: 'info' });
+      } else {
+        setToast({ message: "Günü başlatırken bir hata oluştu: " + (error.message || "Bilinmeyen hata"), type: 'error' });
+      }
     }
   });
 
   const startRescueMutation = useMutation({
     mutationFn: api.startRescueSession,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.uid] });
     }
   });
 

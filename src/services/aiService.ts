@@ -70,13 +70,5 @@ export const aiService = {
       console.warn("AI Insight temporary unavailable, using fallback.");
     }
     return aiInsight;
-  },
-
-  getAICoachInsight: async (): Promise<string> => {
-    const stats = await gamificationService.getGamifiedStats();
-    if (stats.momentum < 40) return "Momentumun düştü, günü kurtarmak için 1 saha ve 1 arama görevi tamamla.";
-    if (stats.tasks_completed_today === 0) return "Bugün en kritik işin 2 sıcak müşteriye dönüş yapmak.";
-    if (stats.daily_progress < 100) return "Harika gidiyorsun! Günü %100 tamamlamak için sadece birkaç görevin kaldı.";
-    return "Mükemmel bir gün! Tüm görevlerini tamamladın, yarın için dinlenmeyi unutma.";
   }
 };

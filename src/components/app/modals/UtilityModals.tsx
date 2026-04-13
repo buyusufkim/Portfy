@@ -4,19 +4,19 @@ import { DailyBriefingModal } from './DailyBriefingModal';
 import { RescueModeModal } from './RescueModeModal';
 import { MissedOpportunitiesModal } from './MissedOpportunitiesModal';
 
-import { Task, Building, RescueSession, MissedOpportunity } from '../../../types';
+import { Task, Building, RescueSession, MissedOpportunity, MutationResult } from '../../../types';
 
 interface UtilityModalsProps {
   showAddVisit: boolean;
   setShowAddVisit: (val: boolean) => void;
-  addVisitMutation: any;
+  addVisitMutation: MutationResult<any, any>;
   showDailyBriefing: boolean;
   setShowDailyBriefing: (val: boolean) => void;
   tasks: Task[];
   fieldVisits: Building[];
   rescueSession: RescueSession | null;
-  cancelRescueMutation: any;
-  completeRescueTaskMutation: any;
+  cancelRescueMutation: MutationResult<any, any>;
+  completeRescueTaskMutation: MutationResult<any, any>;
   showMissedOpportunities: boolean;
   setShowMissedOpportunities: (val: boolean) => void;
   missedOpportunities: MissedOpportunity[];

@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
   TrendingUp, 
@@ -79,11 +79,11 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
 }) => {
   if (!selectedProperty) return null;
 
-  const matchedLeads = leads.filter(l => 
+  const matchedLeads = (leads || []).filter(l => 
     l.status !== 'Pasif' && 
-    (l.district === selectedProperty.address.district || l.type === selectedProperty.type)
+    (l.district === selectedProperty.address?.district || l.type === selectedProperty.type)
   );
-  const regionScore = regionScores.find((r: any) => r.district === selectedProperty.address.district);
+  const regionScore = (regionScores || []).find((r: any) => r.district === selectedProperty.address?.district);
 
   return (
     <AnimatePresence>
@@ -170,15 +170,15 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-slate-50 p-4 rounded-3xl text-center">
                 <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Oda</div>
-                <div className="font-bold text-slate-900">{selectedProperty.details.rooms}</div>
+                <div className="font-bold text-slate-900">{selectedProperty.details?.rooms}</div>
               </div>
               <div className="bg-slate-50 p-4 rounded-3xl text-center">
                 <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">M2</div>
-                <div className="font-bold text-slate-900">{selectedProperty.details.brut_m2}</div>
+                <div className="font-bold text-slate-900">{selectedProperty.details?.brut_m2}</div>
               </div>
               <div className="bg-slate-50 p-4 rounded-3xl text-center">
                 <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Kat</div>
-                <div className="font-bold text-slate-900">{selectedProperty.details.floor}</div>
+                <div className="font-bold text-slate-900">{selectedProperty.details?.floor}</div>
               </div>
             </div>
 
@@ -190,7 +190,7 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                     <Activity size={24} />
                   </div>
                   <div>
-                    <h4 className="text-sm font-bold text-slate-900">{selectedProperty.address.district} Bölge Verimliliği</h4>
+                    <h4 className="text-sm font-bold text-slate-900">{selectedProperty.address?.district} Bölge Verimliliği</h4>
                     <p className="text-xs text-slate-500">Bu bölge şu an %{regionScore.score} verimlilikle çalışıyor.</p>
                   </div>
                 </div>
@@ -335,9 +335,9 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                     </div>
                     <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
                       {[
-                        { id: 'corporate', label: 'Kurumsal', content: instagramCaptions.corporate },
-                        { id: 'sales', label: 'Satış Odaklı', content: instagramCaptions.sales },
-                        { id: 'warm', label: 'Samimi', content: instagramCaptions.warm }
+                        { id: 'corporate', label: 'Kurumsal', content: instagramCaptions?.corporate },
+                        { id: 'sales', label: 'Satış Odaklı', content: instagramCaptions?.sales },
+                        { id: 'warm', label: 'Samimi', content: instagramCaptions?.warm }
                       ].map(variant => (
                         <Card key={variant.id} className="min-w-[280px] p-5 space-y-3 bg-white border-slate-100">
                           <Badge variant="info">{variant.label}</Badge>
@@ -370,9 +370,9 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                     </div>
                     <div className="space-y-3">
                       {[
-                        { id: 'single', label: 'Müşteriye Özel', content: whatsappMessages.single },
-                        { id: 'status', label: 'Durum Paylaşımı', content: whatsappMessages.status },
-                        { id: 'investor', label: 'Yatırımcıya Özel', content: whatsappMessages.investor }
+                        { id: 'single', label: 'Müşteriye Özel', content: whatsappMessages?.single },
+                        { id: 'status', label: 'Durum Paylaşımı', content: whatsappMessages?.status },
+                        { id: 'investor', label: 'Yatırımcıya Özel', content: whatsappMessages?.investor }
                       ].map(variant => (
                         <Card key={variant.id} className="p-4 bg-white border-slate-100 space-y-3">
                           <div className="flex justify-between items-center">
@@ -404,7 +404,7 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                 Eşleşen Müşteriler
               </h3>
               <div className="space-y-3">
-                {matchedLeads.length === 0 ? (
+                {(matchedLeads || []).length === 0 ? (
                   <Card className="bg-slate-50 border-dashed border-slate-200 p-10 flex flex-col items-center text-center gap-6">
                     <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-slate-300 shadow-sm">
                       <Users size={40} />
@@ -430,7 +430,7 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                       </button>
                     </div>
                   </Card>
-                ) : matchedLeads.slice(0, 3).map(lead => (
+                ) : (matchedLeads || []).slice(0, 3).map(lead => (
                   <Card key={lead.id} className="p-5 space-y-4 bg-white border-slate-100">
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
@@ -451,7 +451,7 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                         </button>
                         <button 
                           onClick={() => {
-                            const text = encodeURIComponent(`Merhaba ${lead.name}, bu mülk ilginizi çekebilir: ${selectedProperty.title}\nFiyat: ₺${selectedProperty.price.toLocaleString()}\nDetaylar için: https://portfy.app/ilan/${selectedProperty.id}`);
+                            const text = encodeURIComponent(`Merhaba ${lead.name}, bu mülk ilginizi çekebilir: ${selectedProperty.title || ''}\nFiyat: ₺${selectedProperty.price.toLocaleString()}\nDetaylar için: https://portfy.app/ilan/${selectedProperty.id}`);
                             window.open(`https://wa.me/${lead.phone}?text=${text}`, '_blank');
                           }}
                           className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl hover:bg-emerald-100 transition-colors"
@@ -475,7 +475,7 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
               <h3 className="font-bold text-slate-900">Konum Bilgisi</h3>
               <div className="flex items-center gap-3 text-slate-500 text-sm">
                 <MapPin size={18} />
-                <span>{selectedProperty.address.neighborhood}, {selectedProperty.address.district}, {selectedProperty.address.city}</span>
+                <span>{selectedProperty.address?.neighborhood}, {selectedProperty.address?.district}, {selectedProperty.address?.city}</span>
               </div>
             </div>
           </div>

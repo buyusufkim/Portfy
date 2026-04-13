@@ -1,6 +1,7 @@
 import { Lead } from '../types';
 import { supabase } from '../lib/supabase';
 import { getUserId } from './core/utils';
+import { gamificationService } from './gamificationService';
 import { generateContent } from '../lib/aiClient';
 
 export const leadService = {
@@ -33,6 +34,14 @@ export const leadService = {
       .select()
       .single();
     if (error) throw error;
+    
+    // Award XP for adding a lead
+    try {
+      await gamificationService.earnXP('ADD_LEAD', { leadId: data.id });
+    } catch (e) {
+      console.warn("XP award failed for addLead:", e);
+    }
+
     return data.id;
   },
 

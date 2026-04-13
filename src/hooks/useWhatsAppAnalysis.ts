@@ -23,7 +23,7 @@ export const useWhatsAppAnalysis = () => {
   const addToCRMMutation = useMutation({
     mutationFn: (analysis: WhatsAppAnalysis) => whatsappService.addToCRM(analysis),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.uid] });
       confetti({
         particleCount: 100,
         spread: 70,
@@ -35,7 +35,7 @@ export const useWhatsAppAnalysis = () => {
   const createFollowUpMutation = useMutation({
     mutationFn: (analysis: WhatsAppAnalysis) => whatsappService.createFollowUpTask(analysis),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS, profile?.uid] });
     }
   });
 

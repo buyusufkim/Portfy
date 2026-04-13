@@ -1,6 +1,7 @@
 import { Property, BrokerAccount, ExternalListing, PropertySyncLink } from '../types';
 import { supabase } from '../lib/supabase';
 import { getUserId } from './core/utils';
+import { gamificationService } from './gamificationService';
 import { generateContent } from '../lib/aiClient';
 
 export const propertyService = {
@@ -65,6 +66,14 @@ export const propertyService = {
       .select()
       .single();
     if (error) throw error;
+
+    // Award XP for adding a property
+    try {
+      await gamificationService.earnXP('ADD_PROPERTY', { propertyId: data.id });
+    } catch (e) {
+      console.warn("XP award failed for addProperty:", e);
+    }
+
     return data.id;
   },
 

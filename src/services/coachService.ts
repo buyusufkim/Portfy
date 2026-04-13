@@ -1,16 +1,67 @@
-import { CoachInsight } from '../types';
+import { CoachInsight, PersonalTask, GamifiedTask } from '../types';
+import { AICoachResponse, AICoachAction } from "../types/ai";
+import { AI_COACH_SCHEMA, buildCoachPrompt } from "../lib/aiPromptBuilder";
 import { supabase } from '../lib/supabase';
 import { leadService } from './leadService';
 import { taskService } from './taskService';
 import { missedOpportunityService } from './missedOpportunityService';
+import { propertyService } from './propertyService';
+import { profileService } from './profileService';
+import { gamificationService } from './gamificationService';
 import { generateContent } from '../lib/aiClient';
 
 export const coachService = {
-  getCoachInsights: async (): Promise<CoachInsight> => {
+  /**
+   * Returns a detailed AI-generated coaching response with strategic actions.
+   * Used in the dedicated AI Coach Panel (Premium feature).
+   */
+  getDetailedInsight: async (): Promise<AICoachResponse> => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const [profile, leads, properties, tasks, missedOpportunities] = await Promise.all([
+      profileService.getProfile(),
+      leadService.getLeads(),
+      propertyService.getProperties(),
+      taskService.getTasks(),
+      missedOpportunityService.getMissedOpportunities()
+    ]);
+
+    const prompt = buildCoachPrompt({
+      profile,
+      leads,
+      properties,
+      tasks,
+      missedOpportunities
+    });
+
+    try {
+      const response = await generateContent(
+        "gemini-3-flash-preview",
+        prompt,
+        {
+          responseMimeType: "application/json",
+          // @ts-ignore - Gemini SDK schema type support
+          responseSchema: AI_COACH_SCHEMA
+        }
+      );
+
+      const result = JSON.parse(response.text || '{}') as AICoachResponse;
+      return result;
+    } catch (error) {
+      console.error("AI Coach Service Error:", error);
+      throw new Error("AI Koç şu an ulaşılamıyor. Lütfen daha sonra tekrar deneyin.");
+    }
+  },
+
+  /**
+   * Returns a simpler AI-generated coaching summary.
+   * Used in the main Dashboard view.
+   */
+  getSimpleInsight: async (): Promise<CoachInsight> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
     
-    // Fetch user data to analyze
     const [leads, tasks, missedOpps] = await Promise.all([
       leadService.getLeads(),
       taskService.getTasks(),
@@ -59,7 +110,6 @@ export const coachService = {
       return JSON.parse(response.text || '{}') as CoachInsight;
     } catch (error) {
       console.error('Coach insight error:', error);
-      // Fallback data
       return {
         score: 75,
         daily_tip: "Bugün en az 2 eski müşterinizi arayarak durumlarını sorun.",
@@ -73,5 +123,29 @@ export const coachService = {
         }
       };
     }
+  },
+
+  /**
+   * Returns a quick, logic-based tip based on current gamification stats.
+   * Does not require an AI call.
+   */
+  getQuickTip: async (): Promise<string> => {
+    const stats = await gamificationService.getGamifiedStats();
+    if (stats.momentum < 40) return "Momentumun düştü, günü kurtarmak için 1 saha ve 1 arama görevi tamamla.";
+    if (stats.tasks_completed_today === 0) return "Bugün en kritik işin 2 sıcak müşteriye dönüş yapmak.";
+    if (stats.daily_progress < 100) return "Harika gidiyorsun! Günü %100 tamamlamak için sadece birkaç görevin kaldı.";
+    return "Mükemmel bir gün! Tüm görevlerini tamamladın, yarın için dinlenmeyi unutma.";
+  },
+
+  /**
+   * Converts a recommended AI action into a real task in the system.
+   */
+  convertActionToTask: async (action: AICoachAction) => {
+    return taskService.addTask({
+      title: action.title,
+      type: action.type === 'call' ? 'Arama' : action.type === 'visit' ? 'Saha' : 'Randevu',
+      time: new Date().toISOString(),
+      completed: false
+    });
   }
 };

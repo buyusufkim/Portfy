@@ -75,7 +75,7 @@ export const api = {
   endDay: profileService.endDay,
   getDailyRadar: aiService.getDailyRadar,
   getGamifiedStats: gamificationService.getGamifiedStats,
-  getAICoachInsight: aiService.getAICoachInsight,
+  getAICoachInsight: coachService.getQuickTip,
 
   // Dashboard Verileri
   getDashboardStats: async (): Promise<DashboardStats> => {
@@ -263,5 +263,6 @@ export const api = {
 
   parseVoiceCommand: voiceService.parseVoiceCommand,
 
-  getCoachInsights: coachService.getCoachInsights
+  getCoachInsights: coachService.getSimpleInsight,
+  getDetailedCoachInsight: coachService.getDetailedInsight
 };

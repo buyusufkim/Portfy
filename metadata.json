@@ -2,6 +2,7 @@
   "name": "Portfy - Seni çalıştıran danışman sistemi",
   "description": "Gayrimenkul danışmanları için bölge çalışması, lead yönetimi ve günlük rutin takip uygulaması.",
   "requestFramePermissions": [
-    "geolocation"
+    "geolocation",
+    "microphone"
   ]
 }

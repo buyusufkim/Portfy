@@ -2,7 +2,7 @@ import React from 'react';
 import { PortfolioModals as BasePortfolioModals } from '../../../pages/PortfoliosPage';
 import { TemplateManagerModal } from './TemplateManagerModal';
 
-import { Property, BrokerAccount, ExternalListing, MessageTemplate, Lead } from '../../../types';
+import { Property, BrokerAccount, ExternalListing, MessageTemplate, Lead, RegionEfficiencyScore, MutationResult } from '../../../types';
 
 interface PortfolioModalsProps {
   showAddProperty: boolean;
@@ -17,18 +17,18 @@ interface PortfolioModalsProps {
   setSelectedProperty: (val: Property | null) => void;
   brokerAccount: BrokerAccount | null;
   externalListings: ExternalListing[];
-  syncListingsMutation: any;
-  linkPropertyMutation: any;
-  connectIntegrationMutation: any;
+  syncListingsMutation: MutationResult<any, any>;
+  linkPropertyMutation: MutationResult<any, any>;
+  connectIntegrationMutation: MutationResult<any, any>;
   templates: MessageTemplate[];
   showTemplateSelector: boolean;
   setShowTemplateSelector: (val: boolean) => void;
   leads: Lead[];
-  regionScores: any[];
+  regionScores: RegionEfficiencyScore[];
   showTemplateManager: boolean;
   setShowTemplateManager: (val: boolean) => void;
-  addTemplateMutation: any;
-  deleteTemplateMutation: any;
+  addTemplateMutation: MutationResult<any, any>;
+  deleteTemplateMutation: MutationResult<any, string>;
 }
 
 export const PortfolioModals: React.FC<PortfolioModalsProps> = ({

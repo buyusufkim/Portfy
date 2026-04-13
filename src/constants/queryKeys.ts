@@ -21,4 +21,5 @@ export const QUERY_KEYS = {
   FIELD_VISITS: 'fieldVisits',
   MISSED_OPPORTUNITIES: 'missedOpportunities',
   AI_COACH_INSIGHT: 'aiCoachInsight',
+  CATEGORIES: 'categories',
 } as const;

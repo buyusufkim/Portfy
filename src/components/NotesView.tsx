@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, 
   Search, 
@@ -17,26 +17,30 @@ import { api } from '../services/api';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { UserNote, PersonalTask } from '../types';
 import { Card, Badge } from './UI';
+import { useAuth } from '../AuthContext';
 
 export const NotesView = () => {
+  const { profile } = useAuth();
   const [showAddNote, setShowAddNote] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
   const queryClient = useQueryClient();
 
   const { data: notes = [], isLoading: notesLoading } = useQuery({
-    queryKey: [QUERY_KEYS.PERSONAL_NOTES],
-    queryFn: api.getNotes
+    queryKey: [QUERY_KEYS.PERSONAL_NOTES, profile?.uid],
+    queryFn: api.getNotes,
+    enabled: !!profile?.uid
   });
 
   const { data: personalTasks = [], isLoading: tasksLoading } = useQuery({
-    queryKey: [QUERY_KEYS.PERSONAL_TASKS],
-    queryFn: api.getPersonalTasks
+    queryKey: [QUERY_KEYS.PERSONAL_TASKS, profile?.uid],
+    queryFn: api.getPersonalTasks,
+    enabled: !!profile?.uid
   });
 
   const addNoteMutation = useMutation({
     mutationFn: (content: string) => api.addNote({ title: 'Hızlı Not', content }),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_NOTES] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_NOTES, profile?.uid] });
       setShowAddNote(false);
     }
   });
@@ -44,24 +48,24 @@ export const NotesView = () => {
   const addPersonalTaskMutation = useMutation({
     mutationFn: api.addPersonalTask,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_TASKS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_TASKS, profile?.uid] });
       setShowAddTask(false);
     }
   });
 
   const toggleTaskMutation = useMutation({
     mutationFn: (task: PersonalTask) => api.updatePersonalTask(task.id, { is_completed: !task.is_completed }),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_TASKS] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_TASKS, profile?.uid] })
   });
 
   const deleteNoteMutation = useMutation({
     mutationFn: api.deleteNote,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_NOTES] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_NOTES, profile?.uid] })
   });
 
   const deletePersonalTaskMutation = useMutation({
     mutationFn: api.deletePersonalTask,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_TASKS] })
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_TASKS, profile?.uid] })
   });
 
   return (

@@ -1,19 +1,15 @@
 import React from 'react';
 import { AnimatePresence } from 'motion/react';
 import { DashboardPage } from '../../pages/DashboardPage';
-import { BolgemView } from '../BolgemView';
 import { PortfoliosPage } from '../../pages/PortfoliosPage';
 import { CRMPage } from '../../pages/CRMPage';
 import { NotesView } from '../NotesView';
 import { ProfilView } from '../ProfilView';
-import { CoachView } from './CoachView'; // Wait, CoachView is in App.tsx too?
-import { LoadingFallback } from './LoadingFallback'; // I should probably move these too or export them
-import { AdminPanel } from '../AdminPanel';
+import { CoachView } from './CoachView';
+import { LoadingFallback } from './LoadingFallback';
 
-// I'll need to check where CoachView and LoadingFallback are.
-// In App.tsx they are defined as local components.
-// I'll move them to separate files or include them in MainContentRouter if they are small.
-// Actually, I'll move them to src/components/app/ as well.
+const AdminPanel = React.lazy(() => import('../AdminPanel'));
+const BolgemView = React.lazy(() => import('../BolgemView'));
 
 import { 
   UserProfile, 
@@ -27,7 +23,10 @@ import {
   RescueSession, 
   MissedOpportunity,
   Task,
-  Building
+  Building,
+  MutationResult,
+  RegionEfficiencyScore,
+  Category
 } from '../../types';
 
 export interface NavigationProps {
@@ -42,17 +41,17 @@ export interface NavigationProps {
 export interface LeadProps {
   leads: Lead[];
   leadsLoading: boolean;
-  categories: string[];
+  categories: Category[];
   showAddLead: boolean;
   setShowAddLead: (val: boolean) => void;
   showWhatsAppImport: boolean;
   setShowWhatsAppImport: (val: boolean) => void;
   leadAnalysis: string | null;
   setLeadAnalysis: (val: string | null) => void;
-  analyzeLeadsMutation: any;
+  analyzeLeadsMutation: MutationResult<string, any>;
   isAnalyzingLeads: boolean;
   setIsAnalyzingLeads: (val: boolean) => void;
-  addLeadMutation: any;
+  addLeadMutation: MutationResult<any, any>;
 }
 
 export interface PortfolioProps {
@@ -63,23 +62,23 @@ export interface PortfolioProps {
   viewMode: 'list' | 'pipeline';
   setViewMode: (val: 'list' | 'pipeline') => void;
   setShowImportUrlModal: (val: boolean) => void;
-  regionScores: any[];
+  regionScores: RegionEfficiencyScore[];
   setShowExternalListings: (val: boolean) => void;
   setShowIntegrationModal: (val: boolean) => void;
   setSelectedProperty: (val: Property | null) => void;
   selectedProperty: Property | null;
   brokerAccount: BrokerAccount | null;
   externalListings: ExternalListing[];
-  syncListingsMutation: any;
-  linkPropertyMutation: any;
-  connectIntegrationMutation: any;
+  syncListingsMutation: MutationResult<any, any>;
+  linkPropertyMutation: MutationResult<any, any>;
+  connectIntegrationMutation: MutationResult<any, any>;
   templates: MessageTemplate[];
   showTemplateSelector: boolean;
   setShowTemplateSelector: (val: boolean) => void;
   showTemplateManager: boolean;
   setShowTemplateManager: (val: boolean) => void;
-  addTemplateMutation: any;
-  deleteTemplateMutation: any;
+  addTemplateMutation: MutationResult<any, any>;
+  deleteTemplateMutation: MutationResult<any, string>;
   showAddProperty: boolean;
   setShowAddProperty: (val: boolean) => void;
   showImportUrlModal: boolean;
@@ -90,14 +89,14 @@ export interface PortfolioProps {
 export interface UtilityProps {
   showAddVisit: boolean;
   setShowAddVisit: (val: boolean) => void;
-  addVisitMutation: any;
+  addVisitMutation: MutationResult<any, any>;
   showDailyBriefing: boolean;
   setShowDailyBriefing: (val: boolean) => void;
   tasks: Task[];
   fieldVisits: Building[];
   rescueSession: RescueSession | null;
-  cancelRescueMutation: any;
-  completeRescueTaskMutation: any;
+  cancelRescueMutation: MutationResult<any, any>;
+  completeRescueTaskMutation: MutationResult<any, any>;
   showMissedOpportunities: boolean;
   setShowMissedOpportunities: (val: boolean) => void;
   missedOpportunities: MissedOpportunity[];
@@ -105,11 +104,11 @@ export interface UtilityProps {
   personalTasks: PersonalTask[];
   setShowDailyRadar: (val: boolean) => void;
   setShowDayCloser: (val: boolean) => void;
-  setToast: (toast: any) => void;
-  completeMorningRitualMutation: any;
+  setToast: (toast: { message: string, type: 'success' | 'error' | 'info' } | null) => void;
+  completeMorningRitualMutation: MutationResult<any, any>;
   showVoiceQuickAdd: boolean;
   setShowVoiceQuickAdd: (val: boolean) => void;
-  addTaskMutation: any;
+  addTaskMutation: MutationResult<any, any>;
   setActiveTab: (tab: string) => void;
 }
 
@@ -127,7 +126,11 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
   utilities
 }) => {
   if (navigation.showAdminPanel) {
-    return <AdminPanel onClose={() => navigation.setShowAdminPanel(false)} />;
+    return (
+      <React.Suspense fallback={<LoadingFallback />}>
+        <AdminPanel onClose={() => navigation.setShowAdminPanel(false)} />
+      </React.Suspense>
+    );
   }
 
   return (
@@ -135,12 +138,12 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
       {navigation.activeTab === 'dashboard' && (
         <DashboardPage 
           profile={navigation.profile}
-          properties={portfolios.properties}
-          gamifiedTasks={utilities.gamifiedTasks}
-          personalTasks={utilities.personalTasks}
-          tasks={utilities.tasks}
+          properties={portfolios.properties || []}
+          gamifiedTasks={utilities.gamifiedTasks || []}
+          personalTasks={utilities.personalTasks || []}
+          tasks={utilities.tasks || []}
           rescueSession={utilities.rescueSession}
-          missedOpportunities={utilities.missedOpportunities}
+          missedOpportunities={utilities.missedOpportunities || []}
           setActiveTab={navigation.setActiveTab}
           setShowAdminPanel={navigation.setShowAdminPanel}
           setShowDailyRadar={utilities.setShowDailyRadar}
@@ -157,13 +160,13 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
       )}
       {navigation.activeTab === 'portfoyler' && (
         <PortfoliosPage 
-          properties={portfolios.properties}
+          properties={portfolios.properties || []}
           selectedDistrict={portfolios.selectedDistrict}
           setSelectedDistrict={portfolios.setSelectedDistrict}
           viewMode={portfolios.viewMode}
           setViewMode={portfolios.setViewMode}
           setShowImportUrlModal={portfolios.setShowImportUrlModal}
-          regionScores={portfolios.regionScores}
+          regionScores={portfolios.regionScores || []}
           propertiesLoading={portfolios.propertiesLoading}
           setSelectedProperty={portfolios.setSelectedProperty}
         />
@@ -171,9 +174,9 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
       {navigation.activeTab === 'crm' && (
         <CRMPage 
           profile={navigation.profile}
-          leads={leads.leads}
+          leads={leads.leads || []}
           leadsLoading={leads.leadsLoading}
-          categories={leads.categories}
+          categories={leads.categories || []}
           setShowWhatsAppImport={leads.setShowWhatsAppImport}
           setShowAddLead={leads.setShowAddLead}
           setIsAnalyzingLeads={leads.setIsAnalyzingLeads}

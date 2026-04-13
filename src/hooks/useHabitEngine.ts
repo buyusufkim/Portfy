@@ -22,12 +22,12 @@ export const useHabitEngine = () => {
   });
 
   const completeTaskMutation = useMutation({
-    mutationFn: ({ taskId, points }: { taskId: string, points: number }) => 
-      api.completeGamifiedTask(taskId, points),
+    mutationFn: ({ taskId }: { taskId: string }) => 
+      api.completeGamifiedTask(taskId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DAILY_STATS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DAILY_STATS, profile?.uid] });
       
       confetti({
         particleCount: 100,
@@ -40,7 +40,7 @@ export const useHabitEngine = () => {
   const startDayMutation = useMutation({
     mutationFn: api.completeMorningRitual,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
     }
   });
 
@@ -48,8 +48,8 @@ export const useHabitEngine = () => {
     mutationFn: (stats: { tasks_completed: number, revenue: number, calls: number, visits: number }) => 
       api.completeEveningRitual(stats),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DAILY_STATS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DAILY_STATS, profile?.uid] });
       confetti({
         particleCount: 200,
         spread: 90,

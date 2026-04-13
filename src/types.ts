@@ -311,6 +311,26 @@ export interface CoachInsight {
   };
 }
 
+export interface RegionEfficiencyScore {
+  district: string;
+  score: number;
+}
+
+export interface Category {
+  id: string;
+  label: string;
+  icon: any; // Lucide icon component
+  color: string;
+}
+
+export interface MutationResult<TData = any, TVariables = any> {
+  mutate: (variables: TVariables) => void;
+  isPending: boolean;
+  error: any;
+  variables?: TVariables;
+  data?: TData;
+}
+
 export interface UserNote {
   id: string;
   agent_id: string;

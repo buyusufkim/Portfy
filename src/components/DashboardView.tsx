@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   Building2, 
   Sparkles, 
@@ -17,26 +17,28 @@ import { Card, Badge, Skeleton } from './UI';
 import { RevenueOverview } from './revenue/RevenueOverview';
 import { PipelineFunnel } from './revenue/PipelineFunnel';
 import { QUERY_KEYS } from '../constants/queryKeys';
-import { UserProfile, GamifiedTask, Property, Task, PersonalTask, RescueSession } from '../types';
+import { UserProfile, GamifiedTask, Property, Task, PersonalTask, RescueSession, UserStats, CoachInsight, MutationResult } from '../types';
+import { RevenueStats } from '../types/revenue';
+import { QueryClient } from '@tanstack/react-query';
 
 interface DashboardViewProps {
   profile: UserProfile | null;
-  gamifiedStats: any;
+  gamifiedStats: UserStats | null;
   properties: Property[];
-  coachInsights: any;
+  coachInsights: CoachInsight | null;
   gamifiedTasks: GamifiedTask[];
   rescueSession: RescueSession | null;
   isGamifiedTasksLoading: boolean;
   isGamifiedTasksError: boolean;
-  refreshTasksMutation: any;
-  completeTaskMutation: any;
-  startRescueMutation: any;
-  revenueStats: any;
+  refreshTasksMutation: MutationResult<any, any>;
+  completeTaskMutation: MutationResult<any, any>;
+  startRescueMutation: MutationResult<any, any>;
+  revenueStats: RevenueStats | null;
   revenueLoading: boolean;
   setActiveTab: (tab: string) => void;
   setShowDayCloser: (show: boolean) => void;
-  queryClient: any;
-  startDayMutation: any;
+  queryClient: QueryClient;
+  startDayMutation: MutationResult<any, any>;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -60,14 +62,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const [dashboardTab, setDashboardTab] = useState<'action' | 'analysis'>('action');
   
-  const potentialRevenue = properties.reduce((acc, p) => {
+  const potentialRevenue = (properties || []).reduce((acc, p) => {
     if (['Satıldı', 'Pasif'].includes(p.status)) return acc;
-    return acc + ((p.price * p.commission_rate) / 100) * (p.sale_probability || 0.5);
+    return acc + (((p.price || 0) * (p.commission_rate || 0)) / 100) * (p.sale_probability || 0.5);
   }, 0);
 
   const getTodayStr = () => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+    return new Date().toISOString().split('T')[0];
   };
 
   const todayStr = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
@@ -75,17 +76,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const localStarted = profile?.uid ? localStorage.getItem(`day_started_${profile.uid}_${todayISO}`) : null;
   const localEnded = profile?.uid ? localStorage.getItem(`day_ended_${profile.uid}_${todayISO}`) : null;
   
-  // Day is started if DB says so OR local storage says so OR last_active_date matches
-  const isDayStarted = (profile?.last_day_started_at?.startsWith(todayISO)) || 
-                       (profile?.last_active_date === todayISO) || 
-                       !!localStarted;
-  
-  // Day is ended ONLY if local storage says so OR (DB says so AND it happened AFTER the day started)
-  const dayStartTimestamp = profile?.last_day_started_at || localStarted || '';
-  const isDayEnded = !!localEnded || (
-    !!profile?.last_ritual_completed_at?.startsWith(todayISO) && 
-    profile.last_ritual_completed_at > dayStartTimestamp
+  // Day is started if:
+  // 1. DB says last_day_started_at is today
+  // 2. DB says last_active_date is today (strong signal)
+  // 3. Local storage says day started today (immediate feedback)
+  const isDayStarted = !!(
+    (profile?.last_day_started_at && profile.last_day_started_at.startsWith(todayISO)) || 
+    (profile?.last_active_date === todayISO) || 
+    localStarted
   );
+  
+  // Day is ended if:
+  // 1. Local storage says day ended today
+  // 2. DB says last_ritual_completed_at is today AND it happened AFTER day start
+  const dayStartTimestamp = profile?.last_day_started_at || localStarted || '';
+  const isDayEnded = !!(
+    localEnded || 
+    (profile?.last_ritual_completed_at && 
+     profile.last_ritual_completed_at.startsWith(todayISO) && 
+     (!dayStartTimestamp || profile.last_ritual_completed_at > dayStartTimestamp))
+  );
+
+  const isTasksDisabled = !isDayStarted || isDayEnded;
 
   return (
     <motion.div 
@@ -215,7 +227,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <div className="mt-4">
                   <div className="text-2xl font-bold text-white">
-                    {gamifiedStats ? gamifiedStats.points.toLocaleString() : <Skeleton className="h-8 w-20 bg-white/20" />}
+                    {gamifiedStats ? (gamifiedStats.points || 0).toLocaleString() : <Skeleton className="h-8 w-20 bg-white/20" />}
                   </div>
                   <div className="text-white font-bold text-[10px] uppercase tracking-wider mt-1">Toplam Puan</div>
                 </div>
@@ -228,7 +240,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
                 <div className="mt-4">
                   <div className="text-2xl font-bold text-slate-900">
-                    {gamifiedStats ? `${gamifiedStats.streak} Gün` : <Skeleton className="h-8 w-16" />}
+                    {gamifiedStats ? `${gamifiedStats.streak || 0} Gün` : <Skeleton className="h-8 w-16" />}
                   </div>
                   <div className="text-slate-600 text-[10px] uppercase font-bold tracking-wider mt-1">Peş Peşe Seri</div>
                 </div>
@@ -271,8 +283,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             {/* Smart Insights Section */}
             <section className="space-y-4">
               <h2 className="text-lg font-bold text-slate-900">Akıllı Öneriler</h2>
-              {properties.some(p => p.market_analysis?.status === 'Pahalı' && p.status === 'Yayında') ? (
-                properties.filter(p => p.market_analysis?.status === 'Pahalı' && p.status === 'Yayında').slice(0, 1).map(p => (
+              {(properties || []).some(p => p.market_analysis?.status === 'Pahalı' && p.status === 'Yayında') ? (
+                (properties || []).filter(p => p.market_analysis?.status === 'Pahalı' && p.status === 'Yayında').slice(0, 1).map(p => (
                   <Card key={`alert-${p.id}`} className="p-4 md:p-6 bg-amber-50 border-amber-100">
                     <div className="flex gap-4">
                       <div className="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center text-amber-600 shrink-0">
@@ -301,7 +313,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </section>
 
             {/* Daily Tasks List */}
-            <section className={`space-y-4 ${(!isDayStarted || isDayEnded) ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+            <section className={`space-y-4 ${isTasksDisabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
               <div className="flex justify-between items-center px-1">
                 <h2 className="text-lg font-bold text-slate-900 tracking-tight">Günün Görevleri</h2>
                 <div className="flex items-center gap-2">
@@ -351,7 +363,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       Tekrar Dene
                     </button>
                   </div>
-                ) : gamifiedTasks.length === 0 ? (
+                ) : (gamifiedTasks || []).length === 0 ? (
                   <div className="py-12 text-center space-y-3 bg-white rounded-[32px] border border-slate-100 shadow-sm">
                     <div className="w-12 h-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300 mx-auto mb-2">
                       <ClipboardList size={24} />
@@ -366,7 +378,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       {refreshTasksMutation.isPending ? 'Oluşturuluyor...' : 'Görevleri Oluştur'}
                     </button>
                   </div>
-                ) : gamifiedTasks.filter(t => !t.is_completed).length === 0 ? (
+                ) : (gamifiedTasks || []).filter(t => !t.is_completed).length === 0 ? (
                   <Card className="p-6 md:p-8 text-center bg-emerald-50/30 border-emerald-100/50">
                     <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600 mx-auto mb-3">
                       <CheckCircle2 size={24} />
@@ -377,7 +389,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 ) : (
                   <div className="space-y-3">
                     <AnimatePresence mode="popLayout">
-                      {gamifiedTasks.filter(t => !t.is_completed).slice(0, 3).map(task => (
+                      {(gamifiedTasks || []).filter(t => !t.is_completed).slice(0, 3).map(task => (
                         <motion.div
                           key={task.id}
                           layout
@@ -416,17 +428,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 )}
 
                 {/* Completed Tasks Summary */}
-                {gamifiedTasks.filter(t => t.is_completed).length > 0 && (
+                {(gamifiedTasks || []).filter(t => t.is_completed).length > 0 && (
                   <div className="mt-6 space-y-3">
                     <div className="flex items-center justify-between px-1">
                       <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Tamamlananlar</div>
                       <div className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full">
-                        {gamifiedTasks.filter(t => t.is_completed).length} Görev
+                        {(gamifiedTasks || []).filter(t => t.is_completed).length} Görev
                       </div>
                     </div>
                     <div className="relative group">
                       <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-hide snap-x">
-                        {gamifiedTasks.filter(t => t.is_completed).map(task => (
+                        {(gamifiedTasks || []).filter(t => t.is_completed).map(task => (
                           <motion.div 
                             initial={{ opacity: 0, scale: 0.9 }}
                             animate={{ opacity: 1, scale: 1 }}
@@ -495,7 +507,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {/* Pipeline Funnel */}
             <section className="space-y-4">
-              <PipelineFunnel properties={properties} />
+              <PipelineFunnel properties={properties || []} />
             </section>
           </motion.div>
         )}

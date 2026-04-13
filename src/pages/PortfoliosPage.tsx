@@ -1,9 +1,9 @@
 import React, { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { api } from '../services/api';
 import { QUERY_KEYS } from '../constants/queryKeys';
-import { Property, MessageTemplate } from '../types';
+import { Property, MessageTemplate, BrokerAccount, ExternalListing, Lead, RegionEfficiencyScore, MutationResult } from '../types';
 import { AddPropertyModal } from '../components/portfolios/AddPropertyModal';
 import { IntegrationModal } from '../components/portfolios/IntegrationModal';
 import { ExternalListingsModal } from '../components/portfolios/ExternalListingsModal';
@@ -15,6 +15,7 @@ import { AIContentModal } from '../components/portfolios/AIContentModal';
 import { TemplateSelectorModal } from '../components/portfolios/TemplateSelectorModal';
 import { PortfoliosToolbar } from '../components/portfolios/PortfoliosToolbar';
 import { PropertyGrid } from '../components/portfolios/PropertyGrid';
+import { useAuth } from '../AuthContext';
 
 interface PortfolioModalsProps {
   showAddProperty: boolean;
@@ -27,16 +28,16 @@ interface PortfolioModalsProps {
   setShowExternalListings: (show: boolean) => void;
   selectedProperty: Property | null;
   setSelectedProperty: (p: Property | null) => void;
-  brokerAccount: any;
-  externalListings: any[];
-  syncListingsMutation: any;
-  linkPropertyMutation: any;
-  connectIntegrationMutation: any;
+  brokerAccount: BrokerAccount | null;
+  externalListings: ExternalListing[];
+  syncListingsMutation: MutationResult<any, void>;
+  linkPropertyMutation: MutationResult<any, { propertyId: string, externalId: string }>;
+  connectIntegrationMutation: MutationResult<any, void>;
   templates: MessageTemplate[];
   showTemplateSelector: boolean;
   setShowTemplateSelector: (show: boolean) => void;
-  leads: any[];
-  regionScores: any[];
+  leads: Lead[];
+  regionScores: RegionEfficiencyScore[];
 }
 
 export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
@@ -61,6 +62,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   leads,
   regionScores
 }) => {
+  const { profile } = useAuth();
   const queryClient = useQueryClient();
   const [aiContent, setAiContent] = useState<string | null>(null);
   const [instagramCaptions, setInstagramCaptions] = useState<{ corporate: string, sales: string, warm: string } | null>(null);
@@ -108,9 +110,9 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   const addPropertyMutation = useMutation({
     mutationFn: api.addProperty,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD_STATS] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REGION_SCORES] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD_STATS, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REGION_SCORES, profile?.uid] });
       setShowAddProperty(false);
     }
   });
@@ -118,7 +120,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   const importListingMutation = useMutation({
     mutationFn: api.importListingFromUrl,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid] });
       setShowImportUrlModal(false);
       setShowAddProperty(true);
     }
@@ -224,7 +226,7 @@ interface PortfoliosPageProps {
   propertiesLoading: boolean;
   selectedDistrict: string;
   setSelectedDistrict: (district: string) => void;
-  regionScores: any[];
+  regionScores: RegionEfficiencyScore[];
   viewMode: 'list' | 'pipeline';
   setViewMode: (mode: 'list' | 'pipeline') => void;
   setShowImportUrlModal: (show: boolean) => void;

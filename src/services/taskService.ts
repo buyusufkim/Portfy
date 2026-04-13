@@ -1,6 +1,7 @@
 import { Task, PersonalTask } from '../types';
 import { supabase } from '../lib/supabase';
 import { getUserId } from './core/utils';
+import { gamificationService } from './gamificationService';
 
 export const taskService = {
   getTasks: async () => {
@@ -30,5 +31,13 @@ export const taskService = {
 
   updateTaskStatus: async (taskId: string, completed: boolean) => {
     await supabase.from('tasks').update({ completed }).eq('id', taskId);
+    
+    if (completed) {
+      try {
+        await gamificationService.earnXP('COMPLETE_BASIC_TASK');
+      } catch (e) {
+        console.warn("XP award failed for updateTaskStatus:", e);
+      }
+    }
   },
 };

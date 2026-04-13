@@ -4,6 +4,7 @@ import { MessageSquare, RefreshCw, Sparkles } from 'lucide-react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { QUERY_KEYS } from '../constants/queryKeys';
+import { useAuth } from '../AuthContext';
 
 interface WhatsAppImportModalProps {
   showWhatsAppImport: boolean;
@@ -14,6 +15,7 @@ export const WhatsAppImportModal: React.FC<WhatsAppImportModalProps> = ({
   showWhatsAppImport,
   setShowWhatsAppImport
 }) => {
+  const { profile } = useAuth();
   const [text, setText] = useState('');
   const queryClient = useQueryClient();
 
@@ -22,7 +24,7 @@ export const WhatsAppImportModal: React.FC<WhatsAppImportModalProps> = ({
       return api.importLeadFromText(text);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.uid] });
       setShowWhatsAppImport(false);
     }
   });

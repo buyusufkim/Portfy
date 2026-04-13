@@ -6,9 +6,10 @@ interface DailyRadarProps {
   tasks: string[];
   insight: string;
   onComplete: () => void;
+  isPending?: boolean;
 }
 
-export const DailyRadar: React.FC<DailyRadarProps> = ({ tasks, insight, onComplete }) => {
+export const DailyRadar: React.FC<DailyRadarProps> = ({ tasks, insight, onComplete, isPending }) => {
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -66,9 +67,10 @@ export const DailyRadar: React.FC<DailyRadarProps> = ({ tasks, insight, onComple
           animate={{ y: 0, opacity: 1 }}
           transition={{ delay: 0.8 }}
           onClick={onComplete}
-          className="w-full py-5 bg-white text-slate-900 rounded-3xl font-bold text-lg flex items-center justify-center gap-3 hover:bg-slate-100 transition-colors"
+          disabled={isPending}
+          className="w-full py-5 bg-white text-slate-900 rounded-3xl font-bold text-lg flex items-center justify-center gap-3 hover:bg-slate-100 transition-colors disabled:opacity-50"
         >
-          Sahaya İniyorum <ArrowRight size={20} />
+          {isPending ? 'Hazırlanıyor...' : 'Sahaya İniyorum'} <ArrowRight size={20} />
         </motion.button>
       </div>
     </motion.div>

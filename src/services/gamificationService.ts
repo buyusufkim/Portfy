@@ -4,37 +4,22 @@ import { getUserId, getTodayStr } from './core/utils';
 import { leadService } from './leadService';
 
 export const gamificationService = {
-  earnXP: async (amount: number) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+  earnXP: async (actionType: string, ids: { taskId?: string, leadId?: string, propertyId?: string, sessionId?: string } = {}, stats?: any) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error('Not authenticated');
 
-    const { data: profile } = await supabase.from('profiles').select('*').eq('uid', user.id).single();
-    if (!profile) return;
+    const response = await fetch('/api/ai/earn-xp', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify({ actionType, ...ids, stats })
+    });
 
-    const newXP = Number(profile.total_xp || 0) + amount;
-    let newLevel = 1;
-    if (newXP >= 15000) newLevel = 4;
-    else if (newXP >= 5000) newLevel = 3;
-    else if (newXP >= 1000) newLevel = 2;
-
-    await supabase
-      .from('profiles')
-      .update({ 
-        total_xp: newXP,
-        broker_level: newLevel
-      })
-      .eq('uid', user.id);
-
-    const today = getTodayStr();
-    try {
-      const { data: daily } = await supabase.from('user_stats').select('*').eq('agent_id', user.id).eq('date', today).maybeSingle();
-      if (daily) {
-        await supabase.from('user_stats').update({ xp_earned: (daily.xp_earned || 0) + amount }).eq('id', daily.id);
-      } else {
-        await supabase.from('user_stats').insert({ agent_id: user.id, date: today, xp_earned: amount });
-      }
-    } catch (e) {
-      console.error("user_stats error in earnXP:", e);
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'XP update failed');
     }
   },
 
@@ -166,18 +151,14 @@ export const gamificationService = {
     }
   },
 
-  completeGamifiedTask: async (taskId: string, points: number) => {
+  completeGamifiedTask: async (taskId: string) => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
     
     const { error: taskError } = await supabase.from('gamified_tasks').update({ is_completed: true }).eq('id', taskId);
     if (taskError) throw taskError;
 
-    const { data: profile } = await supabase.from('profiles').select('total_xp').eq('uid', userId).maybeSingle();
-    if (profile) {
-      const currentPoints = profile.total_xp || 0;
-      await supabase.from('profiles').update({ total_xp: currentPoints + points }).eq('uid', userId);
-    }
+    await gamificationService.earnXP('COMPLETE_TASK', { taskId });
     
     return { success: true };
   },
@@ -357,33 +338,7 @@ export const gamificationService = {
     let streak = profile ? (profile.current_streak || 0) : 0;
     const lastActiveDate = profile ? profile.last_active_date : null;
     
-    if (lastActiveDate) {
-      const lastDate = new Date(lastActiveDate);
-      const todayDate = new Date(today);
-      const diffDays = Math.floor((todayDate.getTime() - lastDate.getTime()) / (1000 * 60 * 60 * 24));
-      
-      if (diffDays === 1) {
-        await supabase.from('profiles').update({ 
-          current_streak: streak + 1,
-          last_active_date: today
-        }).eq('uid', agentId);
-        streak += 1;
-      } else if (diffDays > 1) {
-        await supabase.from('profiles').update({ 
-          current_streak: 1,
-          last_active_date: today
-        }).eq('uid', agentId);
-        streak = 1;
-      }
-    } else {
-      await supabase.from('profiles').update({ 
-        current_streak: 1,
-        last_active_date: today
-      }).eq('uid', agentId);
-      streak = 1;
-    }
     const streakEffect = streak > 0 ? 20 : 0;
-
     const momentum = Math.round((completionRate * 50) + (mainCompletionRate * 30) + streakEffect);
 
     let level = 1;

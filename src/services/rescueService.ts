@@ -2,6 +2,7 @@ import { RescueSession, RescueTask } from '../types';
 import { supabase } from '../lib/supabase';
 import { leadService } from './leadService';
 import { propertyService } from './propertyService';
+import { gamificationService } from './gamificationService';
 
 export const rescueService = {
   getRescueSession: async (): Promise<RescueSession | null> => {
@@ -123,14 +124,7 @@ export const rescueService = {
     if (updatedTasks.every(t => t.is_completed)) {
       await supabase.from('rescue_sessions').update({ status: 'completed' }).eq('id', sessionId);
       // Award bonus points
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        const { data: profile } = await supabase.from('profiles').select('total_xp').eq('uid', user.id).maybeSingle();
-        if (profile) {
-          const current = profile.total_xp || 0;
-          await supabase.from('profiles').update({ total_xp: current + 150 }).eq('uid', user.id);
-        }
-      }
+      await gamificationService.earnXP('RESCUE_SESSION_BONUS', { sessionId });
     }
   }
 };

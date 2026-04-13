@@ -9,18 +9,18 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 import { CRMView } from '../components/CRMView';
-import { Lead, UserProfile } from '../types';
+import { Lead, UserProfile, Category, MutationResult } from '../types';
 
 interface CRMModalsProps {
-  categories: any[];
-  addLeadMutation: any;
+  categories: Category[];
+  addLeadMutation: MutationResult<any, any>;
   showAddLead: boolean;
   setShowAddLead: (show: boolean) => void;
   showWhatsAppImport: boolean;
   setShowWhatsAppImport: (show: boolean) => void;
   leadAnalysis: string | null;
   setLeadAnalysis: (analysis: string | null) => void;
-  analyzeLeadsMutation: any;
+  analyzeLeadsMutation: MutationResult<string, any>;
 }
 
 const WhatsAppImportModal = React.lazy(() => import('../components/WhatsAppImportModal'));
@@ -43,7 +43,7 @@ export const CRMModals: React.FC<CRMModalsProps> = ({
       name: '',
       phone: '',
       type: 'Alıcı',
-      status: 'Aday' as any,
+      status: 'Aday' as Lead['status'],
       district: 'Beşiktaş',
       notes: ''
     });
@@ -197,11 +197,11 @@ interface CRMPageProps {
   profile: UserProfile | null;
   leads: Lead[];
   leadsLoading: boolean;
-  categories: any[];
+  categories: Category[];
   setShowWhatsAppImport: (show: boolean) => void;
   setShowAddLead: (show: boolean) => void;
   setIsAnalyzingLeads: (analyzing: boolean) => void;
-  analyzeLeadsMutation: any;
+  analyzeLeadsMutation: MutationResult<string, any>;
   isAnalyzingLeads: boolean;
 }
 

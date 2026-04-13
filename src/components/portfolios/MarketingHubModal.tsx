@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { X, Sparkles, CheckCircle2, Globe } from 'lucide-react';
 
 const Users = ({ size, className }: { size: number, className?: string }) => (

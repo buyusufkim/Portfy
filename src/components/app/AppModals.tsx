@@ -19,7 +19,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
   return (
     <>
       <LeadModals 
-        categories={leads.categories}
+        categories={leads.categories || []}
         addLeadMutation={leads.addLeadMutation}
         showAddLead={leads.showAddLead}
         setShowAddLead={leads.setShowAddLead}
@@ -45,15 +45,15 @@ export const AppModals: React.FC<AppModalsProps> = ({
         selectedProperty={portfolios.selectedProperty}
         setSelectedProperty={portfolios.setSelectedProperty}
         brokerAccount={portfolios.brokerAccount}
-        externalListings={portfolios.externalListings}
+        externalListings={portfolios.externalListings || []}
         syncListingsMutation={portfolios.syncListingsMutation}
         linkPropertyMutation={portfolios.linkPropertyMutation}
         connectIntegrationMutation={portfolios.connectIntegrationMutation}
-        templates={portfolios.templates}
+        templates={portfolios.templates || []}
         showTemplateSelector={portfolios.showTemplateSelector}
         setShowTemplateSelector={portfolios.setShowTemplateSelector}
-        leads={leads.leads}
-        regionScores={portfolios.regionScores}
+        leads={leads.leads || []}
+        regionScores={portfolios.regionScores || []}
         showTemplateManager={portfolios.showTemplateManager}
         setShowTemplateManager={portfolios.setShowTemplateManager}
         addTemplateMutation={portfolios.addTemplateMutation}
@@ -65,14 +65,14 @@ export const AppModals: React.FC<AppModalsProps> = ({
         addVisitMutation={utilities.addVisitMutation}
         showDailyBriefing={utilities.showDailyBriefing}
         setShowDailyBriefing={utilities.setShowDailyBriefing}
-        tasks={utilities.tasks}
-        fieldVisits={utilities.fieldVisits}
+        tasks={utilities.tasks || []}
+        fieldVisits={utilities.fieldVisits || []}
         rescueSession={utilities.rescueSession}
         cancelRescueMutation={utilities.cancelRescueMutation}
         completeRescueTaskMutation={utilities.completeRescueTaskMutation}
         showMissedOpportunities={utilities.showMissedOpportunities}
         setShowMissedOpportunities={utilities.setShowMissedOpportunities}
-        missedOpportunities={utilities.missedOpportunities}
+        missedOpportunities={utilities.missedOpportunities || []}
         setActiveTab={utilities.setActiveTab}
       />
     </>

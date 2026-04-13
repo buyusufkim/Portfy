@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { TrendingUp } from 'lucide-react';
 
 export const Badge = ({ children, variant = 'default', className = "" }: { children: React.ReactNode, variant?: 'default' | 'success' | 'warning' | 'info' | 'error', className?: string }) => {

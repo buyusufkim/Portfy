@@ -1,5 +1,5 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence } from 'motion/react';
 import { X, FileText, Instagram, MessageCircle, Sparkles, RefreshCw, Copy } from 'lucide-react';
 import { Property } from '../../types';
 

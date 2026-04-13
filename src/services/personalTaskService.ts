@@ -1,6 +1,7 @@
 import { PersonalTask } from '../types';
 import { supabase } from '../lib/supabase';
 import { getUserId } from './core/utils';
+import { gamificationService } from './gamificationService';
 
 export const personalTaskService = {
   getPersonalTasks: async (): Promise<PersonalTask[]> => {
@@ -40,6 +41,14 @@ export const personalTaskService = {
       .update({ is_completed })
       .eq('id', id);
     if (error) throw error;
+
+    if (is_completed) {
+      try {
+        await gamificationService.earnXP('COMPLETE_BASIC_TASK', { taskId: id });
+      } catch (e) {
+        console.warn("XP award failed for togglePersonalTask:", e);
+      }
+    }
   },
 
   updatePersonalTask: async (id: string, data: Partial<PersonalTask>) => {

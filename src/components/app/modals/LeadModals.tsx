@@ -2,22 +2,22 @@ import React from 'react';
 import { CRMModals } from '../../../pages/CRMPage';
 import { VoiceQuickAddModal } from './VoiceQuickAddModal';
 
-import { Lead } from '../../../types';
+import { Lead, Category, MutationResult } from '../../../types';
 
 interface LeadModalsProps {
-  categories: string[];
-  addLeadMutation: any;
+  categories: Category[];
+  addLeadMutation: MutationResult<any, any>;
   showAddLead: boolean;
   setShowAddLead: (val: boolean) => void;
   showWhatsAppImport: boolean;
   setShowWhatsAppImport: (val: boolean) => void;
   leadAnalysis: string | null;
   setLeadAnalysis: (val: string | null) => void;
-  analyzeLeadsMutation: any;
+  analyzeLeadsMutation: MutationResult<string, any>;
   showVoiceQuickAdd: boolean;
   setShowVoiceQuickAdd: (val: boolean) => void;
-  addTaskMutation: any;
-  addVisitMutation: any;
+  addTaskMutation: MutationResult<any, any>;
+  addVisitMutation: MutationResult<any, any>;
 }
 
 export const LeadModals: React.FC<LeadModalsProps> = ({

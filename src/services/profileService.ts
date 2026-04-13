@@ -20,128 +20,43 @@ export const profileService = {
   },
 
   updateProfile: async (uid: string, data: Partial<UserProfile>) => {
-    const { error } = await supabase
-      .from('profiles')
-      .update(data)
-      .eq('uid', uid);
-    if (error) throw error;
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch('/api/ai/profile/update', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token}`
+      },
+      body: JSON.stringify({ data })
+    });
+
+    if (!response.ok) {
+      const err = await response.json();
+      throw new Error(err.error || 'Profile update failed');
+    }
   },
 
   completeMorningRitual: async () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
     
-    const now = new Date().toISOString();
-    const today = getTodayStr();
-    
-    const { error } = await supabase
-      .from('profiles')
-      .update({ 
-        last_day_started_at: now,
-        last_active_date: today
-      })
-      .eq('uid', user.id);
-    
-    if (error) {
-      console.warn("Morning ritual profile update error:", error);
-      localStorage.setItem(`day_started_${user.id}_${today}`, now);
-      
-      try {
-        await supabase.from('profiles').update({ last_active_date: today }).eq('uid', user.id);
-      } catch (e) {
-        // Ignore
-      }
-    }
-    
-    await gamificationService.earnXP(50);
+    // Use server-side MORNING_RITUAL action to update timestamps and award XP securely
+    await gamificationService.earnXP('MORNING_RITUAL');
   },
 
   completeEveningRitual: async (stats: { tasksCompleted?: number, tasks_completed?: number, revenue: number, calls: number, visits: number }) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
     
-    const today = getTodayStr();
-    const tasksCompleted = stats.tasksCompleted !== undefined ? stats.tasksCompleted : (stats.tasks_completed || 0);
-    
-    try {
-      try {
-        const { data: existingStats } = await supabase
-          .from('user_stats')
-          .select('id')
-          .eq('agent_id', user.id)
-          .eq('date', today)
-          .maybeSingle();
+    // Use server-side EVENING_RITUAL action to handle streaks, timestamps, and XP securely
+    await gamificationService.earnXP('EVENING_RITUAL', {}, {
+      tasks_completed: stats.tasksCompleted !== undefined ? stats.tasksCompleted : (stats.tasks_completed || 0),
+      potential_revenue_handled: stats.revenue,
+      calls_made: stats.calls,
+      visits_made: stats.visits
+    });
 
-        if (existingStats) {
-          await supabase
-            .from('user_stats')
-            .update({
-              tasks_completed: tasksCompleted,
-              potential_revenue_handled: stats.revenue,
-              calls_made: stats.calls,
-              visits_made: stats.visits
-            })
-            .eq('id', existingStats.id);
-        } else {
-          await supabase
-            .from('user_stats')
-            .insert({
-              agent_id: user.id,
-              date: today,
-              tasks_completed: tasksCompleted,
-              potential_revenue_handled: stats.revenue,
-              calls_made: stats.calls,
-              visits_made: stats.visits,
-              xp_earned: 100
-            });
-        }
-      } catch (statsError) {
-        console.error("user_stats table error:", statsError);
-      }
-
-      const { data: profile, error: profileFetchError } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('uid', user.id)
-        .single();
-      
-      if (profileFetchError) throw profileFetchError;
-
-      if (profile) {
-        const lastActive = profile.last_active_date;
-        const todayDate = new Date().toISOString().split('T')[0];
-        let newStreak = profile.current_streak || 0;
-        
-        if (lastActive !== todayDate) {
-          const yesterday = new Date();
-          yesterday.setDate(yesterday.getDate() - 1);
-          const yesterdayStr = yesterday.toISOString().split('T')[0];
-          
-          if (lastActive === yesterdayStr) {
-            newStreak += 1;
-          } else {
-            newStreak = 1;
-          }
-        }
-
-        await supabase
-          .from('profiles')
-          .update({ 
-            current_streak: newStreak,
-            longest_streak: Math.max(newStreak, profile.longest_streak || 0),
-            last_active_date: todayDate,
-            last_ritual_completed_at: new Date().toISOString()
-          })
-          .eq('uid', user.id);
-      }
-
-      await gamificationService.earnXP(100);
-
-      return { success: true };
-    } catch (error) {
-      console.error("Critical error in completeEveningRitual:", error);
-      throw error;
-    }
+    return { success: true };
   },
 
   getDailyStats: async (days: number = 7): Promise<DailyStats[]> => {
@@ -166,58 +81,9 @@ export const profileService = {
   startDay: async () => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
-    const now = new Date().toISOString();
-    const today = getTodayStr();
 
-    try {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ 
-          last_day_started_at: now,
-          last_active_date: today
-        })
-        .eq('uid', userId);
-      
-      if (profileError) {
-        try {
-          await supabase.from('profiles').update({ last_active_date: today }).eq('uid', userId);
-        } catch (e) {
-          // Ignore
-        }
-      }
-      
-      localStorage.setItem(`day_started_${userId}_${today}`, now);
-
-      const { data: stats } = await supabase
-        .from('user_stats')
-        .select('*')
-        .eq('agent_id', userId)
-        .eq('date', today)
-        .maybeSingle();
-
-      if (stats) {
-        await supabase
-          .from('user_stats')
-          .update({ day_started_at: now })
-          .eq('id', stats.id);
-      } else {
-        await supabase
-          .from('user_stats')
-          .insert({
-            agent_id: userId,
-            date: today,
-            day_started_at: now,
-            tasks_completed: 0,
-            potential_revenue_handled: 0,
-            calls_made: 0,
-            visits_made: 0,
-            xp_earned: 0
-          });
-      }
-    } catch (err) {
-      console.error("Critical error in startDay:", err);
-      localStorage.setItem(`day_started_${userId}_${today}`, now);
-    }
+    // Use server-side START_DAY action to update timestamps securely
+    await gamificationService.earnXP('START_DAY');
     
     return { success: true };
   },
@@ -225,65 +91,15 @@ export const profileService = {
   endDay: async (stats: any) => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
-    const now = new Date().toISOString();
-    const today = getTodayStr();
 
-    try {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .update({ 
-          last_ritual_completed_at: now,
-          last_active_date: today
-        })
-        .eq('uid', userId);
-      
-      if (profileError) {
-        try {
-          await supabase.from('profiles').update({ last_active_date: today }).eq('uid', userId);
-        } catch (e) {
-          // Ignore
-        }
-      }
+    // Use server-side END_DAY action to update timestamps, stats, and award XP securely
+    await gamificationService.earnXP('END_DAY', {}, {
+      tasks_completed: stats.tasks_completed,
+      calls_made: stats.calls,
+      visits_made: stats.visits,
+      potential_revenue_handled: stats.revenue
+    });
 
-      localStorage.setItem(`day_ended_${userId}_${today}`, now);
-
-      const { data: dailyStats } = await supabase
-        .from('user_stats')
-        .select('*')
-        .eq('agent_id', userId)
-        .eq('date', today)
-        .maybeSingle();
-
-      if (dailyStats) {
-        await supabase
-          .from('user_stats')
-          .update({ 
-            day_ended_at: now,
-            tasks_completed: stats.tasks_completed,
-            calls_made: stats.calls,
-            visits_made: stats.visits,
-            potential_revenue_handled: stats.revenue
-          })
-          .eq('id', dailyStats.id);
-      } else {
-        await supabase
-          .from('user_stats')
-          .insert({
-            agent_id: userId,
-            date: today,
-            day_ended_at: now,
-            tasks_completed: stats.tasks_completed,
-            calls_made: stats.calls,
-            visits_made: stats.visits,
-            potential_revenue_handled: stats.revenue,
-            xp_earned: 150
-          });
-      }
-    } catch (err) {
-      console.error("Critical error in endDay:", err);
-      localStorage.setItem(`day_ended_${userId}_${today}`, now);
-    }
-    
     return { success: true };
   }
 };

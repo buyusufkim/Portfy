@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion } from 'motion/react';
 import { Users, Settings, Package, LayoutDashboard, Search, Edit2, Shield, Check, X, Save } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
@@ -35,65 +35,106 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   }, []);
 
   const fetchGlobalSettings = async () => {
-    const { data, error } = await supabase
-      .from('global_settings')
-      .select('*')
-      .eq('id', 'default')
-      .maybeSingle();
-    
-    if (error) {
+    try {
+      const response = await fetch('/api/ai/admin/settings', {
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch settings');
+      const data = await response.json();
+      
+      if (data) {
+        // Merge with default state to prevent empty fields
+        setGlobalSettings(prev => ({
+          ...prev,
+          ...data,
+          global_modules: {
+            ...prev.global_modules,
+            ...(data.global_modules || {})
+          }
+        }));
+      }
+    } catch (error) {
       console.error('Error fetching global settings:', error);
-    } else if (data) {
-      setGlobalSettings(data as any);
     }
   };
 
   const saveGlobalSettings = async () => {
-    const { error } = await supabase
-      .from('global_settings')
-      .upsert({
-        id: 'default',
-        ...globalSettings,
-        updated_at: new Date().toISOString()
+    try {
+      const response = await fetch('/api/ai/admin/update-settings', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify({ settings: globalSettings })
       });
-    
-    if (error) {
-      console.error('Error saving global settings:', error);
-      alert('Ayarlar kaydedilirken hata oluştu.');
-    } else {
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Update failed');
+      }
+
       alert('Ayarlar başarıyla kaydedildi.');
+    } catch (error: any) {
+      console.error('Error saving global settings:', error);
+      alert('Ayarlar kaydedilirken hata oluştu: ' + error.message);
     }
   };
 
   const fetchUsers = async () => {
     setLoading(true);
-    const { data, error } = await supabase.from('profiles').select('*');
-    if (error) {
-      console.error('Error fetching users:', error);
-    } else {
+    try {
+      const response = await fetch('/api/ai/admin/users', {
+        headers: {
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        }
+      });
+      
+      if (!response.ok) throw new Error('Failed to fetch users');
+      const data = await response.json();
       setUsers(data as UserProfile[]);
+    } catch (error) {
+      console.error('Error fetching users:', error);
     }
     setLoading(false);
   };
 
   const saveUser = async () => {
     if (!editingUser) return;
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        subscription_type: editingUser.subscription_type,
-        subscription_end_date: editingUser.subscription_end_date,
-        role: editingUser.role,
-        active_modules: editingUser.active_modules,
-      })
-      .eq('uid', editingUser.uid);
     
-    if (error) {
-      console.error('Error updating user:', error);
-      alert('Kullanıcı güncellenirken hata oluştu.');
-    } else {
+    try {
+      const response = await fetch('/api/ai/admin/update-user', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify({
+          uid: editingUser.uid,
+          data: {
+            subscription_type: editingUser.subscription_type,
+            subscription_end_date: editingUser.subscription_end_date,
+            role: editingUser.role,
+            active_modules: editingUser.active_modules,
+            tier: editingUser.tier
+          }
+        })
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Update failed');
+      }
+
       setUsers(users.map(u => u.uid === editingUser.uid ? editingUser : u));
       setEditingUser(null);
+      alert('Kullanıcı başarıyla güncellendi.');
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      alert('Kullanıcı güncellenirken hata oluştu: ' + error.message);
     }
   };
 
@@ -292,12 +333,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 <h3 className="font-bold text-lg border-b border-slate-100 pb-2">Global Modül Yönetimi</h3>
                 <p className="text-xs text-slate-500">Bu modülleri kapattığınızda tüm kullanıcılar için devre dışı kalır.</p>
                 <div className="space-y-3">
-                  {Object.entries(globalSettings.global_modules).map(([key, value]) => (
+                  {globalSettings.global_modules && Object.entries(globalSettings.global_modules).map(([key, value]) => (
                     <div key={key} className="flex items-center justify-between p-3 border border-slate-100 rounded-lg">
                       <span className="font-medium capitalize">{key} Modülü</span>
                       <input 
                         type="checkbox" 
-                        checked={value} 
+                        checked={value as boolean} 
                         onChange={e => setGlobalSettings({
                           ...globalSettings, 
                           global_modules: { ...globalSettings.global_modules, [key]: e.target.checked }

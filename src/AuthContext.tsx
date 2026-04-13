@@ -3,12 +3,15 @@ import { supabase } from './lib/supabase';
 import { User } from '@supabase/supabase-js';
 import { addMonths, isAfter, parseISO } from 'date-fns';
 import { Sparkles } from 'lucide-react';
+import { useQueryClient, useQuery } from '@tanstack/react-query';
+import { QUERY_KEYS } from './constants/queryKeys';
+import { api } from './services/api';
 
 interface UserProfile {
   uid: string;
   email: string;
   display_name: string;
-  subscription_type: 'none' | '1-month' | '3-month' | '6-month' | '12-month';
+  subscription_type: 'none' | 'trial' | '1-month' | '3-month' | '6-month' | '12-month';
   subscription_end_date: string | null;
   role: 'agent' | 'admin';
   has_seen_onboarding?: boolean;
@@ -41,12 +44,51 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
-  const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isConfigured, setIsConfigured] = useState(
     import.meta.env.VITE_SUPABASE_URL !== 'https://placeholder.supabase.co' && 
     !!import.meta.env.VITE_SUPABASE_URL
   );
+
+  const { data: profile, isLoading: profileLoading, refetch: refetchProfile } = useQuery({
+    queryKey: [QUERY_KEYS.PROFILE, user?.id],
+    queryFn: async () => {
+      if (!user) return null;
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('uid', user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+      
+      if (!data) {
+        // Create initial profile if it doesn't exist
+        const newProfile = {
+          uid: user.id,
+          email: user.email || '',
+          display_name: user.user_metadata?.full_name || 'İsimsiz Danışman',
+          subscription_type: 'none',
+          subscription_end_date: null,
+          role: 'agent',
+          has_seen_onboarding: false,
+          has_seen_tour: false,
+          tier: 'free',
+          total_xp: 0,
+          broker_level: 1,
+          current_streak: 0,
+          streak_freeze_count: 0,
+        };
+        const { error: insertError } = await supabase.from('profiles').insert(newProfile);
+        if (insertError) console.error('Error creating profile:', insertError);
+        return newProfile as UserProfile;
+      }
+      
+      return data as UserProfile;
+    },
+    enabled: !!user?.id,
+  });
   
   // Synchronous detection to prevent first-frame app render in popup
   const isPopup = typeof window !== 'undefined' && (
@@ -117,10 +159,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       
       if (session?.user) {
         setUser(session.user);
-        fetchProfile(session.user.id, session.user.email || '', session.user.user_metadata?.full_name);
+        setLoading(false);
       } else {
+        // Clear all session data on logout (manual or automatic)
+        console.log('AuthContext: Clearing session data and cache');
+        queryClient.clear();
         setUser(null);
-        setProfile(null);
         setLoading(false);
       }
     });
@@ -154,96 +198,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.removeEventListener('storage', handleStorage);
     };
   }, [isPopup]);
-
-  const fetchProfile = async (uid: string, email: string, displayName?: string) => {
-    const { data, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('uid', uid)
-      .maybeSingle();
-
-    if (error) {
-      console.error('Error fetching profile:', error);
-      // Fallback profile so the app doesn't break if DB is not set up
-      // Preserve optimistic state if it exists
-      setProfile(prev => {
-        if (prev) return prev;
-        return {
-          uid,
-          email,
-          display_name: displayName || 'İsimsiz Danışman',
-          subscription_type: 'none',
-          subscription_end_date: null,
-          role: 'agent',
-          has_seen_onboarding: false,
-          has_seen_tour: false,
-          tier: 'free',
-          total_xp: 0,
-          broker_level: 1,
-          current_streak: 0,
-          streak_freeze_count: 0,
-        };
-      });
-      setLoading(false);
-      return;
-    }
-
-    if (data) {
-      const localHasSeenOnboarding = localStorage.getItem(`has_seen_onboarding_${uid}`) === 'true';
-      const localHasSeenTour = localStorage.getItem(`has_seen_tour_${uid}`) === 'true';
-      const localSubType = localStorage.getItem(`subscription_type_${uid}`) as any || 'none';
-      const localSubEnd = localStorage.getItem(`subscription_end_date_${uid}`);
-
-      setProfile(prev => {
-        // If we have optimistic state that is "further along" than the DB, keep it
-        // This prevents the UI from flashing back to the start screen if DB is slow or failing
-        if (prev) {
-          return {
-            ...data as UserProfile,
-            has_seen_onboarding: prev.has_seen_onboarding || localHasSeenOnboarding || data.has_seen_onboarding,
-            has_seen_tour: prev.has_seen_tour || localHasSeenTour || data.has_seen_tour,
-            subscription_type: prev.subscription_type !== 'none' ? prev.subscription_type : (localSubType !== 'none' ? localSubType : data.subscription_type),
-            subscription_end_date: prev.subscription_end_date || localSubEnd || data.subscription_end_date,
-          };
-        }
-        return {
-          ...data as UserProfile,
-          has_seen_onboarding: localHasSeenOnboarding || data.has_seen_onboarding,
-          has_seen_tour: localHasSeenTour || data.has_seen_tour,
-          subscription_type: localSubType !== 'none' ? localSubType : data.subscription_type,
-          subscription_end_date: localSubEnd || data.subscription_end_date,
-        };
-      });
-    } else {
-      // Create initial profile
-      const newProfile: UserProfile = {
-        uid,
-        email,
-        display_name: displayName || 'İsimsiz Danışman',
-        subscription_type: 'none',
-        subscription_end_date: null,
-        role: 'agent',
-        has_seen_onboarding: false,
-        has_seen_tour: false,
-        tier: 'free',
-        total_xp: 0,
-        broker_level: 1,
-        current_streak: 0,
-        streak_freeze_count: 0,
-      };
-      
-      // Filter out columns that might be missing in the DB
-      const { subscription_type, subscription_end_date, has_seen_onboarding, has_seen_tour, ...dbProfile } = newProfile as any;
-      const { error: insertError } = await supabase.from('profiles').insert(dbProfile);
-      if (insertError) console.error('Error creating profile:', insertError);
-      
-      setProfile(prev => {
-        if (prev) return prev; // Preserve optimistic state
-        return newProfile;
-      });
-    }
-    setLoading(false);
-  };
 
   const login = async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -294,6 +248,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
+    // Clear React Query cache to prevent data leaking between sessions
+    queryClient.clear();
     const { error } = await supabase.auth.signOut();
     if (error) console.error('Logout error:', error);
   };
@@ -301,90 +257,103 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const subscribe = async (type: 'trial' | '1-month' | '3-month' | '6-month' | '12-month') => {
     if (!user) return;
     
-    let endDate: string;
-    if (type === 'trial') {
-      const d = new Date();
-      d.setDate(d.getDate() + 15);
-      endDate = d.toISOString();
-    } else {
-      const months = parseInt(type.split('-')[0]);
-      endDate = addMonths(new Date(), months).toISOString();
-    }
-    
-    localStorage.setItem(`subscription_type_${user.id}`, type);
-    localStorage.setItem(`subscription_end_date_${user.id}`, endDate);
+    try {
+      const response = await fetch('/api/ai/subscribe', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify({ type })
+      });
 
-    // Optimistic update to immediately let the user in (especially helpful if Supabase RLS policies aren't fully configured yet)
-    setProfile(prev => {
-      if (prev) {
-        return { ...prev, subscription_type: type, subscription_end_date: endDate };
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Subscription failed');
       }
-      return {
-        uid: user.id,
-        email: user.email || '',
-        display_name: user.user_metadata?.full_name || 'İsimsiz Danışman',
-        subscription_type: type,
-        subscription_end_date: endDate,
-        role: 'agent',
-        has_seen_onboarding: false,
-        has_seen_tour: false,
-        tier: 'free',
-        total_xp: 0,
-        broker_level: 1,
-        current_streak: 0,
-        streak_freeze_count: 0,
-      };
-    });
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        // subscription_type: type,
-        // subscription_end_date: endDate,
-      })
-      .eq('uid', user.id);
-    
-    if (error) {
+      await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, user.id] });
+
+    } catch (error) {
       console.error('Subscription error:', error);
-      // In a real app, we might revert the optimistic update here if it fails
+      alert('Abonelik işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+      refetchProfile();
     }
   };
 
   const completeOnboarding = async () => {
     if (!user) return;
     
-    localStorage.setItem(`has_seen_onboarding_${user.id}`, 'true');
-    
-    // Optimistic update
-    setProfile(prev => prev ? { ...prev, has_seen_onboarding: true } : null);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ has_seen_onboarding: true })
+      .eq('uid', user.id);
+
+    if (error) {
+      console.error('Onboarding update error:', error);
+    }
+    await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, user.id] });
   };
 
   const completeTour = async () => {
     if (!user) return;
     
-    localStorage.setItem(`has_seen_tour_${user.id}`, 'true');
-    
-    // Optimistic update
-    setProfile(prev => prev ? { ...prev, has_seen_tour: true } : null);
+    const { error } = await supabase
+      .from('profiles')
+      .update({ has_seen_tour: true })
+      .eq('uid', user.id);
+
+    if (error) {
+      console.error('Tour update error:', error);
+    }
+    await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, user.id] });
   };
 
   const updateProfileData = async (data: Partial<UserProfile>) => {
     if (!user) return;
     
-    // Optimistic update
-    setProfile(prev => prev ? { ...prev, ...data } : null);
+    // List of fields that are safe for users to update themselves
+    const SAFE_FIELDS = [
+      'display_name',
+      'phone',
+      'avatar_url',
+      'avatar_color',
+      'bio',
+      'city',
+      'district',
+      'has_seen_onboarding',
+      'has_seen_tour',
+      'notification_settings'
+    ];
 
-    // Filter out columns that might be missing in the DB
-    const { subscription_type, subscription_end_date, has_seen_onboarding, has_seen_tour, ...dbData } = data as any;
+    // Filter out any protected fields before sending to server
+    const filteredData: any = {};
+    Object.keys(data).forEach(key => {
+      if (SAFE_FIELDS.includes(key)) {
+        filteredData[key] = (data as any)[key];
+      }
+    });
 
-    const { error } = await supabase
-      .from('profiles')
-      .update(dbData)
-      .eq('uid', user.id);
-      
-    if (error) {
+    if (Object.keys(filteredData).length === 0) return;
+
+    try {
+      const response = await fetch('/api/ai/profile/update', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+        },
+        body: JSON.stringify({ data: filteredData })
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || 'Profile update failed');
+      }
+      await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, user.id] });
+    } catch (error) {
       console.error('Error updating profile:', error);
-      fetchProfile(user.id, user.email || '');
+      refetchProfile();
     }
   };
 
@@ -438,7 +407,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading, isSubscribed, login, loginWithEmail, registerWithEmail, logout, subscribe, completeOnboarding, completeTour, updateProfileData }}>
+    <AuthContext.Provider value={{ user, profile, loading: loading || profileLoading, isSubscribed, login, loginWithEmail, registerWithEmail, logout, subscribe, completeOnboarding, completeTour, updateProfileData }}>
       {children}
     </AuthContext.Provider>
   );
