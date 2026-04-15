@@ -155,7 +155,10 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
       )}
       {navigation.activeTab === 'bolgem' && (
         <React.Suspense fallback={<LoadingFallback />}>
-          <BolgemView profile={navigation.profile} />
+          <BolgemView 
+            profile={navigation.profile} 
+            setToast={utilities.setToast}
+          />
         </React.Suspense>
       )}
       {navigation.activeTab === 'portfoyler' && (

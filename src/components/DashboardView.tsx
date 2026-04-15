@@ -39,6 +39,7 @@ interface DashboardViewProps {
   setShowDayCloser: (show: boolean) => void;
   queryClient: QueryClient;
   startDayMutation: MutationResult<any, any>;
+  completeMorningRitualMutation: MutationResult<any, any>;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -58,7 +59,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   setActiveTab,
   setShowDayCloser,
   queryClient,
-  startDayMutation
+  startDayMutation,
+  completeMorningRitualMutation
 }) => {
   const [dashboardTab, setDashboardTab] = useState<'action' | 'analysis'>('action');
   
@@ -80,10 +82,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // 1. DB says last_day_started_at is today
   // 2. DB says last_active_date is today (strong signal)
   // 3. Local storage says day started today (immediate feedback)
+  // 4. Mutation just succeeded (immediate feedback before refetch)
   const isDayStarted = !!(
     (profile?.last_day_started_at && profile.last_day_started_at.startsWith(todayISO)) || 
     (profile?.last_active_date === todayISO) || 
-    localStarted
+    localStarted ||
+    startDayMutation.isSuccess ||
+    completeMorningRitualMutation.isSuccess
   );
   
   // Day is ended if:
@@ -97,7 +102,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
      (!dayStartTimestamp || profile.last_ritual_completed_at > dayStartTimestamp))
   );
 
-  const isTasksDisabled = !isDayStarted || isDayEnded;
+  // Defensive guard: Tasks are enabled if day is started and NOT ended.
+  // We explicitly check mutation success states to ensure immediate clickability.
+  const isTasksDisabled = (!isDayStarted || isDayEnded) && !startDayMutation.isSuccess && !completeMorningRitualMutation.isSuccess;
+
+  // Defensive sync: If DB says day is started but local storage is missing it, sync it.
+  // This prevents the "Günü Başlat" card from flickering or reappearing on refresh.
+  React.useEffect(() => {
+    if (profile?.uid && !localStarted) {
+      const dbStartedToday = profile.last_day_started_at?.startsWith(todayISO) || profile.last_active_date === todayISO;
+      if (dbStartedToday) {
+        localStorage.setItem(`day_started_${profile.uid}_${todayISO}`, profile.last_day_started_at || new Date().toISOString());
+      }
+    }
+  }, [profile, localStarted, todayISO]);
 
   return (
     <motion.div 

@@ -13,12 +13,12 @@ export const whatsappService = {
 
     try {
       const response = await generateContent(
-        "gemini-3-flash-preview",
+        "gemini-flash-latest",
         prompt,
         {
-          responseMimeType: "application/json",
           // @ts-ignore - Gemini SDK schema type support
-          responseSchema: WHATSAPP_ANALYSIS_SCHEMA
+          responseSchema: WHATSAPP_ANALYSIS_SCHEMA,
+          responseMimeType: "application/json"
         }
       );
 
@@ -53,7 +53,7 @@ export const whatsappService = {
 
   importLeadFromText: async (text: string) => {
     const response = await generateContent(
-      "gemini-3-flash-preview",
+      "gemini-flash-latest",
       `Aşağıdaki WhatsApp mesajından emlak müşterisi bilgilerini çıkar. 
       JSON formatında şu alanları döndür: name (isim), phone (telefon), type (Alıcı/Satıcı/Kiracı/Kiralayan), status (Aday/Sıcak/Pasif), notes (notlar).
       

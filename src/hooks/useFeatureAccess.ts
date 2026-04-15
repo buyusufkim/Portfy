@@ -3,7 +3,7 @@ import { FeatureKey, SubscriptionTier } from '../types/subscription';
 import { FEATURE_ACCESS_CONFIG, TIER_HIERARCHY } from '../config/featureAccess';
 
 export const useFeatureAccess = () => {
-  const { profile } = useAuth();
+  const { profile, subscribe } = useAuth();
   
   // Map existing subscriptionType to new tiers if needed, 
   // or assume a 'tier' field exists on profile.
@@ -28,6 +28,7 @@ export const useFeatureAccess = () => {
     userTier,
     hasAccess,
     getFeatureConfig,
+    subscribe,
     isFree: userTier === 'free',
     isPro: userTier === 'pro',
     isElite: userTier === 'elite',

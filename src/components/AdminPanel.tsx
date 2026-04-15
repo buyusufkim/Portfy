@@ -12,6 +12,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'packages' | 'settings'>('dashboard');
   const [users, setUsers] = useState<UserProfile[]>([]);
   const [loading, setLoading] = useState(true);
+  const [usersError, setUsersError] = useState<string | null>(null);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+  const [settingsError, setSettingsError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
 
@@ -35,6 +38,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   }, []);
 
   const fetchGlobalSettings = async () => {
+    setSettingsLoading(true);
+    setSettingsError(null);
     try {
       const response = await fetch('/api/ai/admin/settings', {
         headers: {
@@ -56,8 +61,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
           }
         }));
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching global settings:', error);
+      setSettingsError(error.message || 'Ayarlar yüklenirken bir hata oluştu.');
+    } finally {
+      setSettingsLoading(false);
     }
   };
 
@@ -86,6 +94,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
   const fetchUsers = async () => {
     setLoading(true);
+    setUsersError(null);
     try {
       const response = await fetch('/api/ai/admin/users', {
         headers: {
@@ -96,10 +105,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       if (!response.ok) throw new Error('Failed to fetch users');
       const data = await response.json();
       setUsers(data as UserProfile[]);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error fetching users:', error);
+      setUsersError(error.message || 'Kullanıcı listesi yüklenirken bir hata oluştu.');
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   const saveUser = async () => {
@@ -233,7 +244,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               </div>
 
               {loading ? (
-                <div className="text-center py-12 text-slate-500">Yükleniyor...</div>
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 flex flex-col items-center justify-center space-y-4">
+                  <div className="w-12 h-12 border-4 border-orange-100 border-t-orange-600 rounded-full animate-spin" />
+                  <p className="text-slate-500 font-medium">Üye listesi hazırlanıyor...</p>
+                </div>
+              ) : usersError ? (
+                <div className="bg-white rounded-2xl shadow-sm border border-red-100 p-12 flex flex-col items-center justify-center space-y-4">
+                  <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-red-600">
+                    <X size={24} />
+                  </div>
+                  <div className="text-center">
+                    <p className="text-slate-900 font-bold">Üye Listesi Alınamadı</p>
+                    <p className="text-slate-500 text-sm">Sunucuyla bağlantı kurulurken bir sorun oluştu. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.</p>
+                    {usersError && usersError !== 'Failed to fetch users' && (
+                      <p className="text-[10px] text-slate-400 mt-2 font-mono">Hata detayı: {usersError}</p>
+                    )}
+                  </div>
+                  <button 
+                    onClick={fetchUsers}
+                    className="px-6 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors"
+                  >
+                    Listeyi Yenile
+                  </button>
+                </div>
               ) : (
                 <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden">
                   <table className="w-full text-left">
@@ -305,54 +338,82 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             <div className="space-y-6">
               <h2 className="text-2xl font-bold text-slate-900">Genel Ayarlar</h2>
               
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-6">
-                <h3 className="font-bold text-lg border-b border-slate-100 pb-2">Uygulama Bilgileri</h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Uygulama Adı</label>
-                    <input type="text" value={globalSettings.app_name} onChange={e => setGlobalSettings({...globalSettings, app_name: e.target.value})} className="w-full p-2 border border-slate-200 rounded-lg" />
+              {settingsLoading ? (
+                <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-12 flex flex-col items-center justify-center space-y-4">
+                  <div className="w-12 h-12 border-4 border-orange-100 border-t-orange-600 rounded-full animate-spin" />
+                  <p className="text-slate-500 font-medium">Sistem ayarları yükleniyor...</p>
+                </div>
+              ) : settingsError ? (
+                <div className="bg-white rounded-2xl shadow-sm border border-red-100 p-12 flex flex-col items-center justify-center space-y-4">
+                  <div className="w-12 h-12 bg-red-100 rounded-2xl flex items-center justify-center text-red-600">
+                    <X size={24} />
                   </div>
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 mb-1">Ana Tema Rengi</label>
-                    <div className="flex gap-2">
-                      <input type="color" value={globalSettings.theme_color} onChange={e => setGlobalSettings({...globalSettings, theme_color: e.target.value})} className="w-10 h-10 p-1 border border-slate-200 rounded-lg" />
-                      <input type="text" value={globalSettings.theme_color} onChange={e => setGlobalSettings({...globalSettings, theme_color: e.target.value})} className="flex-1 p-2 border border-slate-200 rounded-lg" />
+                  <div className="text-center">
+                    <p className="text-slate-900 font-bold">Sistem Ayarları Yüklenemedi</p>
+                    <p className="text-slate-500 text-sm">Genel yapılandırma verilerine şu an ulaşılamıyor. Lütfen kısa süre sonra tekrar deneyin.</p>
+                    {settingsError && settingsError !== 'Failed to fetch settings' && (
+                      <p className="text-[10px] text-slate-400 mt-2 font-mono">Hata detayı: {settingsError}</p>
+                    )}
+                  </div>
+                  <button 
+                    onClick={fetchGlobalSettings}
+                    className="px-6 py-2 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors"
+                  >
+                    Ayarları Yeniden Yükle
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-6">
+                    <h3 className="font-bold text-lg border-b border-slate-100 pb-2">Uygulama Bilgileri</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Uygulama Adı</label>
+                        <input type="text" value={globalSettings.app_name} onChange={e => setGlobalSettings({...globalSettings, app_name: e.target.value})} className="w-full p-2 border border-slate-200 rounded-lg" />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-bold text-slate-500 mb-1">Ana Tema Rengi</label>
+                        <div className="flex gap-2">
+                          <input type="color" value={globalSettings.theme_color} onChange={e => setGlobalSettings({...globalSettings, theme_color: e.target.value})} className="w-10 h-10 p-1 border border-slate-200 rounded-lg" />
+                          <input type="text" value={globalSettings.theme_color} onChange={e => setGlobalSettings({...globalSettings, theme_color: e.target.value})} className="flex-1 p-2 border border-slate-200 rounded-lg" />
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
+                      <div>
+                        <div className="font-bold text-slate-900">Bakım Modu</div>
+                        <div className="text-xs text-slate-500">Uygulamayı geçici olarak kullanıma kapatır.</div>
+                      </div>
+                      <input type="checkbox" checked={globalSettings.maintenance_mode} onChange={e => setGlobalSettings({...globalSettings, maintenance_mode: e.target.checked})} className="w-6 h-6 accent-orange-600" />
                     </div>
                   </div>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-slate-50 rounded-xl border border-slate-100">
-                  <div>
-                    <div className="font-bold text-slate-900">Bakım Modu</div>
-                    <div className="text-xs text-slate-500">Uygulamayı geçici olarak kullanıma kapatır.</div>
-                  </div>
-                  <input type="checkbox" checked={globalSettings.maintenance_mode} onChange={e => setGlobalSettings({...globalSettings, maintenance_mode: e.target.checked})} className="w-6 h-6 accent-orange-600" />
-                </div>
-              </div>
 
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-6">
-                <h3 className="font-bold text-lg border-b border-slate-100 pb-2">Global Modül Yönetimi</h3>
-                <p className="text-xs text-slate-500">Bu modülleri kapattığınızda tüm kullanıcılar için devre dışı kalır.</p>
-                <div className="space-y-3">
-                  {globalSettings.global_modules && Object.entries(globalSettings.global_modules).map(([key, value]) => (
-                    <div key={key} className="flex items-center justify-between p-3 border border-slate-100 rounded-lg">
-                      <span className="font-medium capitalize">{key} Modülü</span>
-                      <input 
-                        type="checkbox" 
-                        checked={value as boolean} 
-                        onChange={e => setGlobalSettings({
-                          ...globalSettings, 
-                          global_modules: { ...globalSettings.global_modules, [key]: e.target.checked }
-                        })} 
-                        className="w-5 h-5 accent-orange-600" 
-                      />
+                  <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-100 space-y-6">
+                    <h3 className="font-bold text-lg border-b border-slate-100 pb-2">Global Modül Yönetimi</h3>
+                    <p className="text-xs text-slate-500">Bu modülleri kapattığınızda tüm kullanıcılar için devre dışı kalır.</p>
+                    <div className="space-y-3">
+                      {globalSettings.global_modules && Object.entries(globalSettings.global_modules).map(([key, value]) => (
+                        <div key={key} className="flex items-center justify-between p-3 border border-slate-100 rounded-lg">
+                          <span className="font-medium capitalize">{key} Modülü</span>
+                          <input 
+                            type="checkbox" 
+                            checked={value as boolean} 
+                            onChange={e => setGlobalSettings({
+                              ...globalSettings, 
+                              global_modules: { ...globalSettings.global_modules, [key]: e.target.checked }
+                            })} 
+                            className="w-5 h-5 accent-orange-600" 
+                          />
+                        </div>
+                      ))}
                     </div>
-                  ))}
-                </div>
-              </div>
-              
-              <button onClick={saveGlobalSettings} className="w-full py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-colors">
-                Tüm Ayarları Kaydet
-              </button>
+                  </div>
+                  
+                  <button onClick={saveGlobalSettings} className="w-full py-3 bg-orange-600 text-white rounded-xl font-bold hover:bg-orange-700 transition-colors">
+                    Tüm Ayarları Kaydet
+                  </button>
+                </>
+              )}
             </div>
           )}
         </div>
@@ -390,7 +451,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   className="w-full p-3 border border-slate-200 rounded-xl"
                 >
                   <option value="none">Yok</option>
-                  <option value="trial">15 Gün Deneme</option>
+                  <option value="trial">7 Gün Deneme</option>
                   <option value="1-month">1 Aylık</option>
                   <option value="3-month">3 Aylık</option>
                   <option value="6-month">6 Aylık</option>

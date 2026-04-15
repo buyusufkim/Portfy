@@ -106,7 +106,7 @@ export const propertyService = {
     `;
 
     const response = await generateContent(
-      "gemini-3-flash-preview",
+      "gemini-flash-latest",
       prompt
     );
 
@@ -141,13 +141,11 @@ export const propertyService = {
         "warm": "metin"
       }
     `;
-
     const response = await generateContent(
-      "gemini-3-flash-preview",
+      "gemini-flash-latest",
       prompt,
       { responseMimeType: "application/json" }
     );
-
     return JSON.parse(response.text);
   },
 
@@ -176,13 +174,11 @@ export const propertyService = {
         "investor": "metin"
       }
     `;
-
     const response = await generateContent(
-      "gemini-3-flash-preview",
+      "gemini-flash-latest",
       prompt,
       { responseMimeType: "application/json" }
     );
-
     return JSON.parse(response.text);
   },
 
@@ -239,7 +235,7 @@ export const propertyService = {
     `;
 
     const response = await generateContent(
-      "gemini-3-flash-preview",
+      "gemini-flash-latest",
       prompt,
       { responseMimeType: "application/json" }
     );

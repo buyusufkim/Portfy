@@ -37,12 +37,12 @@ export const coachService = {
 
     try {
       const response = await generateContent(
-        "gemini-3-flash-preview",
+        "gemini-flash-latest",
         prompt,
         {
-          responseMimeType: "application/json",
           // @ts-ignore - Gemini SDK schema type support
-          responseSchema: AI_COACH_SCHEMA
+          responseSchema: AI_COACH_SCHEMA,
+          responseMimeType: "application/json"
         }
       );
 
@@ -77,6 +77,7 @@ export const coachService = {
 
     const prompt = `Sen Türkiye'de çalışan bireysel gayrimenkul danışmanları için uzman bir "Davranışsal Koç" (Behavioral Coach) yapay zekasısın.
     Amacın danışmanın verilerini analiz edip ona 1 güçlü yön, 1 zayıf yön ve 1 günlük odak noktası vermek.
+    Özellikle sosyal medya kullanımı (Reels, Story, LinkedIn) ve dijital görünürlük konularında da tavsiyeler ekle.
     Dramatik veya abartılı olma. Gerçekçi, profesyonel ve motive edici bir dil kullan.
 
     Danışmanın Verileri:
@@ -100,7 +101,7 @@ export const coachService = {
 
     try {
       const response = await generateContent(
-        'gemini-3-flash-preview',
+        'gemini-flash-latest',
         prompt,
         {
           responseMimeType: 'application/json',
@@ -141,9 +142,17 @@ export const coachService = {
    * Converts a recommended AI action into a real task in the system.
    */
   convertActionToTask: async (action: AICoachAction) => {
+    const typeMap: Record<string, string> = {
+      'call': 'Arama',
+      'visit': 'Saha',
+      'followup': 'Takip',
+      'update': 'Güncelleme',
+      'social': 'Sosyal Medya'
+    };
+
     return taskService.addTask({
       title: action.title,
-      type: action.type === 'call' ? 'Arama' : action.type === 'visit' ? 'Saha' : 'Randevu',
+      type: (typeMap[action.type] || 'Randevu') as any,
       time: new Date().toISOString(),
       completed: false
     });

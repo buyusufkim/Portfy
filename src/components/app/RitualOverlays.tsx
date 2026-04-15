@@ -62,14 +62,16 @@ export const RitualOverlays = ({
           tasks_completed: gamifiedTasks.filter(t => t.is_completed).length + personalTasks.filter(t => t.is_completed).length,
           revenue: properties.reduce((acc, p) => acc + ((p.price * p.commission_rate) / 100) * (p.sale_probability || 0.5), 0),
           calls: tasks.filter(t => t.type === 'Arama' && t.completed).length,
-          visits: tasks.filter(t => t.type === 'Saha' && t.completed).length
+          visits: tasks.filter(t => t.type === 'Saha' && t.completed).length,
+          social: tasks.filter(t => t.type === 'Sosyal Medya' && t.completed).length
         }}
         onComplete={() => {
           completeEveningRitualMutation.mutate({
             tasks_completed: gamifiedTasks.filter(t => t.is_completed).length + personalTasks.filter(t => t.is_completed).length,
             revenue: properties.reduce((acc, p) => acc + ((p.price * p.commission_rate) / 100) * (p.sale_probability || 0.5), 0),
             calls: tasks.filter(t => t.type === 'Arama' && t.completed).length,
-            visits: tasks.filter(t => t.type === 'Saha' && t.completed).length
+            visits: tasks.filter(t => t.type === 'Saha' && t.completed).length,
+            social: tasks.filter(t => t.type === 'Sosyal Medya' && t.completed).length
           });
         }}
       />

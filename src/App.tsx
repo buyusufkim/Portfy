@@ -584,12 +584,14 @@ function MainApp() {
         />
 
         <div className="flex-1 flex flex-col min-w-0">
-          <Header 
-            activeTab={activeTab}
-            profile={profile}
-          />
+          {activeTab !== 'bolgem' && (
+            <Header 
+              activeTab={activeTab}
+              profile={profile}
+            />
+          )}
 
-          <main className="flex-1 w-full px-4 md:px-8 py-6 max-w-[1600px] mx-auto">
+          <main className={`flex-1 w-full max-w-[1600px] mx-auto ${activeTab === 'bolgem' ? '' : 'px-4 md:px-8 py-6'}`}>
             <MainContentRouter {...appProps} />
           </main>
         </div>

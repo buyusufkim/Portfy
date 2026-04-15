@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { LogOut, ShieldCheck } from 'lucide-react';
+import { LogOut, ShieldCheck, Zap } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 
 export const PricingScreen = () => {
@@ -20,12 +20,19 @@ export const PricingScreen = () => {
     }
   }, []);
 
+  const [showManualMessage, setShowManualMessage] = React.useState(false);
+
   const plans = [
     { id: '1-month', name: '1 Aylık', price: '₺299', months: 1 },
     { id: '3-month', name: '3 Aylık', price: '₺799', months: 3, popular: true },
     { id: '6-month', name: '6 Aylık', price: '₺1.499', months: 6 },
     { id: '12-month', name: '12 Aylık', price: '₺2.499', months: 12 },
   ];
+
+  const handlePaidPlanClick = () => {
+    setShowManualMessage(true);
+    setTimeout(() => setShowManualMessage(false), 5000);
+  };
 
   return (
     <div className="min-h-screen bg-slate-50 p-6 pb-12">
@@ -42,11 +49,17 @@ export const PricingScreen = () => {
         </p>
       </div>
 
+      {showManualMessage && (
+        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-2xl text-blue-700 text-sm font-medium animate-in fade-in slide-in-from-top-2">
+          Ücretli planlar şu an sadece manuel aktivasyon ile sunulmaktadır. Lütfen destek ekibimizle iletişime geçin.
+        </div>
+      )}
+
       <div className="space-y-4">
         {plans.map((plan) => (
           <button 
             key={plan.id}
-            onClick={() => subscribe(plan.id as any)}
+            onClick={handlePaidPlanClick}
             className={`w-full p-5 rounded-[28px] border-2 text-left transition-all relative overflow-hidden ${
               plan.popular ? 'border-orange-600 bg-white shadow-lg' : 'border-slate-100 bg-white'
             }`}
@@ -63,22 +76,26 @@ export const PricingScreen = () => {
               </div>
               <div className="text-right">
                 <div className="text-xl font-bold text-slate-900">{plan.price}</div>
-                <div className="text-[10px] text-slate-400 uppercase font-bold">Tek Ödeme</div>
+                <div className="text-[10px] text-slate-400 uppercase font-bold">Aktivasyon Talebi</div>
               </div>
             </div>
           </button>
         ))}
 
-        <button 
-          onClick={() => subscribe('trial')}
-          className="w-full mt-4 p-4 rounded-2xl bg-slate-100 text-slate-600 font-bold text-sm hover:bg-slate-200 transition-colors"
-        >
-          15 Gün Ücretsiz Dene
-        </button>
+        <div className="pt-4 border-t border-slate-200">
+          <p className="text-xs text-slate-500 mb-3 font-medium text-center">Henüz karar vermediniz mi?</p>
+          <button 
+            onClick={() => subscribe('trial')}
+            className="w-full p-5 rounded-[28px] bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-2"
+          >
+            <Zap size={18} className="text-orange-400 fill-orange-400" />
+            7 Gün Ücretsiz Dene
+          </button>
+        </div>
       </div>
 
       <p className="text-center text-slate-400 text-[10px] mt-8 px-8">
-        Ödeme işlemleri güvenli altyapı üzerinden gerçekleştirilir. Üyeliğiniz anında aktif olur.
+        Deneme süreniz anında aktif olur. Ücretli plan aktivasyonları için lütfen destek ekibimizle iletişime geçin.
       </p>
     </div>
   );

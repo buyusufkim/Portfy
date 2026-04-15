@@ -26,6 +26,9 @@ export const VoiceQuickAddModal: React.FC<VoiceQuickAddModalProps> = ({
   const [isParsing, setIsParsing] = useState(false);
   const [parsedResult, setParsedResult] = useState<VoiceParseResult | null>(null);
   const [recognition, setRecognition] = useState<any>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [errorType, setErrorType] = useState<'permission' | 'unsupported' | 'parsing' | 'recording' | null>(null);
+  const [isSupported, setIsSupported] = useState(true);
 
   useEffect(() => {
     const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
@@ -46,6 +49,16 @@ export const VoiceQuickAddModal: React.FC<VoiceQuickAddModalProps> = ({
       rec.onerror = (event: any) => {
         console.error('Speech recognition error', event.error);
         setIsListening(false);
+        if (event.error === 'not-allowed') {
+          setErrorType('permission');
+          setError('Mikrofon erişimi engellendi. Lütfen tarayıcı ayarlarından mikrofon izni verin.');
+        } else if (event.error === 'no-speech') {
+          // Ignore no-speech errors as they happen frequently
+          return;
+        } else {
+          setErrorType('recording');
+          setError('Ses tanıma sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+        }
       };
 
       rec.onend = () => {
@@ -53,27 +66,48 @@ export const VoiceQuickAddModal: React.FC<VoiceQuickAddModalProps> = ({
       };
 
       setRecognition(rec);
+    } else {
+      setIsSupported(false);
+      setErrorType('unsupported');
+      setError('Tarayıcınız ses tanıma özelliğini desteklemiyor.');
     }
   }, []);
 
   const toggleListening = () => {
+    setError(null);
+    setErrorType(null);
     if (isListening) {
       recognition?.stop();
       setIsListening(false);
     } else {
       setTranscript('');
       setParsedResult(null);
-      recognition?.start();
-      setIsListening(true);
+      try {
+        recognition?.start();
+        setIsListening(true);
+      } catch (err) {
+        console.error('Failed to start recognition', err);
+        setErrorType('permission');
+        setError('Mikrofon başlatılamadı. Lütfen izni kontrol edip tekrar deneyin.');
+      }
     }
   };
 
   const handleParse = async () => {
     if (!transcript.trim()) return;
     setIsParsing(true);
-    const result = await api.parseVoiceCommand(transcript);
-    setParsedResult(result);
-    setIsParsing(false);
+    setError(null);
+    setErrorType(null);
+    try {
+      const result = await api.parseVoiceCommand(transcript);
+      setParsedResult(result);
+    } catch (err) {
+      console.error('Parse error:', err);
+      setErrorType('parsing');
+      setError('Notunuz işlenirken bir hata oluştu. Lütfen tekrar deneyin.');
+    } finally {
+      setIsParsing(false);
+    }
   };
 
   const handleSave = async () => {
@@ -92,7 +126,7 @@ export const VoiceQuickAddModal: React.FC<VoiceQuickAddModalProps> = ({
       await addTaskMutation.mutateAsync({
         title: parsedResult.extracted_data.description || 'Yeni Görev',
         time: parsedResult.extracted_data.due_date || new Date().toISOString(),
-        type: 'Arama',
+        type: (parsedResult.extracted_data as any).task_type || 'Arama',
         completed: false
       } as any);
     } else if (parsedResult.intent === 'note') {
@@ -108,6 +142,22 @@ export const VoiceQuickAddModal: React.FC<VoiceQuickAddModalProps> = ({
     setTranscript('');
     setParsedResult(null);
   };
+
+  useEffect(() => {
+    if (!showVoiceQuickAdd) {
+      setIsListening(false);
+      setIsParsing(false);
+      setError(null);
+      setErrorType(null);
+      setTranscript('');
+      setParsedResult(null);
+      try {
+        recognition?.stop();
+      } catch (e) {
+        // Ignore stop errors
+      }
+    }
+  }, [showVoiceQuickAdd, recognition]);
 
   if (!showVoiceQuickAdd) return null;
 
@@ -142,21 +192,63 @@ export const VoiceQuickAddModal: React.FC<VoiceQuickAddModalProps> = ({
 
           {!parsedResult ? (
             <div className="flex flex-col items-center justify-center py-8 space-y-8">
-              <button 
-                onClick={toggleListening}
-                className={`w-32 h-32 rounded-full flex items-center justify-center transition-all ${isListening ? 'bg-red-500 text-white shadow-[0_0_40px_rgba(239,68,68,0.5)] animate-pulse' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
-              >
-                <Mic size={48} />
-              </button>
-              
-              <div className="text-center space-y-2">
-                <p className="text-sm font-bold text-slate-900">
-                  {isListening ? 'Dinleniyor...' : 'Konuşmak için dokunun'}
-                </p>
-                <p className="text-xs text-slate-500 max-w-xs mx-auto">
-                  Örn: "Yarın saat 3'te Mehmet Bey'i ara" veya "Yeni müşteri Zeynep Hanım, bütçesi 3 milyon"
-                </p>
-              </div>
+              {error ? (
+                <div className="w-full p-6 bg-red-50 rounded-[32px] border border-red-100 text-center space-y-4">
+                  <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 mx-auto">
+                    <X size={32} />
+                  </div>
+                  <div className="space-y-1">
+                    <p className="text-sm font-bold text-red-900">
+                      {errorType === 'unsupported' ? 'Tarayıcı Desteklenmiyor' : 
+                       errorType === 'permission' ? 'Erişim Engellendi' :
+                       errorType === 'parsing' ? 'İşleme Hatası' : 'Hata Oluştu'}
+                    </p>
+                    <p className="text-xs text-red-700 leading-relaxed">{error}</p>
+                  </div>
+                  <div className="flex gap-3 justify-center">
+                    {errorType === 'parsing' ? (
+                      <button 
+                        onClick={handleParse}
+                        className="px-6 py-2 bg-orange-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-orange-200"
+                      >
+                        Tekrar Dene
+                      </button>
+                    ) : errorType !== 'unsupported' ? (
+                      <button 
+                        onClick={toggleListening}
+                        className="px-6 py-2 bg-red-600 text-white rounded-xl font-bold text-xs shadow-lg shadow-red-200"
+                      >
+                        Tekrar Dene
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => setShowVoiceQuickAdd(false)}
+                        className="px-6 py-2 bg-slate-900 text-white rounded-xl font-bold text-xs shadow-lg shadow-slate-200"
+                      >
+                        Kapat
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <button 
+                    onClick={toggleListening}
+                    className={`w-32 h-32 rounded-full flex items-center justify-center transition-all ${isListening ? 'bg-red-500 text-white shadow-[0_0_40px_rgba(239,68,68,0.5)] animate-pulse' : 'bg-slate-100 text-slate-600 hover:bg-slate-200'}`}
+                  >
+                    <Mic size={48} />
+                  </button>
+                  
+                  <div className="text-center space-y-2">
+                    <p className="text-sm font-bold text-slate-900">
+                      {isListening ? 'Dinleniyor...' : 'Konuşmak için dokunun'}
+                    </p>
+                    <p className="text-xs text-slate-500 max-w-xs mx-auto">
+                      Örn: "Yarın saat 3'te Mehmet Bey'i ara" veya "Yeni müşteri Zeynep Hanım, bütçesi 3 milyon"
+                    </p>
+                  </div>
+                </>
+              )}
 
               {transcript && (
                 <div className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100">

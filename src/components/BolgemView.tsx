@@ -14,8 +14,7 @@ const libraries: ("places")[] = ["places"];
 
 const mapContainerStyle = {
   width: '100%',
-  height: '100%',
-  borderRadius: '40px'
+  height: '100%'
 };
 
 const center = {
@@ -51,7 +50,13 @@ const createSvgPin = (color: string, Icon: any) => {
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 
-export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
+export const BolgemView = ({ 
+  profile, 
+  setToast 
+}: { 
+  profile?: UserProfile,
+  setToast?: (toast: { message: string, type: 'success' | 'error' | 'info' } | null) => void
+}) => {
   const queryClient = useQueryClient();
   const { categories, addCategory } = useCategories();
   const [view, setView] = useState<'map' | 'list'>('map');
@@ -76,7 +81,7 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
   }, [profile]);
 
   const [mapCenter, setMapCenter] = useState(initialCenter);
-  const [mapZoom, setMapZoom] = useState(15);
+  const [mapZoom, setMapZoom] = useState(16);
 
   const [showAddPin, setShowAddPin] = useState(false);
   const [newPinData, setNewPinData] = useState({
@@ -207,18 +212,57 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
 
   const handleLocateMe = () => {
     if (navigator.geolocation) {
-      navigator.geolocation.getCurrentPosition(
-        (position) => {
-          setMapCenter({
-            lat: position.coords.latitude,
-            lng: position.coords.longitude,
-          });
-          setMapZoom(18);
-        },
-        () => {
-          console.error("Konum alınamadı.");
+      if (setToast) setToast({ message: "Konumunuz alınıyor...", type: 'info' });
+
+      const options = {
+        enableHighAccuracy: true,
+        timeout: 15000,
+        maximumAge: 0
+      };
+
+      const successCallback = (position: GeolocationPosition) => {
+        const newCenter = {
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+        };
+        setMapCenter(newCenter);
+        setMapZoom(18);
+        if (map) map.panTo(newCenter);
+        if (setToast) setToast({ message: "Konumunuz başarıyla bulundu.", type: 'success' });
+      };
+
+      const errorCallback = (error: GeolocationPositionError) => {
+        console.error("Konum hatası:", error);
+        
+        // If high accuracy failed, try one more time with low accuracy
+        if (options.enableHighAccuracy) {
+          console.log("Yüksek doğruluk başarısız, düşük doğruluk deneniyor...");
+          navigator.geolocation.getCurrentPosition(
+            successCallback,
+            finalErrorCallback,
+            { ...options, enableHighAccuracy: false, timeout: 10000 }
+          );
+          return;
         }
-      );
+        
+        finalErrorCallback(error);
+      };
+
+      const finalErrorCallback = (error: GeolocationPositionError) => {
+        let message = "Konum alınamadı.";
+        if (error.code === error.PERMISSION_DENIED) {
+          message = "Konum erişimi reddedildi. Lütfen tarayıcı ayarlarından (veya kilit simgesinden) izin verdiğinizden emin olun.";
+        } else if (error.code === error.POSITION_UNAVAILABLE) {
+          message = "Konum bilgisi şu an kullanılamıyor. GPS veya internet bağlantınızı kontrol edin.";
+        } else if (error.code === error.TIMEOUT) {
+          message = "Konum alma isteği zaman aşımına uğradı. Lütfen tekrar deneyin.";
+        }
+        if (setToast) setToast({ message, type: 'error' });
+      };
+
+      navigator.geolocation.getCurrentPosition(successCallback, errorCallback, options);
+    } else {
+      if (setToast) setToast({ message: "Tarayıcınız konum özelliğini desteklemiyor.", type: 'error' });
     }
   };
 
@@ -238,226 +282,114 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="p-6 space-y-6 pb-32"
+      className={`relative flex flex-col ${view === 'map' ? 'h-[calc(100vh-80px)] md:h-screen' : 'p-6 space-y-6 pb-32'}`}
     >
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Bölgem</h1>
-        <button 
-          onClick={() => setShowFieldNotes(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-600 rounded-xl text-sm font-bold hover:bg-orange-200 transition-all"
-        >
-          <MessageSquare size={16} />
-          Saha Notları
-        </button>
-      </div>
-
-      {/* Search & Filters */}
-      <div className="space-y-4">
-        <div className="relative">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
-          <input 
-            type="text"
-            placeholder="Sokak, bina veya kişi ara..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white border-2 border-slate-100 rounded-2xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none shadow-sm"
-          />
-        </div>
-
-        <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide items-center">
-          {(allPinTypes || []).map(type => {
-            const Icon = type.icon;
-            const isActive = filter === type.id;
-            return (
-              <button
-                key={type.id}
-                onClick={() => setFilter(type.id)}
-                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                  isActive ? 'text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
-                }`}
-                style={isActive ? { backgroundColor: type.color } : {}}
-              >
-                <Icon size={14} style={{ color: isActive ? '#fff' : type.color }} />
-                {type.label}
-              </button>
-            );
-          })}
-          <button
-            onClick={() => setShowAddFilter(true)}
-            className="flex items-center justify-center w-8 h-8 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all shrink-0"
-          >
-            <Plus size={16} />
-          </button>
-        </div>
-      </div>
-
-      {/* Add Filter Modal */}
-      <AnimatePresence>
-        {showAddFilter && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl"
-            >
-              <div className="flex justify-between items-center mb-6">
-                <h3 className="text-xl font-bold text-slate-900">Yeni Filtre Ekle</h3>
-                <button onClick={() => setShowAddFilter(false)} className="p-2 bg-slate-100 rounded-full text-slate-500">
-                  <X size={20} />
-                </button>
-              </div>
-              
-              <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Filtre Adı</label>
-                  <input 
-                    type="text" 
-                    value={newFilterName}
-                    onChange={(e) => setNewFilterName(e.target.value)}
-                    placeholder="Örn: VIP Müşteriler"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
-                  />
-                </div>
-                
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Renk Seçimi</label>
-                  <div className="flex items-center gap-4">
-                    <input 
-                      type="color" 
-                      value={newFilterColor}
-                      onChange={(e) => setNewFilterColor(e.target.value)}
-                      className="w-12 h-12 rounded-xl cursor-pointer border-0 p-0"
-                    />
-                    <div className="flex-1 text-sm text-slate-500 font-mono bg-slate-50 px-3 py-2 rounded-lg border border-slate-200">
-                      {newFilterColor}
-                    </div>
-                  </div>
-                </div>
-
-                <button 
-                  onClick={handleAddFilter}
-                  disabled={!newFilterName.trim()}
-                  className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold mt-4 disabled:opacity-50"
-                >
-                  Filtreyi Kaydet
-                </button>
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Field Notes Modal */}
-      <AnimatePresence>
-        {showFieldNotes && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm"
-          >
-            <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl max-h-[80vh] flex flex-col"
-            >
-              <div className="flex justify-between items-center mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600">
-                    <MessageSquare size={20} />
-                  </div>
-                  <h3 className="text-xl font-bold text-slate-900">Saha Notları</h3>
-                </div>
-                <button onClick={() => setShowFieldNotes(false)} className="p-2 bg-slate-100 rounded-full text-slate-500">
-                  <X size={20} />
-                </button>
-              </div>
-              
-              <div className="overflow-y-auto flex-1 space-y-4 pr-2">
-                {(fieldNotes || []).length === 0 ? (
-                  <div className="text-center py-8 text-slate-500 text-sm">Henüz saha notu bulunmuyor. Haritaya pin eklerken not girebilirsiniz.</div>
-                ) : (
-                  (fieldNotes || []).map((pin: MapPin) => {
-                    const typeObj = (allPinTypes || []).find(t => t.id === pin.type);
-                    const Icon = typeObj?.icon || Building2;
-                    return (
-                      <div key={pin.id} className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-                        <div className="flex items-center gap-3 mb-2">
-                          <div 
-                            className="w-8 h-8 rounded-lg flex items-center justify-center text-white"
-                            style={{ backgroundColor: typeObj?.color || '#eab308' }}
-                          >
-                            <Icon size={14} />
-                          </div>
-                          <div>
-                            <h4 className="font-bold text-slate-900 text-sm">{pin.title}</h4>
-                            <p className="text-[10px] text-slate-500">{pin.address}</p>
-                          </div>
-                        </div>
-                        <p className="text-sm text-slate-700 bg-white p-3 rounded-xl border border-slate-100">{pin.notes}</p>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* View Toggle */}
-      <div className="bg-slate-100 p-1 rounded-2xl flex">
-        <button 
-          onClick={() => setView('map')}
-          className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${view === 'map' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
-        >
-          <MapIcon size={14} /> Harita
-        </button>
-        <button 
-          onClick={() => setView('list')}
-          className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${view === 'list' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
-        >
-          <LayoutDashboard size={14} /> Liste
-        </button>
-      </div>
-
-      {/* Content */}
       {view === 'map' ? (
-        <div className="relative h-[600px] bg-slate-200 rounded-[40px] overflow-hidden border-4 border-white shadow-xl">
-          {!isLoaded ? (
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full animate-spin" />
-            </div>
-          ) : (
-            <>
-              <div className="absolute right-4 top-4 flex flex-col gap-2 z-10">
-                <button 
-                  onClick={() => {
-                    setIs3D(!is3D);
-                    if (!is3D) setMapZoom(18);
-                  }}
-                  className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-lg transition-all ${is3D ? 'bg-orange-500 text-white' : 'bg-white text-slate-700 hover:bg-slate-50'}`}
-                  title="3D Görünüm"
-                >
-                  <Layers size={24} />
-                </button>
-                <button 
-                  onClick={handleLocateMe}
-                  className="w-12 h-12 rounded-2xl bg-white text-slate-700 flex items-center justify-center shadow-lg hover:bg-slate-50 transition-all"
-                  title="Konumumu Bul"
-                >
-                  <Crosshair size={24} />
-                </button>
+        <div className="relative flex-1 w-full overflow-hidden">
+          {/* Floating Search & Filters */}
+          <div className="absolute top-4 left-4 right-4 z-20 space-y-3 pointer-events-none">
+            <div className="flex items-center gap-2 pointer-events-auto">
+              <div className="relative flex-1">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+                <input 
+                  type="text"
+                  placeholder="Sokak, bina veya kişi ara..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="w-full bg-white/95 backdrop-blur-md border-none rounded-2xl py-4 pl-12 pr-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none shadow-xl"
+                />
               </div>
+              <button 
+                onClick={() => setShowFieldNotes(true)}
+                className="w-12 h-12 bg-white/95 backdrop-blur-md text-orange-600 rounded-2xl flex items-center justify-center shadow-xl hover:bg-white transition-all"
+                title="Saha Notları"
+              >
+                <MessageSquare size={20} />
+              </button>
+            </div>
+
+            <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide items-center pointer-events-auto">
+              {(allPinTypes || []).map(type => {
+                const Icon = type.icon;
+                const isActive = filter === type.id;
+                return (
+                  <button
+                    key={type.id}
+                    onClick={() => setFilter(type.id)}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shadow-lg ${
+                      isActive ? 'text-white' : 'bg-white/95 backdrop-blur-md text-slate-600 hover:bg-white'
+                    }`}
+                    style={isActive ? { backgroundColor: type.color } : {}}
+                  >
+                    <Icon size={14} style={{ color: isActive ? '#fff' : type.color }} />
+                    {type.label}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setShowAddFilter(true)}
+                className="flex items-center justify-center w-9 h-9 rounded-xl bg-white/95 backdrop-blur-md text-slate-500 hover:bg-white transition-all shrink-0 shadow-lg"
+              >
+                <Plus size={18} />
+              </button>
+            </div>
+          </div>
+
+          {/* View Toggle - Floating at bottom center */}
+          <div className="absolute bottom-8 left-1/2 -translate-x-1/2 z-20 bg-slate-900/90 backdrop-blur-md p-1 rounded-2xl flex shadow-2xl border border-white/10">
+            <button 
+              onClick={() => setView('map')}
+              className={`px-6 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${view === 'map' ? 'bg-white text-slate-900' : 'text-white/60 hover:text-white'}`}
+            >
+              <MapIcon size={14} /> Harita
+            </button>
+            <button 
+              onClick={() => setView('list')}
+              className={`px-6 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${view === 'list' ? 'bg-white text-slate-900' : 'text-white/60 hover:text-white'}`}
+            >
+              <LayoutDashboard size={14} /> Liste
+            </button>
+          </div>
+
+          {/* Map Controls - Floating right */}
+          <div className="absolute right-4 top-40 flex flex-col gap-2 z-10">
+            <button 
+              onClick={() => {
+                setMapCenter(map?.getCenter()?.toJSON() || mapCenter);
+                setShowAddPin(true);
+              }}
+              className="w-14 h-14 rounded-2xl bg-orange-600 text-white flex items-center justify-center shadow-2xl hover:bg-orange-700 transition-all mb-2"
+              title="Pin Ekle"
+            >
+              <Plus size={32} />
+            </button>
+            <button 
+              onClick={() => {
+                setIs3D(!is3D);
+                if (!is3D) setMapZoom(18);
+              }}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all ${is3D ? 'bg-orange-500 text-white' : 'bg-white/95 backdrop-blur-md text-slate-700 hover:bg-white'}`}
+              title="3D Görünüm"
+            >
+              <Layers size={24} />
+            </button>
+            <button 
+              onClick={handleLocateMe}
+              className="w-12 h-12 rounded-2xl bg-white/95 backdrop-blur-md text-slate-700 flex items-center justify-center shadow-xl hover:bg-white transition-all"
+              title="Konumumu Bul"
+            >
+              <Crosshair size={24} />
+            </button>
+          </div>
+
+          <div className="w-full h-full bg-slate-200">
+            {!isLoaded ? (
+              <div className="absolute inset-0 flex items-center justify-center">
+                <div className="w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full animate-spin" />
+              </div>
+            ) : (
               <GoogleMap
-                mapContainerStyle={mapContainerStyle}
+                mapContainerStyle={{ width: '100%', height: '100%' }}
                 zoom={mapZoom}
                 center={mapCenter}
                 onLoad={onMapLoad}
@@ -467,7 +399,7 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
                 heading={is3D ? 45 : 0}
                 options={{
                   disableDefaultUI: true,
-                  zoomControl: true,
+                  zoomControl: false,
                   mapTypeControl: false,
                   streetViewControl: false,
                   fullscreenControl: false,
@@ -516,38 +448,107 @@ export const BolgemView = ({ profile }: { profile?: UserProfile }) => {
                   </InfoWindow>
                 )}
               </GoogleMap>
-            </>
-          )}
+            )}
+          </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {(filteredPins || []).length === 0 ? (
-            <div className="text-center py-12 text-slate-500 text-sm col-span-full">Sonuç bulunamadı.</div>
-          ) : (
-            (filteredPins || []).map((pin: MapPin) => {
-              const typeObj = (allPinTypes || []).find(t => t.id === pin.type);
-              const Icon = typeObj?.icon || Building2;
-              return (
-                <div key={pin.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex gap-4">
-                  <div 
-                    className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
-                    style={{ backgroundColor: typeObj?.color || '#eab308' }}
+        <>
+          <div className="flex justify-between items-center">
+            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Bölgem</h1>
+            <button 
+              onClick={() => setShowFieldNotes(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-600 rounded-xl text-sm font-bold hover:bg-orange-200 transition-all"
+            >
+              <MessageSquare size={16} />
+              Saha Notları
+            </button>
+          </div>
+
+          {/* Search & Filters for List View */}
+          <div className="space-y-4">
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+              <input 
+                type="text"
+                placeholder="Sokak, bina veya kişi ara..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full bg-white border-2 border-slate-100 rounded-2xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none shadow-sm"
+              />
+            </div>
+
+            <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide items-center">
+              {(allPinTypes || []).map(type => {
+                const Icon = type.icon;
+                const isActive = filter === type.id;
+                return (
+                  <button
+                    key={type.id}
+                    onClick={() => setFilter(type.id)}
+                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                      isActive ? 'text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    }`}
+                    style={isActive ? { backgroundColor: type.color } : {}}
                   >
-                    <Icon size={20} />
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex justify-between items-start mb-1">
-                      <h3 className="font-bold text-slate-900">{pin.title}</h3>
-                      <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">{typeObj?.label}</span>
+                    <Icon size={14} style={{ color: isActive ? '#fff' : type.color }} />
+                    {type.label}
+                  </button>
+                );
+              })}
+              <button
+                onClick={() => setShowAddFilter(true)}
+                className="flex items-center justify-center w-8 h-8 rounded-xl bg-slate-100 text-slate-500 hover:bg-slate-200 transition-all shrink-0"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+          </div>
+
+          {/* View Toggle for List View */}
+          <div className="bg-slate-100 p-1 rounded-2xl flex">
+            <button 
+              onClick={() => setView('map')}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${view === 'map' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
+            >
+              <MapIcon size={14} /> Harita
+            </button>
+            <button 
+              onClick={() => setView('list')}
+              className={`flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all ${view === 'list' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500'}`}
+            >
+              <LayoutDashboard size={14} /> Liste
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {(filteredPins || []).length === 0 ? (
+              <div className="text-center py-12 text-slate-500 text-sm col-span-full">Sonuç bulunamadı.</div>
+            ) : (
+              (filteredPins || []).map((pin: MapPin) => {
+                const typeObj = (allPinTypes || []).find(t => t.id === pin.type);
+                const Icon = typeObj?.icon || Building2;
+                return (
+                  <div key={pin.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex gap-4">
+                    <div 
+                      className="w-12 h-12 rounded-xl flex items-center justify-center text-white"
+                      style={{ backgroundColor: typeObj?.color || '#eab308' }}
+                    >
+                      <Icon size={20} />
                     </div>
-                    <p className="text-xs text-slate-500 mb-2">{pin.address}</p>
-                    <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded-lg">{pin.notes}</p>
+                    <div className="flex-1">
+                      <div className="flex justify-between items-start mb-1">
+                        <h3 className="font-bold text-slate-900">{pin.title}</h3>
+                        <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md">{typeObj?.label}</span>
+                      </div>
+                      <p className="text-xs text-slate-500 mb-2">{pin.address}</p>
+                      <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded-lg">{pin.notes}</p>
+                    </div>
                   </div>
-                </div>
-              );
-            })
-          )}
-        </div>
+                );
+              })
+            )}
+          </div>
+        </>
       )}
 
       {/* Add Pin Modal */}

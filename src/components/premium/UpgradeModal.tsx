@@ -3,21 +3,27 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Check, Sparkles, Zap, Shield, Star, Award, ArrowRight } from 'lucide-react';
 import { SubscriptionTier } from '../../types/subscription';
 
+import { useAuth } from '../../AuthContext';
+
 interface UpgradeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectPlan: (tier: SubscriptionTier) => void;
+  onActivateTrial?: () => void;
 }
 
-export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onSelectPlan }) => {
+export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onSelectPlan, onActivateTrial }) => {
+  const { profile } = useAuth();
+  const isEligibleForTrial = profile?.subscription_type === 'none';
+
+  const [showManualMessage, setShowManualMessage] = React.useState(false);
+
+  const handlePaidPlanClick = () => {
+    setShowManualMessage(true);
+    setTimeout(() => setShowManualMessage(false), 5000);
+  };
+
   const plans = [
-    { 
-      id: 'free', 
-      name: 'Free', 
-      price: '0₺', 
-      features: ['Temel CRM', 'Günlük 5 Görev', '10 Portföy'],
-      color: 'slate'
-    },
     { 
       id: 'pro', 
       name: 'Pro', 
@@ -73,7 +79,37 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onS
               </button>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 pb-12">
+            {showManualMessage && (
+              <motion.div 
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="mb-8 p-4 bg-blue-50 border border-blue-200 rounded-2xl text-blue-700 text-sm font-medium text-center"
+              >
+                Ücretli planlar şu an sadece manuel aktivasyon ile sunulmaktadır. Lütfen destek ekibimizle iletişime geçin.
+              </motion.div>
+            )}
+
+            {isEligibleForTrial && (
+              <div className="mb-8 p-6 bg-slate-900 rounded-[32px] text-white flex flex-col md:flex-row items-center justify-between gap-6 shadow-xl shadow-slate-200 border border-slate-800">
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-orange-500 rounded-2xl flex items-center justify-center shadow-lg shadow-orange-500/20">
+                    <Zap size={24} className="text-white fill-white" />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black">7 Günlük Ücretsiz Deneme</h3>
+                    <p className="text-slate-400 text-xs font-medium">Tüm Pro özellikleri hemen test edin.</p>
+                  </div>
+                </div>
+                <button 
+                  onClick={() => onActivateTrial ? onActivateTrial() : onSelectPlan('pro' as SubscriptionTier)}
+                  className="w-full md:w-auto px-8 py-4 bg-white text-slate-900 rounded-2xl font-bold text-sm hover:bg-slate-100 transition-all flex items-center justify-center gap-2"
+                >
+                  Şimdi Başlat <ArrowRight size={18} />
+                </button>
+              </div>
+            )}
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pb-12">
               {plans.map((plan) => (
                 <div 
                   key={plan.id}
@@ -108,14 +144,14 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onS
                   </div>
 
                   <button 
-                    onClick={() => onSelectPlan(plan.id as SubscriptionTier)}
+                    onClick={handlePaidPlanClick}
                     className={`w-full py-4 rounded-2xl font-bold text-sm flex items-center justify-center gap-2 transition-all ${
                       plan.popular 
                         ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-lg shadow-orange-200' 
                         : 'bg-slate-900 text-white hover:bg-slate-800'
                     }`}
                   >
-                    Seç <ArrowRight size={16} />
+                    Aktivasyon Talebi <ArrowRight size={16} />
                   </button>
                 </div>
               ))}

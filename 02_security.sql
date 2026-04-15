@@ -14,13 +14,13 @@ END $$;
 
 -- 2. Helper Functions
 -- Security Definer to avoid recursion when checking roles
-CREATE OR REPLACE FUNCTION is_admin() 
+CREATE OR REPLACE FUNCTION is_admin()
 RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
-    SELECT 1 FROM profiles 
-    WHERE uid = auth.uid() 
-    AND role = 'admin'
+    SELECT 1 FROM profiles
+    WHERE uid = auth.uid()
+      AND role = 'admin'
   );
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
@@ -57,13 +57,18 @@ BEGIN
     FOR t IN VALUES 
         ('tasks'), ('task_completions'), ('leads'), ('properties'), 
         ('daily_briefings'), ('ai_insights'), ('whatsapp_imports'), 
-        ('performance_snapshots'), ('subscription_state'), ('gamified_tasks'), 
+        ('performance_snapshots'), ('gamified_tasks'), 
         ('categories'), ('user_stats'), ('rescue_sessions'), ('field_visits'), 
         ('map_pins'), ('notes'), ('personal_tasks'), ('message_templates'), 
         ('broker_accounts'), ('external_listings')
     LOOP
         EXECUTE format('CREATE POLICY "Users can manage own %s" ON %I FOR ALL USING (agent_id = auth.uid())', t, t);
     END LOOP;
+
+    -- Special case for subscription_state: Users can only SELECT their own state.
+    -- Writes are handled by the backend (service_role) via RPC.
+    CREATE POLICY "Users can view own subscription state" ON subscription_state FOR SELECT USING (agent_id = auth.uid());
+    CREATE POLICY "Admins can view all subscription states" ON subscription_state FOR SELECT USING (is_admin());
 END $$;
 
 -- PROPERTY_SYNC_LINKS Policy (Special case)
@@ -113,7 +118,7 @@ BEGIN
 
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 -- Insert Protection Trigger
 CREATE OR REPLACE FUNCTION handle_profile_insert()
@@ -131,7 +136,7 @@ BEGIN
     END IF;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DROP TRIGGER IF EXISTS ensure_profile_field_protection ON profiles;
 CREATE TRIGGER ensure_profile_field_protection
@@ -156,7 +161,7 @@ BEGIN
     NEW.xp_awarded = OLD.xp_awarded;
     RETURN NEW;
 END;
-$$ LANGUAGE plpgsql SECURITY DEFINER;
+$$ LANGUAGE plpgsql SECURITY DEFINER SET search_path = public;
 
 DO $$
 DECLARE

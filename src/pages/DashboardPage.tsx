@@ -101,15 +101,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const startDayMutation = useMutation({
     mutationFn: async () => {
+      // 1. Start the day on the backend
       await api.startDay();
-      // Force refresh tasks to ensure they are created for today
-      return api.getDailyGamifiedTasks(true);
+      
+      // 2. Try to refresh tasks, but don't let it block the success of starting the day
+      try {
+        await api.getDailyGamifiedTasks(true);
+      } catch (e) {
+        console.error("Failed to refresh tasks after startDay, but day is started", e);
+      }
+      return true;
     },
     onSuccess: () => {
       if (profile?.uid) {
         const todayISO = new Date().toISOString().split('T')[0];
         localStorage.setItem(`day_started_${profile.uid}_${todayISO}`, new Date().toISOString());
       }
+      // Invalidate all relevant queries to sync UI
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.uid] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] });
@@ -117,16 +125,16 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     },
     onError: (error: any) => {
       console.error("Günü başlatma hatası:", error);
-      // Even on error, we might want to check if it was already started
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] });
       
-      if (error.message?.includes("already awarded")) {
+      // If the error indicates it was already started, we should sync local state
+      if (error.message?.includes("already awarded") || error.message?.includes("already started")) {
         if (profile?.uid) {
           const todayISO = new Date().toISOString().split('T')[0];
           localStorage.setItem(`day_started_${profile.uid}_${todayISO}`, new Date().toISOString());
         }
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.uid] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] });
         setToast({ message: "Güne zaten başlamıştın, başarılar!", type: 'info' });
       } else {
         setToast({ message: "Günü başlatırken bir hata oluştu: " + (error.message || "Bilinmeyen hata"), type: 'error' });

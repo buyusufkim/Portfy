@@ -53,7 +53,7 @@ export const leadService = {
       Leadler: ${JSON.stringify(leads)}
     `;
     const response = await generateContent(
-      "gemini-3-flash-preview",
+      "gemini-flash-latest",
       prompt
     );
     return response.text;

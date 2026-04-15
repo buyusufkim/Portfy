@@ -79,7 +79,7 @@ export interface Task {
   agent_id: string;
   title: string;
   time: string;
-  type: 'Arama' | 'Randevu' | 'Saha';
+  type: 'Arama' | 'Randevu' | 'Saha' | 'Takip' | 'Güncelleme' | 'Sosyal Medya';
   completed: boolean;
 }
 

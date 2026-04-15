@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Bell, Phone, Calendar, MapPin } from 'lucide-react';
+import { X, Bell, Phone, Calendar, MapPin, Share2 } from 'lucide-react';
 
 import { Task, Building } from '../../../types';
 
@@ -59,7 +59,9 @@ export const DailyBriefingModal: React.FC<DailyBriefingModalProps> = ({
                   {todayTasks.slice(0, 3).map((task: any) => (
                     <div key={task.id} className="flex items-center gap-3 p-3 bg-slate-50 rounded-2xl">
                       <div className="w-8 h-8 bg-white rounded-xl flex items-center justify-center text-orange-600 shadow-sm">
-                        {task.type === 'Arama' ? <Phone size={14} /> : <Calendar size={14} />}
+                        {task.type === 'Arama' ? <Phone size={14} /> : 
+                         task.type === 'Sosyal Medya' ? <Share2 size={14} className="text-blue-500" /> :
+                         <Calendar size={14} />}
                       </div>
                       <span className="text-sm font-bold text-slate-900">{task.title}</span>
                     </div>

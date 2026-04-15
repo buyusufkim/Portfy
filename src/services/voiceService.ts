@@ -10,8 +10,9 @@ export const voiceService = {
       
       Kurallar:
       1. Niyet (intent) şunlardan biri olmalı: 'lead' (yeni müşteri), 'task' (görev/hatırlatıcı), 'note' (saha notu) veya 'unknown'.
-      2. İsim, telefon, bütçe (sayı olarak), lokasyon, tarih (ISO formatında) ve açıklama gibi verileri çıkar.
-      3. Çıkaramadığın verileri boş bırak.
+      2. Eğer görev sosyal medya ile ilgiliyse (paylaşım, reels, story vb.), bunu açıklama kısmında belirt.
+      3. İsim, telefon, bütçe (sayı olarak), lokasyon, tarih (ISO formatında) ve açıklama gibi verileri çıkar.
+      4. Çıkaramadığın verileri boş bırak.
       
       JSON Şeması:
       {
@@ -23,13 +24,14 @@ export const voiceService = {
           "budget": number,
           "location": "string",
           "due_date": "ISO date string",
-          "description": "string"
+          "description": "string",
+          "task_type": "Arama" | "Randevu" | "Saha" | "Sosyal Medya"
         }
       }
       `;
 
       const response = await generateContent(
-        'gemini-3-flash-preview',
+        'gemini-flash-latest',
         prompt,
         {
           responseMimeType: 'application/json',

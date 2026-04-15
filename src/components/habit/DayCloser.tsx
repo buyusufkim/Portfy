@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Moon, Star, Trophy, ArrowRight, CheckCircle2, RefreshCw } from 'lucide-react';
+import { Moon, Star, Trophy, ArrowRight, CheckCircle2, RefreshCw, Share2 } from 'lucide-react';
 
 interface DayCloserProps {
   stats: {
@@ -8,6 +8,7 @@ interface DayCloserProps {
     revenue: number;
     calls: number;
     visits: number;
+    social: number;
   };
   onComplete: () => void;
   isPending?: boolean;
@@ -55,7 +56,7 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, onComplete, isPendi
                 {[
                   { label: 'Görevler', value: stats.tasks_completed, icon: CheckCircle2, color: 'text-emerald-400' },
                   { label: 'Aramalar', value: stats.calls, icon: Star, color: 'text-amber-400' },
-                  { label: 'Ziyaretler', value: stats.visits, icon: Trophy, color: 'text-blue-400' },
+                  { label: 'Sosyal', value: stats.social, icon: Share2, color: 'text-blue-400' },
                   { label: 'Potansiyel', value: `₺${(stats.revenue / 1000).toFixed(0)}k`, icon: ArrowRight, color: 'text-indigo-400' }
                 ].map((item, i) => (
                   <motion.div 

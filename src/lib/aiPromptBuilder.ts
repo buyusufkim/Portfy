@@ -14,9 +14,9 @@ export const AI_COACH_SCHEMA = {
             type: "object",
             properties: {
               id: { type: "string" },
-              type: { type: "string", enum: ["call", "visit", "followup", "update", "rescue"] },
+              type: { type: "string", enum: ["call", "visit", "followup", "update", "rescue", "social"] },
               title: { type: "string" },
-              description: { type: "string" },
+              description: { type: "string", description: "Aksiyonun detaylı açıklaması (Örn: Reels videosu için senaryo önerisi)" },
               priority: { type: "string", enum: ["high", "medium", "low"] },
               target_id: { type: "string" },
               target_name: { type: "string" },
@@ -59,8 +59,9 @@ export const buildCoachPrompt = (data: {
     Kurallar:
     1. Yanıt mutlaka belirlenen JSON şemasına uygun olmalı.
     2. Aksiyonlar (actions) net ve yapılabilir olmalı (Örn: "Ahmet Bey'i ara", "X portföyünün fiyatını güncelle").
-    3. Eğer performans düşükse (görev tamamlama oranı < %30 ve saat 15:00 sonrasıysa) rescue mode öner.
-    4. Dil profesyonel, samimi ve aksiyon odaklı olmalı.
+    3. Sosyal medya stratejisi (Reels, Story, LinkedIn) konusunda mutlaka en az bir yaratıcı tavsiye ver.
+    4. Eğer performans düşükse (görev tamamlama oranı < %30 ve saat 15:00 sonrasıysa) rescue mode öner.
+    5. Dil profesyonel, samimi ve aksiyon odaklı olmalı.
     
     Yanıtı sadece JSON olarak döndür.
   `;

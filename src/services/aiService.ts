@@ -33,7 +33,7 @@ export const aiService = {
 
     try {
       const response = await generateContent(
-        "gemini-3-flash-preview",
+        "gemini-flash-latest",
         prompt,
         { responseMimeType: "application/json" }
       );
@@ -53,7 +53,7 @@ export const aiService = {
       const generateWithRetry = async (retries = 2): Promise<string> => {
         try {
           const response = await generateContent(
-            "gemini-3-flash-preview",
+            "gemini-flash-latest",
             `Sen bir emlak koçusun. Danışmanın verileri: ${propsCount} portföy, ${leadsCount} lead, disiplin skoru ${disciplineScore}. Bugün için tek cümlelik, çok kısa ve vurucu bir tavsiye ver.`
           );
           return response.text || aiInsight;

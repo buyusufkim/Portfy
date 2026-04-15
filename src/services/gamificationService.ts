@@ -86,7 +86,9 @@ export const gamificationService = {
         "1 portföy notu güncelle",
         "Gün sonu raporunu tamamla",
         "Eski bir müşterini ara",
-        "Bölge haberlerini oku"
+        "Bölge haberlerini oku",
+        "Instagram story paylaşımı yap",
+        "LinkedIn bağlantı isteği gönder"
       ];
       const mainTemplates = [
         "5 malik araması yap",
@@ -95,7 +97,9 @@ export const gamificationService = {
         "2 müşteri takibi yap",
         "1 randevu oluştur",
         "Bölge esnafı ziyareti",
-        "İlan fiyat analizi yap"
+        "İlan fiyat analizi yap",
+        "Portföyün için Reels videosu çek",
+        "Müşteri yorumu paylaş"
       ];
       
       const tasks: any[] = [];
@@ -278,6 +282,12 @@ export const gamificationService = {
         const { data: props } = await supabase.from('properties').select('id').eq('agent_id', agentId).gte('updated_at', today);
         if (props && props.length >= 1) return { verified: true };
         return { verified: false, message: "Bugün henüz bir portföy analizi/güncellemesi yapmadın." };
+      }
+
+      if (title.includes("reels") || title.includes("story") || title.includes("sosyal medya") || title.includes("paylaşım")) {
+        // Social media tasks are currently self-verified or verified by manual completion
+        // In a real app, we might check an integration, but here we allow manual completion
+        return { verified: true };
       }
 
       return { verified: false, message: "Bu görev henüz tamamlanmamış görünüyor." };

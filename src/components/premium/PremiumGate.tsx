@@ -17,7 +17,7 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({
   fallback, 
   showOverlay = true 
 }) => {
-  const { hasAccess } = useFeatureAccess();
+  const { hasAccess, subscribe } = useFeatureAccess();
   const [isUpgradeModalOpen, setIsUpgradeModalOpen] = useState(false);
 
   const canAccess = hasAccess(featureKey);
@@ -26,10 +26,19 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({
     setIsUpgradeModalOpen(true);
   };
 
-  const handlePlanSelect = (tier: SubscriptionTier) => {
-    console.log(`Selected plan: ${tier}`);
-    // Implement actual subscription logic here
-    setIsUpgradeModalOpen(false);
+  const handlePlanSelect = async (tier: SubscriptionTier) => {
+    // Paid plans are currently handled via a manual upgrade message in the UpgradeModal UI.
+    // This handler is kept for future use when instant paid activation is implemented.
+    console.log(`Plan selected: ${tier}. Paid activation is currently manual.`);
+  };
+
+  const handleActivateTrial = async () => {
+    try {
+      await subscribe('trial');
+      setIsUpgradeModalOpen(false);
+    } catch (error) {
+      console.error('Trial activation error:', error);
+    }
   };
 
   if (canAccess) {
@@ -50,6 +59,7 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({
           isOpen={isUpgradeModalOpen} 
           onClose={() => setIsUpgradeModalOpen(false)} 
           onSelectPlan={handlePlanSelect}
+          onActivateTrial={handleActivateTrial}
         />
       </div>
     );
@@ -62,6 +72,7 @@ export const PremiumGate: React.FC<PremiumGateProps> = ({
         isOpen={isUpgradeModalOpen} 
         onClose={() => setIsUpgradeModalOpen(false)} 
         onSelectPlan={handlePlanSelect}
+        onActivateTrial={handleActivateTrial}
       />
     </>
   );
