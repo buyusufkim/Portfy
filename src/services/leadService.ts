@@ -45,6 +45,22 @@ export const leadService = {
     return data.id;
   },
 
+  updateLead: async (id: string, lead: Partial<Lead>) => {
+    const { error } = await supabase
+      .from('leads')
+      .update(lead)
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  deleteLead: async (id: string) => {
+    const { error } = await supabase
+      .from('leads')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+
   analyzeLeads: async (leads: Lead[]) => {
     const prompt = `
       Aşağıdaki gayrimenkul leadlerini analiz et ve bir emlak danışmanı için stratejik öneriler sun.

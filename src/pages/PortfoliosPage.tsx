@@ -38,6 +38,8 @@ interface PortfolioModalsProps {
   setShowTemplateSelector: (show: boolean) => void;
   leads: Lead[];
   regionScores: RegionEfficiencyScore[];
+  isEditing: boolean;
+  setIsEditing: (editing: boolean) => void;
 }
 
 export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
@@ -60,7 +62,9 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   showTemplateSelector,
   setShowTemplateSelector,
   leads,
-  regionScores
+  regionScores,
+  isEditing,
+  setIsEditing
 }) => {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
@@ -108,12 +112,37 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   });
 
   const addPropertyMutation = useMutation({
-    mutationFn: api.addProperty,
+    mutationFn: (data: any) => isEditing && selectedProperty 
+      ? api.updateProperty(selectedProperty.id, data)
+      : api.addProperty(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD_STATS, profile?.uid] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REGION_SCORES, profile?.uid] });
       setShowAddProperty(false);
+      setIsEditing(false);
+    }
+  });
+
+  const deletePropertyMutation = useMutation({
+    mutationFn: (id: string) => api.deleteProperty(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD_STATS, profile?.uid] });
+      setSelectedProperty(null);
+    }
+  });
+
+  const uploadImageMutation = useMutation({
+    mutationFn: ({ id, file }: { id: string, file: File }) => api.uploadPropertyImage(id, file),
+    onSuccess: (url) => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid] });
+      if (selectedProperty) {
+        setSelectedProperty({
+          ...selectedProperty,
+          images: [...selectedProperty.images, url]
+        });
+      }
     }
   });
 
@@ -122,18 +151,15 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid] });
       setShowImportUrlModal(false);
+      setIsEditing(false);
       setShowAddProperty(true);
     }
   });
 
+  console.log('PortfolioModals render:', { isEditing, selectedProperty: !!selectedProperty, showAddProperty });
+
   return (
     <>
-      <AddPropertyModal 
-        show={showAddProperty} 
-        onClose={() => setShowAddProperty(false)} 
-        onSubmit={addPropertyMutation.mutate}
-        isPending={addPropertyMutation.isPending}
-      />
       <IntegrationModal 
         show={showIntegrationModal} 
         onClose={() => setShowIntegrationModal(false)} 
@@ -156,7 +182,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         isImporting={importListingMutation.isPending}
       />
       <PropertyDetailModal 
-        selectedProperty={selectedProperty} 
+        selectedProperty={showAddProperty ? null : selectedProperty} 
         onClose={() => { setSelectedProperty(null); setAiContent(null); }} 
         regionScores={regionScores}
         leads={leads}
@@ -172,6 +198,28 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         aiContent={aiContent}
         instagramCaptions={instagramCaptions}
         whatsappMessages={whatsappMessages}
+        onEdit={() => {
+          setIsEditing(true);
+          setShowAddProperty(true);
+        }}
+        onDelete={() => {
+          if (selectedProperty) deletePropertyMutation.mutate(selectedProperty.id);
+        }}
+        onUploadImage={(file) => {
+          if (selectedProperty) uploadImageMutation.mutate({ id: selectedProperty.id, file });
+        }}
+        isUploading={uploadImageMutation.isPending}
+      />
+      <AddPropertyModal 
+        show={showAddProperty} 
+        onClose={() => {
+          setShowAddProperty(false);
+          setIsEditing(false);
+        }} 
+        onSubmit={addPropertyMutation.mutate}
+        isPending={addPropertyMutation.isPending}
+        initialData={isEditing ? selectedProperty : null}
+        leads={leads}
       />
       <SharePanel 
         show={showSharePanel} 

@@ -22,6 +22,8 @@ export const api = {
   // Lead / Aday Yönetimi
   getLeads: leadService.getLeads,
   addLead: leadService.addLead,
+  updateLead: leadService.updateLead,
+  deleteLead: leadService.deleteLead,
   analyzeLeads: leadService.analyzeLeads,
   importLeadFromText: whatsappService.importLeadFromText,
 
@@ -29,6 +31,9 @@ export const api = {
   getProperties: propertyService.getProperties,
   addProperty: propertyService.addProperty,
   updatePropertyStatus: propertyService.updatePropertyStatus,
+  updateProperty: propertyService.updateProperty,
+  deleteProperty: propertyService.deleteProperty,
+  uploadPropertyImage: propertyService.uploadPropertyImage,
   calculatePropertyScores: propertyService.calculatePropertyScores,
 
   // AI İçerik Üretimi
@@ -160,6 +165,21 @@ export const api = {
       .select()
       .single();
     if (error) throw error;
+
+    // Automatically register in CRM
+    try {
+      await leadService.addLead({
+        name: pin.title,
+        phone: '', 
+        type: pin.type === 'esnaf' ? 'Esnaf' : 'Bölge Kaydı',
+        status: 'Aday',
+        district: '', 
+        notes: `Harita üzerinden otomatik eklendi. Adres: ${pin.address}. Not: ${pin.notes}`
+      });
+    } catch (e) {
+      console.warn("CRM registration failed for addMapPin:", e);
+    }
+
     return data.id;
   },
 

@@ -52,6 +52,12 @@ export interface LeadProps {
   isAnalyzingLeads: boolean;
   setIsAnalyzingLeads: (val: boolean) => void;
   addLeadMutation: MutationResult<any, any>;
+  updateLeadMutation: MutationResult<any, any>;
+  deleteLeadMutation: MutationResult<any, any>;
+  selectedLead: Lead | null;
+  setSelectedLead: (val: Lead | null) => void;
+  isEditingLead: boolean;
+  setIsEditingLead: (val: boolean) => void;
 }
 
 export interface PortfolioProps {
@@ -84,6 +90,8 @@ export interface PortfolioProps {
   showImportUrlModal: boolean;
   showIntegrationModal: boolean;
   showExternalListings: boolean;
+  isEditing: boolean;
+  setIsEditing: (val: boolean) => void;
 }
 
 export interface UtilityProps {
@@ -185,6 +193,9 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
           setIsAnalyzingLeads={leads.setIsAnalyzingLeads}
           analyzeLeadsMutation={leads.analyzeLeadsMutation}
           isAnalyzingLeads={leads.isAnalyzingLeads}
+          properties={portfolios.properties || []}
+          selectedLead={leads.selectedLead}
+          setSelectedLead={leads.setSelectedLead}
         />
       )}
       {navigation.activeTab === 'notes' && <NotesView />}

@@ -60,9 +60,9 @@ import { AuthProvider, useAuth } from './AuthContext';
 import { Badge } from './components/UI';
 import { DashboardPage } from './pages/DashboardPage';
 import { DashboardView } from './components/DashboardView';
-import { PortfoliosPage, PortfolioModals } from './pages/PortfoliosPage';
+import { PortfoliosPage } from './pages/PortfoliosPage';
 import { ProfilView } from './components/ProfilView';
-import { CRMPage, CRMModals } from './pages/CRMPage';
+import { CRMPage } from './pages/CRMPage';
 import { NotesView } from './components/NotesView';
 import { RegionSetupModal } from './components/RegionSetupModal';
 import { DailyRadar } from './components/habit/DailyRadar';
@@ -159,6 +159,9 @@ function MainApp() {
 
   // --- Data Selection & Analysis State ---
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [isEditingLead, setIsEditingLead] = useState(false);
   const [selectedDistrict, setSelectedDistrict] = useState<string | 'all'>('all');
   const [leadAnalysis, setLeadAnalysis] = useState<string | null>(null);
   const [isAnalyzingLeads, setIsAnalyzingLeads] = useState(false);
@@ -250,6 +253,24 @@ function MainApp() {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REGION_SCORES, profile?.uid] });
       setShowAddLead(false);
       setShowQuickAdd(false);
+    }
+  });
+
+  const updateLeadMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: Partial<Lead> }) => api.updateLead(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.uid] });
+      setShowAddLead(false);
+      setIsEditingLead(false);
+      setSelectedLead(null);
+    }
+  });
+
+  const deleteLeadMutation = useMutation({
+    mutationFn: api.deleteLead,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.uid] });
+      setSelectedLead(null);
     }
   });
 
@@ -483,10 +504,16 @@ function MainApp() {
     analyzeLeadsMutation,
     isAnalyzingLeads,
     addLeadMutation,
+    updateLeadMutation,
+    deleteLeadMutation,
     leadAnalysis,
     setLeadAnalysis,
     showAddLead,
-    showWhatsAppImport
+    showWhatsAppImport,
+    selectedLead,
+    setSelectedLead,
+    isEditingLead,
+    setIsEditingLead
   };
 
   const portfolioProps: PortfolioProps = {
@@ -518,7 +545,9 @@ function MainApp() {
     showIntegrationModal,
     showExternalListings,
     selectedProperty,
-    externalListings
+    externalListings,
+    isEditing,
+    setIsEditing
   };
 
   const utilityProps: UtilityProps = {
@@ -621,7 +650,7 @@ function MainApp() {
         onVoice={() => { closeAllModals(); setShowVoiceQuickAdd(true); }}
         onVisit={() => { closeAllModals(); setShowAddVisit(true); }}
         onLead={() => { closeAllModals(); setShowAddLead(true); }}
-        onPortfolio={() => { closeAllModals(); setShowAddProperty(true); }}
+        onPortfolio={() => { closeAllModals(); setIsEditing(false); setShowAddProperty(true); }}
       />
       
       {/* Modals */}

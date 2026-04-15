@@ -15,7 +15,10 @@ import {
   MapPin,
   User as UserIcon,
   Phone,
-  Plus
+  Plus,
+  Edit2,
+  Trash2,
+  Upload
 } from 'lucide-react';
 import { Property } from '../../types';
 import { Badge, Card } from '../UI';
@@ -57,6 +60,10 @@ interface PropertyDetailModalProps {
   aiContent: string | null;
   instagramCaptions: { corporate: string, sales: string, warm: string } | null;
   whatsappMessages: { single: string, status: string, investor: string } | null;
+  onEdit: () => void;
+  onDelete: () => void;
+  onUploadImage: (file: File) => void;
+  isUploading: boolean;
 }
 
 export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
@@ -75,9 +82,15 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
   aiMarketingType,
   aiContent,
   instagramCaptions,
-  whatsappMessages
+  whatsappMessages,
+  onEdit,
+  onDelete,
+  onUploadImage,
+  isUploading
 }) => {
   if (!selectedProperty) return null;
+
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const matchedLeads = (leads || []).filter(l => 
     l.status !== 'Pasif' && 
@@ -100,19 +113,61 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
           className="bg-white w-full max-w-2xl rounded-[40px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
         >
           {/* Header Image */}
-          <div className="relative h-64 shrink-0">
-            <img 
-              src={selectedProperty.images[0] || `https://picsum.photos/seed/${selectedProperty.id}/800/600`} 
-              className="w-full h-full object-cover"
-              alt={selectedProperty.title}
-              referrerPolicy="no-referrer"
-            />
-            <button 
-              onClick={onClose}
-              className="absolute top-6 right-6 p-3 bg-white/20 backdrop-blur-md text-white rounded-2xl hover:bg-white/40 transition-all"
-            >
-              <X size={24} />
-            </button>
+            <div className="relative h-64 shrink-0">
+              <img 
+                src={selectedProperty.images[selectedProperty.images.length - 1] || `https://picsum.photos/seed/${selectedProperty.id}/800/600`} 
+                className="w-full h-full object-cover"
+                alt={selectedProperty.title}
+                referrerPolicy="no-referrer"
+              />
+              <div className="absolute top-6 left-6 flex gap-2 z-10">
+                <button 
+                  onClick={onEdit}
+                  className="p-3 bg-white/20 backdrop-blur-md text-white rounded-2xl hover:bg-white/40 transition-all"
+                  title="Düzenle"
+                >
+                  <Edit2 size={20} />
+                </button>
+                <button 
+                  onClick={() => {
+                    if (window.confirm('Bu portföyü silmek istediğinize emin misiniz?')) {
+                      onDelete();
+                    }
+                  }}
+                  className="p-3 bg-red-500/20 backdrop-blur-md text-white rounded-2xl hover:bg-red-500/40 transition-all"
+                  title="Sil"
+                >
+                  <Trash2 size={20} />
+                </button>
+                <button 
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="p-3 bg-white/20 backdrop-blur-md text-white rounded-2xl hover:bg-white/40 transition-all disabled:opacity-50"
+                  title="Fotoğraf Ekle"
+                >
+                  {isUploading ? (
+                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Upload size={20} />
+                  )}
+                </button>
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  className="hidden" 
+                  accept="image/*"
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    if (file) onUploadImage(file);
+                  }}
+                />
+              </div>
+              <button 
+                onClick={onClose}
+                className="absolute top-6 right-6 p-3 bg-white/20 backdrop-blur-md text-white rounded-2xl hover:bg-white/40 transition-all"
+              >
+                <X size={24} />
+              </button>
             <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
               <div className="space-y-1">
                 <div className="flex gap-2 mb-2">

@@ -29,6 +29,8 @@ interface PortfolioModalsProps {
   setShowTemplateManager: (val: boolean) => void;
   addTemplateMutation: MutationResult<any, any>;
   deleteTemplateMutation: MutationResult<any, string>;
+  isEditing: boolean;
+  setIsEditing: (val: boolean) => void;
 }
 
 export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
@@ -55,7 +57,9 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   showTemplateManager,
   setShowTemplateManager,
   addTemplateMutation,
-  deleteTemplateMutation
+  deleteTemplateMutation,
+  isEditing,
+  setIsEditing
 }) => {
   return (
     <>
@@ -80,6 +84,8 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         setShowTemplateSelector={setShowTemplateSelector}
         leads={leads}
         regionScores={regionScores}
+        isEditing={isEditing}
+        setIsEditing={setIsEditing}
       />
       <TemplateManagerModal 
         showTemplateManager={showTemplateManager} 

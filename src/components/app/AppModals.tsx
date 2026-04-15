@@ -21,6 +21,8 @@ export const AppModals: React.FC<AppModalsProps> = ({
       <LeadModals 
         categories={leads.categories || []}
         addLeadMutation={leads.addLeadMutation}
+        updateLeadMutation={leads.updateLeadMutation}
+        deleteLeadMutation={leads.deleteLeadMutation}
         showAddLead={leads.showAddLead}
         setShowAddLead={leads.setShowAddLead}
         showWhatsAppImport={leads.showWhatsAppImport}
@@ -32,6 +34,11 @@ export const AppModals: React.FC<AppModalsProps> = ({
         setShowVoiceQuickAdd={utilities.setShowVoiceQuickAdd}
         addTaskMutation={utilities.addTaskMutation}
         addVisitMutation={utilities.addVisitMutation}
+        selectedLead={leads.selectedLead}
+        setSelectedLead={leads.setSelectedLead}
+        isEditingLead={leads.isEditingLead}
+        setIsEditingLead={leads.setIsEditingLead}
+        properties={portfolios.properties || []}
       />
       <PortfolioModals 
         showAddProperty={portfolios.showAddProperty}
@@ -58,6 +65,8 @@ export const AppModals: React.FC<AppModalsProps> = ({
         setShowTemplateManager={portfolios.setShowTemplateManager}
         addTemplateMutation={portfolios.addTemplateMutation}
         deleteTemplateMutation={portfolios.deleteTemplateMutation}
+        isEditing={portfolios.isEditing}
+        setIsEditing={portfolios.setIsEditing}
       />
       <UtilityModals 
         showAddVisit={utilities.showAddVisit}

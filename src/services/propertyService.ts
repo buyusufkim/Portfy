@@ -1,8 +1,9 @@
-import { Property, BrokerAccount, ExternalListing, PropertySyncLink } from '../types';
+import { Property, BrokerAccount, ExternalListing, PropertySyncLink, Lead } from '../types';
 import { supabase } from '../lib/supabase';
 import { getUserId } from './core/utils';
 import { gamificationService } from './gamificationService';
 import { generateContent } from '../lib/aiClient';
+import { leadService } from './leadService';
 
 export const propertyService = {
   // Calculate Property Scores
@@ -52,6 +53,23 @@ export const propertyService = {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
     
+    // Check if owner exists in leads, if not add them
+    if (property.owner.name && property.owner.phone) {
+      const leads = await leadService.getLeads();
+      const existingLead = leads.find(l => l.phone === property.owner.phone);
+      
+      if (!existingLead) {
+        await leadService.addLead({
+          name: property.owner.name,
+          phone: property.owner.phone,
+          type: 'Mal Sahibi',
+          status: 'Yetki Alındı',
+          district: property.address.district,
+          notes: `${property.title} portföyü üzerinden otomatik eklendi.`
+        });
+      }
+    }
+
     const scores = propertyService.calculatePropertyScores(property);
 
     const { data, error } = await supabase
@@ -86,6 +104,87 @@ export const propertyService = {
       })
       .eq('id', id);
     if (error) throw error;
+  },
+
+  updateProperty: async (id: string, property: Partial<Property>) => {
+    // Check if owner is being updated and exists in leads
+    if (property.owner?.name && property.owner?.phone) {
+      const leads = await leadService.getLeads();
+      const existingLead = leads.find(l => l.phone === property.owner?.phone);
+      
+      if (!existingLead) {
+        await leadService.addLead({
+          name: property.owner.name,
+          phone: property.owner.phone,
+          type: 'Mal Sahibi',
+          status: 'Yetki Alındı',
+          district: property.address?.district || '',
+          notes: `Portföy güncellemesi üzerinden otomatik eklendi.`
+        });
+      }
+    }
+
+    const scores = propertyService.calculatePropertyScores(property);
+    const { error } = await supabase
+      .from('properties')
+      .update({
+        ...property,
+        ...scores,
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  deleteProperty: async (id: string) => {
+    const { error } = await supabase
+      .from('properties')
+      .delete()
+      .eq('id', id);
+    if (error) throw error;
+  },
+
+  uploadPropertyImage: async (id: string, file: File) => {
+    const userId = await getUserId();
+    if (!userId) throw new Error('Not authenticated');
+
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${id}/${Math.random()}.${fileExt}`;
+    const filePath = `property-images/${fileName}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from('property-assets')
+      .upload(filePath, file);
+
+    if (uploadError) {
+      if (uploadError.message.includes('Bucket not found')) {
+        throw new Error('Supabase Storage\'da "property-assets" isminde bir Public Bucket bulunamadı. Lütfen Supabase panelinden bu bucket\'ı oluşturun.');
+      }
+      throw uploadError;
+    }
+
+    const { data: { publicUrl } } = supabase.storage
+      .from('property-assets')
+      .getPublicUrl(filePath);
+
+    // Get current images
+    const { data: property } = await supabase
+      .from('properties')
+      .select('images')
+      .eq('id', id)
+      .single();
+
+    const currentImages = property?.images || [];
+    const { error: updateError } = await supabase
+      .from('properties')
+      .update({
+        images: [...currentImages, publicUrl],
+        updated_at: new Date().toISOString()
+      })
+      .eq('id', id);
+
+    if (updateError) throw updateError;
+    return publicUrl;
   },
 
   // AI İçerik Üretimi

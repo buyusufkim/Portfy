@@ -21,6 +21,7 @@ interface CRMViewProps {
   setIsAnalyzingLeads: (analyzing: boolean) => void;
   analyzeLeadsMutation: any;
   categories: any[];
+  onSelectLead: (lead: Lead) => void;
 }
 
 export const CRMView: React.FC<CRMViewProps> = ({
@@ -31,7 +32,8 @@ export const CRMView: React.FC<CRMViewProps> = ({
   isAnalyzingLeads,
   setIsAnalyzingLeads,
   analyzeLeadsMutation,
-  categories
+  categories,
+  onSelectLead
 }) => (
   <motion.div 
     initial={{ opacity: 0 }}
@@ -105,10 +107,14 @@ export const CRMView: React.FC<CRMViewProps> = ({
         const iconBg = category ? `${category.color}20` : (lead.type === 'Alıcı' ? '#fff7ed' : '#faf5ff');
         
         return (
-          <Card key={lead.id} className="flex items-center justify-between p-4">
+          <Card 
+            key={lead.id} 
+            className="flex items-center justify-between p-4 cursor-pointer hover:border-orange-200 transition-colors group"
+            onClick={() => onSelectLead(lead)}
+          >
             <div className="flex items-center gap-4">
               <div 
-                className="w-12 h-12 rounded-2xl flex items-center justify-center"
+                className="w-12 h-12 rounded-2xl flex items-center justify-center group-hover:scale-110 transition-transform"
                 style={{ backgroundColor: iconBg, color: iconColor }}
               >
                 <UserIcon size={24} />
@@ -121,10 +127,10 @@ export const CRMView: React.FC<CRMViewProps> = ({
                 </div>
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2" onClick={e => e.stopPropagation()}>
               <a 
                 href={`tel:${lead.phone}`}
-                className="p-2 bg-slate-50 rounded-xl text-orange-600"
+                className="p-2 bg-slate-50 rounded-xl text-orange-600 hover:bg-orange-50 transition-colors"
               >
                 <Phone size={18} />
               </a>
@@ -132,7 +138,7 @@ export const CRMView: React.FC<CRMViewProps> = ({
                 href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`}
                 target="_blank"
                 rel="noreferrer"
-                className="p-2 bg-slate-50 rounded-xl text-emerald-500"
+                className="p-2 bg-slate-50 rounded-xl text-emerald-500 hover:bg-emerald-50 transition-colors"
               >
                 <MessageSquare size={18} />
               </a>

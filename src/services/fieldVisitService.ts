@@ -1,6 +1,7 @@
 import { Building } from '../types';
 import { supabase } from '../lib/supabase';
 import { getUserId } from './core/utils';
+import { leadService } from './leadService';
 
 export const fieldVisitService = {
   getFieldVisits: async () => {
@@ -26,6 +27,21 @@ export const fieldVisitService = {
       .select()
       .single();
     if (error) throw error;
+
+    // Automatically register in CRM
+    try {
+      await leadService.addLead({
+        name: visit.address.split(',')[0], // Use first part of address as name
+        phone: '',
+        type: 'Saha Ziyareti',
+        status: 'Aday',
+        district: visit.district,
+        notes: `Saha ziyareti üzerinden otomatik eklendi. Durum: ${visit.status}. Not: ${visit.notes}`
+      });
+    } catch (e) {
+      console.warn("CRM registration failed for addVisit:", e);
+    }
+
     return data.id;
   }
 };

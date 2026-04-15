@@ -1,12 +1,14 @@
 import React from 'react';
-import { CRMModals } from '../../../pages/CRMPage';
+import { CRMModals } from '../../crm/CRMModals';
 import { VoiceQuickAddModal } from './VoiceQuickAddModal';
 
-import { Lead, Category, MutationResult } from '../../../types';
+import { Lead, Category, MutationResult, Property } from '../../../types';
 
 interface LeadModalsProps {
   categories: Category[];
   addLeadMutation: MutationResult<any, any>;
+  updateLeadMutation: MutationResult<any, any>;
+  deleteLeadMutation: MutationResult<any, any>;
   showAddLead: boolean;
   setShowAddLead: (val: boolean) => void;
   showWhatsAppImport: boolean;
@@ -18,11 +20,18 @@ interface LeadModalsProps {
   setShowVoiceQuickAdd: (val: boolean) => void;
   addTaskMutation: MutationResult<any, any>;
   addVisitMutation: MutationResult<any, any>;
+  selectedLead: Lead | null;
+  setSelectedLead: (val: Lead | null) => void;
+  isEditingLead: boolean;
+  setIsEditingLead: (val: boolean) => void;
+  properties: Property[];
 }
 
 export const LeadModals: React.FC<LeadModalsProps> = ({
   categories,
   addLeadMutation,
+  updateLeadMutation,
+  deleteLeadMutation,
   showAddLead,
   setShowAddLead,
   showWhatsAppImport,
@@ -33,13 +42,20 @@ export const LeadModals: React.FC<LeadModalsProps> = ({
   showVoiceQuickAdd,
   setShowVoiceQuickAdd,
   addTaskMutation,
-  addVisitMutation
+  addVisitMutation,
+  selectedLead,
+  setSelectedLead,
+  isEditingLead,
+  setIsEditingLead,
+  properties
 }) => {
   return (
     <>
       <CRMModals 
         categories={categories}
         addLeadMutation={addLeadMutation}
+        updateLeadMutation={updateLeadMutation}
+        deleteLeadMutation={deleteLeadMutation}
         showAddLead={showAddLead}
         setShowAddLead={setShowAddLead}
         showWhatsAppImport={showWhatsAppImport}
@@ -47,6 +63,11 @@ export const LeadModals: React.FC<LeadModalsProps> = ({
         leadAnalysis={leadAnalysis}
         setLeadAnalysis={setLeadAnalysis}
         analyzeLeadsMutation={analyzeLeadsMutation}
+        selectedLead={selectedLead}
+        setSelectedLead={setSelectedLead}
+        isEditing={isEditingLead}
+        setIsEditing={setIsEditingLead}
+        properties={properties}
       />
       <VoiceQuickAddModal 
         showVoiceQuickAdd={showVoiceQuickAdd} 
