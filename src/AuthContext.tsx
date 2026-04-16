@@ -34,7 +34,8 @@ interface AuthContextType {
   loginWithEmail: (email: string, password: string) => Promise<void>;
   registerWithEmail: (email: string, password: string, displayName: string) => Promise<void>;
   logout: () => Promise<void>;
-  subscribe: (type: '1-month' | '3-month' | '6-month' | '12-month') => Promise<void>;
+  subscribe: (type: 'trial' | '1-month' | '3-month' | '6-month' | '12-month') => Promise<void>;
+  isSubscribing: boolean;
   completeOnboarding: () => Promise<void>;
   completeTour: () => Promise<void>;
   updateProfileData: (data: Partial<UserProfile>) => Promise<void>;
@@ -45,6 +46,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isSubscribing, setIsSubscribing] = useState(false);
   const queryClient = useQueryClient();
   const [isConfigured, setIsConfigured] = useState(
     import.meta.env.VITE_SUPABASE_URL !== 'https://placeholder.supabase.co' && 
@@ -256,28 +258,37 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const subscribe = async (type: 'trial' | '1-month' | '3-month' | '6-month' | '12-month') => {
     if (!user) return;
+    setIsSubscribing(true);
     
     try {
+      const session = (await supabase.auth.getSession()).data.session;
+      if (!session) {
+        throw new Error('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
+      }
+
       const response = await fetch('/api/ai/subscribe', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          'Authorization': `Bearer ${session.access_token}`
         },
         body: JSON.stringify({ type })
       });
 
+      const result = await response.json();
+
       if (!response.ok) {
-        const err = await response.json();
-        throw new Error(err.error || 'Subscription failed');
+        throw new Error(result.error || 'Abonelik işlemi başarısız oldu.');
       }
 
       await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, user.id] });
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Subscription error:', error);
-      alert('Abonelik işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+      alert(error.message || 'Abonelik işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
       refetchProfile();
+    } finally {
+      setIsSubscribing(false);
     }
   };
 
@@ -358,7 +369,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const isSubscribed = profile?.subscription_end_date 
-    ? isAfter(parseISO(profile.subscription_end_date), new Date()) 
+    ? isAfter(new Date(profile.subscription_end_date), new Date()) 
     : false;
 
   if (isPopup) {
@@ -407,7 +418,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }
 
   return (
-    <AuthContext.Provider value={{ user, profile, loading: loading || profileLoading, isSubscribed, login, loginWithEmail, registerWithEmail, logout, subscribe, completeOnboarding, completeTour, updateProfileData }}>
+    <AuthContext.Provider value={{ user, profile, loading: loading || profileLoading, isSubscribed, isSubscribing, login, loginWithEmail, registerWithEmail, logout, subscribe, completeOnboarding, completeTour, updateProfileData }}>
       {children}
     </AuthContext.Provider>
   );

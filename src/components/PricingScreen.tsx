@@ -3,7 +3,7 @@ import { LogOut, ShieldCheck, Zap } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 
 export const PricingScreen = () => {
-  const { subscribe, logout } = useAuth();
+  const { subscribe, logout, isSubscribing } = useAuth();
   
   // Safety check: if we are in a popup, try to signal success and close
   useEffect(() => {
@@ -86,10 +86,17 @@ export const PricingScreen = () => {
           <p className="text-xs text-slate-500 mb-3 font-medium text-center">Henüz karar vermediniz mi?</p>
           <button 
             onClick={() => subscribe('trial')}
-            className="w-full p-5 rounded-[28px] bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-2"
+            disabled={isSubscribing}
+            className="w-full p-5 rounded-[28px] bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Zap size={18} className="text-orange-400 fill-orange-400" />
-            7 Gün Ücretsiz Dene
+            {isSubscribing ? (
+              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+            ) : (
+              <>
+                <Zap size={18} className="text-orange-400 fill-orange-400" />
+                7 Gün Ücretsiz Dene
+              </>
+            )}
           </button>
         </div>
       </div>

@@ -13,7 +13,9 @@ if (!SUPABASE_ANON_KEY) {
   throw new Error("CRITICAL: VITE_SUPABASE_ANON_KEY is not defined in environment variables.");
 }
 if (!SUPABASE_SERVICE_ROLE_KEY) {
-  throw new Error("CRITICAL: SUPABASE_SERVICE_ROLE_KEY is not defined. Privileged backend operations will fail.");
+  console.warn("WARNING: SUPABASE_SERVICE_ROLE_KEY is not defined. Privileged backend operations will fail.");
+} else {
+  console.log("SUPABASE_SERVICE_ROLE_KEY is present.");
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -149,9 +151,13 @@ export const handleSubscribe = async (req: any, res: any) => {
       p_end_date: endDate
     });
 
-    if (rpcError) throw rpcError;
+    if (rpcError) {
+      console.error("RPC Error (activate_trial):", rpcError);
+      throw rpcError;
+    }
 
     if (!rpcResult.success) {
+      console.warn("Trial Activation Failed:", rpcResult.error);
       return res.status(400).json({ error: rpcResult.error });
     }
 
