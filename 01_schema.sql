@@ -68,8 +68,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
     title TEXT NOT NULL,
-    type TEXT CHECK (type IN ('Arama', 'Randevu', 'Saha', 'Diğer')),
-    category TEXT DEFAULT 'main' CHECK (category IN ('main', 'smart', 'sweet')),
+    type TEXT, -- CHECK (type IN ('Arama', 'Randevu'...)) SİLİNDİ
+    category TEXT DEFAULT 'main', -- CHECK SİLİNDİ
     time TIMESTAMPTZ,
     completed BOOLEAN DEFAULT FALSE,
     points INTEGER DEFAULT 10,
@@ -93,8 +93,8 @@ CREATE TABLE IF NOT EXISTS leads (
     name TEXT NOT NULL,
     phone TEXT,
     email TEXT,
-    type TEXT DEFAULT 'Alıcı' CHECK (type IN ('Alıcı', 'Satıcı', 'Kiracı', 'Yatırımcı', 'Diğer')),
-    status TEXT DEFAULT 'Aday' CHECK (status IN ('Aday', 'Sıcak', 'Yetki Alındı', 'Pasif')),
+    type TEXT DEFAULT 'Alıcı', -- CHECK SİLİNDİ
+    status TEXT DEFAULT 'Aday', -- CHECK SİLİNDİ
     district TEXT,
     notes TEXT,
     last_contact TIMESTAMPTZ,
@@ -109,10 +109,10 @@ CREATE TABLE IF NOT EXISTS properties (
     agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
     title TEXT NOT NULL,
     type TEXT NOT NULL,
-    category TEXT CHECK (category IN ('Satılık', 'Kiralık')),
+    category TEXT, -- CHECK (category IN ('Satılık', 'Kiralık')) SİLİNDİ
     price NUMERIC(15, 2) NOT NULL,
     commission_rate NUMERIC(4, 2) DEFAULT 2.0,
-    status TEXT DEFAULT 'Yeni' CHECK (status IN ('Yeni', 'Hazırlanıyor', 'Yayında', 'İlgi Var', 'Pazarlık', 'Satıldı', 'Pasif')),
+    status TEXT DEFAULT 'Yeni', -- CHECK SİLİNDİ
     address JSONB NOT NULL,
     sale_probability NUMERIC(3, 2) DEFAULT 0.5,
     health_score NUMERIC DEFAULT 70,
@@ -153,7 +153,6 @@ CREATE TABLE IF NOT EXISTS ai_insights (
 CREATE TABLE IF NOT EXISTS whatsapp_imports (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
-    raw_text TEXT NOT NULL,
     analysis_result JSONB NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()

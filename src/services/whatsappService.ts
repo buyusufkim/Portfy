@@ -12,19 +12,20 @@ export const whatsappService = {
     const prompt = buildWhatsAppPrompt(text);
 
     try {
+      // generateContent artık doğrudan backend'den parse edilmiş JSON objesi dönüyor!
       const response = await generateContent(
-        "gemini-flash-latest",
+        "gemini-2.5-flash", // Backend'deki modele uyumlu
         prompt,
         {
-          // @ts-ignore - Gemini SDK schema type support
+          // @ts-ignore
           responseSchema: WHATSAPP_ANALYSIS_SCHEMA,
           responseMimeType: "application/json"
         }
       );
 
-      const result = JSON.parse(response.text || '{}') as WhatsAppAnalysisResponse;
-      result.raw_text = text;
-      return result;
+      // JSON.parse ÇÖPE GİTTİ! Gelen response zaten hazır obje.
+      return response as WhatsAppAnalysisResponse;
+
     } catch (error) {
       console.error("WhatsApp Analysis Service Error:", error);
       throw new Error("WhatsApp analizi şu an yapılamıyor. Lütfen daha sonra tekrar deneyin.");
@@ -53,7 +54,7 @@ export const whatsappService = {
 
   importLeadFromText: async (text: string) => {
     const response = await generateContent(
-      "gemini-flash-latest",
+      "gemini-2.5-flash", // Backend'deki modele uyumlu
       `Aşağıdaki WhatsApp mesajından emlak müşterisi bilgilerini çıkar. 
       JSON formatında şu alanları döndür: name (isim), phone (telefon), type (Alıcı/Satıcı/Kiracı/Kiralayan), status (Aday/Sıcak/Pasif), notes (notlar).
       
@@ -75,7 +76,7 @@ export const whatsappService = {
       }
     );
     
-    const result = JSON.parse(response.text);
-    return api.addLead(result);
+    // JSON.parse ÇÖPE GİTTİ!
+    return api.addLead(response);
   }
 };

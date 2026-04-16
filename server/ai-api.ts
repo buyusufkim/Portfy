@@ -1,3 +1,52 @@
+import { GoogleGenAI } from "@google/genai";
+
+// API anahtarını SADECE burada, sunucuda okuyoruz.
+const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
+
+export const handleAIGeneration = async (req: any, res: any) => {
+  try {
+    if (!ai) {
+      return res.status(500).json({ error: "Sunucuda Gemini API anahtarı eksik. Sistem yöneticisine bildirin." });
+    }
+
+    const { model, contents, systemInstruction, responseSchema } = req.body;
+
+    if (!contents) {
+      return res.status(400).json({ error: "İşlenecek içerik (contents) gönderilmedi." });
+    }
+
+    // AI'ın kesinlikle JSON dönmesini sağlayan konfigürasyon
+    const config: any = {
+      responseMimeType: "application/json",
+    };
+
+    // Eğer frontend'den spesifik bir JSON şeması geldiyse, AI'ı buna zorla
+    if (responseSchema) {
+      config.responseSchema = responseSchema;
+    }
+
+    if (systemInstruction) {
+      config.systemInstruction = systemInstruction;
+    }
+
+    const response = await ai.models.generateContent({
+      model: model || "gemini-2.5-flash", // Hızlı işlemler için flash ideal
+      contents: contents,
+      config: config
+    });
+
+    // Artık AI saçma sapan metinler değil, doğrudan parse edilebilir JSON dönecek
+    const parsedData = JSON.parse(response.text || "{}");
+    
+    res.json({ success: true, data: parsedData });
+
+  } catch (error: any) {
+    console.error("AI Generation Backend Error:", error);
+    res.status(500).json({ error: "Yapay zeka işlemi başarısız oldu", details: error.message });
+  }
+};
+
 import { rateLimit } from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
 import { addMonths } from "date-fns";

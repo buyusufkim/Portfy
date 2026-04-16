@@ -1,7 +1,7 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
-import { authenticate, aiLimiter, handleUpdateProfile, handleSubscribe, handleAdminUpdateUser, handleAdminGetUsers, handleAdminGetSettings, handleUpdateGlobalSettings, handleEarnXP } from "./server/ai-api.ts";
+import { authenticate, aiLimiter, handleUpdateProfile, handleSubscribe, handleAdminUpdateUser, handleAdminGetUsers, handleAdminGetSettings, handleUpdateGlobalSettings, handleEarnXP, handleAIGeneration } from "./server/ai-api.ts";
 
 dotenv.config({ override: true });
 
@@ -21,6 +21,7 @@ async function startServer() {
   });
 
   // Secure Profile Endpoints
+app.post("/api/ai/generate", authenticate, aiLimiter, handleAIGeneration);
   app.post("/api/ai/profile/update", authenticate, handleUpdateProfile);
   app.post("/api/ai/subscribe", authenticate, handleSubscribe);
   app.post("/api/ai/earn-xp", authenticate, handleEarnXP);
