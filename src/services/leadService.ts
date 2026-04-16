@@ -62,16 +62,53 @@ export const leadService = {
   },
 
   analyzeLeads: async (leads: Lead[]) => {
+    // 1. ÇÖP VERİYİ TEMİZLE (Token tasarrufu)
+    const strippedLeads = leads.map(l => ({ 
+      isim: l.name, 
+      tip: l.type, 
+      durum: l.status, 
+      not: l.notes 
+    }));
+
+    // 2. AI'A KESİN JSON EMRİ VER
     const prompt = `
-      Aşağıdaki gayrimenkul leadlerini analiz et ve bir emlak danışmanı için stratejik öneriler sun.
-      Hangi leadler daha sıcak? Hangi leadler için ne yapılmalı?
-      Kısa, öz ve aksiyon odaklı bir analiz yap.
-      Leadler: ${JSON.stringify(leads)}
+      Aşağıdaki gayrimenkul leadlerini (müşterileri) analiz et.
+      Yanıtını SADECE aşağıdaki JSON formatında ver, dışına çıkma:
+      {
+        "ozet": "Genel durumun 2 cümlelik özeti",
+        "sicak_musteriler": ["Ahmet Bey (Alıcı)", "Ayşe Hanım (Satıcı)"],
+        "aksiyon_plani": ["Ahmet Bey'i bugün ara", "Ayşe Hanım'a rapor gönder"]
+      }
+      
+      Müşteriler: ${JSON.stringify(strippedLeads)}
     `;
-    const response = await generateContent(
-      "gemini-flash-latest",
-      prompt
-    );
-    return response.text;
+
+    try {
+      // 3. AI ÇAĞRISI (Backend'deki model adıyla uyumlu olmalı)
+      const response: any = await generateContent(
+        "gemini-2.5-flash", 
+        prompt
+      );
+
+      // 4. JSON OBJESİNİ EKRANDA GÖSTERİLECEK METNE ÇEVİR
+      // (response.text kullanmıyoruz çünkü artık direkt obje geliyor)
+      if (!response || Object.keys(response).length === 0) return "Analiz yapılamadı.";
+
+      let formattedAnalysis = `${response.ozet || ''}\n\n`;
+      
+      if (response.sicak_musteriler && response.sicak_musteriler.length > 0) {
+        formattedAnalysis += `🔥 Öncelikli Müşteriler:\n- ${response.sicak_musteriler.join('\n- ')}\n\n`;
+      }
+      
+      if (response.aksiyon_plani && response.aksiyon_plani.length > 0) {
+        formattedAnalysis += `📋 Aksiyon Planı:\n- ${response.aksiyon_plani.join('\n- ')}`;
+      }
+
+      return formattedAnalysis.trim();
+
+    } catch (error) {
+      console.error("Lead analiz hatası:", error);
+      return "Müşteri analizi şu an yapılamıyor.";
+    }
   },
 };

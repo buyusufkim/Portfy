@@ -17,28 +17,28 @@ export const voiceService = {
       JSON Şeması:
       {
         "intent": "lead" | "task" | "note" | "unknown",
-        "confidence": 0.0 - 1.0,
+        "confidence": 0.0, // Sayısal değer (0.0 ile 1.0 arası)
         "extracted_data": {
           "name": "string",
           "phone": "string",
-          "budget": number,
+          "budget": 0,
           "location": "string",
-          "due_date": "ISO date string",
+          "due_date": "string",
           "description": "string",
           "task_type": "Arama" | "Randevu" | "Saha" | "Sosyal Medya"
         }
-      }
-      `;
+      }`;
 
-      const response = await generateContent(
-        'gemini-flash-latest',
+      // generateContent artık doğrudan parse edilmiş JSON objesi dönüyor!
+      const result: any = await generateContent(
+        'gemini-2.5-flash', // Backend'deki model
         prompt,
         {
           responseMimeType: 'application/json',
         }
       );
 
-      const result = JSON.parse(response.text || '{}');
+      // JSON.parse ÇÖPE GİTTİ!
       return {
         original_text: text,
         intent: result.intent || 'unknown',
