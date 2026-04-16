@@ -46,24 +46,42 @@ export const buildCoachPrompt = (data: {
   tasks: Task[];
   missedOpportunities: MissedOpportunity[];
 }) => {
+  // Gereksiz çöplerden arındırılmış veri setimiz
+  const strippedLeads = data.leads
+    .filter(l => l.status === 'Sıcak')
+    .slice(0, 5)
+    .map(l => ({ isim: l.name, tip: l.type, not: l.notes }));
+
+  const strippedProperties = data.properties
+    .slice(0, 5)
+    .map(p => ({ baslik: p.title, fiyat: p.price, durum: p.status, tip: p.type }));
+
+  const strippedTasks = data.tasks
+    .filter(t => !t.completed)
+    .slice(0, 5)
+    .map(t => ({ baslik: t.title, zaman: t.time }));
+
+  const strippedOpps = data.missedOpportunities
+    .slice(0, 3)
+    .map(m => ({ detay: m.description, neden: m.reason }));
+
   return `
     Sen Portfy uygulamasının AI Koçusun. Bir gayrimenkul danışmanına (Broker) rehberlik ediyorsun.
     Aşağıdaki verilere dayanarak danışman için stratejik bir günlük plan ve analiz üret.
     
     Kullanıcı Profili: ${JSON.stringify(profileSummary(data.profile))}
-    Sıcak Müşteriler: ${JSON.stringify(data.leads.filter(l => l.status === 'Sıcak').slice(0, 5))}
-    Portföyler: ${JSON.stringify(data.properties.slice(0, 5))}
-    Bekleyen Görevler: ${JSON.stringify(data.tasks.filter(t => !t.completed).slice(0, 5))}
-    Kaçırılan Fırsatlar: ${JSON.stringify(data.missedOpportunities.slice(0, 3))}
+    Sıcak Müşteriler: ${JSON.stringify(strippedLeads)}
+    Portföyler: ${JSON.stringify(strippedProperties)}
+    Bekleyen Görevler: ${JSON.stringify(strippedTasks)}
+    Kaçırılan Fırsatlar: ${JSON.stringify(strippedOpps)}
     
     Kurallar:
     1. Yanıt mutlaka belirlenen JSON şemasına uygun olmalı.
     2. Aksiyonlar (actions) net ve yapılabilir olmalı (Örn: "Ahmet Bey'i ara", "X portföyünün fiyatını güncelle").
-    3. Sosyal medya stratejisi (Reels, Story, LinkedIn) konusunda mutlaka en az bir yaratıcı tavsiye ver.
-    4. Eğer performans düşükse (görev tamamlama oranı < %30 ve saat 15:00 sonrasıysa) rescue mode öner.
-    5. Dil profesyonel, samimi ve aksiyon odaklı olmalı.
-    
-    Yanıtı sadece JSON olarak döndür.
+    3. Sosyal medya stratejisi konusunda mutlaka en az bir yaratıcı tavsiye ver.
+    4. Eğer performans düşükse (görev tamamlama oranı < %30) rescue mode öner.
+    5. Dil profesyonel, sert, yönlendirici ve aksiyon odaklı olmalı.
+    6. BÖLGE UZMANLIĞI: Kullanıcının profilindeki bölgeyi (region) dikkate al. Aksiyonlarının veya sosyal medya tavsiyelerinin en az birini doğrudan bu bölgeyi domine etmeye, o bölgedeki pazar payını artırmaya yönelik kurgula.
   `;
 };
 
@@ -72,5 +90,5 @@ const profileSummary = (p: any) => ({
   level: p?.broker_level,
   xp: p?.total_xp,
   streak: p?.current_streak,
-  region: p?.region
+  region: p?.region // Haklıydın, bunu geri ekledik.
 });
