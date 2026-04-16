@@ -32,12 +32,13 @@ export const aiService = {
     `;
 
     try {
-      const response = await generateContent(
-        "gemini-flash-latest",
+      const response: any = await generateContent(
+        "gemini-2.5-flash", // Modele dikkat
         prompt,
         { responseMimeType: "application/json" }
       );
-      return JSON.parse(response.text);
+      // JSON.parse(response.text) çöpe gitti!
+      return response;
     } catch (e) {
       console.error("Daily Radar AI error", e);
       return {
@@ -52,11 +53,16 @@ export const aiService = {
     try {
       const generateWithRetry = async (retries = 2): Promise<string> => {
         try {
-          const response = await generateContent(
-            "gemini-flash-latest",
-            `Sen bir emlak koçusun. Danışmanın verileri: ${propsCount} portföy, ${leadsCount} lead, disiplin skoru ${disciplineScore}. Bugün için tek cümlelik, çok kısa ve vurucu bir tavsiye ver.`
+          // BACKEND ÇÖKMESİN DİYE ZORLA JSON İSTİYORUZ
+          const prompt = `Sen bir emlak koçusun. Danışmanın verileri: ${propsCount} portföy, ${leadsCount} lead, disiplin skoru ${disciplineScore}. Bugün için tek cümlelik, çok kısa ve vurucu bir tavsiye ver. Yanıtı SADECE şu JSON formatında ver: {"tavsiye": "tavsiye metni"}`;
+          
+          const response: any = await generateContent(
+            "gemini-2.5-flash",
+            prompt,
+            { responseMimeType: "application/json" }
           );
-          return response.text || aiInsight;
+          // Backend'den gelen objenin içindeki tavsiyeyi okuyoruz
+          return response.tavsiye || aiInsight;
         } catch (error: any) {
           if (retries > 0 && error?.status === 'UNAVAILABLE') {
             await new Promise(resolve => setTimeout(resolve, 1000));

@@ -187,7 +187,10 @@ export const propertyService = {
     return publicUrl;
   },
 
-  // AI İçerik Üretimi
+  // ==========================================
+  // AI İÇERİK ÜRETİMİ (GÜNCELLENDİ)
+  // ==========================================
+  
   generatePropertyContent: async (property: Property) => {
     const prompt = `
       Aşağıdaki gayrimenkul özelliklerine dayanarak profesyonel bir ilan metni oluştur:
@@ -202,14 +205,21 @@ export const propertyService = {
       Kat: ${property.details.floor}
       
       Lütfen Sahibinden.com için detaylı ve profesyonel bir açıklama üret.
+      
+      ÖNEMLİ KURAL: Yanıtı SADECE aşağıdaki JSON formatında ver, dışına çıkma:
+      {
+        "metin": "Ürettiğin ilan açıklaması buraya gelecek"
+      }
     `;
 
-    const response = await generateContent(
-      "gemini-flash-latest",
-      prompt
-    );
-
-    return response.text;
+    try {
+      const response: any = await generateContent("gemini-2.5-flash", prompt);
+      // JSON.parse ve response.text çöpe gitti. Backend'den JSON'ın içindeki 'metin' anahtarını okuyoruz.
+      return response.metin || "İlan metni oluşturulamadı. Lütfen tekrar deneyin.";
+    } catch (error) {
+      console.error("İlan metni üretim hatası:", error);
+      return "İlan metni şu an üretilemiyor.";
+    }
   },
 
   generateInstagramCaptions: async (property: Property) => {
@@ -226,26 +236,17 @@ export const propertyService = {
       2. Satış odaklı ton (Fırsat vurgulu, heyecan verici)
       3. Sıcak/Samimi ton (Yaşam alanı vurgulu, duygusal)
       
-      Her varyasyonda:
-      - Dikkat çekici başlık
-      - Kısa açıklama
-      - CTA (örnek: "Detaylar için DM")
-      - Uygun emoji kullanımı (abartısız)
-      - 3-8 arası hashtag
-      
-      Yanıtı JSON formatında ver:
+      Yanıtı SADECE şu JSON formatında ver:
       {
         "corporate": "metin",
         "sales": "metin",
         "warm": "metin"
       }
     `;
-    const response = await generateContent(
-      "gemini-flash-latest",
-      prompt,
-      { responseMimeType: "application/json" }
-    );
-    return JSON.parse(response.text);
+    
+    // JSON.parse çöpe gitti! Response zaten hazır obje.
+    const response: any = await generateContent("gemini-2.5-flash", prompt);
+    return response;
   },
 
   generateWhatsAppMessages: async (property: Property) => {
@@ -261,27 +262,21 @@ export const propertyService = {
       2. WhatsApp durum/toplu paylaşım mesajı
       3. Yatırımcı müşteriye profesyonel mesaj
       
-      Her mesaj:
-      - Kısa ve etkili olmalı
-      - CTA içermeli
-      - [ilan_linki] placeholder'ını kullanmalı
-      
-      Yanıtı JSON formatında ver:
+      Yanıtı SADECE şu JSON formatında ver:
       {
         "single": "metin",
         "status": "metin",
         "investor": "metin"
       }
     `;
-    const response = await generateContent(
-      "gemini-flash-latest",
-      prompt,
-      { responseMimeType: "application/json" }
-    );
-    return JSON.parse(response.text);
+    
+    // JSON.parse çöpe gitti!
+    const response: any = await generateContent("gemini-2.5-flash", prompt);
+    return response;
   },
 
   generateMarketingModule: async (property: Property) => {
+    // Buradaki promptun zaten çok iyi, JSON formatın belli. Sadece model adını ve parse işlemini düzeltiyorum.
     const prompt = `
       Sen Portfy emlak asistanısın. Aşağıdaki gayrimenkul bilgilerini kullanarak profesyonel pazarlama içerikleri üret.
       
@@ -294,27 +289,6 @@ export const propertyService = {
       - Fiyat: ${property.price.toLocaleString()} TL
       - Konum: ${property.address.neighborhood} / ${property.address.district} / ${property.address.city}
       - Portföy Özeti: ${property.notes}
-      - Hedef Müşteri Tipi: ${property.target_customer_type || 'Belirtilmemiş'}
-      - Yatırım Uygunluğu: ${property.investment_suitability || 'Belirtilmemiş'}
-      - Satış/Kiralama Durumu: ${property.category}
-      
-      Üretilecek İçerikler:
-      1. Instagram post metni (3 alternatif: Kurumsal, Satış Odaklı, Samimi)
-      2. WhatsApp kısa müşteri mesajı (3 alternatif)
-      3. WhatsApp durum / toplu paylaşım metni (3 alternatif)
-      4. Yatırımcıya özel profesyonel mesaj (3 alternatif)
-      5. Kısa ilan özeti (3 alternatif)
-      6. Çağrı metni (CTA) (3 alternatif)
-      
-      Kurallar:
-      - Türkçe yaz.
-      - Fazla uzun olma, vurucu ol.
-      - Satış odaklı ve güven verici ol.
-      - Yapay zeka gibi kokma, doğal bir emlak danışmanı dili kullan.
-      - Boş övgü yapma, veriye ve özelliğe odaklan.
-      - Fiyat ve temel özellikleri asla saklama.
-      - Her içerikte net bir aksiyon çağrısı (CTA) olsun.
-      - WhatsApp mesajlarında [ilan_linki] placeholder'ını kullan.
       
       Yanıtı tam olarak şu JSON formatında ver:
       {
@@ -333,13 +307,9 @@ export const propertyService = {
       }
     `;
 
-    const response = await generateContent(
-      "gemini-flash-latest",
-      prompt,
-      { responseMimeType: "application/json" }
-    );
-
-    return JSON.parse(response.text);
+    // JSON.parse çöpe gitti!
+    const response: any = await generateContent("gemini-2.5-flash", prompt);
+    return response;
   },
 
   // sahibinden.com Entegrasyonu

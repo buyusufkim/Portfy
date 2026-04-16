@@ -36,18 +36,18 @@ export const coachService = {
     });
 
     try {
-      const response = await generateContent(
-        "gemini-flash-latest",
+      const response: any = await generateContent(
+        "gemini-2.5-flash",
         prompt,
         {
-          // @ts-ignore - Gemini SDK schema type support
+          // @ts-ignore
           responseSchema: AI_COACH_SCHEMA,
           responseMimeType: "application/json"
         }
       );
 
-      const result = JSON.parse(response.text || '{}') as AICoachResponse;
-      return result;
+      // JSON.parse çöpe gitti!
+      return response as AICoachResponse;
     } catch (error) {
       console.error("AI Coach Service Error:", error);
       throw new Error("AI Koç şu an ulaşılamıyor. Lütfen daha sonra tekrar deneyin.");
@@ -100,15 +100,15 @@ export const coachService = {
     }`;
 
     try {
-      const response = await generateContent(
-        'gemini-flash-latest',
+      const response: any = await generateContent(
+        'gemini-2.5-flash',
         prompt,
         {
           responseMimeType: 'application/json',
         }
       );
 
-      return JSON.parse(response.text || '{}') as CoachInsight;
+      return response as CoachInsight;
     } catch (error) {
       console.error('Coach insight error:', error);
       return {
