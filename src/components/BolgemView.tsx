@@ -2,12 +2,12 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { motion, AnimatePresence } from 'motion/react';
 import { GoogleMap, useLoadScript, Marker, InfoWindow } from '@react-google-maps/api';
-import { MapIcon, LayoutDashboard, Store, User, Building2, Home, Star, Filter, Search, Plus, X, Layers, Crosshair, MessageSquare } from 'lucide-react';
+import { MapIcon, LayoutDashboard, Store, User, Building2, Home, Star, Filter, Search, Plus, X, Layers, Crosshair, MessageSquare, MapPin } from 'lucide-react';
 import { useCategories } from '../hooks/useCategories';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { QUERY_KEYS } from '../constants/queryKeys';
-import { MapPin, UserProfile } from '../types';
+import { MapPin as MapPinType, UserProfile } from '../types';
 import { locationService } from '../services/locationService';
 
 const libraries: ("places")[] = ["places"];
@@ -57,12 +57,18 @@ export const BolgemView = ({
   profile?: UserProfile,
   setToast?: (toast: { message: string, type: 'success' | 'error' | 'info' } | null) => void
 }) => {
+  const { isLoaded, loadError } = useLoadScript({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+    libraries,
+  });
+
   const queryClient = useQueryClient();
   const { categories, addCategory } = useCategories();
   const [view, setView] = useState<'map' | 'list'>('map');
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [selectedPin, setSelectedPin] = useState<any>(null);
+  const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
 
   const [showAddFilter, setShowAddFilter] = useState(false);
   const [showFieldNotes, setShowFieldNotes] = useState(false);
@@ -101,23 +107,30 @@ export const BolgemView = ({
     enabled: !!profile?.uid
   });
 
-  // Update map center when profile region changes
+  // Geocode region if coordinates are default
   useEffect(() => {
-    if (profile?.region?.city && profile?.region?.district) {
-      const coords = locationService.getDistrictCoords(profile.region.city, profile.region.district);
-      if (coords) {
-        setMapCenter(coords);
-        if (map) map.panTo(coords);
-      }
+    if (profile?.region?.city && profile?.region?.district && isLoaded) {
+      const regionStr = `${profile.region.neighborhoods?.[0] || ''} ${profile.region.district} ${profile.region.city} Turkey`.trim();
+      const geocoder = new window.google.maps.Geocoder();
+      geocoder.geocode({ address: regionStr }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          const loc = results[0].geometry.location.toJSON();
+          setMapCenter(loc);
+          if (map) {
+            map.setCenter(loc);
+            map.setZoom(16);
+          }
+        }
+      });
     }
-  }, [profile, map]);
+  }, [profile, isLoaded]); // Removed map dependency to only run on load/profile change
 
   const onMapLoad = (mapInstance: google.maps.Map) => {
     setMap(mapInstance);
   };
 
   const filteredPins = useMemo(() => {
-    return (pins || []).filter((pin: MapPin) => {
+    return (pins || []).filter((pin: MapPinType) => {
       const matchFilter = filter === 'all' || pin.type === filter;
       const matchSearch = (pin.title || '').toLowerCase().includes(search.toLowerCase()) || (pin.address || '').toLowerCase().includes(search.toLowerCase());
       return matchFilter && matchSearch;
@@ -125,14 +138,14 @@ export const BolgemView = ({
   }, [filter, search, pins]);
 
   const fieldNotes = useMemo(() => {
-    return (pins || []).filter((pin: MapPin) => pin.notes && pin.notes.trim().length > 0);
+    return (pins || []).filter((pin: MapPinType) => pin.notes && pin.notes.trim().length > 0);
   }, [pins]);
 
   // Auto-focus on filtered pins
   useEffect(() => {
     if (map && (filteredPins || []).length > 0 && search.trim().length > 0) {
       const bounds = new window.google.maps.LatLngBounds();
-      (filteredPins || []).forEach((pin: MapPin) => {
+      (filteredPins || []).forEach((pin: MapPinType) => {
         bounds.extend({ lat: pin.lat, lng: pin.lng });
       });
       
@@ -226,6 +239,7 @@ export const BolgemView = ({
           lng: position.coords.longitude,
         };
         setMapCenter(newCenter);
+        setUserLocation(newCenter);
         setMapZoom(18);
         if (map) map.panTo(newCenter);
         if (setToast) setToast({ message: "Konumunuz başarıyla bulundu.", type: 'success' });
@@ -265,11 +279,6 @@ export const BolgemView = ({
       if (setToast) setToast({ message: "Tarayıcınız konum özelliğini desteklemiyor.", type: 'error' });
     }
   };
-
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-    libraries,
-  });
 
   const getPinIcon = (type: string) => {
     const typeObj = (allPinTypes || []).find(t => t.id === type);
@@ -382,6 +391,19 @@ export const BolgemView = ({
             </button>
           </div>
 
+          {/* Region Info Hub */}
+          {profile?.region && (
+            <div className="absolute left-4 bottom-24 z-10 bg-white/90 backdrop-blur-md px-4 py-2 rounded-2xl shadow-xl border border-blue-100 flex items-center gap-3">
+              <div className="w-8 h-8 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
+                <MapPin size={16} />
+              </div>
+              <div>
+                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Aktif Bölge</p>
+                <p className="text-xs font-bold text-slate-900">{profile.region.district}, {profile.region.city}</p>
+              </div>
+            </div>
+          )}
+
           <div className="w-full h-full bg-slate-200">
             {!isLoaded ? (
               <div className="absolute inset-0 flex items-center justify-center">
@@ -406,7 +428,21 @@ export const BolgemView = ({
                   styles: mapStyles
                 }}
               >
-                {(filteredPins || []).map((pin: MapPin) => {
+                {userLocation && (
+                  <Marker
+                    position={userLocation}
+                    icon={{
+                      path: google.maps.SymbolPath.CIRCLE,
+                      fillColor: '#3b82f6',
+                      fillOpacity: 1,
+                      strokeColor: '#ffffff',
+                      strokeWeight: 2,
+                      scale: 8
+                    }}
+                  />
+                )}
+
+                {(filteredPins || []).map((pin: MapPinType) => {
                   const isHighlighted = search.trim().length > 0;
                   return (
                     <Marker
@@ -524,7 +560,7 @@ export const BolgemView = ({
             {(filteredPins || []).length === 0 ? (
               <div className="text-center py-12 text-slate-500 text-sm col-span-full">Sonuç bulunamadı.</div>
             ) : (
-              (filteredPins || []).map((pin: MapPin) => {
+              (filteredPins || []).map((pin: MapPinType) => {
                 const typeObj = (allPinTypes || []).find(t => t.id === pin.type);
                 const Icon = typeObj?.icon || Building2;
                 return (

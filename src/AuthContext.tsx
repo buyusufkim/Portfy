@@ -266,22 +266,39 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw new Error('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
       }
 
-      const response = await fetch('/api/ai/subscribe', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`
-        },
-        body: JSON.stringify({ type })
-      });
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
 
-      const result = await response.json();
+      try {
+        console.log(`[AuthContext] Initiating subscription request for ${type}`);
+        const response = await fetch('/api/ai/subscribe', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`
+          },
+          body: JSON.stringify({ type }),
+          signal: controller.signal
+        });
 
-      if (!response.ok) {
-        throw new Error(result.error || 'Abonelik işlemi başarısız oldu.');
+        clearTimeout(timeoutId);
+        const result = await response.json();
+
+        if (!response.ok) {
+          console.error(`[AuthContext] Subscription API Error:`, result);
+          throw new Error(result.error || result.details || 'Abonelik işlemi başarısız oldu.');
+        }
+
+        console.log(`[AuthContext] Subscription SUCCESS`);
+        await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, user.id] });
+      } catch (err: any) {
+        if (err.name === 'AbortError') {
+          console.error(`[AuthContext] Subscription TIMEOUT after 30s`);
+          throw new Error('İstek zaman aşımına uğradı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.');
+        }
+        console.error(`[AuthContext] Subscription Fetch Error:`, err);
+        throw err;
       }
-
-      await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, user.id] });
 
     } catch (error: any) {
       console.error('Subscription error:', error);

@@ -4,6 +4,19 @@
 -- 1. Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
+-- Pre-cleanup for problematic columns
+DO $$ 
+BEGIN 
+    BEGIN
+        ALTER TABLE IF EXISTS subscription_state ALTER COLUMN "user_id" DROP NOT NULL;
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+    BEGIN
+        ALTER TABLE IF EXISTS subscription_state DROP COLUMN IF EXISTS "user_id" CASCADE;
+    EXCEPTION WHEN OTHERS THEN NULL;
+    END;
+END $$;
+
 -- 2. Helper for updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -358,17 +371,47 @@ BEGIN
         'broker_accounts', 'external_listings'
     ])
     LOOP
-        -- Rename agentId to agent_id if it exists
-        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'agentId') THEN
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'agent_id') THEN
+        -- Rename agentId/userId/user_id to agent_id if they exist
+        -- We try to find any variant and rename it to agent_id
+        
+        -- agentId
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'agentId' AND table_schema = 'public') THEN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'agent_id' AND table_schema = 'public') THEN
                 EXECUTE format('ALTER TABLE %I RENAME COLUMN "agentId" TO agent_id', t);
             ELSE
-                EXECUTE format('ALTER TABLE %I DROP COLUMN "agentId"', t);
+                BEGIN
+                    EXECUTE format('ALTER TABLE %I DROP COLUMN IF EXISTS "agentId" CASCADE', t);
+                EXCEPTION WHEN OTHERS THEN NULL;
+                END;
+            END IF;
+        END IF;
+
+        -- userId
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'userId' AND table_schema = 'public') THEN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'agent_id' AND table_schema = 'public') THEN
+                EXECUTE format('ALTER TABLE %I RENAME COLUMN "userId" TO agent_id', t);
+            ELSE
+                BEGIN
+                    EXECUTE format('ALTER TABLE %I DROP COLUMN IF EXISTS "userId" CASCADE', t);
+                EXCEPTION WHEN OTHERS THEN NULL;
+                END;
+            END IF;
+        END IF;
+
+        -- user_id
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'user_id' AND table_schema = 'public') THEN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'agent_id' AND table_schema = 'public') THEN
+                EXECUTE format('ALTER TABLE %I RENAME COLUMN "user_id" TO agent_id', t);
+            ELSE
+                BEGIN
+                    EXECUTE format('ALTER TABLE %I DROP COLUMN IF EXISTS "user_id" CASCADE', t);
+                EXCEPTION WHEN OTHERS THEN NULL;
+                END;
             END IF;
         END IF;
 
         -- Add agent_id if it still doesn't exist
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'agent_id') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'agent_id' AND table_schema = 'public') THEN
             EXECUTE format('ALTER TABLE %I ADD COLUMN agent_id UUID REFERENCES profiles(uid) ON DELETE CASCADE', t);
         END IF;
     END LOOP;

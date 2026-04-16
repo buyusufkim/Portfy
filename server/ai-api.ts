@@ -110,9 +110,12 @@ export const handleUpdateProfile = async (req: any, res: any) => {
 };
 
 export const handleSubscribe = async (req: any, res: any) => {
+  console.log(`[handleSubscribe] START - Body:`, req.body);
   try {
     const { type } = req.body;
     const userId = req.user.id;
+
+    console.log(`[handleSubscribe] Processing - User: ${userId}, Type: ${type}`);
 
     if (!['trial', '1-month', '3-month', '6-month', '12-month'].includes(type)) {
       return res.status(400).json({ error: "Invalid subscription type" });
@@ -146,21 +149,30 @@ export const handleSubscribe = async (req: any, res: any) => {
     d.setDate(d.getDate() + 7);
     const endDate = d.toISOString();
 
-    const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc('activate_trial', {
+    console.log(`[handleSubscribe] Calling RPC activate_trial_v2 for ${userId}`);
+    const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc('activate_trial_v2', {
       p_user_id: userId,
       p_end_date: endDate
     });
 
     if (rpcError) {
-      console.error("RPC Error (activate_trial):", rpcError);
-      throw rpcError;
+      console.error("RPC Error (activate_trial_v2) - System Error:", rpcError);
+      return res.status(500).json({ 
+        error: "Database RPC error", 
+        details: rpcError.message,
+        code: rpcError.code 
+      });
     }
 
     if (!rpcResult.success) {
-      console.warn("Trial Activation Failed:", rpcResult.error);
-      return res.status(400).json({ error: rpcResult.error });
+      console.warn("Trial Activation Failed (Business Logic):", rpcResult.error, rpcResult.detail);
+      return res.status(400).json({ 
+        error: rpcResult.error,
+        detail: rpcResult.detail 
+      });
     }
 
+    console.log(`[handleSubscribe] SUCCESS for ${userId}`);
     res.json({ success: true, tier: 'pro', endDate });
   } catch (error: any) {
     console.error("Subscription Error:", error);
