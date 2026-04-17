@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react'; // useMemo eklendi
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'motion/react';
 import { api } from '../services/api';
@@ -15,6 +15,7 @@ import { AIContentModal } from '../components/portfolios/AIContentModal';
 import { PortfoliosToolbar } from '../components/portfolios/PortfoliosToolbar';
 import { PropertyGrid } from '../components/portfolios/PropertyGrid';
 import { useAuth } from '../AuthContext';
+
 
 interface PortfolioModalsProps {
   showAddProperty: boolean;
@@ -127,17 +128,12 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   });
 
   const uploadImageMutation = useMutation({
-    mutationFn: ({ id, file }: { id: string, file: File }) => api.uploadPropertyImage(id, file),
-    onSuccess: (url) => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid] });
-      if (selectedProperty) {
-        setSelectedProperty({
-          ...selectedProperty,
-          images: [...selectedProperty.images, url]
-        });
-      }
-    }
-  });
+  mutationFn: ({ id, file }: { id: string, file: File }) => api.uploadPropertyImage(id, file),
+  onSuccess: () => {
+    // Sadece cache'i temizle, setSelectedProperty ile manuel obje oluşturma!
+    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid] });
+  }
+});
 
   const importListingMutation = useMutation({
     mutationFn: api.importListingFromUrl,
@@ -183,9 +179,9 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         onShowExternalListings={() => setShowExternalListings(true)}
         onShowSharePanel={() => setShowSharePanel(true)}
         onGenerateMarketingHub={() => { setAiMarketingType('hub'); setIsGenerating(true); generateMarketingMutation.mutate(selectedProperty!); }}
-        onGenerateListing={() => { setAiMarketingType('listing'); setIsGenerating(true); generateContentMutation.mutate(selectedProperty!); }}
-        onGenerateInstagram={() => { setAiMarketingType('instagram'); setIsGenerating(true); generateInstagramMutation.mutate(selectedProperty!); }}
-        onGenerateWhatsApp={() => { setAiMarketingType('whatsapp'); setIsGenerating(true); generateWhatsAppMutation.mutate(selectedProperty!); }}
+        onGenerateListing={() => { if (isGenerating) return; setAiMarketingType('listing'); setIsGenerating(true); generateContentMutation.mutate(selectedProperty!); }}
+        onGenerateInstagram={() => { if (isGenerating) return; setAiMarketingType('instagram'); setIsGenerating(true); generateInstagramMutation.mutate(selectedProperty!); }}
+        onGenerateWhatsApp={() => { if (isGenerating) return; setAiMarketingType('whatsapp'); setIsGenerating(true); generateWhatsAppMutation.mutate(selectedProperty!); }}
         isGenerating={isGenerating}
         aiMarketingType={aiMarketingType}
         aiContent={aiContent}
@@ -277,10 +273,12 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
   setShowImportUrlModal,
   setSelectedProperty
 }) => {
-  const filteredProperties = properties.filter(p => {
+  const filteredProperties = useMemo(() => { // useMemo ekleyerek referansı koru
+  return properties.filter(p => {
     const matchesDistrict = selectedDistrict === 'all' || p.address.district === selectedDistrict;
     return matchesDistrict;
   });
+}, [properties, selectedDistrict]);
 
   return (
     <motion.div 

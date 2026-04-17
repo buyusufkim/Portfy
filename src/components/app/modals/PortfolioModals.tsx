@@ -25,7 +25,7 @@ interface PortfolioModalsProps {
   setIsEditing: (val: boolean) => void;
 }
 
-export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
+export const PortfolioModalsComponent: React.FC<PortfolioModalsProps> = ({
   showAddProperty,
   setShowAddProperty,
   showImportUrlModal,
@@ -72,3 +72,4 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
     </>
   );
 };
+export const PortfolioModals = React.memo(PortfolioModalsComponent);
