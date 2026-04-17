@@ -178,125 +178,99 @@ export const gamificationService = {
     try {
       const title = task.title.toLowerCase();
 
+      // 🔥 1. DOĞRUDAN ONAYLANAN MANUEL GÖREVLER
+      if (
+        title.includes("linkedin") || 
+        title.includes("instagram") || 
+        title.includes("reels") || 
+        title.includes("story") || 
+        title.includes("haberlerini oku") || 
+        title.includes("sosyal medya") || 
+        title.includes("paylaşım") ||
+        title.includes("hedefini belirle") ||
+        title.includes("gün sonu raporu") ||
+        title.includes("günü kurtar")
+      ) {
+        return { verified: true };
+      }
+
+      // 🔥 2. "NASIL YAPILIR?" YÖNLENDİRMELİ SİSTEM GÖREVLERİ
+
+      if (title.includes("cevapsız mesaj") || title.includes("müşteriye dönüş yap")) {
+        const { data: leads } = await supabase.from('leads').select('id').eq('agent_id', agentId).gte('last_contact', today);
+        if (leads && leads.length >= 1) return { verified: true };
+        // YÖNLENDİRİCİ MESAJ EKLENDİ
+        return { verified: false, message: "Bu görevi tamamlamak için CRM (Adaylar) ekranına gidip, bir müşterinin detayına yeni bir not veya görüşme kaydetmelisin." };
+      }
+
       if (title.includes("malik araması") || title.includes("5 malik araması")) {
         const { data: tasks } = await supabase.from('tasks').select('id').eq('agent_id', agentId).eq('type', 'Arama').eq('completed', true).gte('created_at', today);
         const count = tasks?.length || 0;
         if (count >= 5) return { verified: true };
-        return { verified: false, message: `Henüz ${count}/5 arama yaptın. 5 arama tamamlamalısın.` };
+        return { verified: false, message: `Şu an ${count}/5 arama yaptın. CRM üzerinden bir müşteriye 'Arama' görevi ekleyip tamamlandı olarak işaretlemelisin.` };
       }
 
-      if (title.includes("saha ziyareti")) {
+      if (title.includes("saha ziyareti") || title.includes("esnafı ziyareti") || title.includes("esnafla tanış")) {
         const { data: visits } = await supabase.from('tasks').select('id').eq('agent_id', agentId).eq('type', 'Saha').eq('completed', true).gte('created_at', today);
         if (visits && visits.length >= 1) return { verified: true };
-        return { verified: false, message: "Henüz bir saha ziyareti tamamlamadın." };
+        return { verified: false, message: "Bu görevi tamamlamak için CRM ekranından 'Saha' tipinde bir görev/ziyaret ekleyip tamamlamalısın." };
       }
 
       if (title.includes("yeni portföy ekle")) {
         const { data: props } = await supabase.from('properties').select('id').eq('agent_id', agentId).gte('created_at', today);
         if (props && props.length >= 1) return { verified: true };
-        return { verified: false, message: "Henüz yeni bir portföy eklemedin." };
+        return { verified: false, message: "Bu görevi tamamlamak için 'Portföyler' sekmesinden sisteme yeni bir ilan eklemelisin." };
       }
 
       if (title.includes("müşteri takibi")) {
         const { data: tasks } = await supabase.from('tasks').select('id').eq('agent_id', agentId).eq('type', 'Takip').eq('completed', true).gte('created_at', today);
         const count = tasks?.length || 0;
         if (count >= 2) return { verified: true };
-        return { verified: false, message: `Henüz ${count}/2 takip yaptın.` };
+        return { verified: false, message: `Şu an ${count}/2 takip yaptın. CRM üzerinden 'Takip' görevleri oluşturup tamamlamalısın.` };
       }
 
       if (title.includes("randevu oluştur")) {
         const { data: tasks } = await supabase.from('tasks').select('id').eq('agent_id', agentId).eq('type', 'Randevu').gte('created_at', today);
         if (tasks && tasks.length >= 1) return { verified: true };
-        return { verified: false, message: "Henüz bir randevu oluşturmadın." };
-      }
-
-      if (title.includes("peş peşe girişini sürdür")) {
-        const { data: profile } = await supabase.from('profiles').select('current_streak').eq('uid', agentId).maybeSingle();
-        if (profile && profile.current_streak > 0) return { verified: true };
-        return { verified: false, message: "Bugün henüz giriş yapmamış görünüyorsun." };
+        return { verified: false, message: "Bu görevi tamamlamak için CRM'de bir müşteriye 'Randevu' tipinde yeni bir etkinlik planlamalısın." };
       }
 
       if (title.includes("100 puan kazan")) {
         const { data: completedToday } = await supabase.from('gamified_tasks').select('points').eq('agent_id', agentId).eq('is_completed', true).eq('date', today);
         const totalPointsToday = completedToday?.reduce((acc, t) => acc + t.points, 0) || 0;
         if (totalPointsToday >= 100) return { verified: true };
-        return { verified: false, message: `Bugün henüz ${totalPointsToday}/100 puan topladın.` };
+        return { verified: false, message: `Bugün ${totalPointsToday}/100 puan topladın. Listeden başka görevler yaparak bu kilidi açabilirsin!` };
       }
 
-      if (title.includes("hedefini belirle")) {
-        const { data: personalTasks } = await supabase.from('personal_tasks').select('id').eq('agent_id', agentId).gte('created_at', today);
-        if (personalTasks && personalTasks.length >= 1) return { verified: true };
-        return { verified: false, message: "Bugün henüz bir kişisel hedef (görev) belirlemedin." };
-      }
-
-      if (title.includes("portföy notu güncelle")) {
+      if (title.includes("fiyat analizi") || title.includes("portföy notu güncelle")) {
         const { data: props } = await supabase.from('properties').select('id').eq('agent_id', agentId).gte('updated_at', today);
         if (props && props.length >= 1) return { verified: true };
-        return { verified: false, message: "Bugün henüz bir portföy notu güncellemedin." };
+        return { verified: false, message: "Bu görevi tamamlamak için Portföyler ekranından bir ilanın detayına girip düzenleme (fiyat veya not) yapmalısın." };
       }
 
-      if (title.includes("müşteriye dönüş yap")) {
-        const { data: leads } = await supabase.from('leads').select('id').eq('agent_id', agentId).gte('last_contact', today);
-        if (leads && leads.length >= 1) return { verified: true };
-        return { verified: false, message: "Bugün henüz bir müşteriye dönüş yapmadın." };
-      }
-
-      if (title.includes("eski bir müşterini ara")) {
+      if (title.includes("eski bir müşterini ara") || title.includes("isimli müşteriyi ara")) {
         const { data: tasks } = await supabase.from('tasks').select('id').eq('agent_id', agentId).eq('type', 'Arama').eq('completed', true).gte('created_at', today);
         if (tasks && tasks.length >= 1) return { verified: true };
-        return { verified: false, message: "Bugün henüz eski bir müşterini aramadın." };
+        return { verified: false, message: "Bu görevi tamamlamak için CRM üzerinden iletişimde olmadığın bir müşteriye 'Arama' kaydı girmelisin." };
       }
 
-      if (title.includes("isimli müşteriyi ara")) {
-        const match = task.title.match(/"([^"]+)"/);
-        if (match) {
-          const leadName = match[1];
-          const { data: lead } = await supabase.from('leads').select('id').eq('agent_id', agentId).eq('name', leadName).maybeSingle();
-          if (lead) {
-            const { data: tasks } = await supabase.from('tasks').select('id').eq('agent_id', agentId).eq('type', 'Arama').eq('completed', true).gte('created_at', today);
-            if (tasks && tasks.length >= 1) return { verified: true };
-          }
-        }
-        return { verified: false, message: "Belirtilen müşteriyi henüz aramadın." };
+      if (title.includes("peş peşe girişini sürdür")) {
+        const { data: profile } = await supabase.from('profiles').select('current_streak').eq('uid', agentId).maybeSingle();
+        if (profile && profile.current_streak > 0) return { verified: true };
+        return { verified: false, message: "Seri görevini onaylamak için Dashboard'da 'Günü Başlat' butonuna tıklamalısın." };
       }
 
-      if (title.includes("gün sonu raporu")) {
-        const { data: profile } = await supabase.from('profiles').select('last_ritual_completed_at').eq('uid', agentId).maybeSingle();
-        if (profile?.last_ritual_completed_at && profile.last_ritual_completed_at.startsWith(today)) return { verified: true };
-        return { verified: false, message: "Gün sonu ritüelini henüz tamamlamadın." };
+      // Güvenlik Ağı: Sweet kategorisi
+      if (task.category === 'sweet') {
+         return { verified: true };
       }
 
-      if (title.includes("cevapsız mesaj")) {
-        const { data: leads } = await supabase.from('leads').select('id').eq('agent_id', agentId).gte('last_contact', today);
-        if (leads && leads.length >= 1) return { verified: true };
-        return { verified: false, message: "Bugün henüz bir müşteriye dönüş yapmadın." };
-      }
-
-      if (title.includes("esnafı ziyareti") || title.includes("esnafla tanış")) {
-        const { data: visits } = await supabase.from('tasks').select('id').eq('agent_id', agentId).eq('type', 'Saha').eq('completed', true).gte('created_at', today);
-        if (visits && visits.length >= 1) return { verified: true };
-        return { verified: false, message: "Bugün henüz bir esnaf ziyareti kaydetmedin." };
-      }
-
-      if (title.includes("fiyat analizi")) {
-        const { data: props } = await supabase.from('properties').select('id').eq('agent_id', agentId).gte('updated_at', today);
-        if (props && props.length >= 1) return { verified: true };
-        return { verified: false, message: "Bugün henüz bir portföy analizi/güncellemesi yapmadın." };
-      }
-
-      if (title.includes("reels") || title.includes("story") || title.includes("sosyal medya") || title.includes("paylaşım")) {
-        // Social media tasks are currently self-verified or verified by manual completion
-        // In a real app, we might check an integration, but here we allow manual completion
-        return { verified: true };
-      }
-
-      return { verified: false, message: "Bu görev henüz tamamlanmamış görünüyor." };
+      return { verified: false, message: "Bu görevi tamamlamak için ilgili modülden işleminizi sisteme kaydetmelisiniz." };
     } catch (error) {
       console.error("Verification error:", error);
-      return { verified: false, message: "Doğrulama sırasında bir hata oluştu." };
+      return { verified: false, message: "Sistemde anlık bir doğrulama hatası oluştu, lütfen sayfayı yenileyin." };
     }
   },
-
   updateGamifiedTask: async (taskId: string, data: Partial<GamifiedTask>) => {
     const dbData: any = {};
     if (data.is_completed !== undefined) dbData.is_completed = data.is_completed;
