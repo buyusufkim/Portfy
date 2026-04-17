@@ -75,17 +75,22 @@ export const aiService = {
       );
 
       // KULLANIMI KAYDET (SONRA)
-      // Not: generateContent fonksiyonunun döndüğü objede usageMetadata olduğunu varsayıyoruz.
-      // Eğer doğrudan metin dönüyorsa, yaklaşık bir değer (charCount / 4) de verilebilir.
       const tokens = response.usageMetadata?.totalTokenCount || 500; 
       await aiService.checkAndIncrementUsage(user.id, tokens);
 
       return response;
     } catch (e) {
       console.error("Daily Radar AI error", e);
+      
+      // 🔥 YEDEK (FALLBACK) SENARYO 🔥
+      // AI çökerse ekran boş kalmaz, bu gerçekçi emlak görevleri görünür
       return {
-        tasks: ["Dünkü görüşmeleri takip et", "Yeni portföy fotoğraflarını yükle", "Aday listeni gözden geçir"],
-        insight: "Bugün harika bir gün olacak, odaklan ve başar!"
+        tasks: [
+          "Dünkü en sıcak 3 müşterini ara ve durum güncellemesi yap.",
+          "Portföyündeki en eski ilanın fotoğraflarını ve fiyatını gözden geçir.",
+          "Bölgendeki yeni fiyat hareketlerini analiz etmek için 15 dakika ayır."
+        ],
+        insight: "Yapay zeka koçun şu an arka planda veri güncelliyor ama sen hedeflerini çok iyi biliyorsun. Sahaya dön ve fark yarat!"
       };
     }
   },
@@ -130,7 +135,16 @@ export const aiService = {
       return aiResponse.tavsiye || aiInsight;
     } catch (e) {
       console.warn("AI Insight temporary unavailable, using fallback.");
+      
+      // 🔥 YEDEK (FALLBACK) SENARYO 🔥
+      // AI yanıt veremezse, statik ama motive edici sözler gösterilir
+      const fallbacks = [
+        "Unutma: Satışı kapatan şey fiyat değil, müşteriye sunduğun güvendir.",
+        "Portföy sayın ne olursa olsun, önemli olan onlara ne kadar hakim olduğundur.",
+        "Bugün yeni bir aday bulmak yerine, mevcut bir adayla bağlarını güçlendir."
+      ];
+      // Diziden rastgele bir tavsiye seçip döndürüyoruz
+      return fallbacks[Math.floor(Math.random() * fallbacks.length)];
     }
-    return aiInsight;
   }
 };
