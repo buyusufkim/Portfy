@@ -80,27 +80,6 @@ export const BolgemView = ({
   const [is3D, setIs3D] = useState(false);
 
 
-  const handleSelection = async () => {
-  if (!profile?.region?.city || !profile?.region?.district) return;
-
-  const address = locationService.getGeocodeAddressString(
-    profile.region.city, 
-    profile.region.district, 
-    profile.region.neighborhoods?.[0]
-  );
-  
-  if (address) {
-    const coords = await locationService.getCoordsFromGoogle(address);
-    if (coords && map) {
-      setMapCenter(coords);
-      map.panTo(coords);
-      map.setZoom(14);
-      console.log("Konum Google üzerinden güncellendi:", coords.formattedAddress);
-    }
-  }
-};
-
-  
   // Set initial center based on user region
   const initialCenter = center; // Varsayılan İstanbul, useEffect ile değişecek
 
