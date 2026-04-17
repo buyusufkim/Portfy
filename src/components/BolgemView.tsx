@@ -10,6 +10,7 @@ import { QUERY_KEYS } from '../constants/queryKeys';
 import { MapPin as MapPinType, UserProfile } from '../types';
 import { locationService } from '../services/locationService';
 
+const defaultCenter = { lat: 41.0082, lng: 28.9784 }; // İstanbul Merkez
 const libraries: ("places")[] = ["places"];
 
 const mapContainerStyle = {
@@ -87,8 +88,8 @@ export const BolgemView = ({
     return center;
   }, [profile]);
 
-  const [mapCenter, setMapCenter] = useState(initialCenter);
-  const [mapZoom, setMapZoom] = useState(16);
+  const [mapCenter, setMapCenter] = useState(defaultCenter);
+const [mapZoom, setMapZoom] = useState(13); // İlk açılışta çok yakından girmesin
 
   const [showAddPin, setShowAddPin] = useState(false);
   const [newPinData, setNewPinData] = useState({
@@ -110,21 +111,33 @@ export const BolgemView = ({
 
   // Geocode region if coordinates are default
   useEffect(() => {
-    if (profile?.region?.city && profile?.region?.district && isLoaded) {
-      const regionStr = `${profile.region.neighborhoods?.[0] || ''} ${profile.region.district} ${profile.region.city} Turkey`.trim();
-      const geocoder = new window.google.maps.Geocoder();
-      geocoder.geocode({ address: regionStr }, (results, status) => {
+  if (isLoaded && profile?.region?.city && profile?.region?.district) {
+    const geocoder = new window.google.maps.Geocoder();
+    // locationService'den adresi formatla (Örn: "Talas, Kayseri, Türkiye")
+    const addressToGeocode = locationService.getGeocodeAddressString(profile.region.city, profile.region.district);
+
+    if (addressToGeocode) {
+      geocoder.geocode({ address: addressToGeocode }, (results, status) => {
         if (status === 'OK' && results && results[0]) {
           const loc = results[0].geometry.location.toJSON();
-          // Only auto-center if we don't have pins or manually moved
+          
+          // Eğer haritada hiç pin yoksa, doğrudan o ilçeye uç.
+          // (Eğer pin varsa, useEffect zaten pinlerin olduğu alana zoom (fitBounds) yapacak)
           if (pins.length === 0) {
             setMapCenter(loc);
-            if (map) map.setCenter(loc);
+            setMapZoom(14); // İlçe görünecek kadar zoom
+            if (map) {
+              map.setCenter(loc);
+              map.setZoom(14);
+            }
           }
+        } else {
+          console.warn("Geocoding failed for user region:", addressToGeocode);
         }
       });
     }
-  }, [profile, isLoaded, pins.length === 0]);
+  }
+}, [profile?.region, isLoaded, pins.length, map]);
 
   const onMapLoad = (mapInstance: google.maps.Map) => {
     setMap(mapInstance);

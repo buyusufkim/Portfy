@@ -14,8 +14,8 @@ export const locationService = {
     if (!cityCode) return [];
     return [...tn.getNeighbourhoodsByCityCodeAndDistrict(cityCode, districtName)].sort((a, b) => a.localeCompare(b, 'tr'));
   },
-  getDistrictCoords: (cityName: string, districtName: string) => {
-    // turkey-neighbourhoods doesn't provide coordinates, so we return a default or null
-    return { lat: 41.0082, lng: 28.9784 }; // Default to Istanbul coordinates
+  getGeocodeAddressString: (cityName: string, districtName: string) => {
+    if (!cityName || !districtName) return null;
+    return `${districtName}, ${cityName}, Türkiye`;
   }
 };
