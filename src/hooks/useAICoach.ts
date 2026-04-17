@@ -13,7 +13,7 @@ export const useAICoach = () => {
   const { data: insight, isLoading, error, refetch } = useQuery({
     queryKey: [QUERY_KEYS.AI_COACH_INSIGHT, profile?.uid],
     queryFn: api.getDetailedCoachInsight,
-    enabled: !!profile?.uid,
+    enabled: false,
     staleTime: 1000 * 60 * 15, // 15 dakika cache
   });
 

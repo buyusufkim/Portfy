@@ -145,8 +145,6 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
     }
   });
 
-  console.log('PortfolioModals render:', { isEditing, selectedProperty: !!selectedProperty, showAddProperty });
-
   return (
     <>
       <IntegrationModal 
