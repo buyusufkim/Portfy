@@ -78,28 +78,44 @@ export const BolgemView = ({
   const [newFilterColor, setNewFilterColor] = useState('#eab308'); // Default yellow
 
   const [is3D, setIs3D] = useState(false);
+
+
+  const handleSelection = async () => {
+  if (!profile?.region?.city || !profile?.region?.district) return;
+
+  const address = locationService.getGeocodeAddressString(
+    profile.region.city, 
+    profile.region.district, 
+    profile.region.neighborhoods?.[0]
+  );
+  
+  if (address) {
+    const coords = await locationService.getCoordsFromGoogle(address);
+    if (coords && map) {
+      setMapCenter(coords);
+      map.panTo(coords);
+      map.setZoom(14);
+      console.log("Konum Google üzerinden güncellendi:", coords.formattedAddress);
+    }
+  }
+};
+
   
   // Set initial center based on user region
-  const initialCenter = useMemo(() => {
-    if (profile?.region?.city && profile?.region?.district) {
-      const coords = locationService.getDistrictCoords(profile.region.city, profile.region.district);
-      if (coords) return coords;
-    }
-    return center;
-  }, [profile]);
+  const initialCenter = center; // Varsayılan İstanbul, useEffect ile değişecek
 
   const [mapCenter, setMapCenter] = useState(defaultCenter);
   const [mapZoom, setMapZoom] = useState(13); // İlk açılışta çok yakından girmesin
   const [hasGeocoded, setHasGeocoded] = useState(false); // Geocoding'in sürekli çalışmasını engellemek için
   const [showAddPin, setShowAddPin] = useState(false);
   const [newPinData, setNewPinData] = useState({
-    title: '',
-    type: categories[0]?.id || 'esnaf',
-    address: '',
-    notes: '',
-    lat: initialCenter.lat,
-    lng: initialCenter.lng
-  });
+  title: '',
+  type: categories[0]?.id || 'esnaf',
+  address: '',
+  notes: '',
+  lat: center.lat, // initialCenter.lat yerine
+  lng: center.lng  // initialCenter.lng yerine
+});
 
   const [map, setMap] = useState<google.maps.Map | null>(null);
 
@@ -111,6 +127,7 @@ export const BolgemView = ({
 
   // Geocode region if coordinates are default
   useEffect(() => {
+  const geocodeProfileRegion = async () => {
     if (isLoaded && profile?.region?.city && profile?.region?.district && !hasGeocoded) {
       const addressToGeocode = locationService.getGeocodeAddressString(
         profile.region.city, 
@@ -119,23 +136,23 @@ export const BolgemView = ({
       );
       
       if (addressToGeocode) {
-        const geocoder = new window.google.maps.Geocoder();
-        geocoder.geocode({ address: addressToGeocode }, (results, status) => {
-          if (status === 'OK' && results && results[0]) {
-            const loc = results[0].geometry.location.toJSON();
-            setMapCenter(loc);
-            // Sadece ilk yüklemede ve pin yoksa merkezi manuel ayarla
-            // Pin varsa aşağıdaki useEffect zaten fitBounds ile odaklanacak
-            if (map && pins.length === 0) {
-              map.setCenter(loc);
-              map.setZoom(14);
-            }
-            setHasGeocoded(true); // Bir daha gereksiz istek atma
+        // Kendi yazdığımız servis üzerinden çağırıyoruz
+        const coords = await locationService.getCoordsFromGoogle(addressToGeocode);
+        
+        if (coords) {
+          setMapCenter({ lat: coords.lat, lng: coords.lng });
+          if (map && pins.length === 0) {
+            map.setCenter({ lat: coords.lat, lng: coords.lng });
+            map.setZoom(14);
           }
-        });
+          setHasGeocoded(true);
+        }
       }
     }
-  }, [profile?.region, isLoaded, map, hasGeocoded, pins.length]);
+  };
+
+  geocodeProfileRegion();
+}, [profile?.region, isLoaded, map, hasGeocoded, pins.length]);
 
   const onMapLoad = (mapInstance: google.maps.Map) => {
     setMap(mapInstance);
