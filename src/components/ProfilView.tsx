@@ -26,7 +26,7 @@ interface ProfilViewProps {
   setShowIntegrationModal: (show: boolean) => void;
   syncListingsMutation: any;
   updateProfileMutation: any;
-  setShowTemplateManager: (show: boolean) => void;
+  setShowRegionSetup: (show: boolean) => void;
 }
 
 export const ProfilView: React.FC<ProfilViewProps> = ({
@@ -38,7 +38,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
   setShowIntegrationModal,
   syncListingsMutation,
   updateProfileMutation,
-  setShowTemplateManager
+  setShowRegionSetup
 }) => (
   <motion.div 
     initial={{ opacity: 0 }}
@@ -91,7 +91,10 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
         <Badge variant="success">Aktif</Badge>
       </Card>
 
-      <Card className="flex items-center gap-4 border-l-4 border-blue-500">
+      <Card 
+        className="flex items-center gap-4 border-l-4 border-blue-500 cursor-pointer hover:bg-blue-50/30 transition-colors"
+        onClick={() => setShowRegionSetup(true)}
+      >
         <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center text-blue-600">
           <MapPin size={24} />
         </div>
@@ -109,6 +112,9 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
               ))}
             </div>
           )}
+        </div>
+        <div className="p-2 text-slate-400">
+          <ArrowRight size={20} />
         </div>
       </Card>
 

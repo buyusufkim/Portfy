@@ -127,6 +127,7 @@ export const handleUpdateProfile = async (req: any, res: any) => {
       'bio',
       'city',
       'district',
+      'region',
       'has_seen_onboarding',
       'has_seen_tour',
       'notification_settings'

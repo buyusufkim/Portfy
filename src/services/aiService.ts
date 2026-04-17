@@ -33,7 +33,7 @@ export const aiService = {
 
     try {
       const response: any = await generateContent(
-        "gemini-2.5-flash", // Modele dikkat
+        "gemini-1.5-flash",
         prompt,
         { responseMimeType: "application/json" }
       );
@@ -57,7 +57,7 @@ export const aiService = {
           const prompt = `Sen bir emlak koçusun. Danışmanın verileri: ${propsCount} portföy, ${leadsCount} lead, disiplin skoru ${disciplineScore}. Bugün için tek cümlelik, çok kısa ve vurucu bir tavsiye ver. Yanıtı SADECE şu JSON formatında ver: {"tavsiye": "tavsiye metni"}`;
           
           const response: any = await generateContent(
-            "gemini-2.5-flash",
+            "gemini-1.5-flash",
             prompt,
             { responseMimeType: "application/json" }
           );

@@ -36,6 +36,7 @@ export interface NavigationProps {
   setShowAdminPanel: (val: boolean) => void;
   logout: () => void;
   profile: UserProfile | null;
+  updateProfileMutation: MutationResult<any, { uid: string, data: Partial<UserProfile> }>;
 }
 
 export interface LeadProps {
@@ -78,13 +79,6 @@ export interface PortfolioProps {
   syncListingsMutation: MutationResult<any, any>;
   linkPropertyMutation: MutationResult<any, any>;
   connectIntegrationMutation: MutationResult<any, any>;
-  templates: MessageTemplate[];
-  showTemplateSelector: boolean;
-  setShowTemplateSelector: (val: boolean) => void;
-  showTemplateManager: boolean;
-  setShowTemplateManager: (val: boolean) => void;
-  addTemplateMutation: MutationResult<any, any>;
-  deleteTemplateMutation: MutationResult<any, string>;
   showAddProperty: boolean;
   setShowAddProperty: (val: boolean) => void;
   showImportUrlModal: boolean;
@@ -92,14 +86,13 @@ export interface PortfolioProps {
   showExternalListings: boolean;
   isEditing: boolean;
   setIsEditing: (val: boolean) => void;
+  setShowRegionSetup: (val: boolean) => void;
 }
 
 export interface UtilityProps {
   showAddVisit: boolean;
   setShowAddVisit: (val: boolean) => void;
   addVisitMutation: MutationResult<any, any>;
-  showDailyBriefing: boolean;
-  setShowDailyBriefing: (val: boolean) => void;
   tasks: Task[];
   fieldVisits: Building[];
   rescueSession: RescueSession | null;
@@ -206,6 +199,9 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
           brokerAccount={portfolios.brokerAccount}
           setShowExternalListings={portfolios.setShowExternalListings}
           setShowIntegrationModal={portfolios.setShowIntegrationModal}
+          syncListingsMutation={portfolios.syncListingsMutation}
+          updateProfileMutation={navigation.updateProfileMutation}
+          setShowRegionSetup={portfolios.setShowRegionSetup}
           logout={navigation.logout}
         />
       )}

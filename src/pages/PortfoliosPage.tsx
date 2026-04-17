@@ -12,7 +12,6 @@ import { PropertyDetailModal } from '../components/portfolios/PropertyDetailModa
 import { SharePanel } from '../components/portfolios/SharePanel';
 import { MarketingHubModal } from '../components/portfolios/MarketingHubModal';
 import { AIContentModal } from '../components/portfolios/AIContentModal';
-import { TemplateSelectorModal } from '../components/portfolios/TemplateSelectorModal';
 import { PortfoliosToolbar } from '../components/portfolios/PortfoliosToolbar';
 import { PropertyGrid } from '../components/portfolios/PropertyGrid';
 import { useAuth } from '../AuthContext';
@@ -33,9 +32,6 @@ interface PortfolioModalsProps {
   syncListingsMutation: MutationResult<any, void>;
   linkPropertyMutation: MutationResult<any, { propertyId: string, externalId: string }>;
   connectIntegrationMutation: MutationResult<any, void>;
-  templates: MessageTemplate[];
-  showTemplateSelector: boolean;
-  setShowTemplateSelector: (show: boolean) => void;
   leads: Lead[];
   regionScores: RegionEfficiencyScore[];
   isEditing: boolean;
@@ -58,9 +54,6 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   syncListingsMutation,
   linkPropertyMutation,
   connectIntegrationMutation,
-  templates,
-  showTemplateSelector,
-  setShowTemplateSelector,
   leads,
   regionScores,
   isEditing,
@@ -256,14 +249,6 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
           else if (aiMarketingType === 'instagram') generateInstagramMutation.mutate(selectedProperty);
           else if (aiMarketingType === 'whatsapp') generateWhatsAppMutation.mutate(selectedProperty);
         }}
-        onShowTemplateSelector={() => setShowTemplateSelector(true)}
-      />
-      <TemplateSelectorModal 
-        show={showTemplateSelector} 
-        onClose={() => setShowTemplateSelector(false)} 
-        templates={templates}
-        selectedProperty={selectedProperty}
-        whatsappMessages={whatsappMessages}
       />
     </>
   );

@@ -1,6 +1,5 @@
 import React from 'react';
 import { AddVisitModal } from './AddVisitModal';
-import { DailyBriefingModal } from './DailyBriefingModal';
 import { RescueModeModal } from './RescueModeModal';
 import { MissedOpportunitiesModal } from './MissedOpportunitiesModal';
 
@@ -10,8 +9,6 @@ interface UtilityModalsProps {
   showAddVisit: boolean;
   setShowAddVisit: (val: boolean) => void;
   addVisitMutation: MutationResult<any, any>;
-  showDailyBriefing: boolean;
-  setShowDailyBriefing: (val: boolean) => void;
   tasks: Task[];
   fieldVisits: Building[];
   rescueSession: RescueSession | null;
@@ -27,8 +24,6 @@ export const UtilityModals: React.FC<UtilityModalsProps> = ({
   showAddVisit,
   setShowAddVisit,
   addVisitMutation,
-  showDailyBriefing,
-  setShowDailyBriefing,
   tasks,
   fieldVisits,
   rescueSession,
@@ -45,12 +40,6 @@ export const UtilityModals: React.FC<UtilityModalsProps> = ({
         showAddVisit={showAddVisit} 
         setShowAddVisit={setShowAddVisit} 
         addVisitMutation={addVisitMutation} 
-      />
-      <DailyBriefingModal 
-        showDailyBriefing={showDailyBriefing} 
-        setShowDailyBriefing={setShowDailyBriefing} 
-        tasks={tasks} 
-        fieldVisits={fieldVisits} 
       />
       <RescueModeModal 
         rescueSession={rescueSession} 

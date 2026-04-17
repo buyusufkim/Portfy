@@ -42,10 +42,11 @@ const mapStyles = [
 
 // Helper to create SVG data URI for map pins
 const createSvgPin = (color: string, Icon: any) => {
-  const iconSvg = renderToStaticMarkup(<Icon size={10} color="white" strokeWidth={3} />);
-  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="${color}" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"></path>
-    <g transform="translate(7, 5)">${iconSvg}</g>
+  const iconSvg = renderToStaticMarkup(<Icon size={12} color="white" strokeWidth={2.5} />);
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
+    <circle cx="20" cy="20" r="18" fill="white" stroke="${color}" stroke-width="1.5" />
+    <circle cx="20" cy="20" r="15" fill="${color}" />
+    <g transform="translate(14, 14)">${iconSvg}</g>
   </svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
@@ -115,15 +116,15 @@ export const BolgemView = ({
       geocoder.geocode({ address: regionStr }, (results, status) => {
         if (status === 'OK' && results && results[0]) {
           const loc = results[0].geometry.location.toJSON();
-          setMapCenter(loc);
-          if (map) {
-            map.setCenter(loc);
-            map.setZoom(16);
+          // Only auto-center if we don't have pins or manually moved
+          if (pins.length === 0) {
+            setMapCenter(loc);
+            if (map) map.setCenter(loc);
           }
         }
       });
     }
-  }, [profile, isLoaded]); // Removed map dependency to only run on load/profile change
+  }, [profile, isLoaded, pins.length === 0]);
 
   const onMapLoad = (mapInstance: google.maps.Map) => {
     setMap(mapInstance);
@@ -432,13 +433,11 @@ export const BolgemView = ({
                   <Marker
                     position={userLocation}
                     icon={{
-                      path: google.maps.SymbolPath.CIRCLE,
-                      fillColor: '#3b82f6',
-                      fillOpacity: 1,
-                      strokeColor: '#ffffff',
-                      strokeWeight: 2,
-                      scale: 8
+                      url: createSvgPin('#3b82f6', MapPin),
+                      scaledSize: new window.google.maps.Size(40, 40),
+                      anchor: new window.google.maps.Point(20, 40)
                     }}
+                    zIndex={100}
                   />
                 )}
 

@@ -131,13 +131,11 @@ function MainApp() {
   const [showWhatsAppImport, setShowWhatsAppImport] = useState(false);
   const [showDailyRadar, setShowDailyRadar] = useState(false);
   const [showDayCloser, setShowDayCloser] = useState(false);
-  const [showDailyBriefing, setShowDailyBriefing] = useState(false);
-  const [showTemplateManager, setShowTemplateManager] = useState(false);
-  const [showTemplateSelector, setShowTemplateSelector] = useState(false);
   const [showIntegrationModal, setShowIntegrationModal] = useState(false);
   const [showExternalListings, setShowExternalListings] = useState(false);
   const [showImportUrlModal, setShowImportUrlModal] = useState(false);
   const [showMissedOpportunities, setShowMissedOpportunities] = useState(false);
+  const [showRegionSetup, setShowRegionSetup] = useState(false);
 
   const closeAllModals = () => {
     setShowQuickAdd(false);
@@ -148,13 +146,11 @@ function MainApp() {
     setShowWhatsAppImport(false);
     setShowDailyRadar(false);
     setShowDayCloser(false);
-    setShowDailyBriefing(false);
-    setShowTemplateManager(false);
-    setShowTemplateSelector(false);
     setShowIntegrationModal(false);
     setShowExternalListings(false);
     setShowImportUrlModal(false);
     setShowMissedOpportunities(false);
+    setShowRegionSetup(false);
   };
 
   // --- Data Selection & Analysis State ---
@@ -428,37 +424,6 @@ function MainApp() {
     }
   });
 
-  // Daily Briefing Logic
-  useEffect(() => {
-    if (!profile) return;
-
-    const checkBriefing = () => {
-      const now = new Date();
-      const today = now.toISOString().split('T')[0];
-      const lastShown = localStorage.getItem(`briefing_shown_${profile.uid}`);
-      
-      if (lastShown === today) return;
-
-      const targetTime = profile.notification_settings?.time || "09:00";
-      const [targetHours, targetMinutes] = targetTime.split(':').map(Number);
-      
-      const currentHours = now.getHours();
-      const currentMinutes = now.getMinutes();
-
-      if (currentHours > targetHours || (currentHours === targetHours && currentMinutes >= targetMinutes)) {
-        if (!isGamifiedTasksLoading) {
-          setShowDailyBriefing(true);
-          localStorage.setItem(`briefing_shown_${profile.uid}`, today);
-        }
-      }
-    };
-
-    const interval = setInterval(checkBriefing, 60000); // Check every minute
-    checkBriefing(); // Initial check
-
-    return () => clearInterval(interval);
-  }, [profile, isGamifiedTasksLoading]);
-
   const handleWhatsAppShare = (property: Property, content?: string) => {
     if (content) {
       const url = `https://wa.me/?text=${encodeURIComponent(content)}`;
@@ -466,13 +431,9 @@ function MainApp() {
       return;
     }
 
-    if (templates && templates.length > 0) {
-      setShowTemplateSelector(true);
-    } else {
-      const text = `Merhaba, sizin için harika bir portföyüm var: ${property.title}. Fiyat: ₺${property.price.toLocaleString()}. Detaylar için iletişime geçebilirsiniz.`;
-      const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
-      window.open(url, '_blank');
-    }
+    const text = `Merhaba, sizin için harika bir portföyüm var: ${property.title}. Fiyat: ₺${property.price.toLocaleString()}. Detaylar için iletişime geçebilirsiniz.`;
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
   };
 
   const handleNotify = (task: PersonalTask | GamifiedTask, type: 'personal' | 'gamified') => {
@@ -491,7 +452,8 @@ function MainApp() {
     showAdminPanel,
     setShowAdminPanel,
     logout,
-    profile
+    profile,
+    updateProfileMutation
   };
 
   const leadProps: LeadProps = {
@@ -532,13 +494,6 @@ function MainApp() {
     syncListingsMutation,
     linkPropertyMutation,
     connectIntegrationMutation,
-    templates,
-    showTemplateSelector,
-    setShowTemplateSelector,
-    showTemplateManager,
-    setShowTemplateManager,
-    addTemplateMutation,
-    deleteTemplateMutation,
     showAddProperty,
     setShowAddProperty,
     showImportUrlModal,
@@ -547,7 +502,8 @@ function MainApp() {
     selectedProperty,
     externalListings,
     isEditing,
-    setIsEditing
+    setIsEditing,
+    setShowRegionSetup
   };
 
   const utilityProps: UtilityProps = {
@@ -567,8 +523,6 @@ function MainApp() {
     showAddVisit,
     setShowAddVisit,
     addVisitMutation,
-    showDailyBriefing,
-    setShowDailyBriefing,
     fieldVisits,
     cancelRescueMutation,
     completeRescueTaskMutation,
@@ -585,17 +539,25 @@ function MainApp() {
 
   return (
     <div className="min-h-screen bg-slate-50 pb-28 md:pb-0 font-sans text-slate-900 selection:bg-orange-100 overflow-x-hidden">
-      {/* Mandatory Region Setup */}
-      {profile && !profile.region && (
-        <RegionSetupModal profile={profile} onComplete={() => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] })} />
-      )}
+      {/* Mandatory & Manual Region Setup */}
+      {(profile && (!profile.region || !profile.region.city)) || showRegionSetup ? (
+        <RegionSetupModal 
+          profile={profile!} 
+          onComplete={() => {
+            queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
+            setShowRegionSetup(false);
+          }} 
+        />
+      ) : null}
       
       {/* Main Content */}
       <div className="flex flex-col md:flex-row w-full min-h-screen">
         <RitualOverlays 
           showDailyRadar={showDailyRadar}
+          setShowDailyRadar={setShowDailyRadar}
           dailyRadarData={dailyRadarData}
           showDayCloser={showDayCloser}
+          setShowDayCloser={setShowDayCloser}
           completeMorningRitualMutation={completeMorningRitualMutation}
           completeEveningRitualMutation={completeEveningRitualMutation}
           gamifiedTasks={gamifiedTasks}

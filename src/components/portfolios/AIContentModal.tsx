@@ -11,7 +11,6 @@ interface AIContentModalProps {
   instagramCaptions: { corporate: string, sales: string, warm: string } | null;
   whatsappMessages: { single: string, status: string, investor: string } | null;
   onRegenerate: () => void;
-  onShowTemplateSelector: () => void;
   selectedProperty: Property | null;
 }
 
@@ -23,7 +22,6 @@ export const AIContentModal: React.FC<AIContentModalProps> = ({
   instagramCaptions,
   whatsappMessages,
   onRegenerate,
-  onShowTemplateSelector,
   selectedProperty
 }) => {
   if (!aiMarketingType || aiMarketingType === 'hub') return null;
@@ -149,8 +147,8 @@ export const AIContentModal: React.FC<AIContentModalProps> = ({
                       {whatsappMessages.single}
                     </div>
                     <div className="flex gap-3">
-                      <button onClick={onShowTemplateSelector} className="flex-1 py-3 bg-emerald-600 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2">
-                        <MessageCircle size={16} /> Gönder
+                      <button onClick={() => navigator.clipboard.writeText(whatsappMessages.single)} className="flex-1 py-3 bg-slate-900 text-white rounded-xl text-xs font-bold flex items-center justify-center gap-2">
+                        <Copy size={16} /> Kopyala
                       </button>
                       <button onClick={onRegenerate} className="text-xs font-bold text-orange-600">Yeniden Üret</button>
                     </div>

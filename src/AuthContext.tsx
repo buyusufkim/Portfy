@@ -17,7 +17,11 @@ interface UserProfile {
   has_seen_onboarding?: boolean;
   has_seen_tour?: boolean;
   notification_settings?: { push: boolean; email: boolean; time: string };
-  region?: string;
+  region?: {
+    city: string;
+    district: string;
+    neighborhoods: string[];
+  };
   tier: 'free' | 'pro' | 'elite' | 'master';
   total_xp: number;
   broker_level: number;

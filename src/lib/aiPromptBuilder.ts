@@ -63,7 +63,7 @@ export const buildCoachPrompt = (data: {
 
   const strippedOpps = data.missedOpportunities
     .slice(0, 3)
-    .map(m => ({ detay: m.description, neden: m.reason }));
+    .map(m => ({ detay: m.description, tip: m.type }));
 
   return `
     Sen Portfy uygulamasının AI Koçusun. Bir gayrimenkul danışmanına (Broker) rehberlik ediyorsun.

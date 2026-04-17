@@ -7,7 +7,9 @@ import { GamifiedTask, PersonalTask, Property, Task } from '../../types';
 interface RitualOverlaysProps {
   showDailyRadar: boolean;
   dailyRadarData: { tasks: string[], insight: string } | null;
+  setShowDailyRadar: (val: boolean) => void;
   showDayCloser: boolean;
+  setShowDayCloser: (val: boolean) => void;
   completeMorningRitualMutation: any;
   completeEveningRitualMutation: any;
   gamifiedTasks: GamifiedTask[];
@@ -18,9 +20,11 @@ interface RitualOverlaysProps {
 
 export const RitualOverlays = ({ 
   showDailyRadar, 
+  setShowDailyRadar,
   dailyRadarData, 
   showDayCloser, 
-  completeMorningRitualMutation, 
+  setShowDayCloser,
+  completeMorningRitualMutation,
   completeEveningRitualMutation, 
   gamifiedTasks, 
   personalTasks, 
@@ -50,6 +54,12 @@ export const RitualOverlays = ({
               className="w-12 h-12 border-4 border-orange-500 border-t-transparent rounded-full mx-auto"
             />
             <p className="text-orange-500 font-bold animate-pulse">Radar Hazırlanıyor...</p>
+            <button 
+              onClick={() => setShowDailyRadar(false)}
+              className="mt-4 px-4 py-2 border border-slate-700 text-slate-400 text-xs rounded-lg hover:bg-slate-800 transition-colors"
+            >
+              İptal Et
+            </button>
           </div>
         </motion.div>
       )
@@ -58,6 +68,7 @@ export const RitualOverlays = ({
     {showDayCloser && (
       <DayCloser 
         isPending={completeEveningRitualMutation.isPending}
+        onClose={() => setShowDayCloser(false)}
         stats={{
           tasks_completed: gamifiedTasks.filter(t => t.is_completed).length + personalTasks.filter(t => t.is_completed).length,
           revenue: properties.reduce((acc, p) => acc + ((p.price * p.commission_rate) / 100) * (p.sale_probability || 0.5), 0),

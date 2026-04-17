@@ -148,29 +148,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </div>
       </header>
 
-      {/* Day Start Module */}
-      {!isDayStarted && (
-        <Card className="p-6 bg-gradient-to-br from-orange-500 to-orange-600 border-none shadow-xl shadow-orange-200">
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div className="flex items-center gap-4 text-white">
-              <div className="w-14 h-14 bg-white/20 rounded-2xl flex items-center justify-center backdrop-blur-md">
-                <Zap size={28} className="text-white" />
-              </div>
-              <div>
-                <h3 className="text-lg font-bold">Günü Başlat</h3>
-                <p className="text-sm text-orange-100 font-medium">{todayStr}</p>
-              </div>
-            </div>
-            <button 
-              onClick={() => startDayMutation.mutate()}
-              disabled={startDayMutation.isPending}
-              className="w-full sm:w-auto px-8 py-4 bg-white text-orange-600 rounded-2xl font-black text-sm shadow-lg active:scale-95 transition-all disabled:opacity-50"
-            >
-              {startDayMutation.isPending ? 'Başlatılıyor...' : 'Hadi Başlayalım!'}
-            </button>
-          </div>
-        </Card>
-      )}
+      {/* Day Start Module - Removed per user request */}
 
       {isDayStarted && isDayEnded && (
         <Card className="p-6 bg-slate-50 border-slate-200 border-dashed">
@@ -331,7 +309,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </section>
 
             {/* Daily Tasks List */}
-            <section className={`space-y-4 ${isTasksDisabled ? 'opacity-50 pointer-events-none grayscale' : ''}`}>
+            <section className="space-y-4">
               <div className="flex justify-between items-center px-1">
                 <h2 className="text-lg font-bold text-slate-900 tracking-tight">Günün Görevleri</h2>
                 <div className="flex items-center gap-2">
