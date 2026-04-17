@@ -31,13 +31,13 @@ export const fieldVisitService = {
     // Automatically register in CRM
     try {
       await leadService.addLead({
-        name: visit.address.split(',')[0], // Use first part of address as name
-        phone: '',
-        type: 'Saha Ziyareti',
-        status: 'Aday',
-        district: visit.district,
-        notes: `Saha ziyareti üzerinden otomatik eklendi. Durum: ${visit.status}. Not: ${visit.notes}`
-      });
+  name: visit.title || visit.address.split(',')[0], // Title varsa onu, yoksa adresi kullan
+  phone: '',
+  type: 'Saha Ziyareti',
+  status: 'Aday',
+  district: visit.district || '',
+  notes: `Saha Ziyareti Notu: ${visit.notes}`
+});
     } catch (e) {
       console.warn("CRM registration failed for addVisit:", e);
     }

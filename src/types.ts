@@ -153,12 +153,9 @@ export interface DashboardStats {
 
 export interface Building {
   id: string;
+  agent_id: string;
+  title: string; // EKLENEN ALAN
   address: string;
-  district: string;
-  status: 'Görüşüldü' | 'Potansiyel' | 'Ret' | 'Boş';
-  last_visit: string;
-  notes: string;
-}
 
 export interface MessageTemplate {
   id: string;

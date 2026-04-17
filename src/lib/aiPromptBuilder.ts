@@ -46,11 +46,10 @@ export const buildCoachPrompt = (data: {
   tasks: Task[];
   missedOpportunities: MissedOpportunity[];
 }) => {
-  // Gereksiz çöplerden arındırılmış veri setimiz
   const strippedLeads = data.leads
     .filter(l => l.status === 'Sıcak')
     .slice(0, 5)
-    .map(l => ({ isim: l.name, tip: l.type, not: l.notes }));
+    .map(l => ({ isim: l.name, tip: l.type, notlar: l.notes }));
 
   const strippedProperties = data.properties
     .slice(0, 5)
@@ -63,11 +62,11 @@ export const buildCoachPrompt = (data: {
 
   const strippedOpps = data.missedOpportunities
     .slice(0, 3)
-    .map(m => ({ detay: m.description, tip: m.type }));
+    .map(m => ({ detay: m.description, neden: m.reason }));
 
   return `
-    Sen Portfy uygulamasının AI Koçusun. Bir gayrimenkul danışmanına (Broker) rehberlik ediyorsun.
-    Aşağıdaki verilere dayanarak danışman için stratejik bir günlük plan ve analiz üret.
+    Sen Portfy uygulamasının AI Koçusun. Bir gayrimenkul danışmanına rehberlik ediyorsun.
+    Aşağıdaki verilere dayanarak danışman için stratejik bir günlük plan üret.
     
     Kullanıcı Profili: ${JSON.stringify(profileSummary(data.profile))}
     Sıcak Müşteriler: ${JSON.stringify(strippedLeads)}
@@ -77,11 +76,9 @@ export const buildCoachPrompt = (data: {
     
     Kurallar:
     1. Yanıt mutlaka belirlenen JSON şemasına uygun olmalı.
-    2. Aksiyonlar (actions) net ve yapılabilir olmalı (Örn: "Ahmet Bey'i ara", "X portföyünün fiyatını güncelle").
-    3. Sosyal medya stratejisi konusunda mutlaka en az bir yaratıcı tavsiye ver.
-    4. Eğer performans düşükse (görev tamamlama oranı < %30) rescue mode öner.
-    5. Dil profesyonel, sert, yönlendirici ve aksiyon odaklı olmalı.
-    6. BÖLGE UZMANLIĞI: Kullanıcının profilindeki bölgeyi (region) dikkate al. Aksiyonlarının veya sosyal medya tavsiyelerinin en az birini doğrudan bu bölgeyi domine etmeye, o bölgedeki pazar payını artırmaya yönelik kurgula.
+    2. Aksiyonlar net ve yapılabilir olmalı.
+    3. Kullanıcının bölgesine (region) özel en az bir tavsiye ver.
+    4. Dil profesyonel, sert ve aksiyon odaklı olmalı.
   `;
 };
 

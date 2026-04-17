@@ -16,11 +16,12 @@ export const AddVisitModal: React.FC<AddVisitModalProps> = ({
   addVisitMutation 
 }) => {
   const [formData, setFormData] = useState({
-    address: '',
-    district: 'Beşiktaş',
-    status: 'Görüşüldü' as Building['status'],
-    notes: ''
-  });
+  title: '', // EKLENDİ
+  address: '',
+  district: '',
+  status: 'Görüşüldü' as Building['status'],
+  notes: ''
+});
 
   return (
     <AnimatePresence>
@@ -55,14 +56,15 @@ export const AddVisitModal: React.FC<AddVisitModalProps> = ({
                   />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bölge (İlçe)</label>
-                  <input 
-                    type="text" 
-                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                    value={formData.district}
-                    onChange={e => setFormData({...formData, district: e.target.value})}
-                  />
-                </div>
+  <label className="text-[10px] font-bold text-slate-400 uppercase">Müşteri / Bina Adı</label>
+  <input 
+    type="text" 
+    placeholder="Örn: Ahmet Bey veya Güneş Apt."
+    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none transition-all"
+    value={formData.title}
+    onChange={e => setFormData({ ...formData, title: e.target.value })}
+  />
+</div>
               </div>
               <div className="space-y-2">
                 <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Durum</label>
