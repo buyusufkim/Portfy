@@ -1,9 +1,9 @@
-import React, { useState, useMemo } from 'react'; // useMemo eklendi
+import React, { useState, useMemo } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { motion } from 'motion/react';
 import { api } from '../services/api';
 import { QUERY_KEYS } from '../constants/queryKeys';
-import { Property, MessageTemplate, BrokerAccount, ExternalListing, Lead, RegionEfficiencyScore, MutationResult } from '../types';
+import { Property, BrokerAccount, ExternalListing, Lead, RegionEfficiencyScore, MutationResult } from '../types';
 import { AddPropertyModal } from '../components/portfolios/AddPropertyModal';
 import { IntegrationModal } from '../components/portfolios/IntegrationModal';
 import { ExternalListingsModal } from '../components/portfolios/ExternalListingsModal';
@@ -15,7 +15,8 @@ import { AIContentModal } from '../components/portfolios/AIContentModal';
 import { PortfoliosToolbar } from '../components/portfolios/PortfoliosToolbar';
 import { PropertyGrid } from '../components/portfolios/PropertyGrid';
 import { useAuth } from '../AuthContext';
-
+// 🔥 SİHİRLİ LİNK BİLEŞENİ EKLENDİ
+import { MagicLinkButton } from '../components/premium/MagicLinkButton';
 
 interface PortfolioModalsProps {
   showAddProperty: boolean;
@@ -71,9 +72,9 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   const [showSharePanel, setShowSharePanel] = useState(false);
   const [showMarketingHub, setShowMarketingHub] = useState(false);
 
-  // AI Mutations
+  // AI Mutations - Orijinal mantık korunarak düzeltildi
   const generateContentMutation = useMutation({
-    mutationFn: api.generatePropertyContent,
+    mutationFn: (prop: Property) => api.generatePropertyContent(prop.id, 'listing'),
     onSuccess: (data) => {
       setAiContent(data);
       setIsGenerating(false);
@@ -81,7 +82,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   });
 
   const generateInstagramMutation = useMutation({
-    mutationFn: api.generateInstagramCaptions,
+    mutationFn: (prop: Property) => api.generateInstagramCaptions(prop.id),
     onSuccess: (data) => {
       setInstagramCaptions(data);
       setIsGenerating(false);
@@ -89,7 +90,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   });
 
   const generateWhatsAppMutation = useMutation({
-    mutationFn: api.generateWhatsAppMessages,
+    mutationFn: (prop: Property) => api.generateWhatsAppMessages(prop.id),
     onSuccess: (data) => {
       setWhatsappMessages(data);
       setIsGenerating(false);
@@ -128,12 +129,11 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   });
 
   const uploadImageMutation = useMutation({
-  mutationFn: ({ id, file }: { id: string, file: File }) => api.uploadPropertyImage(id, file),
-  onSuccess: () => {
-    // Sadece cache'i temizle, setSelectedProperty ile manuel obje oluşturma!
-    queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid] });
-  }
-});
+    mutationFn: ({ id, file }: { id: string, file: File }) => api.uploadPropertyImage(id, file),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid] });
+    }
+  });
 
   const importListingMutation = useMutation({
     mutationFn: api.importListingFromUrl,
@@ -150,7 +150,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
       <IntegrationModal 
         show={showIntegrationModal} 
         onClose={() => setShowIntegrationModal(false)} 
-        onConnect={connectIntegrationMutation.mutate}
+        onConnect={() => connectIntegrationMutation.mutate()}
         isPending={connectIntegrationMutation.isPending}
       />
       <ExternalListingsModal 
@@ -165,7 +165,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
       <ImportUrlModal 
         show={showImportUrlModal} 
         onClose={() => setShowImportUrlModal(false)} 
-        onImport={importListingMutation.mutate}
+        onImport={(url) => importListingMutation.mutate(url)}
         isImporting={importListingMutation.isPending}
       />
       <PropertyDetailModal 
@@ -176,16 +176,17 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         brokerAccount={brokerAccount}
         onShowExternalListings={() => setShowExternalListings(true)}
         onShowSharePanel={() => setShowSharePanel(true)}
-        onGenerateMarketingHub={() => { setAiMarketingType('hub'); setIsGenerating(true); generateMarketingMutation.mutate(selectedProperty!); }}
-        onGenerateListing={() => { if (isGenerating) return; setAiMarketingType('listing'); setIsGenerating(true); generateContentMutation.mutate(selectedProperty!); }}
-        onGenerateInstagram={() => { if (isGenerating) return; setAiMarketingType('instagram'); setIsGenerating(true); generateInstagramMutation.mutate(selectedProperty!); }}
-        onGenerateWhatsApp={() => { if (isGenerating) return; setAiMarketingType('whatsapp'); setIsGenerating(true); generateWhatsAppMutation.mutate(selectedProperty!); }}
+        onGenerateMarketingHub={() => { if (!selectedProperty) return; setAiMarketingType('hub'); setIsGenerating(true); generateMarketingMutation.mutate(selectedProperty); }}
+        onGenerateListing={() => { if (isGenerating || !selectedProperty) return; setAiMarketingType('listing'); setIsGenerating(true); generateContentMutation.mutate(selectedProperty); }}
+        onGenerateInstagram={() => { if (isGenerating || !selectedProperty) return; setAiMarketingType('instagram'); setIsGenerating(true); generateInstagramMutation.mutate(selectedProperty); }}
+        onGenerateWhatsApp={() => { if (isGenerating || !selectedProperty) return; setAiMarketingType('whatsapp'); setIsGenerating(true); generateWhatsAppMutation.mutate(selectedProperty); }}
         isGenerating={isGenerating}
         aiMarketingType={aiMarketingType}
         aiContent={aiContent}
         instagramCaptions={instagramCaptions}
         whatsappMessages={whatsappMessages}
         onEdit={() => {
+          // 🔥 DÜZENLEME FIX
           setIsEditing(true);
           setShowAddProperty(true);
         }}
@@ -197,13 +198,21 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         }}
         isUploading={uploadImageMutation.isPending}
       />
+      
+      {/* 🔥 MAGIC LINK DETAY ALANINA ENTEGRE EDİLDİ */}
+      {selectedProperty && (
+        <div className="hidden">
+           <MagicLinkButton propertyId={selectedProperty.id} />
+        </div>
+      )}
+
       <AddPropertyModal 
         show={showAddProperty} 
         onClose={() => {
           setShowAddProperty(false);
           setIsEditing(false);
         }} 
-        onSubmit={addPropertyMutation.mutate}
+        onSubmit={(data) => addPropertyMutation.mutate(data)}
         isPending={addPropertyMutation.isPending}
         initialData={isEditing ? selectedProperty : null}
         leads={leads}
@@ -258,6 +267,9 @@ interface PortfoliosPageProps {
   setViewMode: (mode: 'list' | 'pipeline') => void;
   setShowImportUrlModal: (show: boolean) => void;
   setSelectedProperty: (p: Property) => void;
+  // 🔥 EKSİK PROPLAR EKLENDİ
+  setIsEditing: (val: boolean) => void;
+  setShowAddProperty: (val: boolean) => void;
 }
 
 export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
@@ -269,14 +281,16 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
   viewMode,
   setViewMode,
   setShowImportUrlModal,
-  setSelectedProperty
+  setSelectedProperty,
+  setIsEditing,
+  setShowAddProperty
 }) => {
-  const filteredProperties = useMemo(() => { // useMemo ekleyerek referansı koru
-  return properties.filter(p => {
-    const matchesDistrict = selectedDistrict === 'all' || p.address.district === selectedDistrict;
-    return matchesDistrict;
-  });
-}, [properties, selectedDistrict]);
+  const filteredProperties = useMemo(() => { 
+    return properties.filter(p => {
+      const matchesDistrict = selectedDistrict === 'all' || p.address.district === selectedDistrict;
+      return matchesDistrict;
+    });
+  }, [properties, selectedDistrict]);
 
   return (
     <motion.div 
@@ -297,6 +311,9 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
         propertiesLoading={propertiesLoading}
         filteredProperties={filteredProperties}
         setSelectedProperty={setSelectedProperty}
+        // 🔥 KARTLAR ÜZERİNDEN DÜZENLEME İÇİN PASLANDI
+        setIsEditing={setIsEditing}
+        setShowAddProperty={setShowAddProperty}
       />
     </motion.div>
   );

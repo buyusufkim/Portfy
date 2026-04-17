@@ -7,6 +7,7 @@ import { NotesView } from '../NotesView';
 import { ProfilView } from '../ProfilView';
 import { CoachView } from './CoachView';
 import { LoadingFallback } from './LoadingFallback';
+import { PremiumGate } from '../premium/PremiumGate'; // KİLİT SİSTEMİ EKLENDİ
 
 const AdminPanel = React.lazy(() => import('../AdminPanel'));
 const BolgemView = React.lazy(() => import('../BolgemView'));
@@ -205,7 +206,14 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
           logout={navigation.logout}
         />
       )}
-      {navigation.activeTab === 'koc' && <CoachView />}
+      
+      {/* 🔥 AI KOÇ SAYFASI KİLİTLENDİ 🔥 */}
+      {navigation.activeTab === 'koc' && (
+        <PremiumGate featureKey="ai_coach">
+          <CoachView />
+        </PremiumGate>
+      )}
+
     </AnimatePresence>
   );
 };

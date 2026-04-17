@@ -17,33 +17,10 @@ import { useAICoach } from '../../hooks/useAICoach';
 import { AICoachAction } from '../../types/ai';
 
 export const AICoachPanel: React.FC = () => {
-  const { insight, isLoading, error, refetch, convertToTask, isConverting, isPremium } = useAICoach();
+  // isPremium değişkenini buradan çıkardık çünkü artık global PremiumGate kullanıyoruz
+  const { insight, isLoading, error, refetch, convertToTask, isConverting } = useAICoach();
 
-  if (!isPremium) {
-    return (
-      <motion.div 
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-slate-900 rounded-[40px] p-10 text-center space-y-6 border border-slate-800 relative overflow-hidden"
-      >
-        <div className="relative z-10 space-y-6">
-          <div className="w-20 h-20 bg-orange-600 rounded-3xl mx-auto flex items-center justify-center text-white shadow-2xl shadow-orange-600/20">
-            <Lock size={40} />
-          </div>
-          <div className="space-y-2">
-            <h2 className="text-2xl font-bold text-white tracking-tight">AI Koç Modülü Kilitli</h2>
-            <p className="text-slate-400 text-sm max-w-xs mx-auto">
-              AI Koç'tan stratejik öneriler almak için en az Professional (Level 2) seviyesine ulaşmalısın.
-            </p>
-          </div>
-          <button className="px-8 py-4 bg-white text-slate-900 rounded-2xl font-bold text-sm hover:bg-slate-100 transition-colors">
-            Seviye Atla & Kilidi Aç
-          </button>
-        </div>
-        <div className="absolute top-0 right-0 w-64 h-64 bg-orange-600/10 rounded-full -mr-32 -mt-32 blur-3xl" />
-      </motion.div>
-    );
-  }
+  // 🔥 ESKİ "LEVEL 2" KİLİT EKRANI BURADAN TAMAMEN SİLİNDİ 🔥
 
   if (isLoading) {
     return (

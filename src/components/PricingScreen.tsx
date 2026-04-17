@@ -1,111 +1,184 @@
-import React, { useEffect } from 'react';
-import { LogOut, ShieldCheck, Zap } from 'lucide-react';
+import React, { useEffect, useState } from 'react';
+import { motion } from 'motion/react';
+import { LogOut, ShieldCheck, Zap, CheckCircle2, Building2, Crown, Sparkles, ArrowRight, Briefcase } from 'lucide-react';
 import { useAuth } from '../AuthContext';
+import { supabase } from '../lib/supabase';
 
 export const PricingScreen = () => {
   const { subscribe, logout, isSubscribing } = useAuth();
   
-  // Safety check: if we are in a popup, try to signal success and close
+  const [packages, setPackages] = useState<any[]>([]);
+  const [selectedDuration, setSelectedDuration] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+
   useEffect(() => {
-    const isPopup = window.location.search.includes('popup=true') || 
-                   window.location.hash.includes('access_token=') ||
-                   window.name === 'oauth_popup';
-    
+    const fetchPackages = async () => {
+      const { data } = await supabase
+        .from('subscription_packages')
+        .select('*')
+        .eq('is_active', true)
+        .order('price_numeric', { ascending: true }); // Fiyata göre sırala (0, 999, 2499...)
+      
+      if (data) {
+        setPackages(data);
+        const masterOptions = data.filter(p => p.tier !== 'free');
+        if (masterOptions.length > 1) {
+          setSelectedDuration(masterOptions[1]); // Varsayılan olarak 2. sıradakini (3 Aylık) seç
+        } else if (masterOptions.length > 0) {
+          setSelectedDuration(masterOptions[0]);
+        }
+      }
+      setLoading(false);
+    };
+    fetchPackages();
+  }, []);
+
+  useEffect(() => {
+    const isPopup = window.location.search.includes('popup=true') || window.location.hash.includes('access_token=') || window.name === 'oauth_popup';
     if (isPopup) {
       localStorage.setItem('oauth_success', Date.now().toString());
-      if (window.opener) {
-        window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, '*');
-      }
+      if (window.opener) window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, '*');
       setTimeout(() => window.close(), 1000);
     }
   }, []);
 
-  const [showManualMessage, setShowManualMessage] = React.useState(false);
-
-  const plans = [
-    { id: '1-month', name: '1 Aylık', price: '₺299', months: 1 },
-    { id: '3-month', name: '3 Aylık', price: '₺799', months: 3, popular: true },
-    { id: '6-month', name: '6 Aylık', price: '₺1.499', months: 6 },
-    { id: '12-month', name: '12 Aylık', price: '₺2.499', months: 12 },
-  ];
-
-  const handlePaidPlanClick = () => {
-    setShowManualMessage(true);
-    setTimeout(() => setShowManualMessage(false), 5000);
-  };
+  const freePkg = packages.find(p => p.tier === 'free');
+  const masterOptions = packages.filter(p => p.tier !== 'free');
 
   return (
-    <div className="min-h-screen bg-slate-50 p-6 pb-12">
-      <div className="flex justify-between items-center mb-8">
-        <h1 className="text-2xl font-bold text-slate-900">Üyelik Planları</h1>
-        <button onClick={logout} className="p-2 text-slate-400"><LogOut size={20} /></button>
-      </div>
-      
-      <div className="bg-orange-600 rounded-[32px] p-6 text-white mb-8 shadow-xl shadow-orange-200">
-        <ShieldCheck size={32} className="mb-4 opacity-80" />
-        <h2 className="text-xl font-bold mb-2">Profesyonel Araçlara Erişin</h2>
-        <p className="text-orange-100 text-sm leading-relaxed">
-          Saha takibi, CRM ve performans analizlerini kullanmak için bir üyelik planı seçin.
-        </p>
-      </div>
-
-      {showManualMessage && (
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-2xl text-blue-700 text-sm font-medium animate-in fade-in slide-in-from-top-2">
-          Ücretli planlar şu an sadece manuel aktivasyon ile sunulmaktadır. Lütfen destek ekibimizle iletişime geçin.
+    <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-orange-100">
+      <header className="px-6 py-6 flex justify-between items-center bg-white border-b border-slate-100 z-10 sticky top-0">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 bg-gradient-to-tr from-[#FF3D00] to-[#FF9100] rounded-xl flex items-center justify-center shadow-lg shadow-orange-200">
+            <Building2 size={20} className="text-white" />
+          </div>
+          <span className="text-2xl font-black italic font-logo text-transparent bg-clip-text bg-gradient-to-r from-[#FF3D00] to-[#FF9100] tracking-wide">Portfy</span>
         </div>
-      )}
+        <button onClick={logout} className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors">
+          <LogOut size={16} /> <span className="hidden sm:inline">Çıkış Yap</span>
+        </button>
+      </header>
 
-      <div className="space-y-4">
-        {plans.map((plan) => (
-          <button 
-            key={plan.id}
-            onClick={handlePaidPlanClick}
-            className={`w-full p-5 rounded-[28px] border-2 text-left transition-all relative overflow-hidden ${
-              plan.popular ? 'border-orange-600 bg-white shadow-lg' : 'border-slate-100 bg-white'
-            }`}
-          >
-            {plan.popular && (
-              <div className="absolute top-0 right-0 bg-orange-600 text-white text-[10px] font-bold px-4 py-1 rounded-bl-xl uppercase tracking-wider">
-                En Popüler
-              </div>
-            )}
-            <div className="flex justify-between items-center">
-              <div>
-                <h3 className="font-bold text-slate-900">{plan.name}</h3>
-                <p className="text-slate-400 text-xs mt-1">Tüm özelliklere sınırsız erişim</p>
-              </div>
-              <div className="text-right">
-                <div className="text-xl font-bold text-slate-900">{plan.price}</div>
-                <div className="text-[10px] text-slate-400 uppercase font-bold">Aktivasyon Talebi</div>
-              </div>
+      <main className="flex-1 overflow-y-auto pb-20">
+        <div className="bg-slate-900 px-6 py-16 text-center relative overflow-hidden">
+          <div className="relative z-10 max-w-3xl mx-auto space-y-4">
+            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-orange-500/20 text-orange-400 border border-orange-500/20 mb-2">
+              <Sparkles size={16} /> <span className="text-xs font-bold uppercase tracking-wider">Geleceğin Emlak Asistanı</span>
+            </motion.div>
+            <motion.h1 initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="text-3xl md:text-5xl font-black text-white tracking-tight">
+              Karmaşık paketler yok. Sadece ihtiyacın olan süreyi seç.
+            </motion.h1>
+            <motion.p initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="text-slate-400 text-sm md:text-lg leading-relaxed max-w-2xl mx-auto">
+              Ücretsiz paketle hemen başla veya Master paketle yapay zekanın tam gücünü eline alıp bölgeni domine et.
+            </motion.p>
+          </div>
+          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-4xl opacity-40 pointer-events-none">
+            <div className="absolute top-0 left-1/4 w-72 h-72 bg-orange-500 rounded-full mix-blend-screen filter blur-[100px]" />
+            <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-indigo-500 rounded-full mix-blend-screen filter blur-[100px]" />
+          </div>
+        </div>
+
+        <div className="max-w-5xl mx-auto px-6 -mt-8 relative z-20">
+          {loading ? (
+            <div className="py-20 flex justify-center"><div className="w-12 h-12 border-4 border-orange-600 border-t-transparent rounded-full animate-spin" /></div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
+              
+              {/* ÜCRETSİZ PLAN */}
+              {freePkg && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-[32px] p-8 md:p-10 border border-slate-200 shadow-xl shadow-slate-200/50 flex flex-col relative">
+                  <div className="space-y-4 mb-8">
+                    <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-600 mb-6">
+                      <Briefcase size={28} />
+                    </div>
+                    <h3 className="text-2xl font-bold text-slate-900">{freePkg.name}</h3>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-5xl font-black text-slate-900">{freePkg.price_text}</span>
+                      <span className="text-slate-400 font-medium">{freePkg.interval}</span>
+                    </div>
+                    <p className="text-slate-500 font-medium">{freePkg.description}</p>
+                  </div>
+                  
+                  <ul className="space-y-4 flex-1 mb-8">
+                    {(freePkg.features || []).map((f: string, i: number) => (
+                      <FeatureItem key={i} text={f} />
+                    ))}
+                  </ul>
+                  
+                  <button onClick={() => subscribe('free')} disabled={isSubscribing} className="w-full py-4 bg-slate-100 text-slate-900 rounded-2xl font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-auto">
+                    Ücretsiz Devam Et <ArrowRight size={18} />
+                  </button>
+                </motion.div>
+              )}
+
+              {/* MASTER PLAN */}
+              {selectedDuration && (
+                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-slate-900 rounded-[32px] p-8 md:p-10 shadow-2xl shadow-slate-900/40 flex flex-col relative border border-slate-800">
+                  <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest flex items-center gap-2 shadow-lg z-20 whitespace-nowrap">
+                    <Crown size={14} /> Sınırları Kaldır
+                  </div>
+
+                  <div className="space-y-4 mb-6 mt-2">
+                    <h3 className="text-2xl font-bold text-white">Master</h3>
+                    <p className="text-slate-400 font-medium">İhtiyacın olan tüm özellikler tek pakette. Sadece süreyi seç.</p>
+                  </div>
+
+                  {/* DİNAMİK SÜRE SEÇİCİ */}
+                  <div className={`grid grid-cols-2 ${masterOptions.length > 2 ? 'lg:grid-cols-4' : ''} gap-2 bg-slate-800 p-1.5 rounded-2xl mb-8`}>
+                    {masterOptions.map((opt) => (
+                      <button
+                        key={opt.id}
+                        onClick={() => setSelectedDuration(opt)}
+                        className={`relative py-2.5 rounded-xl text-xs font-bold transition-all flex flex-col items-center justify-center gap-1 ${selectedDuration.id === opt.id ? 'bg-indigo-500 text-white shadow-md' : 'text-slate-400 hover:text-white hover:bg-slate-700/50'}`}
+                      >
+                        {opt.badge && selectedDuration.id !== opt.id && (
+                          <span className="absolute -top-2.5 right-0 bg-orange-500 text-white text-[8px] px-1.5 py-0.5 rounded-full z-10">{opt.badge}</span>
+                        )}
+                        <span>{opt.name}</span>
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex items-baseline gap-1 mb-8 transition-all">
+                    <span className="text-5xl font-black text-white">{selectedDuration.price_text}</span>
+                    <span className="text-slate-400 font-medium">{selectedDuration.interval}</span>
+                  </div>
+                  
+                  <ul className="space-y-4 flex-1 mb-8">
+                    <li className="flex items-center gap-3 text-sm font-bold text-white border-b border-slate-800 pb-3 mb-1">
+                      <Sparkles size={18} className="text-indigo-400" /> Başlangıçtaki her şey, artı:
+                    </li>
+                    {(selectedDuration.features || []).map((f: string, i: number) => (
+                      <FeatureItem key={i} text={f} dark />
+                    ))}
+                  </ul>
+                  
+                  <button onClick={() => subscribe('trial')} disabled={isSubscribing} className="w-full py-4 bg-indigo-600 text-white rounded-2xl font-bold hover:bg-indigo-700 transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-auto">
+                    7 Gün Ücretsiz Dene <ArrowRight size={18} />
+                  </button>
+                </motion.div>
+              )}
+
             </div>
-          </button>
-        ))}
+          )}
 
-        <div className="pt-4 border-t border-slate-200">
-          <p className="text-xs text-slate-500 mb-3 font-medium text-center">Henüz karar vermediniz mi?</p>
-          <button 
-            onClick={() => subscribe('trial')}
-            disabled={isSubscribing}
-            className="w-full p-5 rounded-[28px] bg-slate-900 text-white font-bold text-sm hover:bg-slate-800 transition-all shadow-lg shadow-slate-200 flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isSubscribing ? (
-              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-            ) : (
-              <>
-                <Zap size={18} className="text-orange-400 fill-orange-400" />
-                7 Gün Ücretsiz Dene
-              </>
-            )}
-          </button>
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="mt-10 text-center pb-8">
+            <p className="text-xs text-slate-500 font-medium flex items-center justify-center gap-2">
+              <ShieldCheck size={16} className="text-emerald-500" /> 
+              Master paket için kredi kartı gerekmeden anında 7 günlük deneme sürümü başlatılır.
+            </p>
+          </motion.div>
         </div>
-      </div>
-
-      <p className="text-center text-slate-400 text-[10px] mt-8 px-8">
-        Deneme süreniz anında aktif olur. Ücretli plan aktivasyonları için lütfen destek ekibimizle iletişime geçin.
-      </p>
+      </main>
     </div>
   );
 };
+
+const FeatureItem = ({ text, dark = false }: { text: string, dark?: boolean }) => (
+  <li className={`flex items-start gap-3 text-sm font-medium ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
+    <CheckCircle2 size={18} className={`shrink-0 mt-0.5 ${dark ? 'text-indigo-400' : 'text-emerald-500'}`} />
+    <span>{text}</span>
+  </li>
+);
 
 export default PricingScreen;

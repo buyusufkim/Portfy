@@ -3,7 +3,7 @@ import { TokenUsageAlert } from './TokenUsageAlert.tsx';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Building2, Sparkles, Trophy, Zap, CheckCircle2, 
-  RefreshCw, Circle, Moon, ArrowRight, AlertCircle, ClipboardList
+  RefreshCw, Circle, Moon, ArrowRight, AlertCircle, ClipboardList, Lock
 } from 'lucide-react';
 import { Card, Badge, Skeleton } from './UI';
 import { RevenueOverview } from './revenue/RevenueOverview';
@@ -12,6 +12,8 @@ import { QUERY_KEYS } from '../constants/queryKeys';
 import { UserProfile, GamifiedTask, Property, Task, PersonalTask, RescueSession, UserStats, CoachInsight, MutationResult } from '../types';
 import { RevenueStats } from '../types/revenue';
 import { QueryClient } from '@tanstack/react-query';
+import { useFeatureAccess } from '../hooks/useFeatureAccess';
+import { UpgradeModal } from './premium/UpgradeModal';
 
 interface DashboardViewProps {
   profile: UserProfile | null;
@@ -56,6 +58,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 }) => {
   const [dashboardTab, setDashboardTab] = useState<'action' | 'analysis'>('action');
   
+  // Premium Erişim Kontrolleri
+  const { hasAccess, subscribe } = useFeatureAccess();
+  const canUseAiCoach = hasAccess('ai_coach');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
   const potentialRevenue = (properties || []).reduce((acc, p) => {
     if (['Satıldı', 'Pasif'].includes(p.status)) return acc;
     return acc + (((p.price || 0) * (p.commission_rate || 0)) / 100) * (p.sale_probability || 0.5);
@@ -103,7 +110,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       animate={{ opacity: 1, y: 0 }}
       className="p-4 md:p-6 space-y-6 md:space-y-8 pb-32"
     >
-      {/* Header */}
       <header className="flex justify-between items-center">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-gradient-to-tr from-[#FF3D00] to-[#FF9100] rounded-xl flex items-center justify-center shadow-lg shadow-orange-200">
@@ -114,7 +120,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Bölge Hakimiyeti</p>
           </div>
         </div>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
             <div className="text-xs font-bold text-slate-900">{profile?.display_name}</div>
@@ -127,13 +132,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
           </div>
         </div>
-     </div>
       </header>
 
-      {/* AI LİMİT UYARISI BURAYA, HEADER'IN HEMEN ALTINA GELDİ */}
       <TokenUsageAlert />
-
-      {/* Day Start Module - Removed per user request */}
 
       {isDayStarted && isDayEnded && (
         <Card className="p-6 bg-slate-50 border-slate-200 border-dashed">
@@ -149,7 +150,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </Card>
       )}
 
-      {/* Dashboard Tabs */}
       <div className="flex p-1 bg-slate-100 rounded-2xl">
         <button 
           onClick={() => setDashboardTab('action')}
@@ -174,31 +174,71 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             exit={{ opacity: 0, x: 10 }}
             className="space-y-8"
           >
-            {/* AI Coach & Momentum */}
             <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <Card className="p-4 md:p-6 !bg-slate-900 !text-white border-none overflow-hidden relative md:col-span-2">
+              
+              {/* 🔥 MÜKEMMEL, SADE, YENİ AI KOÇ KART KİLİDİ 🔥 */}
+              <Card 
+                onClick={() => {
+                  if (!canUseAiCoach) {
+                    setShowUpgradeModal(true);
+                  } else {
+                    setActiveTab('koc');
+                  }
+                }}
+                className="p-4 md:p-6 !bg-slate-900 !text-white border-none overflow-hidden relative md:col-span-2 shadow-2xl cursor-pointer group"
+              >
                 <div className="relative z-10 flex items-center gap-4 md:gap-6">
-                  <div className="relative w-20 h-20 shrink-0">
+                  {/* Momentum Halkası - Her Halükarda Görünür */}
+                  <div className="relative w-16 h-16 shrink-0 md:w-20 md:h-20">
                     <svg className="w-full h-full" viewBox="0 0 36 36">
                       <path className="text-slate-800 stroke-current" strokeWidth="3" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                       <path className={`${gamifiedStats?.momentum && gamifiedStats.momentum < 40 ? 'text-red-500' : gamifiedStats?.momentum && gamifiedStats.momentum < 70 ? 'text-amber-500' : 'text-emerald-500'} stroke-current`} strokeWidth="3" strokeDasharray={`${gamifiedStats?.momentum || 0}, 100`} strokeLinecap="round" fill="none" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
                     </svg>
                     <div className="absolute inset-0 flex items-center justify-center flex-col">
-                      <span className="text-xl font-bold text-white">{gamifiedStats?.momentum || 0}</span>
-                      <span className="text-[8px] uppercase font-bold text-slate-400">Momentum</span>
+                      <span className="text-lg md:text-xl font-bold text-white">{gamifiedStats?.momentum || 0}</span>
+                      <span className="text-[7px] md:text-[8px] uppercase font-bold text-slate-400">Momentum</span>
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <div className="flex items-center gap-2 text-orange-500">
-                      <Sparkles size={16} />
-                      <span className="text-[10px] font-bold uppercase tracking-widest">AI Koç Önerisi</span>
+                  
+                  {/* Sağ Taraf - Yazı Bölümü */}
+                  <div className="space-y-2 flex-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 text-orange-500">
+                        <Sparkles size={14} className="md:size-16" />
+                        <span className="text-[9px] md:text-[10px] font-bold uppercase tracking-widest">AI Koç Önerisi</span>
+                      </div>
+                      {/* Ücretsiz Üyeler İçin Minik Kilit */}
+                      {!canUseAiCoach && (
+                        <div className="flex items-center gap-1 bg-white/10 px-2 py-1 rounded text-white/50 group-hover:text-white transition-colors">
+                          <Lock size={10} />
+                          <span className="text-[8px] uppercase font-bold tracking-wider">Kilitli</span>
+                        </div>
+                      )}
                     </div>
-                    <div className="text-sm font-bold leading-relaxed text-white italic">
-                      {coachInsights?.daily_tip ? `"${coachInsights.daily_tip}"` : <Skeleton className="h-4 w-48 bg-white/20" />}
+                    
+                    <div className="relative">
+                       {canUseAiCoach ? (
+                         <div className="text-sm font-bold leading-relaxed text-white italic line-clamp-2">
+                           {coachInsights?.daily_tip ? `"${coachInsights.daily_tip}"` : <Skeleton className="h-4 w-full bg-white/10" />}
+                         </div>
+                       ) : (
+                         <div className="text-sm font-bold leading-relaxed text-white/30 italic blur-[3px] select-none line-clamp-2">
+                           Yapay zeka asistanınız bugün kime odaklanmanız gerektiğini analiz etti. Görmek için tıklayın...
+                         </div>
+                       )}
+                       
+                       {/* Ücretsiz Üyeler İçin Yazı Üstünde Çıkan Buton */}
+                       {!canUseAiCoach && (
+                         <div className="absolute inset-0 flex items-center justify-start">
+                            <div className="flex items-center gap-1.5 text-xs font-bold text-orange-400 bg-slate-900/90 px-3 py-1.5 rounded-lg border border-orange-500/20 shadow-xl group-hover:bg-slate-800 transition-colors">
+                              Planı Yükselt
+                            </div>
+                         </div>
+                       )}
                     </div>
                   </div>
                 </div>
-                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/20 rounded-full -mr-16 -mt-16 blur-3xl" />
+                <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full -mr-16 -mt-16 blur-3xl" />
               </Card>
 
               <Card className="p-4 md:p-6 !bg-orange-600 !text-white border-none shadow-lg shadow-orange-200">
@@ -228,12 +268,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </Card>
             </section>
 
-            {/* Rescue Mode Trigger Card */}
             {(() => {
               const currentHour = new Date().getHours();
               const isLowProgress = (gamifiedStats?.daily_progress || 0) < 40;
               const canRescue = currentHour >= 15 && isLowProgress && !rescueSession;
-              
               if (!canRescue) return null;
 
               return (
@@ -261,7 +299,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               );
             })()}
 
-            {/* Smart Insights Section */}
             <section className="space-y-4">
               <h2 className="text-lg font-bold text-slate-900">Akıllı Öneriler</h2>
               {(properties || []).some(p => p.market_analysis?.status === 'Pahalı' && p.status === 'Yayında') ? (
@@ -293,7 +330,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               )}
             </section>
 
-            {/* Daily Tasks List */}
             <section className="space-y-4">
               <div className="flex justify-between items-center px-1">
                 <h2 className="text-lg font-bold text-slate-900 tracking-tight">Günün Görevleri</h2>
@@ -408,7 +444,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                 )}
 
-                {/* Completed Tasks Summary */}
                 {(gamifiedTasks || []).filter(t => t.is_completed).length > 0 && (
                   <div className="mt-6 space-y-3">
                     <div className="flex items-center justify-between px-1">
@@ -440,7 +475,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </section>
 
-            {/* Day Closer Trigger */}
             {isDayStarted && !isDayEnded && (
               <section className="pt-4">
                 <motion.button 
@@ -477,7 +511,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             exit={{ opacity: 0, x: -10 }}
             className="space-y-8"
           >
-            {/* Revenue Overview */}
             <section className="space-y-4">
               <div className="flex justify-between items-center">
                 <h2 className="text-lg font-bold text-slate-900 tracking-tight">Gelir Görünümü</h2>
@@ -486,13 +519,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               {revenueStats && <RevenueOverview stats={revenueStats} loading={revenueLoading} />}
             </section>
 
-            {/* Pipeline Funnel */}
             <section className="space-y-4">
               <PipelineFunnel properties={properties || []} />
             </section>
           </motion.div>
         )}
       </AnimatePresence>
+      
+      {/* Gerçek Upgrade Modal Çağrısı */}
+      <UpgradeModal 
+        isOpen={showUpgradeModal} 
+        onClose={() => setShowUpgradeModal(false)}
+        onSelectPlan={(tier) => console.log('Plan seçildi:', tier)}
+        onActivateTrial={async () => {
+          try {
+            await subscribe('trial');
+            setShowUpgradeModal(false);
+          } catch (e) {
+            console.error("Deneme sürümü başlatılırken hata:", e);
+          }
+        }}
+      />
     </motion.div>
   );
 };

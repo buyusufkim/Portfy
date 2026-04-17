@@ -71,59 +71,19 @@ export const DesktopSidebar = ({
     </div>
     
     <div className="space-y-2 flex-1">
-      <SidebarLink 
-        icon={<LayoutDashboard size={20} />} 
-        label="Dashboard" 
-        active={activeTab === 'dashboard' && !showAdminPanel} 
-        onClick={() => onTabChange('dashboard')} 
-      />
-      <SidebarLink 
-        icon={<MapIcon size={20} />} 
-        label="Bölgem" 
-        active={activeTab === 'bolgem' && !showAdminPanel} 
-        onClick={() => onTabChange('bolgem')} 
-      />
-      <SidebarLink 
-        icon={<Briefcase size={20} />} 
-        label="Portföyler" 
-        active={activeTab === 'portfoyler' && !showAdminPanel} 
-        onClick={() => onTabChange('portfoyler')} 
-      />
-      <SidebarLink 
-        icon={<Users size={20} />} 
-        label="CRM" 
-        active={activeTab === 'crm' && !showAdminPanel} 
-        onClick={() => onTabChange('crm')} 
-      />
-      <SidebarLink 
-        icon={<MessageSquare size={20} />} 
-        label="Notlar" 
-        active={activeTab === 'notes' && !showAdminPanel} 
-        onClick={() => onTabChange('notes')} 
-      />
-      <SidebarLink 
-        icon={<Brain size={20} />} 
-        label="AI Koç" 
-        active={activeTab === 'koc' && !showAdminPanel} 
-        onClick={() => onTabChange('koc')} 
-      />
+      <SidebarLink icon={<LayoutDashboard size={20} />} label="Dashboard" active={activeTab === 'dashboard' && !showAdminPanel} onClick={() => onTabChange('dashboard')} />
+      <SidebarLink icon={<MapIcon size={20} />} label="Bölgem" active={activeTab === 'bolgem' && !showAdminPanel} onClick={() => onTabChange('bolgem')} />
+      <SidebarLink icon={<Briefcase size={20} />} label="Portföyler" active={activeTab === 'portfoyler' && !showAdminPanel} onClick={() => onTabChange('portfoyler')} />
+      <SidebarLink icon={<Users size={20} />} label="CRM" active={activeTab === 'crm' && !showAdminPanel} onClick={() => onTabChange('crm')} />
+      <SidebarLink icon={<MessageSquare size={20} />} label="Notlar" active={activeTab === 'notes' && !showAdminPanel} onClick={() => onTabChange('notes')} />
+      <SidebarLink icon={<Brain size={20} />} label="AI Koç" active={activeTab === 'koc' && !showAdminPanel} onClick={() => onTabChange('koc')} />
     </div>
 
     <div className="pt-6 border-t border-slate-100">
       {profile?.role === 'admin' && (
-        <SidebarLink 
-          icon={<ShieldCheck size={20} />} 
-          label="Admin Paneli" 
-          active={showAdminPanel} 
-          onClick={onAdminClick} 
-        />
+        <SidebarLink icon={<ShieldCheck size={20} />} label="Admin Paneli" active={showAdminPanel} onClick={onAdminClick} />
       )}
-      <SidebarLink 
-        icon={<UserIcon size={20} />} 
-        label="Profilim" 
-        active={activeTab === 'profil' && !showAdminPanel} 
-        onClick={() => onTabChange('profil')} 
-      />
+      <SidebarLink icon={<UserIcon size={20} />} label="Profilim" active={activeTab === 'profil' && !showAdminPanel} onClick={() => onTabChange('profil')} />
     </div>
   </aside>
 );
@@ -135,44 +95,20 @@ export const MobileNav = ({
   onTabChange, 
   onAdminClick 
 }: NavigationProps) => (
-  <nav id="bottom-nav" className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-slate-100 px-6 py-4 flex justify-between items-center z-40 pb-safe">
-    <NavButton 
-      id="nav-dashboard"
-      icon={<LayoutDashboard size={24} />} 
-      active={activeTab === 'dashboard' && !showAdminPanel} 
-      onClick={() => onTabChange('dashboard')} 
-    />
-    <NavButton 
-      id="nav-map"
-      icon={<MapIcon size={24} />} 
-      active={activeTab === 'bolgem' && !showAdminPanel} 
-      onClick={() => onTabChange('bolgem')} 
-    />
-    <NavButton 
-      id="nav-portfolio"
-      icon={<Briefcase size={24} />} 
-      active={activeTab === 'portfoyler' && !showAdminPanel} 
-      onClick={() => onTabChange('portfoyler')} 
-    />
-    <NavButton 
-      id="nav-crm"
-      icon={<Users size={24} />} 
-      active={activeTab === 'crm' && !showAdminPanel} 
-      onClick={() => onTabChange('crm')} 
-    />
-    <NavButton 
-      id="nav-notes"
-      icon={<MessageSquare size={24} />} 
-      active={activeTab === 'notes' && !showAdminPanel} 
-      onClick={() => onTabChange('notes')} 
-    />
-    {profile?.role === 'admin' && (
-      <NavButton 
-        id="nav-admin"
-        icon={<ShieldCheck size={24} />} 
-        active={showAdminPanel} 
-        onClick={onAdminClick} 
-      />
+  // Mobilde ikonların yan yana sığması için paddingleri kısıp ikonları size={22} yaptık
+  <nav id="bottom-nav" className="md:hidden fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-slate-100 px-4 py-4 flex justify-between items-center z-40 pb-safe">
+    <NavButton id="nav-dashboard" icon={<LayoutDashboard size={22} />} active={activeTab === 'dashboard' && !showAdminPanel} onClick={() => onTabChange('dashboard')} />
+    <NavButton id="nav-map" icon={<MapIcon size={22} />} active={activeTab === 'bolgem' && !showAdminPanel} onClick={() => onTabChange('bolgem')} />
+    <NavButton id="nav-portfolio" icon={<Briefcase size={22} />} active={activeTab === 'portfoyler' && !showAdminPanel} onClick={() => onTabChange('portfoyler')} />
+    <NavButton id="nav-crm" icon={<Users size={22} />} active={activeTab === 'crm' && !showAdminPanel} onClick={() => onTabChange('crm')} />
+    
+    {/* 🔥 EKSİK OLAN AI KOÇ BUTONU BURAYA GELDİ 🔥 */}
+    <NavButton id="nav-coach" icon={<Brain size={22} />} active={activeTab === 'koc' && !showAdminPanel} onClick={() => onTabChange('koc')} />
+    
+    {profile?.role === 'admin' ? (
+      <NavButton id="nav-admin" icon={<ShieldCheck size={22} />} active={showAdminPanel} onClick={onAdminClick} />
+    ) : (
+      <NavButton id="nav-notes" icon={<MessageSquare size={22} />} active={activeTab === 'notes' && !showAdminPanel} onClick={() => onTabChange('notes')} />
     )}
   </nav>
 );

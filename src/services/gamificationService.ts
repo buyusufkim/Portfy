@@ -3,6 +3,14 @@ import { supabase } from '../lib/supabase';
 import { getUserId, getTodayStr } from './core/utils';
 import { leadService } from './leadService';
 
+// GMT+3 (Türkiye) saatiyle bugünün tarihini (YYYY-MM-DD) net olarak alır
+const getTurkishTodayStr = () => {
+  const d = new Date();
+  const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
+  const nd = new Date(utc + (3600000 * 3));
+  return nd.toISOString().split('T')[0];
+};
+
 export const gamificationService = {
   earnXP: async (actionType: string, ids: { taskId?: string, leadId?: string, propertyId?: string, sessionId?: string } = {}, stats?: any) => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -31,7 +39,7 @@ export const gamificationService = {
       
       const { data: profile } = await supabase
         .from('profiles')
-        .select('uid')
+        .select('*')
         .eq('uid', agentId)
         .maybeSingle();
       
@@ -44,7 +52,58 @@ export const gamificationService = {
         });
       }
       
-      const today = getTodayStr();
+      const today = getTurkishTodayStr();
+
+      // 🔥 OTOMATİK SERİ (STREAK), GÜNLÜK GİRİŞ VE CEZA KONTROLÜ 🔥
+      if (profile && profile.last_active_date !== today) {
+        const lastActiveDateStr = profile.last_active_date;
+        let newStreak = profile.current_streak || 0;
+        let newTotalXp = profile.total_xp || 0;
+        
+        if (lastActiveDateStr) {
+          const lastActiveDate = new Date(lastActiveDateStr);
+          const todayDate = new Date(today);
+          const diffTime = Math.abs(todayDate.getTime() - lastActiveDate.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          if (diffDays === 1) {
+            newStreak += 1; // Dün de girmiş, seriyi bozmadan devam et
+          } else if (diffDays > 1) {
+            newStreak = 1; // Dün girmemiş, seri bozuldu, baştan başla
+          }
+
+          // 🔥 GÜNÜ KAPATMAMA CEZASI 🔥
+          // last_ritual_completed_at değerinin sadece tarih kısmını (YYYY-MM-DD) alıp kontrol ediyoruz
+          const lastClosedDateStr = profile.last_ritual_completed_at ? profile.last_ritual_completed_at.substring(0, 10) : null;
+          
+          if (lastClosedDateStr !== lastActiveDateStr) {
+             // Kullanıcı en son aktif olduğu gün 'Günü Kapat' butonuna basmamış!
+             newTotalXp = Math.max(0, newTotalXp - 50); // Puanı 50 düşür (0'ın altına inmemesini sağla)
+             
+             // Kullanıcıya ceza yediğini bildiren ve Dashboard'da görünecek bir "Eksi" kayıt ekliyoruz
+             await supabase.from('gamified_tasks').insert({
+                agent_id: agentId,
+                title: `Günü Kapatmama Cezası`,
+                points: -50,
+                category: 'main',
+                is_completed: true,
+                date: today,
+                ai_reason: "Dün 00:00'dan önce Günü Kapatmadığın için -50 XP ceza aldın. Serini korumak için gün sonu kapanışını unutma!"
+             });
+          }
+
+        } else {
+          newStreak = 1; // İlk defa giriyor
+        }
+
+        // Arka planda profili sessizce yeni XP, Seri ve Tarih ile güncelle
+        await supabase.from('profiles').update({
+          last_active_date: today,
+          current_streak: newStreak,
+          total_xp: newTotalXp
+        }).eq('uid', agentId);
+      }
+
       const { data: existingTasksData } = await supabase
         .from('gamified_tasks')
         .select('*')
@@ -171,12 +230,17 @@ export const gamificationService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
     const agentId = user.id;
-    const today = getTodayStr();
+    const today = getTurkishTodayStr();
 
     if (task.is_completed) return { verified: true };
 
     try {
       const title = task.title.toLowerCase();
+
+      // 🔥 KUSURSUZ ÇÖZÜM: Giriş Görevi Asla Hata Vermez
+      if (title.includes("peş peşe girişini sürdür")) {
+        return { verified: true }; // Zaten butona basabiliyorsa uygulamaya girmiştir!
+      }
 
       // 🔥 1. DOĞRUDAN ONAYLANAN MANUEL GÖREVLER
       if (
@@ -195,11 +259,9 @@ export const gamificationService = {
       }
 
       // 🔥 2. "NASIL YAPILIR?" YÖNLENDİRMELİ SİSTEM GÖREVLERİ
-
       if (title.includes("cevapsız mesaj") || title.includes("müşteriye dönüş yap")) {
         const { data: leads } = await supabase.from('leads').select('id').eq('agent_id', agentId).gte('last_contact', today);
         if (leads && leads.length >= 1) return { verified: true };
-        // YÖNLENDİRİCİ MESAJ EKLENDİ
         return { verified: false, message: "Bu görevi tamamlamak için CRM (Adaylar) ekranına gidip, bir müşterinin detayına yeni bir not veya görüşme kaydetmelisin." };
       }
 
@@ -254,12 +316,6 @@ export const gamificationService = {
         return { verified: false, message: "Bu görevi tamamlamak için CRM üzerinden iletişimde olmadığın bir müşteriye 'Arama' kaydı girmelisin." };
       }
 
-      if (title.includes("peş peşe girişini sürdür")) {
-        const { data: profile } = await supabase.from('profiles').select('current_streak').eq('uid', agentId).maybeSingle();
-        if (profile && profile.current_streak > 0) return { verified: true };
-        return { verified: false, message: "Seri görevini onaylamak için Dashboard'da 'Günü Başlat' butonuna tıklamalısın." };
-      }
-
       // Güvenlik Ağı: Sweet kategorisi
       if (task.category === 'sweet') {
          return { verified: true };
@@ -271,6 +327,7 @@ export const gamificationService = {
       return { verified: false, message: "Sistemde anlık bir doğrulama hatası oluştu, lütfen sayfayı yenileyin." };
     }
   },
+  
   updateGamifiedTask: async (taskId: string, data: Partial<GamifiedTask>) => {
     const dbData: any = {};
     if (data.is_completed !== undefined) dbData.is_completed = data.is_completed;
@@ -293,7 +350,7 @@ export const gamificationService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
     const agentId = user.id;
-    const today = getTodayStr();
+    const today = getTurkishTodayStr();
 
     const { data: profile } = await supabase.from('profiles').select('*').eq('uid', agentId).maybeSingle();
     const points = profile ? (profile.total_xp || 0) : 0;
@@ -320,7 +377,6 @@ export const gamificationService = {
     const mainCompletionRate = mainTasks.length > 0 ? (mainTasks.filter(t => t.is_completed).length / mainTasks.length) : 0;
     
     let streak = profile ? (profile.current_streak || 0) : 0;
-    const lastActiveDate = profile ? profile.last_active_date : null;
     
     const streakEffect = streak > 0 ? 20 : 0;
     const momentum = Math.round((completionRate * 50) + (mainCompletionRate * 30) + streakEffect);
