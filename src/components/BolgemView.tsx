@@ -89,8 +89,8 @@ export const BolgemView = ({
   }, [profile]);
 
   const [mapCenter, setMapCenter] = useState(defaultCenter);
-const [mapZoom, setMapZoom] = useState(13); // İlk açılışta çok yakından girmesin
-
+  const [mapZoom, setMapZoom] = useState(13); // İlk açılışta çok yakından girmesin
+  const [hasGeocoded, setHasGeocoded] = useState(false); // Geocoding'in sürekli çalışmasını engellemek için
   const [showAddPin, setShowAddPin] = useState(false);
   const [newPinData, setNewPinData] = useState({
     title: '',
@@ -111,33 +111,31 @@ const [mapZoom, setMapZoom] = useState(13); // İlk açılışta çok yakından 
 
   // Geocode region if coordinates are default
   useEffect(() => {
-  if (isLoaded && profile?.region?.city && profile?.region?.district) {
-    const geocoder = new window.google.maps.Geocoder();
-    // locationService'den adresi formatla (Örn: "Talas, Kayseri, Türkiye")
-    const addressToGeocode = locationService.getGeocodeAddressString(profile.region.city, profile.region.district);
-
-    if (addressToGeocode) {
-      geocoder.geocode({ address: addressToGeocode }, (results, status) => {
-        if (status === 'OK' && results && results[0]) {
-          const loc = results[0].geometry.location.toJSON();
-          
-          // Eğer haritada hiç pin yoksa, doğrudan o ilçeye uç.
-          // (Eğer pin varsa, useEffect zaten pinlerin olduğu alana zoom (fitBounds) yapacak)
-          if (pins.length === 0) {
+    if (isLoaded && profile?.region?.city && profile?.region?.district && !hasGeocoded) {
+      const addressToGeocode = locationService.getGeocodeAddressString(
+        profile.region.city, 
+        profile.region.district, 
+        profile.region.neighborhoods?.[0]
+      );
+      
+      if (addressToGeocode) {
+        const geocoder = new window.google.maps.Geocoder();
+        geocoder.geocode({ address: addressToGeocode }, (results, status) => {
+          if (status === 'OK' && results && results[0]) {
+            const loc = results[0].geometry.location.toJSON();
             setMapCenter(loc);
-            setMapZoom(14); // İlçe görünecek kadar zoom
-            if (map) {
+            // Sadece ilk yüklemede ve pin yoksa merkezi manuel ayarla
+            // Pin varsa aşağıdaki useEffect zaten fitBounds ile odaklanacak
+            if (map && pins.length === 0) {
               map.setCenter(loc);
               map.setZoom(14);
             }
+            setHasGeocoded(true); // Bir daha gereksiz istek atma
           }
-        } else {
-          console.warn("Geocoding failed for user region:", addressToGeocode);
-        }
-      });
+        });
+      }
     }
-  }
-}, [profile?.region, isLoaded, pins.length, map]);
+  }, [profile?.region, isLoaded, map, hasGeocoded, pins.length]);
 
   const onMapLoad = (mapInstance: google.maps.Map) => {
     setMap(mapInstance);
@@ -157,22 +155,29 @@ const [mapZoom, setMapZoom] = useState(13); // İlk açılışta çok yakından 
 
   // Auto-focus on filtered pins
   useEffect(() => {
-    if (map && (filteredPins || []).length > 0 && search.trim().length > 0) {
+    if (map && (filteredPins || []).length > 0) {
       const bounds = new window.google.maps.LatLngBounds();
+      let hasValidPins = false;
+
       (filteredPins || []).forEach((pin: MapPinType) => {
-        bounds.extend({ lat: pin.lat, lng: pin.lng });
+        if (pin.lat && pin.lng) {
+          bounds.extend({ lat: pin.lat, lng: pin.lng });
+          hasValidPins = true;
+        }
       });
       
-      if ((filteredPins || []).length === 1) {
-        map.setCenter({ lat: filteredPins[0].lat, lng: filteredPins[0].lng });
-        map.setZoom(17);
-      } else {
-        map.fitBounds(bounds);
-        // Add some padding
-        const listener = google.maps.event.addListener(map, 'idle', () => {
-          if (map.getZoom()! > 17) map.setZoom(17);
-          google.maps.event.removeListener(listener);
-        });
+      if (hasValidPins) {
+        if ((filteredPins || []).length === 1 && search.trim().length > 0) {
+          map.setCenter({ lat: filteredPins[0].lat, lng: filteredPins[0].lng });
+          map.setZoom(17); // Tek pinde yakına gir
+        } else {
+          map.fitBounds(bounds); // Tüm pinleri ekrana sığdır
+          // Aşırı zoom yapılmasını engelle
+          const listener = google.maps.event.addListener(map, 'idle', () => {
+            if (map.getZoom()! > 16) map.setZoom(16);
+            google.maps.event.removeListener(listener);
+          });
+        }
       }
     }
   }, [filteredPins, map, search]);

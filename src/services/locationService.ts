@@ -14,8 +14,10 @@ export const locationService = {
     if (!cityCode) return [];
     return [...tn.getNeighbourhoodsByCityCodeAndDistrict(cityCode, districtName)].sort((a, b) => a.localeCompare(b, 'tr'));
   },
-  getGeocodeAddressString: (cityName: string, districtName: string) => {
+  
+  // getDistrictCoords yerine dinamik geocoding için adres formatı üretiyoruz
+  getGeocodeAddressString: (cityName: string, districtName: string, neighborhood?: string) => {
     if (!cityName || !districtName) return null;
-    return `${districtName}, ${cityName}, Türkiye`;
+    return `${neighborhood ? neighborhood + ', ' : ''}${districtName}, ${cityName}, Türkiye`;
   }
 };
