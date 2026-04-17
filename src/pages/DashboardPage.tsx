@@ -79,13 +79,20 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       if (!verified) throw new Error(message || "Görev doğrulanamadı.");
       return api.completeGamifiedTask(task.id);
     },
-    onSuccess: () => {
+    // onSuccess parametresine 'variables' ekliyoruz ki tıklanan görevin puanına ve adına ulaşabilelim
+    onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.uid] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.COACH_INSIGHTS, profile?.uid] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
-      setToast({ message: "Görev başarıyla tamamlandı!", type: 'success' });
       
+      // 🔥 İŞTE BURASI: Kendi UI kütüphanendeki bildirim sistemini XP için kullanıyoruz 🔥
+      setToast({ 
+        message: `Harika! "${variables.task.title}" tamamlandı. +${variables.task.points} XP kazandın!`, 
+        type: 'success' 
+      });
+      
+      // Zaten kurmuş olduğun harika konfeti efekti!
       confetti({
         particleCount: 100,
         spread: 70,
