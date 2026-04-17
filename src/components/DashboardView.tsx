@@ -1,17 +1,9 @@
 import React, { useState } from 'react';
+import { TokenUsageAlert } from './TokenUsageAlert.tsx';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
-  Building2, 
-  Sparkles, 
-  Trophy, 
-  Zap, 
-  CheckCircle2, 
-  RefreshCw, 
-  Circle, 
-  Moon, 
-  ArrowRight,
-  AlertCircle,
-  ClipboardList
+  Building2, Sparkles, Trophy, Zap, CheckCircle2, 
+  RefreshCw, Circle, Moon, ArrowRight, AlertCircle, ClipboardList
 } from 'lucide-react';
 import { Card, Badge, Skeleton } from './UI';
 import { RevenueOverview } from './revenue/RevenueOverview';
@@ -78,11 +70,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const localStarted = profile?.uid ? localStorage.getItem(`day_started_${profile.uid}_${todayISO}`) : null;
   const localEnded = profile?.uid ? localStorage.getItem(`day_ended_${profile.uid}_${todayISO}`) : null;
   
-  // Day is started if:
-  // 1. DB says last_day_started_at is today
-  // 2. DB says last_active_date is today (strong signal)
-  // 3. Local storage says day started today (immediate feedback)
-  // 4. Mutation just succeeded (immediate feedback before refetch)
   const isDayStarted = !!(
     (profile?.last_day_started_at && profile.last_day_started_at.startsWith(todayISO)) || 
     (profile?.last_active_date === todayISO) || 
@@ -91,9 +78,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     completeMorningRitualMutation.isSuccess
   );
   
-  // Day is ended if:
-  // 1. Local storage says day ended today
-  // 2. DB says last_ritual_completed_at is today AND it happened AFTER day start
   const dayStartTimestamp = profile?.last_day_started_at || localStarted || '';
   const isDayEnded = !!(
     localEnded || 
@@ -102,12 +86,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
      (!dayStartTimestamp || profile.last_ritual_completed_at > dayStartTimestamp))
   );
 
-  // Defensive guard: Tasks are enabled if day is started and NOT ended.
-  // We explicitly check mutation success states to ensure immediate clickability.
   const isTasksDisabled = (!isDayStarted || isDayEnded) && !startDayMutation.isSuccess && !completeMorningRitualMutation.isSuccess;
 
-  // Defensive sync: If DB says day is started but local storage is missing it, sync it.
-  // This prevents the "Günü Başlat" card from flickering or reappearing on refresh.
   React.useEffect(() => {
     if (profile?.uid && !localStarted) {
       const dbStartedToday = profile.last_day_started_at?.startsWith(todayISO) || profile.last_active_date === todayISO;
@@ -134,6 +114,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-1">Bölge Hakimiyeti</p>
           </div>
         </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="flex items-center gap-3">
           <div className="text-right hidden sm:block">
             <div className="text-xs font-bold text-slate-900">{profile?.display_name}</div>
@@ -146,7 +127,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
           </div>
         </div>
+     </div>
       </header>
+
+      {/* AI LİMİT UYARISI BURAYA, HEADER'IN HEMEN ALTINA GELDİ */}
+      <TokenUsageAlert />
 
       {/* Day Start Module - Removed per user request */}
 

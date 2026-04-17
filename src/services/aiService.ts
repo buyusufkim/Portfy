@@ -2,14 +2,50 @@ import { supabase } from '../lib/supabase';
 import { taskService } from './taskService';
 import { leadService } from './leadService';
 import { propertyService } from './propertyService';
-import { gamificationService } from './gamificationService';
 import { generateContent } from '../lib/aiClient';
 
 export const aiService = {
+  // YARDIMCI FONKSİYON: Limit kontrolü ve Token artırımı
+  checkAndIncrementUsage: async (userId: string, tokensToAdd?: number): Promise<{ canProceed: boolean, usage?: any }> => {
+    // 1. Mevcut kullanımı kontrol et
+    const { data: usage } = await supabase
+      .from('user_usage_limits')
+      .select('current_month_usage, monthly_token_limit')
+      .eq('user_id', userId)
+      .single();
+
+    // Eğer kayıt yoksa ilk defa oluşturulması için default değer varsayalım
+    const currentUsage = usage?.current_month_usage || 0;
+    const limit = usage?.monthly_token_limit || 500000;
+
+    if (currentUsage >= limit) {
+      return { canProceed: false };
+    }
+
+    // 2. Eğer tokensToAdd varsa (istek sonrası), veritabanına işle
+    if (tokensToAdd && tokensToAdd > 0) {
+      await supabase.rpc('increment_usage', {
+        uid: userId,
+        tokens_to_add: tokensToAdd
+      });
+    }
+
+    return { canProceed: true, usage };
+  },
+
   getDailyRadar: async (): Promise<{ tasks: string[], insight: string }> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
-    
+
+    // MİLLİYET KONTROLÜ (ÖNCE)
+    const { canProceed } = await aiService.checkAndIncrementUsage(user.id);
+    if (!canProceed) {
+      return {
+        tasks: ["Kullanım limitiniz doldu", "Lütfen paketinizi yükseltin", "Portfy Pro'yu inceleyin"],
+        insight: "Bu ayki AI kullanım limitinize ulaştınız. Yarın tekrar deneyebilir veya planınızı yükseltebilirsiniz."
+      };
+    }
+
     const [tasks, leads, properties] = await Promise.all([
       taskService.getTasks(),
       leadService.getLeads(),
@@ -37,7 +73,13 @@ export const aiService = {
         prompt,
         { responseMimeType: "application/json" }
       );
-      // JSON.parse(response.text) çöpe gitti!
+
+      // KULLANIMI KAYDET (SONRA)
+      // Not: generateContent fonksiyonunun döndüğü objede usageMetadata olduğunu varsayıyoruz.
+      // Eğer doğrudan metin dönüyorsa, yaklaşık bir değer (charCount / 4) de verilebilir.
+      const tokens = response.usageMetadata?.totalTokenCount || 500; 
+      await aiService.checkAndIncrementUsage(user.id, tokens);
+
       return response;
     } catch (e) {
       console.error("Daily Radar AI error", e);
@@ -49,11 +91,18 @@ export const aiService = {
   },
 
   getDashboardInsight: async (propsCount: number, leadsCount: number, disciplineScore: number): Promise<string> => {
+    const { data: { user } } = await supabase.auth.getUser();
     let aiInsight = "Bugün portföy sağlığını artırmak için 3 yeni fotoğraf ekle.";
+    
+    if (!user) return aiInsight;
+
     try {
-      const generateWithRetry = async (retries = 2): Promise<string> => {
+      // MİLLİYET KONTROLÜ
+      const { canProceed } = await aiService.checkAndIncrementUsage(user.id);
+      if (!canProceed) return "Günlük limitinize ulaştınız. Portfy yanınızda!";
+
+      const generateWithRetry = async (retries = 2): Promise<any> => {
         try {
-          // BACKEND ÇÖKMESİN DİYE ZORLA JSON İSTİYORUZ
           const prompt = `Sen bir emlak koçusun. Danışmanın verileri: ${propsCount} portföy, ${leadsCount} lead, disiplin skoru ${disciplineScore}. Bugün için tek cümlelik, çok kısa ve vurucu bir tavsiye ver. Yanıtı SADECE şu JSON formatında ver: {"tavsiye": "tavsiye metni"}`;
           
           const response: any = await generateContent(
@@ -61,8 +110,8 @@ export const aiService = {
             prompt,
             { responseMimeType: "application/json" }
           );
-          // Backend'den gelen objenin içindeki tavsiyeyi okuyoruz
-          return response.tavsiye || aiInsight;
+          
+          return response;
         } catch (error: any) {
           if (retries > 0 && error?.status === 'UNAVAILABLE') {
             await new Promise(resolve => setTimeout(resolve, 1000));
@@ -71,7 +120,14 @@ export const aiService = {
           throw error;
         }
       };
-      aiInsight = await generateWithRetry();
+
+      const aiResponse = await generateWithRetry();
+      
+      // KULLANIMI KAYDET
+      const tokens = aiResponse.usageMetadata?.totalTokenCount || 300;
+      await aiService.checkAndIncrementUsage(user.id, tokens);
+
+      return aiResponse.tavsiye || aiInsight;
     } catch (e) {
       console.warn("AI Insight temporary unavailable, using fallback.");
     }
