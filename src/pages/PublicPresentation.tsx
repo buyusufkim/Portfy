@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { MapPin, BedDouble, Bath, Maximize, Phone, Mail, Award, CheckCircle2, Building2, Sparkles } from 'lucide-react';
+import { 
+  MapPin, BedDouble, Maximize, Phone, Mail, Award, 
+  CheckCircle2, Building2, Sparkles, Image as ImageIcon,
+  X
+} from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { Property, UserProfile } from '../types';
 
@@ -8,10 +12,10 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
   const [property, setProperty] = useState<Property | null>(null);
   const [agent, setAgent] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPresentationData = async () => {
-      // İlanı Çek
       const { data: propData } = await supabase
         .from('properties')
         .select('*')
@@ -20,7 +24,6 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
 
       if (propData) {
         setProperty(propData);
-        // İlanın Sahibini (Danışmanı) Çek
         const { data: agentData } = await supabase
           .from('profiles')
           .select('*')
@@ -37,7 +40,7 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
   if (loading) {
     return (
       <div className="min-h-screen bg-slate-50 flex items-center justify-center">
-        <div className="w-12 h-12 border-4 border-orange-600 border-t-transparent rounded-full animate-spin" />
+        <div className="w-16 h-16 border-4 border-orange-600 border-t-transparent rounded-full animate-spin" />
       </div>
     );
   }
@@ -52,18 +55,43 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
     );
   }
 
-  // Güvenli varsayılan değerler
+  // Akıllı URL Çözümleyici (Fotoğraf 404 hatasını engeller)
+  const getValidImageUrl = (url?: string) => {
+    if (!url) return 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80';
+    if (url.startsWith('http') || url.startsWith('data:')) return url;
+    if (url.startsWith('/')) return url;
+    return `/${url}`;
+  };
+
   const images = property.images && property.images.length > 0 
-    ? property.images 
-    : ['https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80'];
+    ? property.images.map(getValidImageUrl) 
+    : [getValidImageUrl()];
+  
+  const locationStr = property.address 
+    ? `${property.address.neighborhood || ''}, ${property.address.district || ''}, ${property.address.city || ''}`.replace(/^, | , | ,$/g, '').trim()
+    : 'Konum Belirtilmemiş';
+
   const agentName = agent?.display_name || 'Gayrimenkul Danışmanı';
-  const agentAvatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${agent?.uid || 'agent'}`;
+  const agentAvatar = agent?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${agent?.uid || 'agent'}`;
+  
+  // WhatsApp Mesaj Şablonu
   const whatsappMsg = encodeURIComponent(`Merhaba ${agentName}, size ait olan "${property.title}" başlıklı ilanınız için ulaşıyorum. Detaylı bilgi alabilir miyim?`);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
+      
+      {/* Tam Ekran Görsel Modalı (404 Hatası Çözüldü) */}
+      {selectedImage && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/95 flex items-center justify-center p-4" onClick={() => setSelectedImage(null)}>
+          <button className="absolute top-6 right-6 text-white/50 hover:text-white bg-white/10 p-2 rounded-full backdrop-blur-sm transition-all">
+            <X size={24} />
+          </button>
+          <img src={selectedImage} alt="Büyük Görsel" className="max-w-full max-h-[90vh] object-contain rounded-xl shadow-2xl" />
+        </div>
+      )}
+
       {/* Üst Kısım: Marka ve İletişim */}
-      <header className="bg-white px-6 py-4 border-b border-slate-100 flex justify-between items-center sticky top-0 z-50">
+      <header className="bg-white px-6 py-4 border-b border-slate-100 flex justify-between items-center sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 bg-gradient-to-tr from-[#FF3D00] to-[#FF9100] rounded-lg flex items-center justify-center shadow-md">
             <Building2 size={16} className="text-white" />
@@ -72,28 +100,27 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
             Portfy
           </span>
         </div>
+        {/* 🔥 "Danışmanı Ara" Butonu düzeltildi (Artık telefon arama ekranını açar) */}
         <a 
-          href={`https://wa.me/905550000000?text=${whatsappMsg}`} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="px-4 py-2 bg-emerald-50 text-emerald-600 rounded-full text-sm font-bold flex items-center gap-2 hover:bg-emerald-100 transition-colors"
+          href={`tel:${agent?.phone || ''}`} 
+          className="px-5 py-2.5 bg-slate-900 text-white rounded-full text-sm font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20"
         >
-          <Phone size={14} /> İletişime Geç
+          <Phone size={16} /> Danışmanı Ara
         </a>
       </header>
 
-      {/* Hero Görseli */}
-      <div className="relative w-full h-[40vh] md:h-[60vh] bg-slate-900">
-        <img src={images[0]} alt={property.title} className="w-full h-full object-cover opacity-80" />
-        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-transparent to-transparent" />
+      {/* Hero Görseli (İlk veya Son Fotoğraf) */}
+      <div className="relative w-full h-[40vh] md:h-[60vh] bg-slate-900 overflow-hidden">
+        <img src={images[images.length - 1] || images[0]} alt={property.title} className="w-full h-full object-cover opacity-70" />
+        <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
         
         <div className="absolute bottom-0 left-0 w-full p-6 md:p-12">
           <div className="max-w-5xl mx-auto">
-            <div className="inline-flex items-center gap-1 px-3 py-1 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-bold mb-4">
-              <MapPin size={12} /> {property.location || 'Konum Belirtilmemiş'}
+            <div className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-bold mb-4 border border-white/20">
+              <MapPin size={14} /> {locationStr}
             </div>
-            <h1 className="text-3xl md:text-5xl font-black text-white mb-4 leading-tight">{property.title}</h1>
-            <div className="text-4xl md:text-5xl font-black text-orange-500">
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white mb-4 leading-tight drop-shadow-lg">{property.title}</h1>
+            <div className="text-4xl md:text-5xl font-black text-orange-500 drop-shadow-md">
               {property.price.toLocaleString('tr-TR')}₺
             </div>
           </div>
@@ -103,72 +130,107 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
       {/* Ana İçerik */}
       <div className="max-w-5xl mx-auto px-6 py-12 grid grid-cols-1 md:grid-cols-3 gap-12">
         
-        {/* Sol Kolon: Detaylar */}
+        {/* Sol Kolon: Detaylar ve Galeri */}
         <div className="md:col-span-2 space-y-12">
           
           {/* Hızlı Özellikler */}
           <div className="grid grid-cols-3 gap-4">
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center gap-2">
-              <BedDouble size={24} className="text-orange-500" />
-              <span className="text-sm font-bold text-slate-900">{property.features?.rooms || 'Belirtilmemiş'}</span>
-              <span className="text-xs text-slate-500">Oda Sayısı</span>
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center gap-2 hover:border-orange-200 transition-colors">
+              <BedDouble size={28} className="text-orange-500" />
+              <span className="text-base font-bold text-slate-900">{property.details?.rooms || '-'}</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Oda Sayısı</span>
             </div>
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center gap-2">
-              <Maximize size={24} className="text-orange-500" />
-              <span className="text-sm font-bold text-slate-900">{property.features?.sqm || '-'} m²</span>
-              <span className="text-xs text-slate-500">Brüt Alan</span>
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center gap-2 hover:border-orange-200 transition-colors">
+              <Maximize size={28} className="text-orange-500" />
+              <span className="text-base font-bold text-slate-900">{property.details?.brut_m2 || '-'} m²</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Brüt Alan</span>
             </div>
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center gap-2">
-              <Building2 size={24} className="text-orange-500" />
-              <span className="text-sm font-bold text-slate-900">{property.features?.floor || '-'}</span>
-              <span className="text-xs text-slate-500">Bulunduğu Kat</span>
+            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center gap-2 hover:border-orange-200 transition-colors">
+              <Building2 size={28} className="text-orange-500" />
+              <span className="text-base font-bold text-slate-900">{property.details?.floor || '-'}</span>
+              <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Bulunduğu Kat</span>
             </div>
           </div>
 
-          {/* Açıklama (AI Etkisi) */}
+          {/* Açıklama */}
           <div className="bg-white p-8 rounded-3xl shadow-sm border border-slate-100 relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <Sparkles size={64} className="text-orange-500" />
+            <div className="absolute top-0 right-0 p-6 opacity-[0.03] pointer-events-none">
+              <Sparkles size={120} className="text-orange-500" />
             </div>
-            <h2 className="text-xl font-bold text-slate-900 mb-4">Gayrimenkul Hakkında</h2>
-            <p className="text-slate-600 leading-relaxed whitespace-pre-wrap">
+            <h2 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
+              <Sparkles className="text-orange-500" size={24} /> Gayrimenkul Hakkında
+            </h2>
+            <div className="text-slate-600 leading-relaxed whitespace-pre-wrap font-medium text-sm md:text-base">
               {property.description || 'Bu portföy için henüz detaylı bir açıklama girilmemiştir. Lütfen danışmanınızla iletişime geçin.'}
-            </p>
+            </div>
           </div>
+
+          {/* Fotoğraf Galerisi */}
+          {images.length > 0 && (
+            <div>
+              <h2 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
+                <ImageIcon className="text-orange-500" size={24} /> Fotoğraf Galerisi
+              </h2>
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+                {images.map((img, idx) => (
+                  <div 
+                    key={idx} 
+                    onClick={() => setSelectedImage(img)}
+                    className="aspect-square rounded-2xl overflow-hidden bg-slate-100 border border-slate-200 cursor-pointer group relative"
+                  >
+                    <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-colors z-10 flex items-center justify-center">
+                      <Maximize size={24} className="text-white opacity-0 group-hover:opacity-100 transition-opacity drop-shadow-md" />
+                    </div>
+                    <img 
+                      src={img} 
+                      className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
+                      alt={`Galeri ${idx + 1}`} 
+                    />
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
         </div>
 
         {/* Sağ Kolon: Danışman Kartı */}
         <div>
-          <div className="bg-slate-900 rounded-3xl p-8 shadow-xl shadow-slate-900/20 sticky top-24 text-center">
-            <div className="w-24 h-24 mx-auto bg-slate-800 rounded-full border-4 border-slate-700 overflow-hidden mb-6">
+          <div className="bg-slate-900 rounded-3xl p-8 shadow-2xl shadow-slate-900/20 sticky top-28 text-center border border-slate-800 relative overflow-hidden">
+            <div className="absolute top-0 right-0 -mt-10 -mr-10 w-40 h-40 bg-orange-500/10 rounded-full blur-3xl pointer-events-none" />
+            
+            <div className="w-28 h-28 mx-auto bg-slate-800 rounded-full border-4 border-slate-700 overflow-hidden mb-6 relative z-10 shadow-xl">
               <img src={agentAvatar} alt={agentName} className="w-full h-full object-cover" />
             </div>
-            <h3 className="text-xl font-bold text-white mb-1">{agentName}</h3>
-            <p className="text-sm text-slate-400 mb-6 flex items-center justify-center gap-1">
-              <Award size={14} className="text-orange-500" /> Lisanslı Danışman
+            
+            <h3 className="text-2xl font-black text-white mb-2 relative z-10">{agentName}</h3>
+            <p className="text-sm font-bold text-orange-500 mb-8 flex items-center justify-center gap-1.5 uppercase tracking-wider relative z-10">
+              <Award size={16} /> Lisanslı Danışman
             </p>
 
-            <div className="space-y-3">
+            <div className="space-y-4 relative z-10">
+              {/* 🔥 Danışmana WhatsApp'tan Ulaş butonu burada */}
               <a 
-                href={`https://wa.me/905550000000?text=${whatsappMsg}`} 
+                href={`https://wa.me/${agent?.phone || ''}?text=${whatsappMsg}`} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-bold hover:bg-emerald-600 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20"
+                className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-black hover:bg-emerald-600 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95"
               >
-                <Phone size={18} /> WhatsApp'tan Ulaş
+                <MessageSquare size={20} /> WhatsApp'tan Ulaş
               </a>
               <a 
                 href={`mailto:${agent?.email || ''}`}
-                className="w-full py-4 bg-slate-800 text-white rounded-2xl font-bold hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
+                className="w-full py-4 bg-slate-800 text-white rounded-2xl font-bold hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 active:scale-95"
               >
-                <Mail size={18} /> E-Posta Gönder
+                <Mail size={20} /> E-Posta Gönder
               </a>
             </div>
 
-            <div className="mt-8 pt-6 border-t border-slate-800 text-xs text-slate-500 flex items-center justify-center gap-1">
-              <CheckCircle2 size={14} className="text-slate-400" />
-              Bu sunum <span className="font-bold text-slate-400">Portfy Master</span> ile oluşturulmuştur.
+            <div className="mt-8 pt-6 border-t border-slate-800 text-xs font-bold text-slate-500 flex flex-col items-center justify-center gap-2 relative z-10">
+              <div className="flex items-center gap-1.5">
+                <CheckCircle2 size={16} className="text-slate-400" />
+                Bu sunum <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF3D00] to-[#FF9100]">Portfy Master</span> ile oluşturulmuştur.
+              </div>
             </div>
           </div>
         </div>
