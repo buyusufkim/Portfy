@@ -72,7 +72,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   const [showSharePanel, setShowSharePanel] = useState(false);
   const [showMarketingHub, setShowMarketingHub] = useState(false);
 
-  // AI Mutations - Orijinal mantık korunarak düzeltildi
+  // AI Mutations - Orijinal mantık korunarak API ID gönderimi sağlandı
   const generateContentMutation = useMutation({
     mutationFn: (prop: Property) => api.generatePropertyContent(prop.id, 'listing'),
     onSuccess: (data) => {
@@ -98,7 +98,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   });
 
   const generateMarketingMutation = useMutation({
-    mutationFn: api.generateMarketingModule,
+    mutationFn: (prop: Property) => api.generateMarketingModule(prop),
     onSuccess: (data) => {
       setMarketingHubData(data);
       setIsGenerating(false);
@@ -186,26 +186,21 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         instagramCaptions={instagramCaptions}
         whatsappMessages={whatsappMessages}
         onEdit={() => {
-          // 🔥 DÜZENLEME FIX
           setIsEditing(true);
           setShowAddProperty(true);
         }}
         onDelete={() => {
-          if (selectedProperty) deletePropertyMutation.mutate(selectedProperty.id);
+          if (selectedProperty && window.confirm('Bu ilanı silmek istediğinize emin misiniz?')) {
+            deletePropertyMutation.mutate(selectedProperty.id);
+          }
         }}
         onUploadImage={(file) => {
           if (selectedProperty) uploadImageMutation.mutate({ id: selectedProperty.id, file });
         }}
         isUploading={uploadImageMutation.isPending}
+        // 🔥 MAGIC LINK BUTONUNU DETAIL MODAL İÇİNE ENJEKTE EDİYORUZ
+        magicLinkSlot={selectedProperty ? <MagicLinkButton propertyId={selectedProperty.id} /> : null}
       />
-      
-      {/* 🔥 MAGIC LINK DETAY ALANINA ENTEGRE EDİLDİ */}
-      {selectedProperty && (
-        <div className="hidden">
-           <MagicLinkButton propertyId={selectedProperty.id} />
-        </div>
-      )}
-
       <AddPropertyModal 
         show={showAddProperty} 
         onClose={() => {
@@ -267,9 +262,11 @@ interface PortfoliosPageProps {
   setViewMode: (mode: 'list' | 'pipeline') => void;
   setShowImportUrlModal: (show: boolean) => void;
   setSelectedProperty: (p: Property) => void;
-  // 🔥 EKSİK PROPLAR EKLENDİ
-  setIsEditing: (val: boolean) => void;
-  setShowAddProperty: (val: boolean) => void;
+  // 🔥 DÜZENLEME İÇİN GEREKLİ EKSİK PROPLAR
+  isEditing: boolean;
+  setIsEditing: (editing: boolean) => void;
+  showAddProperty: boolean;
+  setShowAddProperty: (show: boolean) => void;
 }
 
 export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
@@ -282,7 +279,9 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
   setViewMode,
   setShowImportUrlModal,
   setSelectedProperty,
+  isEditing,
   setIsEditing,
+  showAddProperty,
   setShowAddProperty
 }) => {
   const filteredProperties = useMemo(() => { 
@@ -311,9 +310,11 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
         propertiesLoading={propertiesLoading}
         filteredProperties={filteredProperties}
         setSelectedProperty={setSelectedProperty}
-        // 🔥 KARTLAR ÜZERİNDEN DÜZENLEME İÇİN PASLANDI
+        // 🔥 KARTLAR ÜZERİNDEKİ DÜZENLEME BUTONU İÇİN PROPLAR AKTARILDI
         setIsEditing={setIsEditing}
         setShowAddProperty={setShowAddProperty}
+        // 🔥 KARTIN İÇİNDE MAGIC LINK GÖSTERİLMESİ İÇİN (Eğer PropertyGrid destekliyorsa)
+        renderMagicLink={(id: string) => <MagicLinkButton propertyId={id} />}
       />
     </motion.div>
   );

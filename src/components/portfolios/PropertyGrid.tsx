@@ -45,7 +45,9 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
               <p className="text-slate-500 text-sm">Bu bölgede henüz portföy yok.</p>
             </div>
           ) : filteredProperties.map(p => (
-            <PropertyCard key={p.id} property={p} onClick={() => setSelectedProperty(p)} />
+            <div key={p.id} className="relative group">
+              <PropertyCard property={p} onClick={() => setSelectedProperty(p)} />
+            </div>
           ))}
         </div>
       ) : (
