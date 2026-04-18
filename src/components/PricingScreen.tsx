@@ -17,13 +17,13 @@ export const PricingScreen = () => {
         .from('subscription_packages')
         .select('*')
         .eq('is_active', true)
-        .order('price_numeric', { ascending: true }); // Fiyata göre sırala (0, 999, 2499...)
+        .order('price_numeric', { ascending: true });
       
       if (data) {
         setPackages(data);
         const masterOptions = data.filter(p => p.tier !== 'free');
         if (masterOptions.length > 1) {
-          setSelectedDuration(masterOptions[1]); // Varsayılan olarak 2. sıradakini (3 Aylık) seç
+          setSelectedDuration(masterOptions[1]);
         } else if (masterOptions.length > 0) {
           setSelectedDuration(masterOptions[0]);
         }
@@ -33,14 +33,14 @@ export const PricingScreen = () => {
     fetchPackages();
   }, []);
 
-  useEffect(() => {
-    const isPopup = window.location.search.includes('popup=true') || window.location.hash.includes('access_token=') || window.name === 'oauth_popup';
-    if (isPopup) {
-      localStorage.setItem('oauth_success', Date.now().toString());
-      if (window.opener) window.opener.postMessage({ type: 'OAUTH_AUTH_SUCCESS' }, '*');
-      setTimeout(() => window.close(), 1000);
+  const handleFreeChoice = async () => {
+    // subscribe fonksiyonu artık boolean dönecek şekilde AuthContext'te güncellendi
+    const success = await subscribe('free');
+    if (success) {
+      console.log('Free plan activated, redirecting...');
+      // AuthContext içindeki invalidateQueries otomatik olarak App.tsx'i tetikleyecektir.
     }
-  }, []);
+  };
 
   const freePkg = packages.find(p => p.tier === 'free');
   const masterOptions = packages.filter(p => p.tier !== 'free');
@@ -72,10 +72,6 @@ export const PricingScreen = () => {
               Ücretsiz paketle hemen başla veya Master paketle yapay zekanın tam gücünü eline alıp bölgeni domine et.
             </motion.p>
           </div>
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-full h-full max-w-4xl opacity-40 pointer-events-none">
-            <div className="absolute top-0 left-1/4 w-72 h-72 bg-orange-500 rounded-full mix-blend-screen filter blur-[100px]" />
-            <div className="absolute bottom-0 right-1/4 w-72 h-72 bg-indigo-500 rounded-full mix-blend-screen filter blur-[100px]" />
-          </div>
         </div>
 
         <div className="max-w-5xl mx-auto px-6 -mt-8 relative z-20">
@@ -105,8 +101,8 @@ export const PricingScreen = () => {
                     ))}
                   </ul>
                   
-                  <button onClick={() => subscribe('free')} disabled={isSubscribing} className="w-full py-4 bg-slate-100 text-slate-900 rounded-2xl font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-auto">
-                    Ücretsiz Devam Et <ArrowRight size={18} />
+                  <button onClick={handleFreeChoice} disabled={isSubscribing} className="w-full py-4 bg-slate-100 text-slate-900 rounded-2xl font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-auto">
+                    {isSubscribing ? 'Hazırlanıyor...' : 'Ücretsiz Devam Et'} <ArrowRight size={18} />
                   </button>
                 </motion.div>
               )}
@@ -123,7 +119,6 @@ export const PricingScreen = () => {
                     <p className="text-slate-400 font-medium">İhtiyacın olan tüm özellikler tek pakette. Sadece süreyi seç.</p>
                   </div>
 
-                  {/* DİNAMİK SÜRE SEÇİCİ */}
                   <div className={`grid grid-cols-2 ${masterOptions.length > 2 ? 'lg:grid-cols-4' : ''} gap-2 bg-slate-800 p-1.5 rounded-2xl mb-8`}>
                     {masterOptions.map((opt) => (
                       <button
@@ -161,13 +156,6 @@ export const PricingScreen = () => {
 
             </div>
           )}
-
-          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.6 }} className="mt-10 text-center pb-8">
-            <p className="text-xs text-slate-500 font-medium flex items-center justify-center gap-2">
-              <ShieldCheck size={16} className="text-emerald-500" /> 
-              Master paket için kredi kartı gerekmeden anında 7 günlük deneme sürümü başlatılır.
-            </p>
-          </motion.div>
         </div>
       </main>
     </div>

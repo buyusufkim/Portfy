@@ -167,8 +167,25 @@ export const handleSubscribe = async (req: any, res: any) => {
 
     console.log(`[handleSubscribe] Processing - User: ${userId}, Type: ${type}`);
 
-    if (!['trial', '1-month', '3-month', '6-month', '12-month'].includes(type)) {
+    // 'free' tipi listeye eklendi
+    if (!['free', 'trial', '1-month', '3-month', '6-month', '12-month'].includes(type)) {
       return res.status(400).json({ error: "Invalid subscription type" });
+    }
+
+    // Kullanıcı 'free' (ücretsiz) plana geçmek istiyorsa abonelik verilerini sıfırla
+    if (type === 'free') {
+      const { error: updateError } = await supabaseAdmin
+        .from('profiles')
+        .update({
+          subscription_type: 'none',
+          subscription_end_date: null,
+          tier: 'free'
+        })
+        .eq('uid', userId);
+
+      if (updateError) throw updateError;
+      console.log(`[handleSubscribe] SUCCESS (Reset to Free) for ${userId}`);
+      return res.json({ success: true, tier: 'free', endDate: null });
     }
 
     // Fetch current profile to check if trial was already used
@@ -191,10 +208,6 @@ export const handleSubscribe = async (req: any, res: any) => {
     }
 
     // Atomic Trial Activation via RPC
-    // This handles:
-    // 1. One-time trial check (via unique index violation)
-    // 2. Current subscription status check
-    // 3. Atomic write to both 'subscription_state' and 'profiles'
     const d = new Date();
     d.setDate(d.getDate() + 7);
     const endDate = d.toISOString();
@@ -335,10 +348,6 @@ export const handleEarnXP = async (req: any, res: any) => {
     }
 
     // Atomic XP Awarding via RPC
-    // This handles:
-    // 1. Row-level locking for profiles and entities
-    // 2. Eligibility checks (xp_awarded, daily limits)
-    // 3. Atomic updates to profile, entity, and user_stats
     const entityId = leadId || propertyId || sessionId || taskId || null;
 
     const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc('award_xp', {

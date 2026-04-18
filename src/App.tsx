@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import confetti from 'canvas-confetti';
-import { motion, AnimatePresence } from 'motion/react'; // Eksik olan satır burasıydı
+import { motion, AnimatePresence } from 'motion/react';
 import { QueryClient, QueryClientProvider, useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from './services/api';
 import { AuthProvider, useAuth } from './AuthContext';
@@ -19,14 +19,11 @@ import { NotificationToast, GlobalToast } from './components/app/Toasts';
 import { FloatingActionButton } from './components/app/FloatingActionButton';
 import { RegionSetupModal } from './components/RegionSetupModal';
 
-// Limit ve Premium Sistemleri
 import { useFeatureAccess } from './hooks/useFeatureAccess';
 import { UpgradeModal } from './components/premium/UpgradeModal';
 import { PricingScreen } from './components/PricingScreen';
 import { QUERY_KEYS } from './constants/queryKeys';
 import { useCategories } from './hooks/useCategories';
-
-// SİHİRLİ LİNK İÇİN MÜŞTERİ SUNUM SAYFASI
 import { PublicPresentation } from './pages/PublicPresentation';
 
 const queryClient = new QueryClient({
@@ -37,7 +34,7 @@ function MainApp() {
   const queryClient = useQueryClient();
   const { profile, logout, completeTour } = useAuth();
   const { categories } = useCategories();
-  const { isFree, subscribe } = useFeatureAccess();
+  const { isFree } = useFeatureAccess();
 
   const [activeTab, setActiveTab] = useState('dashboard');
   const [showAdminPanel, setShowAdminPanel] = useState(false);
@@ -76,8 +73,8 @@ function MainApp() {
   const [leadAnalysis, setLeadAnalysis] = useState<string | null>(null);
   const [isAnalyzingLeads, setIsAnalyzingLeads] = useState(false);
 
-  const { data: leads = [], isLoading: leadsLoading } = useQuery({ queryKey: [QUERY_KEYS.LEADS, profile?.uid], queryFn: api.getLeads, enabled: !!profile?.uid });
-  const { data: properties = [], isLoading: propertiesLoading } = useQuery({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid], queryFn: api.getProperties, enabled: !!profile?.uid });
+  const { data: leads = [] } = useQuery({ queryKey: [QUERY_KEYS.LEADS, profile?.uid], queryFn: api.getLeads, enabled: !!profile?.uid });
+  const { data: properties = [] } = useQuery({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid], queryFn: api.getProperties, enabled: !!profile?.uid });
   const { data: personalTasks = [] } = useQuery({ queryKey: [QUERY_KEYS.PERSONAL_TASKS, profile?.uid], queryFn: api.getPersonalTasks, enabled: !!profile?.uid });
   const { data: gamifiedTasks = [] } = useQuery({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid], queryFn: () => api.getDailyGamifiedTasks(), enabled: !!profile?.uid });
   const { data: fieldVisits = [] } = useQuery({ queryKey: [QUERY_KEYS.FIELD_VISITS, profile?.uid], queryFn: api.getFieldVisits, enabled: !!profile?.uid });
@@ -108,8 +105,8 @@ function MainApp() {
   const checkLeadsLimit = () => { if (isFree && leads.length >= 10) { setShowQuickAdd(false); setShowUpgradeModal(true); return false; } return true; };
 
   const navigationProps: NavigationProps = { activeTab, setActiveTab, showAdminPanel, setShowAdminPanel, logout, profile, updateProfileMutation };
-  const leadProps: LeadProps = { leads, leadsLoading, categories, setShowWhatsAppImport, setShowAddLead: (show) => { if (show && !checkLeadsLimit()) return; setShowAddLead(show); }, setIsAnalyzingLeads, analyzeLeadsMutation, isAnalyzingLeads, addLeadMutation, updateLeadMutation, deleteLeadMutation, leadAnalysis, setLeadAnalysis, showAddLead, showWhatsAppImport, selectedLead, setSelectedLead, isEditingLead, setIsEditingLead };
-  const portfolioProps: PortfolioProps = { properties, propertiesLoading, setSelectedProperty, selectedDistrict, setSelectedDistrict, viewMode, setViewMode, setShowImportUrlModal, regionScores, brokerAccount, setShowExternalListings, setShowIntegrationModal, syncListingsMutation, linkPropertyMutation, connectIntegrationMutation, showAddProperty, setShowAddProperty: (show) => { if (show && !checkPortfoliosLimit()) return; setShowAddProperty(show); }, showImportUrlModal, showIntegrationModal, showExternalListings, selectedProperty, externalListings, isEditing, setIsEditing, setShowRegionSetup };
+  const leadProps: LeadProps = { leads, leadsLoading: false, categories, setShowWhatsAppImport, setShowAddLead: (show) => { if (show && !checkLeadsLimit()) return; setShowAddLead(show); }, setIsAnalyzingLeads, analyzeLeadsMutation, isAnalyzingLeads, addLeadMutation, updateLeadMutation, deleteLeadMutation, leadAnalysis, setLeadAnalysis, showAddLead, showWhatsAppImport, selectedLead, setSelectedLead, isEditingLead, setIsEditingLead };
+  const portfolioProps: PortfolioProps = { properties, propertiesLoading: false, setSelectedProperty, selectedDistrict, setSelectedDistrict, viewMode, setViewMode, setShowImportUrlModal, regionScores, brokerAccount, setShowExternalListings, setShowIntegrationModal, syncListingsMutation, linkPropertyMutation, connectIntegrationMutation, showAddProperty, setShowAddProperty: (show) => { if (show && !checkPortfoliosLimit()) return; setShowAddProperty(show); }, showImportUrlModal, showIntegrationModal, showExternalListings, selectedProperty, externalListings, isEditing, setIsEditing, setShowRegionSetup };
   const utilityProps: UtilityProps = { gamifiedTasks, personalTasks, tasks, rescueSession, missedOpportunities, setShowDailyRadar, setShowDayCloser, setShowMissedOpportunities, setToast, completeMorningRitualMutation, showVoiceQuickAdd, setShowVoiceQuickAdd, addTaskMutation, showAddVisit, setShowAddVisit, addVisitMutation, fieldVisits, cancelRescueMutation, completeRescueTaskMutation, showMissedOpportunities, setActiveTab };
 
   const appProps = { navigation: navigationProps, leads: leadProps, portfolios: portfolioProps, utilities: utilityProps };
@@ -161,7 +158,13 @@ const AppContent = () => {
   if (!user) return <LoginScreen />;
   if (profile && !profile.has_seen_onboarding) return <IntroSequence onComplete={() => completeOnboarding()} />;
   
-  if (!isSubscribed) return (
+  // ERİŞİM KONTROLÜ: 
+  // 1. Ücretli aboneliği varsa (isSubscribed)
+  // 2. VEYA ücretsiz planı açıkça seçmişse (tier === 'free') içeri girer.
+  // Yeni kullanıcılar tier='none' başladığı için PricingScreen görürler.
+  const hasAccess = isSubscribed || (profile && profile.tier !== 'none');
+  
+  if (!hasAccess) return (
     <React.Suspense fallback={<LoadingFallback />}>
       <PricingScreen />
     </React.Suspense>
