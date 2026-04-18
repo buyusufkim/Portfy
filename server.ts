@@ -1,7 +1,13 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
-import { authenticate, aiLimiter, handleUpdateProfile, handleSubscribe, handleAdminUpdateUser, handleAdminDeleteUser, handleAdminGetUsers, handleAdminGetSettings, handleUpdateGlobalSettings, handleEarnXP, handleAIGeneration } from "./server/ai-api.ts";
+
+// DİKKAT: .ts uzantısı buradan KALDIRILDI. Vercel artık sorunsuz okuyacak.
+import { 
+  authenticate, aiLimiter, handleUpdateProfile, handleSubscribe, 
+  handleAdminUpdateUser, handleAdminDeleteUser, handleAdminGetUsers, 
+  handleAdminGetSettings, handleUpdateGlobalSettings, handleEarnXP, handleAIGeneration 
+} from "./server/ai-api";
 
 dotenv.config({ override: true });
 
@@ -45,7 +51,7 @@ app.use((err: any, req: any, res: any, next: any) => {
   next(err);
 });
 
-// VERCEL ORTAMINDA DEĞİLSEK (Örn: Localhost veya normal VPS) SUNUCUYU BAŞLAT
+// VERCEL ORTAMINDA DEĞİLSEK SUNUCUYU BAŞLAT
 if (!process.env.VERCEL) {
   const PORT = 3000;
   if (process.env.NODE_ENV !== "production") {

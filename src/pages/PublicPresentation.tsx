@@ -1,37 +1,49 @@
 import React, { useEffect, useState } from 'react';
-import { motion } from 'motion/react';
 import { 
   MapPin, BedDouble, Maximize, Phone, Mail, Award, 
   CheckCircle2, Building2, Sparkles, Image as ImageIcon,
   X
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
-import { Property, UserProfile } from '../types';
 
 export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
-  const [property, setProperty] = useState<Property | null>(null);
-  const [agent, setAgent] = useState<UserProfile | null>(null);
+  const [property, setProperty] = useState<any>(null);
+  const [agent, setAgent] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchPresentationData = async () => {
-      const { data: propData } = await supabase
-        .from('properties')
-        .select('*')
-        .eq('id', propertyId)
-        .single();
-
-      if (propData) {
-        setProperty(propData);
-        const { data: agentData } = await supabase
-          .from('profiles')
+      try {
+        setLoading(true);
+        // İlanı Çek
+        const { data: propData, error: propError } = await supabase
+          .from('properties')
           .select('*')
-          .eq('uid', propData.agent_id)
-          .single();
-        if (agentData) setAgent(agentData);
+          .eq('id', propertyId)
+          .maybeSingle();
+
+        if (propError) throw propError;
+
+        if (propData) {
+          setProperty(propData);
+          // İlan sahibini çek
+          if (propData.agent_id) {
+            const { data: agentData } = await supabase
+              .from('profiles')
+              .select('*')
+              .eq('uid', propData.agent_id)
+              .maybeSingle();
+            if (agentData) setAgent(agentData);
+          }
+        }
+      } catch (err: any) {
+        console.error("Veri çekme hatası:", err);
+        setError(err.message);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
 
     if (propertyId) fetchPresentationData();
@@ -45,42 +57,53 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
     );
   }
 
-  if (!property) {
+  if (error || !property) {
     return (
       <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-6 text-center">
         <Building2 size={64} className="text-slate-300 mb-4" />
         <h1 className="text-2xl font-bold text-slate-900 mb-2">İlan Bulunamadı</h1>
-        <p className="text-slate-500">Bu sunum yayından kaldırılmış veya bağlantı hatalı olabilir.</p>
+        <p className="text-slate-500 mb-4">Bu sunum yayından kaldırılmış veya bağlantı hatalı olabilir.</p>
+        {error && <p className="text-xs text-red-500 bg-red-50 p-3 rounded-lg border border-red-100 max-w-md">{error}</p>}
       </div>
     );
   }
 
-  // Akıllı URL Çözümleyici (Fotoğraf 404 hatasını engeller)
-  const getValidImageUrl = (url?: string) => {
-    if (!url) return 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80';
+  // --- GÜVENLİK KALKANI: Tüm verileri çökme ihtimaline karşı sterilize ediyoruz ---
+  const price = Number(property?.price) || 0;
+  const title = property?.title || 'İsimsiz İlan';
+  const description = property?.description || 'Bu portföy için henüz detaylı bir açıklama girilmemiştir.';
+  
+  const getValidImageUrl = (url?: any) => {
+    if (!url || typeof url !== 'string') return 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?ixlib=rb-4.0.3&auto=format&fit=crop&w=2000&q=80';
     if (url.startsWith('http') || url.startsWith('data:')) return url;
-    if (url.startsWith('/')) return url;
-    return `/${url}`;
+    return url.startsWith('/') ? url : `/${url}`;
   };
 
-  const images = property.images && property.images.length > 0 
-    ? property.images.map(getValidImageUrl) 
-    : [getValidImageUrl()];
-  
-  const locationStr = property.address 
-    ? `${property.address.neighborhood || ''}, ${property.address.district || ''}, ${property.address.city || ''}`.replace(/^, | , | ,$/g, '').trim()
-    : 'Konum Belirtilmemiş';
+  const imageArray = Array.isArray(property?.images) ? property.images : (property?.images ? [property.images] : []);
+  const images = imageArray.length > 0 ? imageArray.map(getValidImageUrl) : [getValidImageUrl(null)];
+  const coverImage = images[images.length - 1] || images[0];
+
+  const addressObj = property?.address || {};
+  const locationStr = typeof addressObj === 'string' 
+    ? addressObj 
+    : [addressObj.neighborhood, addressObj.district, addressObj.city].filter(Boolean).join(', ') || property?.location || 'Konum Belirtilmemiş';
+
+  const detailsObj = property?.details || {};
+  const rooms = detailsObj.rooms || '-';
+  const brutM2 = detailsObj.brut_m2 || '-';
+  const floor = detailsObj.floor || '-';
 
   const agentName = agent?.display_name || 'Gayrimenkul Danışmanı';
   const agentAvatar = agent?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${agent?.uid || 'agent'}`;
-  
-  // WhatsApp Mesaj Şablonu
-  const whatsappMsg = encodeURIComponent(`Merhaba ${agentName}, size ait olan "${property.title}" başlıklı ilanınız için ulaşıyorum. Detaylı bilgi alabilir miyim?`);
+  const agentPhone = agent?.phone || '';
+  const agentEmail = agent?.email || '';
+
+  const whatsappMsg = encodeURIComponent(`Merhaba ${agentName}, size ait olan "${title}" başlıklı ilanınız için ulaşıyorum. Detaylı bilgi alabilir miyim?`);
 
   return (
     <div className="min-h-screen bg-slate-50 font-sans text-slate-900">
       
-      {/* Tam Ekran Görsel Modalı (404 Hatası Çözüldü) */}
+      {/* Tam Ekran Görsel Modalı */}
       {selectedImage && (
         <div className="fixed inset-0 z-[100] bg-slate-900/95 flex items-center justify-center p-4" onClick={() => setSelectedImage(null)}>
           <button className="absolute top-6 right-6 text-white/50 hover:text-white bg-white/10 p-2 rounded-full backdrop-blur-sm transition-all">
@@ -100,28 +123,27 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
             Portfy
           </span>
         </div>
-        {/* 🔥 "Danışmanı Ara" Butonu düzeltildi (Artık telefon arama ekranını açar) */}
         <a 
-          href={`tel:${agent?.phone || ''}`} 
+          href={`tel:${agentPhone}`} 
           className="px-5 py-2.5 bg-slate-900 text-white rounded-full text-sm font-bold flex items-center gap-2 hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20"
         >
           <Phone size={16} /> Danışmanı Ara
         </a>
       </header>
 
-      {/* Hero Görseli (İlk veya Son Fotoğraf) */}
+      {/* Hero Görseli */}
       <div className="relative w-full h-[40vh] md:h-[60vh] bg-slate-900 overflow-hidden">
-        <img src={images[images.length - 1] || images[0]} alt={property.title} className="w-full h-full object-cover opacity-70" />
+        <img src={coverImage} alt={title} className="w-full h-full object-cover opacity-70" />
         <div className="absolute inset-0 bg-gradient-to-t from-slate-900 via-slate-900/40 to-transparent" />
         
         <div className="absolute bottom-0 left-0 w-full p-6 md:p-12">
           <div className="max-w-5xl mx-auto">
-            <div className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-bold mb-4 border border-white/20">
+            <div className="inline-flex items-center gap-1.5 px-4 py-1.5 bg-white/20 backdrop-blur-md rounded-full text-white text-xs font-bold mb-4 border border-white/20 shadow-sm">
               <MapPin size={14} /> {locationStr}
             </div>
-            <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white mb-4 leading-tight drop-shadow-lg">{property.title}</h1>
+            <h1 className="text-3xl md:text-5xl lg:text-6xl font-black text-white mb-4 leading-tight drop-shadow-lg">{title}</h1>
             <div className="text-4xl md:text-5xl font-black text-orange-500 drop-shadow-md">
-              {property.price.toLocaleString('tr-TR')}₺
+              {price.toLocaleString('tr-TR')}₺
             </div>
           </div>
         </div>
@@ -137,17 +159,17 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
           <div className="grid grid-cols-3 gap-4">
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center gap-2 hover:border-orange-200 transition-colors">
               <BedDouble size={28} className="text-orange-500" />
-              <span className="text-base font-bold text-slate-900">{property.details?.rooms || '-'}</span>
+              <span className="text-base font-bold text-slate-900">{rooms}</span>
               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Oda Sayısı</span>
             </div>
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center gap-2 hover:border-orange-200 transition-colors">
               <Maximize size={28} className="text-orange-500" />
-              <span className="text-base font-bold text-slate-900">{property.details?.brut_m2 || '-'} m²</span>
+              <span className="text-base font-bold text-slate-900">{brutM2} m²</span>
               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Brüt Alan</span>
             </div>
             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col items-center justify-center text-center gap-2 hover:border-orange-200 transition-colors">
               <Building2 size={28} className="text-orange-500" />
-              <span className="text-base font-bold text-slate-900">{property.details?.floor || '-'}</span>
+              <span className="text-base font-bold text-slate-900">{floor}</span>
               <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">Bulunduğu Kat</span>
             </div>
           </div>
@@ -160,8 +182,8 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
             <h2 className="text-xl font-black text-slate-900 mb-6 flex items-center gap-2">
               <Sparkles className="text-orange-500" size={24} /> Gayrimenkul Hakkında
             </h2>
-            <div className="text-slate-600 leading-relaxed whitespace-pre-wrap font-medium text-sm md:text-base">
-              {property.description || 'Bu portföy için henüz detaylı bir açıklama girilmemiştir. Lütfen danışmanınızla iletişime geçin.'}
+            <div className="text-slate-600 leading-relaxed whitespace-pre-wrap font-medium text-sm md:text-base relative z-10">
+              {description}
             </div>
           </div>
 
@@ -172,7 +194,7 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
                 <ImageIcon className="text-orange-500" size={24} /> Fotoğraf Galerisi
               </h2>
               <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                {images.map((img, idx) => (
+                {images.map((img: string, idx: number) => (
                   <div 
                     key={idx} 
                     onClick={() => setSelectedImage(img)}
@@ -185,6 +207,7 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
                       src={img} 
                       className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" 
                       alt={`Galeri ${idx + 1}`} 
+                      referrerPolicy="no-referrer"
                     />
                   </div>
                 ))}
@@ -209,17 +232,16 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
             </p>
 
             <div className="space-y-4 relative z-10">
-              {/* 🔥 Danışmana WhatsApp'tan Ulaş butonu burada */}
               <a 
-                href={`https://wa.me/${agent?.phone || ''}?text=${whatsappMsg}`} 
+                href={`https://wa.me/${agentPhone}?text=${whatsappMsg}`} 
                 target="_blank" 
                 rel="noopener noreferrer"
                 className="w-full py-4 bg-emerald-500 text-white rounded-2xl font-black hover:bg-emerald-600 transition-colors flex items-center justify-center gap-2 shadow-lg shadow-emerald-500/20 active:scale-95"
               >
-                <MessageSquare size={20} /> WhatsApp'tan Ulaş
+                <Phone size={20} /> WhatsApp'tan Ulaş
               </a>
               <a 
-                href={`mailto:${agent?.email || ''}`}
+                href={`mailto:${agentEmail}`}
                 className="w-full py-4 bg-slate-800 text-white rounded-2xl font-bold hover:bg-slate-700 transition-colors flex items-center justify-center gap-2 active:scale-95"
               >
                 <Mail size={20} /> E-Posta Gönder
