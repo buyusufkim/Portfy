@@ -166,6 +166,35 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     }
   };
 
+  // KULLANICI SİLME FONKSİYONU EKLENDİ
+  const handleDeleteUser = async (uid: string, name: string) => {
+    if (window.confirm(`DİKKAT: ${name} adlı kullanıcıyı tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz!`)) {
+      setLoading(true);
+      try {
+        const response = await fetch('/api/ai/admin/delete-user', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
+          },
+          body: JSON.stringify({ uid })
+        });
+        
+        if (response.ok) {
+          alert('Kullanıcı başarıyla silindi.');
+          fetchUsers();
+        } else {
+          const data = await response.json();
+          alert('Hata oluştu: ' + data.error);
+        }
+      } catch (error: any) {
+        alert('Bağlantı hatası: ' + error.message);
+      } finally {
+        setLoading(false);
+      }
+    }
+  };
+
   const openEditUser = (user: UserProfile) => {
     setEditingUser(user);
     setEditTier(user.tier || 'free');
@@ -230,19 +259,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const freeUsers = users.filter(u => !u.tier || u.tier === 'free').length;
   const trialUsers = users.filter(u => u.tier === 'trial').length;
   
-  // Bugün giriş yapmış aktif kullanıcılar
   const onlineToday = users.filter(u => u.last_active_date && u.last_active_date.startsWith(todayStr)).length;
   
-  // Toplam Token Harcaması (Sistemdeki tüm kullanıcıların toplamı)
   const totalTokensUsed = users.reduce((acc, u) => acc + (u.ai_tokens_used || 0), 0);
-  
-  // Maliyet Hesabı (Yaklaşık 1 Milyon Token = 50₺ maliyet varsayımıyla. 1000 Token = 0.05₺)
   const estimatedAiCost = (totalTokensUsed / 1000) * 0.05;
-
-  // Gelir Hesabı (Master üye başına ortalama 999₺/ay hesaplanır)
   const estimatedMRR = masterUsers * 999;
-  
-  // Dönüşüm Oranı (Ücretsizden Master'a geçenlerin yüzdesi)
   const conversionRate = totalUsers > 0 ? ((masterUsers / totalUsers) * 100).toFixed(1) : '0';
 
   return (
@@ -556,6 +577,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                               <div className="flex items-center justify-end gap-2">
                                 <button onClick={() => handleResetToken(u.uid)} className="p-2 text-slate-400 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 rounded-lg transition-all shadow-sm" title="Token Sıfırla"><RefreshCw size={16} /></button>
                                 <button onClick={() => openEditUser(u)} className="px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2" title="Aboneliği Düzenle"><Edit2 size={14} /> Düzenle</button>
+                                {/* SİLME BUTONU EKLENDİ */}
+                                <button onClick={() => handleDeleteUser(u.uid, u.display_name || 'Kullanıcı')} className="p-2 text-slate-400 hover:text-red-600 bg-white border border-slate-200 hover:border-red-200 hover:bg-red-50 rounded-lg transition-all shadow-sm" title="Kullanıcıyı Sil"><Trash2 size={16} /></button>
                               </div>
                             </td>
                           </tr>

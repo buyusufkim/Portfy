@@ -167,28 +167,10 @@ export const handleSubscribe = async (req: any, res: any) => {
 
     console.log(`[handleSubscribe] Processing - User: ${userId}, Type: ${type}`);
 
-    // 'free' tipi listeye eklendi
-    if (!['free', 'trial', '1-month', '3-month', '6-month', '12-month'].includes(type)) {
+    if (!['trial', '1-month', '3-month', '6-month', '12-month'].includes(type)) {
       return res.status(400).json({ error: "Invalid subscription type" });
     }
 
-    // Kullanıcı 'free' (ücretsiz) plana geçmek istiyorsa abonelik verilerini sıfırla
-    if (type === 'free') {
-      const { error: updateError } = await supabaseAdmin
-        .from('profiles')
-        .update({
-          subscription_type: 'none',
-          subscription_end_date: null,
-          tier: 'free'
-        })
-        .eq('uid', userId);
-
-      if (updateError) throw updateError;
-      console.log(`[handleSubscribe] SUCCESS (Reset to Free) for ${userId}`);
-      return res.json({ success: true, tier: 'free', endDate: null });
-    }
-
-    // Fetch current profile to check if trial was already used
     const { data: profile, error: fetchError } = await supabaseAdmin
       .from('profiles')
       .select('subscription_type, role')
@@ -199,15 +181,12 @@ export const handleSubscribe = async (req: any, res: any) => {
       return res.status(404).json({ error: "User profile not found" });
     }
 
-    // Production Safety: Only allow 'trial' self-activation.
-    // Paid tiers are blocked for normal users.
     if (type !== 'trial') {
       return res.status(403).json({ 
         error: "Direct upgrade blocked. Please complete payment or contact support for manual activation." 
       });
     }
 
-    // Atomic Trial Activation via RPC
     const d = new Date();
     d.setDate(d.getDate() + 7);
     const endDate = d.toISOString();
@@ -248,7 +227,6 @@ export const handleAdminUpdateUser = async (req: any, res: any) => {
     const { uid, data } = req.body;
     const adminId = req.user.id;
 
-    // Verify requester is actually an admin
     const { data: adminProfile, error: adminError } = await supabaseAdmin
       .from('profiles')
       .select('role')
@@ -277,11 +255,43 @@ export const handleAdminUpdateUser = async (req: any, res: any) => {
   }
 };
 
+// KULLANICI SİLME İŞLEMİ EKLENDİ
+export const handleAdminDeleteUser = async (req: any, res: any) => {
+  try {
+    const { uid } = req.body;
+    const adminId = req.user.id;
+
+    // Sadece admin yetkisi olanlar silebilir
+    const { data: adminProfile, error: adminError } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('uid', adminId)
+      .single();
+
+    if (adminError || adminProfile?.role !== 'admin') {
+      return res.status(403).json({ error: "Unauthorized: Admin access required" });
+    }
+
+    if (!uid) {
+      return res.status(400).json({ error: "Missing uid" });
+    }
+
+    // Kullanıcıyı auth katmanından tamamen siler (Profiller ve bağlı tüm veriler CASCADE ile silinir)
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(uid);
+
+    if (error) throw error;
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Admin Delete User Error:", error);
+    res.status(500).json({ error: error.message });
+  }
+};
+
 export const handleAdminGetUsers = async (req: any, res: any) => {
   try {
     const adminId = req.user.id;
 
-    // Verify requester is actually an admin
     const { data: adminProfile, error: adminError } = await supabaseAdmin
       .from('profiles')
       .select('role')
@@ -310,7 +320,6 @@ export const handleAdminGetSettings = async (req: any, res: any) => {
   try {
     const adminId = req.user.id;
 
-    // Verify requester is actually an admin
     const { data: adminProfile, error: adminError } = await supabaseAdmin
       .from('profiles')
       .select('role')
@@ -347,7 +356,6 @@ export const handleEarnXP = async (req: any, res: any) => {
       return res.status(400).json({ error: "Missing actionType" });
     }
 
-    // Atomic XP Awarding via RPC
     const entityId = leadId || propertyId || sessionId || taskId || null;
 
     const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc('award_xp', {
@@ -377,7 +385,6 @@ export const handleUpdateGlobalSettings = async (req: any, res: any) => {
     const { settings } = req.body;
     const adminId = req.user.id;
 
-    // Verify requester is actually an admin
     const { data: adminProfile, error: adminError } = await supabaseAdmin
       .from('profiles')
       .select('role')

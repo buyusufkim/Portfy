@@ -1,7 +1,8 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
-import { authenticate, aiLimiter, handleUpdateProfile, handleSubscribe, handleAdminUpdateUser, handleAdminGetUsers, handleAdminGetSettings, handleUpdateGlobalSettings, handleEarnXP, handleAIGeneration } from "./server/ai-api.ts";
+// EKLENDİ: handleAdminDeleteUser import edildi
+import { authenticate, aiLimiter, handleUpdateProfile, handleSubscribe, handleAdminUpdateUser, handleAdminDeleteUser, handleAdminGetUsers, handleAdminGetSettings, handleUpdateGlobalSettings, handleEarnXP, handleAIGeneration } from "./server/ai-api.ts";
 
 dotenv.config({ override: true });
 
@@ -21,13 +22,17 @@ async function startServer() {
   });
 
   // Secure Profile Endpoints
-app.post("/api/ai/generate", authenticate, aiLimiter, handleAIGeneration);
+  app.post("/api/ai/generate", authenticate, aiLimiter, handleAIGeneration);
   app.post("/api/ai/profile/update", authenticate, handleUpdateProfile);
   app.post("/api/ai/subscribe", authenticate, handleSubscribe);
   app.post("/api/ai/earn-xp", authenticate, handleEarnXP);
+  
+  // Admin Endpoints
   app.get("/api/ai/admin/users", authenticate, handleAdminGetUsers);
   app.get("/api/ai/admin/settings", authenticate, handleAdminGetSettings);
   app.post("/api/ai/admin/update-user", authenticate, handleAdminUpdateUser);
+  // EKLENDİ: Silme API yönlendirmesi
+  app.post("/api/ai/admin/delete-user", authenticate, handleAdminDeleteUser);
   app.post("/api/ai/admin/update-settings", authenticate, handleUpdateGlobalSettings);
 
   // 404 Handler for API routes to prevent falling back to HTML

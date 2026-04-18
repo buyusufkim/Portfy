@@ -9,6 +9,7 @@ export const LoginScreen = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
+  const [phone, setPhone] = useState(''); // Yeni: Telefon numarası state'i
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -18,7 +19,8 @@ export const LoginScreen = () => {
     setLoading(true);
     try {
       if (isRegistering) {
-        await registerWithEmail(email, password, displayName);
+        // Telefon numarasını fonksiyona iletiyoruz
+        await registerWithEmail(email, password, displayName, phone);
         alert('Kayıt başarılı! Lütfen giriş yapın.');
         setIsRegistering(false);
       } else {
@@ -69,6 +71,16 @@ export const LoginScreen = () => {
               placeholder="Ad Soyad" 
               value={displayName}
               onChange={(e) => setDisplayName(e.target.value)}
+              required
+              className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-orange-500"
+            />
+          )}
+          {isRegistering && (
+            <input 
+              type="tel" 
+              placeholder="Telefon Numarası (05XX...)" 
+              value={phone}
+              onChange={(e) => setPhone(e.target.value)}
               required
               className="w-full bg-slate-800 border border-slate-700 rounded-2xl px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:border-orange-500"
             />
