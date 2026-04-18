@@ -2,12 +2,12 @@ import express from "express";
 import path from "path";
 import dotenv from "dotenv";
 
-// DİKKAT: .ts uzantısı buradan KALDIRILDI. Vercel artık sorunsuz okuyacak.
+// UZANTI .js OLARAK DÜZELTİLDİ. Node.js ESM kuralları gereği derlenmiş dosyayı işaret etmelidir.
 import { 
   authenticate, aiLimiter, handleUpdateProfile, handleSubscribe, 
   handleAdminUpdateUser, handleAdminDeleteUser, handleAdminGetUsers, 
   handleAdminGetSettings, handleUpdateGlobalSettings, handleEarnXP, handleAIGeneration 
-} from "./server/ai-api";
+} from "./server/ai-api.js";
 
 dotenv.config({ override: true });
 
