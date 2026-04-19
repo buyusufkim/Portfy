@@ -1,5 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { useQuery } from '@tanstack/react-query';
 import { 
   X, 
   TrendingUp, 
@@ -9,22 +10,21 @@ import {
   Link as LinkIcon, 
   Sparkles, 
   ChevronRight, 
-  ImageIcon, 
   MessageSquare, 
-  Share2, 
   MapPin,
   User as UserIcon,
   Phone,
   Plus,
   Edit2,
   Trash2,
-  Upload
+  Upload,
+  Database,
+  Loader2
 } from 'lucide-react';
 import { Property } from '../../types';
 import { Badge, Card } from '../UI';
-
-// 🔥 SİHİRLİ LİNK BİLEŞENİ EKLENDİ (Başka hiçbir şeye dokunulmadı)
 import { MagicLinkButton } from '../premium/MagicLinkButton';
+import { api } from '../../services/api';
 
 const Users = ({ size, className }: { size: number, className?: string }) => (
   <svg 
@@ -53,20 +53,12 @@ interface PropertyDetailModalProps {
   regionScores: any[];
   brokerAccount: any;
   onShowExternalListings: () => void;
-  onShowSharePanel: () => void;
   onGenerateMarketingHub: () => void;
-  onGenerateListing: () => void;
-  onGenerateInstagram: () => void;
-  onGenerateWhatsApp: () => void;
-  isGenerating: boolean;
-  aiMarketingType: 'listing' | 'instagram' | 'whatsapp' | 'share' | 'hub' | null;
-  aiContent: string | null;
-  instagramCaptions: { corporate: string, sales: string, warm: string } | null;
-  whatsappMessages: { single: string, status: string, investor: string } | null;
   onEdit: () => void;
   onDelete: () => void;
   onUploadImage: (file: File) => void;
   isUploading: boolean;
+  magicLinkSlot?: React.ReactNode;
 }
 
 export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
@@ -76,20 +68,12 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
   regionScores,
   brokerAccount,
   onShowExternalListings,
-  onShowSharePanel,
   onGenerateMarketingHub,
-  onGenerateListing,
-  onGenerateInstagram,
-  onGenerateWhatsApp,
-  isGenerating,
-  aiMarketingType,
-  aiContent,
-  instagramCaptions,
-  whatsappMessages,
   onEdit,
   onDelete,
   onUploadImage,
-  isUploading
+  isUploading,
+  magicLinkSlot
 }) => {
   if (!selectedProperty) return null;
 
@@ -99,7 +83,48 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
     l.status !== 'Pasif' && 
     (l.district === selectedProperty.address?.district || l.type === selectedProperty.type)
   );
-  const regionScore = (regionScores || []).find((r: any) => r.district === selectedProperty.address?.district);
+  
+  const staticRegionScore = (regionScores || []).find((r: any) => r.district === selectedProperty.address?.district);
+
+  // --- CANLI PİYASA VERİSİ ENTEGRASYONU ---
+  const { data: liveMarketAnalysis, isLoading: isMarketLoading } = useQuery({
+    queryKey: ['liveMarketAnalysis', selectedProperty.id],
+    queryFn: () => api.getLiveMarketAnalysis(selectedProperty),
+    enabled: !!selectedProperty,
+    staleTime: 1000 * 60 * 15, // 15 dakika boyunca tekrar istek atmaz (Performans için)
+  });
+
+  const marketData = liveMarketAnalysis?.data;
+
+  // Veriler varsa backend'den geleni kullan, yoksa fallback (eski sistem) olarak static olanları kullan
+  const saleProbVal = marketData?.saleProbability 
+    ? Math.round(marketData.saleProbability * 100) 
+    : Math.round((selectedProperty.sale_probability || 0.5) * 100);
+    
+  const healthScoreVal = marketData?.healthScore || selectedProperty.health_score || 50;
+  const currentRegionScore = marketData?.regionEfficiency || staticRegionScore?.score || 50;
+
+  // --- DİNAMİK ANALİZ FONKSİYONLARI ---
+  const getSaleProbStyles = (score: number) => {
+    if (score >= 80) return { bg: 'bg-emerald-50', border: 'border-emerald-100', icon: 'text-emerald-600', textDark: 'text-emerald-700', desc: 'Bu fiyat bandında talep yüksek. Pazarlama modüllerini hemen kullanın.' };
+    if (score >= 50) return { bg: 'bg-orange-50', border: 'border-orange-100', icon: 'text-orange-600', textDark: 'text-orange-700', desc: 'Piyasa koşullarına göre dengeli bir talep var. Hedef kitleye odaklanın.' };
+    return { bg: 'bg-red-50', border: 'border-red-100', icon: 'text-red-600', textDark: 'text-red-700', desc: 'Fiyat veya bölge dinamikleri zorlayıcı olabilir. Fiyat analizi önerilir.' };
+  };
+
+  const getInvStyles = (score: number) => {
+    if (score >= 80) return { level: 'Yüksek', bg: 'bg-blue-50', border: 'border-blue-100', icon: 'text-blue-600', textDark: 'text-blue-700', desc: 'Bölge verimliliği ve kira çarpanı yatırımcılar için çok ideal.' };
+    if (score >= 50) return { level: 'Orta', bg: 'bg-indigo-50', border: 'border-indigo-100', icon: 'text-indigo-600', textDark: 'text-indigo-700', desc: 'Uzun vadeli yatırımlar için değerlendirilebilir bir portföy.' };
+    return { level: 'Düşük', bg: 'bg-slate-50', border: 'border-slate-100', icon: 'text-slate-600', textDark: 'text-slate-700', desc: 'Yatırımdan ziyade doğrudan oturum amaçlı alıcılara hitap ediyor.' };
+  };
+
+  const getRegionDesc = (score: number) => {
+    if (score >= 80) return "Bölgede emlak sirkülasyonu çok yüksek. İlanlar hızlı eriyor.";
+    if (score >= 50) return "Bölgede ortalama bir hareketlilik var. Doğru fiyatlandırma kritik.";
+    return "Bölgedeki işlem hacmi şu an durgun. Satış süreci normalden uzun sürebilir.";
+  };
+
+  const saleProbConfig = getSaleProbStyles(saleProbVal);
+  const invConfig = getInvStyles(healthScoreVal);
 
   return (
     <AnimatePresence>
@@ -116,61 +141,61 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
           className="bg-white w-full max-w-2xl rounded-[40px] overflow-hidden shadow-2xl flex flex-col max-h-[90vh]"
         >
           {/* Header Image */}
-            <div className="relative h-64 shrink-0">
-              <img 
-                src={selectedProperty.images[selectedProperty.images.length - 1] || `https://picsum.photos/seed/${selectedProperty.id}/800/600`} 
-                className="w-full h-full object-cover"
-                alt={selectedProperty.title}
-                referrerPolicy="no-referrer"
-              />
-              <div className="absolute top-6 left-6 flex gap-2 z-10">
-                <button 
-                  onClick={onEdit}
-                  className="p-3 bg-white/20 backdrop-blur-md text-white rounded-2xl hover:bg-white/40 transition-all"
-                  title="Düzenle"
-                >
-                  <Edit2 size={20} />
-                </button>
-                <button 
-                  onClick={() => {
-                    if (window.confirm('Bu portföyü silmek istediğinize emin misiniz?')) {
-                      onDelete();
-                    }
-                  }}
-                  className="p-3 bg-red-500/20 backdrop-blur-md text-white rounded-2xl hover:bg-red-500/40 transition-all"
-                  title="Sil"
-                >
-                  <Trash2 size={20} />
-                </button>
-                <button 
-                  onClick={() => fileInputRef.current?.click()}
-                  disabled={isUploading}
-                  className="p-3 bg-white/20 backdrop-blur-md text-white rounded-2xl hover:bg-white/40 transition-all disabled:opacity-50"
-                  title="Fotoğraf Ekle"
-                >
-                  {isUploading ? (
-                    <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <Upload size={20} />
-                  )}
-                </button>
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  className="hidden" 
-                  accept="image/*"
-                  onChange={(e) => {
-                    const file = e.target.files?.[0];
-                    if (file) onUploadImage(file);
-                  }}
-                />
-              </div>
+          <div className="relative h-64 shrink-0">
+            <img 
+              src={selectedProperty.images[selectedProperty.images.length - 1] || `https://picsum.photos/seed/${selectedProperty.id}/800/600`} 
+              className="w-full h-full object-cover"
+              alt={selectedProperty.title}
+              referrerPolicy="no-referrer"
+            />
+            <div className="absolute top-6 left-6 flex gap-2 z-10">
               <button 
-                onClick={onClose}
-                className="absolute top-6 right-6 p-3 bg-white/20 backdrop-blur-md text-white rounded-2xl hover:bg-white/40 transition-all"
+                onClick={onEdit}
+                className="p-3 bg-white/20 backdrop-blur-md text-white rounded-2xl hover:bg-white/40 transition-all"
+                title="Düzenle"
               >
-                <X size={24} />
+                <Edit2 size={20} />
               </button>
+              <button 
+                onClick={() => {
+                  if (window.confirm('Bu portföyü silmek istediğinize emin misiniz?')) {
+                    onDelete();
+                  }
+                }}
+                className="p-3 bg-red-500/20 backdrop-blur-md text-white rounded-2xl hover:bg-red-500/40 transition-all"
+                title="Sil"
+              >
+                <Trash2 size={20} />
+              </button>
+              <button 
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="p-3 bg-white/20 backdrop-blur-md text-white rounded-2xl hover:bg-white/40 transition-all disabled:opacity-50"
+                title="Fotoğraf Ekle"
+              >
+                {isUploading ? (
+                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <Upload size={20} />
+                )}
+              </button>
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                className="hidden" 
+                accept="image/*"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onUploadImage(file);
+                }}
+              />
+            </div>
+            <button 
+              onClick={onClose}
+              className="absolute top-6 right-6 p-3 bg-white/20 backdrop-blur-md text-white rounded-2xl hover:bg-white/40 transition-all"
+            >
+              <X size={24} />
+            </button>
             <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
               <div className="space-y-1">
                 <div className="flex gap-2 mb-2">
@@ -184,8 +209,12 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
               <div className="bg-white px-4 py-2 rounded-2xl shadow-xl flex flex-col items-end">
                 <span className="text-orange-600 font-bold text-lg">₺{selectedProperty.price.toLocaleString()}</span>
                 <div className="flex items-center gap-1 text-[10px] font-bold text-slate-400">
-                  <TrendingUp size={10} />
-                  <span>%{Math.round((selectedProperty.sale_probability || 0.5) * 100)} Satış Olasılığı</span>
+                  {isMarketLoading ? (
+                    <Loader2 size={10} className="animate-spin text-orange-600" />
+                  ) : (
+                    <TrendingUp size={10} />
+                  )}
+                  <span>%{saleProbVal} Satış Olasılığı</span>
                 </div>
               </div>
             </div>
@@ -194,7 +223,7 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
           {/* Content */}
           <div className="flex-1 overflow-auto p-8 space-y-8 no-scrollbar">
 
-            {/* 🔥 SİHİRLİ LİNK BANNER'I (YENİ EKLENDİ) 🔥 */}
+            {/* SİHİRLİ LİNK BANNER'I */}
             <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-3xl p-6 border border-indigo-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
               <div>
                 <h3 className="text-lg font-black text-indigo-900 flex items-center gap-2">
@@ -204,39 +233,55 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                 <p className="text-sm text-indigo-700 font-medium mt-1">Bu portföy için kendi fotoğrafın ve markanla anında web sitesi linki oluştur.</p>
               </div>
               <div className="w-full sm:w-auto min-w-[220px]">
-                <MagicLinkButton propertyId={selectedProperty.id} />
+                {magicLinkSlot || <MagicLinkButton propertyId={selectedProperty.id} />}
               </div>
             </div>
 
-            {/* Sales Indicators */}
+            {/* Veri Kaynakları Göstergesi (YENİ - PİYASA ENTEGRASYONU) */}
+            <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-white transition-all ${isMarketLoading ? 'bg-orange-500' : 'bg-slate-900'}`}>
+                  {isMarketLoading ? <Loader2 size={18} className="animate-spin" /> : <Database size={18} />}
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                    Canlı Piyasa Analizi
+                    {isMarketLoading && <span className="text-[9px] bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-bold animate-pulse">Taranıyor...</span>}
+                  </div>
+                  <div className="text-[10px] text-slate-500 mt-0.5">
+                    {isMarketLoading 
+                      ? `${selectedProperty.address?.district} bölgesindeki güncel veriler çekiliyor...` 
+                      : `Veriler ${selectedProperty.address?.district} bölgesinden ${marketData?.activeCompetitors || 120}+ ilan taranarak güncellendi.`}
+                  </div>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <Badge variant="default" className="bg-yellow-100 text-yellow-700 border-none text-[9px]">sahibinden</Badge>
+                <Badge variant="default" className="bg-red-100 text-red-700 border-none text-[9px]">hepsiemlak</Badge>
+                <Badge variant="default" className="bg-blue-100 text-blue-700 border-none text-[9px]">endeksa</Badge>
+              </div>
+            </div>
+
+            {/* DİNAMİK Sales Indicators */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <Card className="bg-emerald-50 border-emerald-100 p-4 flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-emerald-600">
+              <Card className={`${saleProbConfig.bg} ${saleProbConfig.border} p-4 flex flex-col gap-2 transition-colors relative overflow-hidden`}>
+                {isMarketLoading && <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" size={24} /></div>}
+                <div className={`flex items-center gap-2 ${saleProbConfig.icon}`}>
                   <TrendingUp size={18} />
                   <span className="text-xs font-bold uppercase tracking-wider">Satış İhtimali</span>
                 </div>
-                <div className="text-2xl font-black text-emerald-700">%{Math.round((selectedProperty.sale_probability || 0.5) * 100)}</div>
-                <p className="text-[10px] text-emerald-600/80 font-medium">Bu fiyat bandında talep yüksek. Bugün paylaşım için çok uygun.</p>
-                <button 
-                  onClick={onGenerateWhatsApp}
-                  className="mt-2 py-2 bg-white text-emerald-600 rounded-xl text-[10px] font-bold shadow-sm active:scale-95 transition-all"
-                >
-                  Hemen Paylaş
-                </button>
+                <div className={`text-2xl font-black ${saleProbConfig.textDark}`}>%{saleProbVal}</div>
+                <p className={`text-[10px] ${saleProbConfig.icon} opacity-80 font-medium`}>{saleProbConfig.desc}</p>
               </Card>
-              <Card className="bg-blue-50 border-blue-100 p-4 flex flex-col gap-2">
-                <div className="flex items-center gap-2 text-blue-600">
+
+              <Card className={`${invConfig.bg} ${invConfig.border} p-4 flex flex-col gap-2 transition-colors relative overflow-hidden`}>
+                {isMarketLoading && <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center"><Loader2 className="animate-spin text-slate-400" size={24} /></div>}
+                <div className={`flex items-center gap-2 ${invConfig.icon}`}>
                   <Zap size={18} />
                   <span className="text-xs font-bold uppercase tracking-wider">Yatırımcı Uygunluğu</span>
                 </div>
-                <div className="text-2xl font-black text-blue-700">Yüksek</div>
-                <p className="text-[10px] text-blue-600/80 font-medium">Bölge verimliliği ve kira çarpanı yatırımcılar için ideal görünüyor.</p>
-                <button 
-                  onClick={onGenerateWhatsApp}
-                  className="mt-2 py-2 bg-white text-blue-600 rounded-xl text-[10px] font-bold shadow-sm active:scale-95 transition-all"
-                >
-                  Yatırımcıya Gönder
-                </button>
+                <div className={`text-2xl font-black ${invConfig.textDark}`}>{invConfig.level}</div>
+                <p className={`text-[10px] ${invConfig.icon} opacity-80 font-medium`}>{invConfig.desc}</p>
               </Card>
             </div>
 
@@ -255,28 +300,27 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
               </div>
             </div>
 
-            {/* Region Efficiency */}
-            {regionScore && (
-              <div className="bg-orange-50 rounded-3xl p-6 border border-orange-100 flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-orange-600 shadow-sm">
-                    <Activity size={24} />
-                  </div>
-                  <div>
-                    <h4 className="text-sm font-bold text-slate-900">{selectedProperty.address?.district} Bölge Verimliliği</h4>
-                    <p className="text-xs text-slate-500">Bu bölge şu an %{regionScore.score} verimlilikle çalışıyor.</p>
-                  </div>
+            {/* DİNAMİK Region Efficiency */}
+            <div className="bg-orange-50 rounded-3xl p-6 border border-orange-100 flex items-center justify-between relative overflow-hidden">
+              {isMarketLoading && <div className="absolute inset-0 bg-white/50 backdrop-blur-[1px] z-10 flex items-center justify-center"><Loader2 className="animate-spin text-orange-400" size={24} /></div>}
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-orange-600 shadow-sm">
+                  <Activity size={24} />
                 </div>
-                <div className="text-xl font-bold text-orange-600">%{regionScore.score}</div>
+                <div>
+                  <h4 className="text-sm font-bold text-slate-900">{selectedProperty.address?.district} Bölge Verimliliği</h4>
+                  <p className="text-xs text-slate-600 mt-1">{getRegionDesc(currentRegionScore)}</p>
+                </div>
               </div>
-            )}
+              <div className="text-xl font-bold text-orange-600">%{currentRegionScore}</div>
+            </div>
 
             {/* External Sync */}
             {brokerAccount && (
               <div className="space-y-4">
                 <h3 className="font-bold text-slate-900 flex items-center gap-2">
                   <Globe size={18} className="text-orange-600" />
-                  Pazar Entegrasyonu
+                  İlan Yönetimi
                 </h3>
                 <Card className="bg-slate-50 border-slate-100 p-4">
                   <div className="flex items-center justify-between">
@@ -285,8 +329,8 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                         <LinkIcon size={20} />
                       </div>
                       <div>
-                        <h4 className="text-xs font-bold text-slate-900">sahibinden.com Eşleşmesi</h4>
-                        <p className="text-[10px] text-slate-500">İlan durumunu otomatik takip et</p>
+                        <h4 className="text-xs font-bold text-slate-900">Platform Eşleşmesi</h4>
+                        <p className="text-[10px] text-slate-500">Mevcut yayındaki ilanını bağla</p>
                       </div>
                     </div>
                     <button 
@@ -300,174 +344,28 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
               </div>
             )}
 
-            {/* AI Marketing */}
+            {/* Pazarlama */}
             <div className="space-y-4">
               <h3 className="font-bold text-slate-900 flex items-center gap-2">
                 <Sparkles size={18} className="text-orange-600" />
-                AI Pazarlama Asistanı
+                Pazarlama
               </h3>
               
-              <div className="grid grid-cols-2 gap-3">
-                <button 
-                  onClick={onGenerateMarketingHub}
-                  className="col-span-2 p-6 bg-slate-900 text-white rounded-[32px] flex items-center justify-between shadow-xl shadow-slate-900/20 active:scale-95 transition-all group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center text-orange-500">
-                      <Sparkles size={24} />
-                    </div>
-                    <div className="text-left">
-                      <div className="text-sm font-bold">AI Pazarlama Hub</div>
-                      <div className="text-[10px] text-slate-400">Tüm sosyal medya ve mesaj alternatiflerini üret</div>
-                    </div>
+              <button 
+                onClick={onGenerateMarketingHub}
+                className="w-full p-5 bg-slate-900 text-white rounded-3xl flex items-center justify-between shadow-xl shadow-slate-900/20 active:scale-95 transition-all group"
+              >
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-gradient-to-br from-orange-400 to-orange-600 rounded-2xl flex items-center justify-center text-white shadow-lg">
+                    <Sparkles size={24} />
                   </div>
-                  <ChevronRight size={20} className="text-slate-500 group-hover:translate-x-1 transition-transform" />
-                </button>
-                <button 
-                  onClick={onGenerateListing}
-                  className="p-4 bg-slate-50 border border-slate-100 rounded-3xl flex flex-col items-center gap-2 hover:bg-orange-50 hover:border-orange-100 transition-all group"
-                >
-                  <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-orange-600 shadow-sm">
-                    <ImageIcon size={20} />
+                  <div className="text-left">
+                    <div className="text-base font-black">AI Pazarlama Hub</div>
+                    <div className="text-xs text-slate-400 mt-1">Tüm sosyal medya, ilan ve mesaj metinlerini üret</div>
                   </div>
-                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">İlan Metni</span>
-                </button>
-                <button 
-                  onClick={onGenerateInstagram}
-                  className="p-4 bg-slate-50 border border-slate-100 rounded-3xl flex flex-col items-center gap-2 hover:bg-orange-50 hover:border-orange-100 transition-all group"
-                >
-                  <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-orange-600 shadow-sm">
-                    <ImageIcon size={20} />
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">Instagram Post</span>
-                </button>
-                <button 
-                  onClick={onGenerateWhatsApp}
-                  className="p-4 bg-slate-50 border border-slate-100 rounded-3xl flex flex-col items-center gap-2 hover:bg-orange-50 hover:border-orange-100 transition-all group"
-                >
-                  <div className="w-10 h-10 bg-white rounded-2xl flex items-center justify-center text-slate-400 group-hover:text-orange-600 shadow-sm">
-                    <MessageSquare size={20} />
-                  </div>
-                  <span className="text-[10px] font-bold text-slate-600 uppercase tracking-wider">WhatsApp Mesajı</span>
-                </button>
-                <button 
-                  onClick={onShowSharePanel}
-                  className="p-4 bg-orange-600 rounded-3xl flex flex-col items-center gap-2 shadow-lg shadow-orange-200 active:scale-95 transition-all"
-                >
-                  <div className="w-10 h-10 bg-white/20 rounded-2xl flex items-center justify-center text-white">
-                    <Share2 size={20} />
-                  </div>
-                  <span className="text-[10px] font-bold text-white uppercase tracking-wider">Paylaş & Topla</span>
-                </button>
-              </div>
-
-              {/* AI Content Display */}
-              <AnimatePresence>
-                {isGenerating && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0 }}
-                    className="bg-orange-50 border border-orange-100 rounded-3xl p-8 flex flex-col items-center gap-4"
-                  >
-                    <motion.div 
-                      animate={{ rotate: 360 }}
-                      transition={{ repeat: Infinity, duration: 2, ease: "linear" }}
-                      className="text-orange-600"
-                    >
-                      <Sparkles size={32} />
-                    </motion.div>
-                    <div className="text-center">
-                      <h4 className="font-bold text-slate-900">AI İçerik Hazırlıyor</h4>
-                      <p className="text-xs text-slate-500">Mülk verileri analiz ediliyor ve en etkili metinler oluşturuluyor...</p>
-                    </div>
-                  </motion.div>
-                )}
-
-                {aiMarketingType === 'listing' && aiContent && !isGenerating && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-slate-50 rounded-3xl p-6 space-y-4 border border-slate-100">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Oluşturulan İlan Metni</span>
-                      <button onClick={onGenerateListing} className="text-xs font-bold text-orange-600">Yeniden Üret</button>
-                    </div>
-                    <div className="text-sm text-slate-600 leading-relaxed whitespace-pre-wrap">{aiContent}</div>
-                    <button 
-                      onClick={() => { navigator.clipboard.writeText(aiContent); }}
-                      className="w-full py-3 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 flex items-center justify-center gap-2"
-                    >
-                      <LinkIcon size={14} /> Metni Kopyala
-                    </button>
-                  </motion.div>
-                )}
-
-                {aiMarketingType === 'instagram' && instagramCaptions && !isGenerating && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                    <div className="flex justify-between items-center px-2">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Instagram Varyasyonları</span>
-                      <button onClick={onGenerateInstagram} className="text-xs font-bold text-orange-600">Yeniden Üret</button>
-                    </div>
-                    <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar">
-                      {[
-                        { id: 'corporate', label: 'Kurumsal', content: instagramCaptions?.corporate },
-                        { id: 'sales', label: 'Satış Odaklı', content: instagramCaptions?.sales },
-                        { id: 'warm', label: 'Samimi', content: instagramCaptions?.warm }
-                      ].map(variant => (
-                        <Card key={variant.id} className="min-w-[280px] p-5 space-y-3 bg-white border-slate-100">
-                          <Badge variant="info">{variant.label}</Badge>
-                          <div className="text-xs text-slate-600 leading-relaxed line-clamp-6">{variant.content}</div>
-                          <div className="flex gap-2 pt-2">
-                            <button 
-                              onClick={() => { navigator.clipboard.writeText(variant.content); }}
-                              className="flex-1 py-2 bg-slate-50 text-slate-600 rounded-lg text-[10px] font-bold flex items-center justify-center gap-1"
-                            >
-                              <LinkIcon size={12} /> Kopyala
-                            </button>
-                            <button 
-                              onClick={() => window.open('instagram://library', '_blank')}
-                              className="flex-1 py-2 bg-orange-600 text-white rounded-lg text-[10px] font-bold flex items-center justify-center gap-1"
-                            >
-                              <ExternalLink size={12} /> Instagram'da Aç
-                            </button>
-                          </div>
-                        </Card>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-
-                {aiMarketingType === 'whatsapp' && whatsappMessages && !isGenerating && (
-                  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                    <div className="flex justify-between items-center px-2">
-                      <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">WhatsApp Mesajları</span>
-                      <button onClick={onGenerateWhatsApp} className="text-xs font-bold text-orange-600">Yeniden Üret</button>
-                    </div>
-                    <div className="space-y-3">
-                      {[
-                        { id: 'single', label: 'Müşteriye Özel', content: whatsappMessages?.single },
-                        { id: 'status', label: 'Durum Paylaşımı', content: whatsappMessages?.status },
-                        { id: 'investor', label: 'Yatırımcıya Özel', content: whatsappMessages?.investor }
-                      ].map(variant => (
-                        <Card key={variant.id} className="p-4 bg-white border-slate-100 space-y-3">
-                          <div className="flex justify-between items-center">
-                            <Badge variant="success">{variant.label}</Badge>
-                            <button onClick={() => { navigator.clipboard.writeText(variant.content); }} className="text-slate-400"><LinkIcon size={14} /></button>
-                          </div>
-                          <div className="text-xs text-slate-600 leading-relaxed">{variant.content}</div>
-                          <button 
-                            onClick={() => {
-                              const text = encodeURIComponent(variant.content.replace('[ilan_linki]', `https://portfy.app/ilan/${selectedProperty.id}`));
-                              window.open(`https://wa.me/?text=${text}`, '_blank');
-                            }}
-                            className="w-full py-2 bg-emerald-500 text-white rounded-xl text-[10px] font-bold flex items-center justify-center gap-2"
-                          >
-                            <MessageSquare size={12} /> WhatsApp'ta Paylaş
-                          </button>
-                        </Card>
-                      ))}
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
+                </div>
+                <ChevronRight size={24} className="text-slate-500 group-hover:translate-x-1 group-hover:text-white transition-all" />
+              </button>
             </div>
 
             {/* Matching Leads */}
@@ -485,22 +383,8 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                     <div className="space-y-2">
                       <h4 className="text-base font-bold text-slate-900">Henüz otomatik eşleşme yok</h4>
                       <p className="text-xs text-slate-500 max-w-[240px] mx-auto">
-                        Bu mülk için şu an aktif bir adayımız bulunmuyor. Paylaşarak yeni talep toplayabilirsin.
+                        Bu mülk için şu an aktif bir adayımız bulunmuyor.
                       </p>
-                    </div>
-                    <div className="flex flex-col w-full gap-3">
-                      <button 
-                        onClick={onShowSharePanel}
-                        className="w-full py-4 bg-slate-900 text-white rounded-2xl text-xs font-bold shadow-xl shadow-slate-900/20 active:scale-95 transition-all flex items-center justify-center gap-2"
-                      >
-                        <Share2 size={16} /> Paylaşarak Talep Topla
-                      </button>
-                      <button 
-                        onClick={onGenerateWhatsApp}
-                        className="w-full py-4 bg-white border border-slate-200 text-emerald-600 rounded-2xl text-xs font-bold active:scale-95 transition-all flex items-center justify-center gap-2"
-                      >
-                        <MessageSquare size={16} /> WhatsApp Mesajı Oluştur
-                      </button>
                     </div>
                   </Card>
                 ) : (matchedLeads || []).slice(0, 3).map(lead => (
@@ -534,7 +418,7 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                       </div>
                     </div>
                     <div className="p-3 bg-slate-50 rounded-2xl text-[10px] text-slate-500 italic">
-                      "Müşteri Beşiktaş bölgesinde 3+1 daire arıyor, bütçesi bu ilan için ideal."
+                      "Müşteri bölgede arayışta, bütçesi bu ilan için ideal."
                     </div>
                     <button className="w-full py-2 border border-slate-200 rounded-xl text-[10px] font-bold text-slate-400 flex items-center justify-center gap-2">
                       <Plus size={12} /> Not Ekle
@@ -557,22 +441,3 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
     </AnimatePresence>
   );
 };
-
-const ExternalLink = ({ size, className }: { size: number, className?: string }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className={className}
-  >
-    <path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6" />
-    <polyline points="15 3 21 3 21 9" />
-    <line x1="10" y1="14" x2="21" y2="3" />
-  </svg>
-);

@@ -9,13 +9,11 @@ import { IntegrationModal } from '../components/portfolios/IntegrationModal';
 import { ExternalListingsModal } from '../components/portfolios/ExternalListingsModal';
 import { ImportUrlModal } from '../components/portfolios/ImportUrlModal';
 import { PropertyDetailModal } from '../components/portfolios/PropertyDetailModal';
-import { SharePanel } from '../components/portfolios/SharePanel';
 import { MarketingHubModal } from '../components/portfolios/MarketingHubModal';
 import { AIContentModal } from '../components/portfolios/AIContentModal';
 import { PortfoliosToolbar } from '../components/portfolios/PortfoliosToolbar';
 import { PropertyGrid } from '../components/portfolios/PropertyGrid';
 import { useAuth } from '../AuthContext';
-// 🔥 SİHİRLİ LİNK BİLEŞENİ EKLENDİ
 import { MagicLinkButton } from '../components/premium/MagicLinkButton';
 
 interface PortfolioModalsProps {
@@ -69,10 +67,8 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   const [marketingHubData, setMarketingHubData] = useState<any | null>(null);
   const [aiMarketingType, setAiMarketingType] = useState<'listing' | 'instagram' | 'whatsapp' | 'share' | 'hub' | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [showSharePanel, setShowSharePanel] = useState(false);
   const [showMarketingHub, setShowMarketingHub] = useState(false);
 
-  // AI Mutations - Orijinal mantık korunarak API ID gönderimi sağlandı
   const generateContentMutation = useMutation({
     mutationFn: (prop: Property) => api.generatePropertyContent(prop.id, 'listing'),
     onSuccess: (data) => {
@@ -175,16 +171,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         leads={leads}
         brokerAccount={brokerAccount}
         onShowExternalListings={() => setShowExternalListings(true)}
-        onShowSharePanel={() => setShowSharePanel(true)}
         onGenerateMarketingHub={() => { if (!selectedProperty) return; setAiMarketingType('hub'); setIsGenerating(true); generateMarketingMutation.mutate(selectedProperty); }}
-        onGenerateListing={() => { if (isGenerating || !selectedProperty) return; setAiMarketingType('listing'); setIsGenerating(true); generateContentMutation.mutate(selectedProperty); }}
-        onGenerateInstagram={() => { if (isGenerating || !selectedProperty) return; setAiMarketingType('instagram'); setIsGenerating(true); generateInstagramMutation.mutate(selectedProperty); }}
-        onGenerateWhatsApp={() => { if (isGenerating || !selectedProperty) return; setAiMarketingType('whatsapp'); setIsGenerating(true); generateWhatsAppMutation.mutate(selectedProperty); }}
-        isGenerating={isGenerating}
-        aiMarketingType={aiMarketingType}
-        aiContent={aiContent}
-        instagramCaptions={instagramCaptions}
-        whatsappMessages={whatsappMessages}
         onEdit={() => {
           setIsEditing(true);
           setShowAddProperty(true);
@@ -198,7 +185,6 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
           if (selectedProperty) uploadImageMutation.mutate({ id: selectedProperty.id, file });
         }}
         isUploading={uploadImageMutation.isPending}
-        // 🔥 MAGIC LINK BUTONUNU DETAIL MODAL İÇİNE ENJEKTE EDİYORUZ
         magicLinkSlot={selectedProperty ? <MagicLinkButton propertyId={selectedProperty.id} /> : null}
       />
       <AddPropertyModal 
@@ -212,25 +198,31 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         initialData={isEditing ? selectedProperty : null}
         leads={leads}
       />
-      <SharePanel 
-        show={showSharePanel} 
-        onClose={() => setShowSharePanel(false)} 
-        selectedProperty={selectedProperty}
-        onAction={(type) => {
-          if (!selectedProperty) return;
-          setAiMarketingType(type);
-          setIsGenerating(true);
-          if (type === 'whatsapp') generateWhatsAppMutation.mutate(selectedProperty);
-          else if (type === 'hub') generateMarketingMutation.mutate(selectedProperty);
-          else if (type === 'instagram') generateInstagramMutation.mutate(selectedProperty);
-          else if (type === 'listing') generateContentMutation.mutate(selectedProperty);
-          setShowSharePanel(false);
-        }}
-      />
       <MarketingHubModal 
         show={showMarketingHub} 
         onClose={() => setShowMarketingHub(false)} 
         marketingHubData={marketingHubData}
+        onGenerateListing={() => {
+          if (!selectedProperty) return;
+          setShowMarketingHub(false);
+          setAiMarketingType('listing');
+          setIsGenerating(true);
+          generateContentMutation.mutate(selectedProperty);
+        }}
+        onGenerateInstagram={() => {
+          if (!selectedProperty) return;
+          setShowMarketingHub(false);
+          setAiMarketingType('instagram');
+          setIsGenerating(true);
+          generateInstagramMutation.mutate(selectedProperty);
+        }}
+        onGenerateWhatsApp={() => {
+          if (!selectedProperty) return;
+          setShowMarketingHub(false);
+          setAiMarketingType('whatsapp');
+          setIsGenerating(true);
+          generateWhatsAppMutation.mutate(selectedProperty);
+        }}
       />
       <AIContentModal 
         aiMarketingType={aiMarketingType} 
@@ -262,7 +254,6 @@ interface PortfoliosPageProps {
   setViewMode: (mode: 'list' | 'pipeline') => void;
   setShowImportUrlModal: (show: boolean) => void;
   setSelectedProperty: (p: Property) => void;
-  // 🔥 DÜZENLEME İÇİN GEREKLİ EKSİK PROPLAR
   isEditing: boolean;
   setIsEditing: (editing: boolean) => void;
   showAddProperty: boolean;
@@ -310,10 +301,8 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
         propertiesLoading={propertiesLoading}
         filteredProperties={filteredProperties}
         setSelectedProperty={setSelectedProperty}
-        // 🔥 KARTLAR ÜZERİNDEKİ DÜZENLEME BUTONU İÇİN PROPLAR AKTARILDI
         setIsEditing={setIsEditing}
         setShowAddProperty={setShowAddProperty}
-        // 🔥 KARTIN İÇİNDE MAGIC LINK GÖSTERİLMESİ İÇİN (Eğer PropertyGrid destekliyorsa)
         renderMagicLink={(id: string) => <MagicLinkButton propertyId={id} />}
       />
     </motion.div>

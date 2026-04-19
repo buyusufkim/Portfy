@@ -39,9 +39,10 @@ export const NotificationToast = ({ notification, onClose }: NotificationToastPr
 
 interface GlobalToastProps {
   toast: { message: string, type: 'success' | 'error' | 'info' } | null;
+  onClose?: () => void; // Tıklama ile kapatabilmek için eklendi
 }
 
-export const GlobalToast = ({ toast }: GlobalToastProps) => (
+export const GlobalToast = ({ toast, onClose }: GlobalToastProps) => (
   <AnimatePresence>
     {toast && (
       <motion.div
@@ -49,7 +50,8 @@ export const GlobalToast = ({ toast }: GlobalToastProps) => (
         animate={{ opacity: 1, y: 0, scale: 1 }}
         exit={{ opacity: 0, y: 20, scale: 0.9 }}
         style={{ zIndex: 9999 }}
-        className={`fixed bottom-24 left-1/2 -translate-x-1/2 px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-4 backdrop-blur-xl border ${
+        onClick={onClose} // Tıklanınca kapanma işlevi
+        className={`fixed bottom-24 left-1/2 -translate-x-1/2 px-6 py-4 rounded-3xl shadow-2xl flex items-center gap-4 backdrop-blur-xl border cursor-pointer hover:scale-105 transition-all ${
           toast.type === 'error' 
             ? 'bg-red-500 text-white border-red-400' 
             : toast.type === 'success'
@@ -61,7 +63,9 @@ export const GlobalToast = ({ toast }: GlobalToastProps) => (
           {toast.type === 'error' ? <AlertCircle size={24} /> : <CheckCircle2 size={24} />}
         </div>
         <div className="flex flex-col">
-          <span className="text-sm font-black tracking-tight">{toast.type === 'error' ? 'Hata' : 'Başarılı'}</span>
+          <span className="text-sm font-black tracking-tight">
+            {toast.type === 'error' ? 'Hata' : toast.type === 'info' ? 'Bilgi' : 'Başarılı'}
+          </span>
           <span className="text-xs font-medium opacity-90">{toast.message}</span>
         </div>
       </motion.div>

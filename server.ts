@@ -1,6 +1,7 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
+import { fetchMarketData } from './server/marketScraper';
 
 // UZANTI .js OLARAK DÜZELTİLDİ. Node.js ESM kuralları gereği derlenmiş dosyayı işaret etmelidir.
 import { 
@@ -76,6 +77,30 @@ if (!process.env.VERCEL) {
     });
   }
 }
+
+// YENİ MARKET ANALİZ ENDPOİNTİ
+app.post('/api/market/analyze', async (req, res) => {
+  try {
+    const { city, district, neighborhood, propertyType, m2 } = req.body;
+    
+    if (!city || !district) {
+      return res.status(400).json({ error: 'İl ve ilçe bilgisi zorunludur.' });
+    }
+
+    const marketData = await fetchMarketData({
+      city,
+      district,
+      neighborhood: neighborhood || '',
+      propertyType: propertyType || 'Konut',
+      m2: m2 || 100
+    });
+
+    res.json(marketData);
+  } catch (error) {
+    console.error('Market Analiz Hatası:', error);
+    res.status(500).json({ error: 'Piyasa verileri çekilemedi.' });
+  }
+});
 
 // Vercel'in API'yi okuyabilmesi için Export Edilmesi Zorunludur
 export default app;

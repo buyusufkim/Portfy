@@ -19,6 +19,29 @@ import { fieldVisitService } from './fieldVisitService';
 import { whatsappService } from './whatsappService';
 
 export const api = {
+
+  getLiveMarketAnalysis: async (property: any) => {
+    try {
+      const response = await fetch(`${API_URL}/api/market/analyze`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          city: property.address?.city || 'Kayseri',
+          district: property.address?.district || 'Talas',
+          neighborhood: property.address?.neighborhood || '',
+          propertyType: property.type || 'Konut',
+          m2: property.details?.brut_m2 || 100
+        }),
+      });
+
+      if (!response.ok) throw new Error('Piyasa verisi çekilemedi');
+      return await response.json();
+    } catch (error) {
+      console.error('Live Market Fetch Error:', error);
+      throw error;
+    }
+  },
+
   // Lead / Aday Yönetimi
   getLeads: leadService.getLeads,
   addLead: leadService.addLead,

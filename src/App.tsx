@@ -130,7 +130,10 @@ function MainApp() {
 
       <NotificationCenter personalTasks={personalTasks} gamifiedTasks={gamifiedTasks} onNotify={(task) => setNotification(task)} />
       <NotificationToast notification={notification} onClose={() => setNotification(null)} />
-      <GlobalToast toast={toast} />
+      <GlobalToast 
+  toast={toast} 
+  onClose={() => setToast(null)} // Bu kısım state'i sıfırlayarak bildirimi kapatır
+/>
       <FloatingActionButton onClick={() => setShowQuickAdd(true)} />
 
       <QuickAddMenu show={showQuickAdd} onClose={() => setShowQuickAdd(false)} onVoice={() => { closeAllModals(); setShowVoiceQuickAdd(true); }} onVisit={() => { closeAllModals(); setShowAddVisit(true); }} onLead={() => { if(checkLeadsLimit()) { closeAllModals(); setShowAddLead(true); } }} onPortfolio={() => { if(checkPortfoliosLimit()) { closeAllModals(); setIsEditing(false); setShowAddProperty(true); } }} />

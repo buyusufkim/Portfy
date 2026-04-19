@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Sparkles, CheckCircle2, Globe } from 'lucide-react';
+import { X, Sparkles, CheckCircle2, Globe, FileText, Instagram, MessageCircle } from 'lucide-react';
 
 const Users = ({ size, className }: { size: number, className?: string }) => (
   <svg 
@@ -26,12 +26,18 @@ interface MarketingHubModalProps {
   show: boolean;
   onClose: () => void;
   marketingHubData: any;
+  onGenerateListing?: () => void;
+  onGenerateInstagram?: () => void;
+  onGenerateWhatsApp?: () => void;
 }
 
 export const MarketingHubModal: React.FC<MarketingHubModalProps> = ({
   show,
   onClose,
-  marketingHubData
+  marketingHubData,
+  onGenerateListing,
+  onGenerateInstagram,
+  onGenerateWhatsApp
 }) => {
   return (
     <AnimatePresence>
@@ -55,7 +61,7 @@ export const MarketingHubModal: React.FC<MarketingHubModalProps> = ({
                 </div>
                 <div>
                   <h2 className="text-xl font-bold text-slate-900">Marketing Hub</h2>
-                  <p className="text-xs text-slate-500">Yapay zeka destekli pazarlama stratejisi</p>
+                  <p className="text-xs text-slate-500">Yapay zeka destekli pazarlama asistanı</p>
                 </div>
               </div>
               <button onClick={onClose} className="p-2 bg-white rounded-full text-slate-400 border border-slate-100">
@@ -64,6 +70,51 @@ export const MarketingHubModal: React.FC<MarketingHubModalProps> = ({
             </div>
 
             <div className="flex-1 overflow-auto p-8 space-y-8">
+              
+              {/* AI İçerik Üretim Butonları (YENİ) */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <button 
+                  onClick={onGenerateListing}
+                  className="p-5 bg-blue-50 border border-blue-100 rounded-3xl flex flex-col items-center gap-3 hover:bg-blue-100 transition-colors group"
+                >
+                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 shadow-sm group-hover:scale-110 transition-transform">
+                    <FileText size={24} />
+                  </div>
+                  <div className="text-center">
+                    <div className="font-bold text-blue-900 text-sm">İlan Metni Üret</div>
+                    <div className="text-[10px] text-blue-600 mt-1">Sahibinden ve Hepsiemlak için</div>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={onGenerateInstagram}
+                  className="p-5 bg-pink-50 border border-pink-100 rounded-3xl flex flex-col items-center gap-3 hover:bg-pink-100 transition-colors group"
+                >
+                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-pink-600 shadow-sm group-hover:scale-110 transition-transform">
+                    <Instagram size={24} />
+                  </div>
+                  <div className="text-center">
+                    <div className="font-bold text-pink-900 text-sm">Instagram Postu</div>
+                    <div className="text-[10px] text-pink-600 mt-1">Kurumsal ve Satış Odaklı</div>
+                  </div>
+                </button>
+
+                <button 
+                  onClick={onGenerateWhatsApp}
+                  className="p-5 bg-emerald-50 border border-emerald-100 rounded-3xl flex flex-col items-center gap-3 hover:bg-emerald-100 transition-colors group"
+                >
+                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-emerald-600 shadow-sm group-hover:scale-110 transition-transform">
+                    <MessageCircle size={24} />
+                  </div>
+                  <div className="text-center">
+                    <div className="font-bold text-emerald-900 text-sm">WhatsApp Mesajı</div>
+                    <div className="text-[10px] text-emerald-600 mt-1">Durum ve Yatırımcıya Özel</div>
+                  </div>
+                </button>
+              </div>
+
+              <div className="w-full h-px bg-slate-100 my-4" />
+
               {/* Target Audience */}
               <section className="space-y-4">
                 <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -119,7 +170,7 @@ export const MarketingHubModal: React.FC<MarketingHubModalProps> = ({
                 onClick={onClose}
                 className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20"
               >
-                Stratejiyi Uygula
+                Stratejiyi Kapat
               </button>
             </div>
           </motion.div>
