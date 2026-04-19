@@ -4,7 +4,7 @@ import {
   Users, Settings, Package, LayoutDashboard, Edit2, Check, X, 
   Save, ClipboardList, Trash2, Phone, Search, RefreshCw, 
   AlertCircle, Clock, Crown, Briefcase, TrendingUp, DollarSign, 
-  Activity, Zap, PieChart
+  Activity, Zap, PieChart, Eye, MapPin, Home, Target, Award, Mail
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
@@ -25,6 +25,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [editingUser, setEditingUser] = useState<UserProfile | null>(null);
   const [editTier, setEditTier] = useState<string>('free');
   const [editEndDate, setEditEndDate] = useState<string>('');
+
+  // Kullanıcı Detay (İnceleme) State'leri
+  const [selectedUserDetail, setSelectedUserDetail] = useState<UserProfile | null>(null);
+  const [userDetailStats, setUserDetailStats] = useState({ properties: 0, leads: 0, loading: false });
   
   // Paket State'leri
   const [packages, setPackages] = useState<any[]>([]);
@@ -166,7 +170,6 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     }
   };
 
-  // KULLANICI SİLME FONKSİYONU EKLENDİ
   const handleDeleteUser = async (uid: string, name: string) => {
     if (window.confirm(`DİKKAT: ${name} adlı kullanıcıyı tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz!`)) {
       setLoading(true);
@@ -199,6 +202,27 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     setEditingUser(user);
     setEditTier(user.tier || 'free');
     setEditEndDate(user.subscription_end_date ? user.subscription_end_date.substring(0, 10) : '');
+  };
+
+  const handleOpenUserDetail = async (user: UserProfile) => {
+    setSelectedUserDetail(user);
+    setUserDetailStats({ properties: 0, leads: 0, loading: true });
+    
+    try {
+      const [propertiesRes, leadsRes] = await Promise.all([
+        supabase.from('properties').select('*', { count: 'exact', head: true }).eq('agent_id', user.uid),
+        supabase.from('leads').select('*', { count: 'exact', head: true }).eq('agent_id', user.uid)
+      ]);
+      
+      setUserDetailStats({
+        properties: propertiesRes.count || 0,
+        leads: leadsRes.count || 0,
+        loading: false
+      });
+    } catch (error) {
+      console.error("Detaylar çekilirken hata:", error);
+      setUserDetailStats({ properties: 0, leads: 0, loading: false });
+    }
   };
 
   const addMonthsToEndDate = (months: number) => {
@@ -299,6 +323,113 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       {/* Main Content */}
       <div className="flex-1 bg-slate-50 overflow-y-auto relative">
         
+        {/* 🔥 KULLANICI DETAY MODALI 🔥 */}
+        <AnimatePresence>
+          {selectedUserDetail && (
+            <div className="absolute inset-0 z-50 flex items-center justify-center p-4">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setSelectedUserDetail(null)} />
+              <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[32px] p-8 max-w-2xl w-full relative z-10 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
+                <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                  <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
+                    <Users className="text-orange-600" /> Kullanıcı Detayları
+                  </h3>
+                  <button onClick={() => setSelectedUserDetail(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
+                </div>
+                
+                <div className="space-y-6">
+                  {/* Profil Başlığı */}
+                  <div className="flex flex-col md:flex-row items-center md:items-start gap-6 bg-slate-50 p-6 rounded-2xl border border-slate-100">
+                    <div className="w-24 h-24 bg-slate-200 rounded-2xl overflow-hidden border-4 border-white shadow-md shrink-0">
+                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedUserDetail.uid}`} alt="Profile" className="w-full h-full object-cover" />
+                    </div>
+                    <div className="flex-1 text-center md:text-left">
+                      <h2 className="text-2xl font-black text-slate-900">{selectedUserDetail.display_name || 'İsimsiz Kullanıcı'}</h2>
+                      <div className="flex flex-col md:flex-row gap-2 md:gap-4 mt-2 text-sm text-slate-500 font-medium items-center md:items-start">
+                        <span className="flex items-center gap-1.5"><Mail size={16} className="text-slate-400"/> {selectedUserDetail.email}</span>
+                        {/* Not: Phone bilgisi UserProfile'da standart olmadığı için opsiyonel gösterilir */}
+                        <span className="flex items-center gap-1.5"><Phone size={16} className="text-slate-400"/> {(selectedUserDetail as any).phone || 'Belirtilmemiş'}</span>
+                      </div>
+                      <div className="mt-4 flex items-center justify-center md:justify-start gap-2">
+                         {selectedUserDetail.region ? (
+                           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-xl text-xs font-bold">
+                             <MapPin size={14} />
+                             {selectedUserDetail.region.city} / {selectedUserDetail.region.district}
+                           </span>
+                         ) : (
+                           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-200 text-slate-600 rounded-xl text-xs font-bold">
+                             <MapPin size={14} /> Bölge Seçilmemiş
+                           </span>
+                         )}
+                         <span className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider ${
+                            selectedUserDetail.tier === 'master' ? 'bg-indigo-100 text-indigo-700' : 
+                            selectedUserDetail.tier === 'trial' ? 'bg-emerald-100 text-emerald-700' :
+                            'bg-slate-200 text-slate-700'
+                          }`}>
+                            {selectedUserDetail.tier || 'Free'} Paket
+                         </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* İstatistik Kartları */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center">
+                      <div className="w-10 h-10 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mb-2"><Home size={20} /></div>
+                      <div className="text-2xl font-black text-slate-900">{userDetailStats.loading ? '...' : userDetailStats.properties}</div>
+                      <div className="text-xs font-bold text-slate-500 mt-1">Aktif Portföy</div>
+                    </div>
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center">
+                      <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mb-2"><Target size={20} /></div>
+                      <div className="text-2xl font-black text-slate-900">{userDetailStats.loading ? '...' : userDetailStats.leads}</div>
+                      <div className="text-xs font-bold text-slate-500 mt-1">Takipte Lead</div>
+                    </div>
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center">
+                      <div className="w-10 h-10 bg-purple-50 text-purple-600 rounded-full flex items-center justify-center mb-2"><Award size={20} /></div>
+                      <div className="text-2xl font-black text-slate-900">{selectedUserDetail.total_xp || 0}</div>
+                      <div className="text-xs font-bold text-slate-500 mt-1">Toplam XP</div>
+                    </div>
+                    <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center">
+                      <div className="w-10 h-10 bg-yellow-50 text-yellow-600 rounded-full flex items-center justify-center mb-2"><Zap size={20} /></div>
+                      <div className="text-2xl font-black text-slate-900">{selectedUserDetail.current_streak || 0}</div>
+                      <div className="text-xs font-bold text-slate-500 mt-1">Mevcut Seri (Gün)</div>
+                    </div>
+                  </div>
+
+                  {/* Diğer Bilgiler */}
+                  <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 text-sm">
+                    <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2"><Activity size={16} className="text-orange-600"/> Sistem & Aktivite Bilgileri</h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
+                      <div className="flex justify-between border-b border-slate-200 pb-2">
+                        <span className="text-slate-500 font-medium">Kayıt Tarihi:</span>
+                        <span className="font-bold text-slate-900">{new Date(selectedUserDetail.created_at).toLocaleDateString('tr-TR')}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-200 pb-2">
+                        <span className="text-slate-500 font-medium">Son Aktiflik:</span>
+                        <span className="font-bold text-slate-900">{selectedUserDetail.last_active_date || 'Bilinmiyor'}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-200 pb-2">
+                        <span className="text-slate-500 font-medium">Abonelik Bitişi:</span>
+                        <span className="font-bold text-slate-900">{selectedUserDetail.subscription_end_date ? new Date(selectedUserDetail.subscription_end_date).toLocaleDateString('tr-TR') : 'Süresiz / Yok'}</span>
+                      </div>
+                      <div className="flex justify-between border-b border-slate-200 pb-2">
+                        <span className="text-slate-500 font-medium">Broker Seviyesi:</span>
+                        <span className="font-bold text-slate-900">Seviye {selectedUserDetail.broker_level || 1}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                </div>
+
+                <div className="pt-6 flex justify-end">
+                  <button onClick={() => setSelectedUserDetail(null)} className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors shadow-lg">
+                    Kapat
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+
         {/* 🔥 KULLANICI DÜZENLEME MODALI 🔥 */}
         <AnimatePresence>
           {editingUser && (
@@ -534,8 +665,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
                         return (
                           <tr key={u.uid} className="hover:bg-slate-50 transition-colors">
-                            <td className="px-6 py-4">
-                              <div className="font-bold text-slate-900">{u.display_name || 'İsimsiz Kullanıcı'}</div>
+                            <td className="px-6 py-4 cursor-pointer" onClick={() => handleOpenUserDetail(u)}>
+                              <div className="font-bold text-slate-900 hover:text-orange-600 transition-colors">{u.display_name || 'İsimsiz Kullanıcı'}</div>
                               <div className="text-xs text-slate-500">{u.email}</div>
                               <div className="text-[10px] text-slate-400 mt-1">Son Aktif: <span className="font-bold">{u.last_active_date || 'Bilinmiyor'}</span></div>
                             </td>
@@ -575,9 +706,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
                             <td className="px-6 py-4 text-right">
                               <div className="flex items-center justify-end gap-2">
+                                {/* DETAY / İNCELE BUTONU EKLENDİ */}
+                                <button onClick={() => handleOpenUserDetail(u)} className="p-2 text-slate-400 hover:text-indigo-600 bg-white border border-slate-200 hover:border-indigo-200 hover:bg-indigo-50 rounded-lg transition-all shadow-sm" title="Detayları İncele"><Eye size={16} /></button>
                                 <button onClick={() => handleResetToken(u.uid)} className="p-2 text-slate-400 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 rounded-lg transition-all shadow-sm" title="Token Sıfırla"><RefreshCw size={16} /></button>
                                 <button onClick={() => openEditUser(u)} className="px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2" title="Aboneliği Düzenle"><Edit2 size={14} /> Düzenle</button>
-                                {/* SİLME BUTONU EKLENDİ */}
                                 <button onClick={() => handleDeleteUser(u.uid, u.display_name || 'Kullanıcı')} className="p-2 text-slate-400 hover:text-red-600 bg-white border border-slate-200 hover:border-red-200 hover:bg-red-50 rounded-lg transition-all shadow-sm" title="Kullanıcıyı Sil"><Trash2 size={16} /></button>
                               </div>
                             </td>
