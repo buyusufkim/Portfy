@@ -1,7 +1,6 @@
 import express from "express";
 import path from "path";
 import dotenv from "dotenv";
-import { fetchMarketData } from './server/marketScraper';
 
 // UZANTI .js OLARAK DÜZELTİLDİ. Node.js ESM kuralları gereği derlenmiş dosyayı işaret etmelidir.
 import { 
@@ -9,6 +8,9 @@ import {
   handleAdminUpdateUser, handleAdminDeleteUser, handleAdminGetUsers, 
   handleAdminGetSettings, handleUpdateGlobalSettings, handleEarnXP, handleAIGeneration 
 } from "./server/ai-api.js";
+
+// ✅ YENİ MARKET SCRAPER İÇERİ AKTARILDI (ESM formatına uygun olarak .js uzantısıyla)
+import { fetchMarketData } from "./server/marketScraper.js";
 
 dotenv.config({ override: true });
 
@@ -37,6 +39,30 @@ app.get("/api/ai/admin/settings", authenticate, handleAdminGetSettings);
 app.post("/api/ai/admin/update-user", authenticate, handleAdminUpdateUser);
 app.post("/api/ai/admin/delete-user", authenticate, handleAdminDeleteUser);
 app.post("/api/ai/admin/update-settings", authenticate, handleUpdateGlobalSettings);
+
+// ✅ YENİ MARKET ANALİZ ENDPOİNTİ
+app.post('/api/market/analyze', async (req, res) => {
+  try {
+    const { city, district, neighborhood, propertyType, m2 } = req.body;
+    
+    if (!city || !district) {
+      return res.status(400).json({ error: 'İl ve ilçe bilgisi zorunludur.' });
+    }
+
+    const marketData = await fetchMarketData({
+      city,
+      district,
+      neighborhood: neighborhood || '',
+      propertyType: propertyType || 'Konut',
+      m2: m2 || 100
+    });
+
+    res.json(marketData);
+  } catch (error) {
+    console.error('Market Analiz Hatası:', error);
+    res.status(500).json({ error: 'Piyasa verileri çekilemedi.' });
+  }
+});
 
 // 404 Handler for API routes to prevent falling back to HTML
 app.use("/api/*", (req, res) => {
@@ -77,30 +103,6 @@ if (!process.env.VERCEL) {
     });
   }
 }
-
-// YENİ MARKET ANALİZ ENDPOİNTİ
-app.post('/api/market/analyze', async (req, res) => {
-  try {
-    const { city, district, neighborhood, propertyType, m2 } = req.body;
-    
-    if (!city || !district) {
-      return res.status(400).json({ error: 'İl ve ilçe bilgisi zorunludur.' });
-    }
-
-    const marketData = await fetchMarketData({
-      city,
-      district,
-      neighborhood: neighborhood || '',
-      propertyType: propertyType || 'Konut',
-      m2: m2 || 100
-    });
-
-    res.json(marketData);
-  } catch (error) {
-    console.error('Market Analiz Hatası:', error);
-    res.status(500).json({ error: 'Piyasa verileri çekilemedi.' });
-  }
-});
 
 // Vercel'in API'yi okuyabilmesi için Export Edilmesi Zorunludur
 export default app;
