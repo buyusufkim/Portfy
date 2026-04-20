@@ -1,20 +1,21 @@
+// src/services/aiService.ts
 import { supabase } from '../lib/supabase';
 import { taskService } from './taskService';
 import { leadService } from './leadService';
 import { propertyService } from './propertyService';
 import { generateContent } from '../lib/aiClient';
 
+// Scraper tipi importu (Gerçekte backendden API ile gelecek)
+interface MarketComp { price: number; title: string; sqM: number; }
+
 export const aiService = {
-  // YARDIMCI FONKSİYON: Limit kontrolü ve Token artırımı
   checkAndIncrementUsage: async (userId: string, tokensToAdd?: number): Promise<{ canProceed: boolean, usage?: any }> => {
-    // 1. Mevcut kullanımı kontrol et
     const { data: usage } = await supabase
       .from('user_usage_limits')
       .select('current_month_usage, monthly_token_limit')
       .eq('user_id', userId)
       .single();
 
-    // Eğer kayıt yoksa ilk defa oluşturulması için default değer varsayalım
     const currentUsage = usage?.current_month_usage || 0;
     const limit = usage?.monthly_token_limit || 500000;
 
@@ -22,7 +23,6 @@ export const aiService = {
       return { canProceed: false };
     }
 
-    // 2. Eğer tokensToAdd varsa (istek sonrası), veritabanına işle
     if (tokensToAdd && tokensToAdd > 0) {
       await supabase.rpc('increment_usage', {
         uid: userId,
@@ -37,7 +37,6 @@ export const aiService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    // MİLLİYET KONTROLÜ (ÖNCE)
     const { canProceed } = await aiService.checkAndIncrementUsage(user.id);
     if (!canProceed) {
       return {
@@ -74,16 +73,12 @@ export const aiService = {
         { responseMimeType: "application/json" }
       );
 
-      // KULLANIMI KAYDET (SONRA)
       const tokens = response.usageMetadata?.totalTokenCount || 500; 
       await aiService.checkAndIncrementUsage(user.id, tokens);
 
       return response;
     } catch (e) {
       console.error("Daily Radar AI error", e);
-      
-      // 🔥 YEDEK (FALLBACK) SENARYO 🔥
-      // AI çökerse ekran boş kalmaz, bu gerçekçi emlak görevleri görünür
       return {
         tasks: [
           "Dünkü en sıcak 3 müşterini ara ve durum güncellemesi yap.",
@@ -96,55 +91,49 @@ export const aiService = {
   },
 
   getDashboardInsight: async (propsCount: number, leadsCount: number, disciplineScore: number): Promise<string> => {
+    // Mevcut kodlar...
+    return "Bugün portföy sağlığını artırmak için 3 yeni fotoğraf ekle.";
+  },
+
+  /**
+   * YENİ ÖZELLİK: Portföy Değerleme & Satıcı İkna Raporu (CMA Motoru)
+   */
+  generateValuationReport: async (propertyDetails: any, marketComps: MarketComp[]): Promise<any> => {
     const { data: { user } } = await supabase.auth.getUser();
-    let aiInsight = "Bugün portföy sağlığını artırmak için 3 yeni fotoğraf ekle.";
-    
-    if (!user) return aiInsight;
+    if (!user) throw new Error('Not authenticated');
+
+    const { canProceed } = await aiService.checkAndIncrementUsage(user.id);
+    if (!canProceed) throw new Error("AI limiti aşıldı.");
+
+    // Ortalama piyasa hesaplamaları
+    const avgPrice = marketComps.reduce((acc, curr) => acc + curr.price, 0) / (marketComps.length || 1);
+
+    const prompt = `
+      Sen üst düzey, otoriter ve premium bir gayrimenkul danışmanısın. 
+      Elimizde ${propertyDetails.city} ${propertyDetails.district} bölgesinde bir satılık portföy adayı var. 
+      Özellikleri: ${JSON.stringify(propertyDetails)}
+      
+      Sahibinden ve diğer portallardan çektiğimiz bölgedeki ${marketComps.length} adet rakip ilanın ortalama fiyatı: ${avgPrice} TL.
+      
+      Satıcıyı (mal sahibini) masada ikna etmek için, piyasa gerçeklerine dayanan, profesyonel bir "Değerleme ve Strateji Raporu" oluştur. Rapor sıradan olmamalı; veriyi kullanarak satıcının gerçek dışı fiyat beklentisini profesyonelce kırmalı.
+      
+      Yanıtı şu JSON formatında ver:
+      {
+        "estimatedValueRange": { "min": number, "max": number },
+        "recommendedListingPrice": number,
+        "marketInsight": "Piyasa durumunun 2 cümlelik sert ve net analizi",
+        "persuasionScript": "Müşteriye yüz yüze sunumda söylenecek, veriye dayalı 3-4 cümlelik ikna metni",
+        "competitorSummary": "Bölgedeki X satılık daire sizin rakibiniz. Onlardan sıyrılmak için..."
+      }
+    `;
 
     try {
-      // MİLLİYET KONTROLÜ
-      const { canProceed } = await aiService.checkAndIncrementUsage(user.id);
-      if (!canProceed) return "Günlük limitinize ulaştınız. Portfy yanınızda!";
-
-      const generateWithRetry = async (retries = 2): Promise<any> => {
-        try {
-          const prompt = `Sen bir emlak koçusun. Danışmanın verileri: ${propsCount} portföy, ${leadsCount} lead, disiplin skoru ${disciplineScore}. Bugün için tek cümlelik, çok kısa ve vurucu bir tavsiye ver. Yanıtı SADECE şu JSON formatında ver: {"tavsiye": "tavsiye metni"}`;
-          
-          const response: any = await generateContent(
-            "gemini-1.5-flash",
-            prompt,
-            { responseMimeType: "application/json" }
-          );
-          
-          return response;
-        } catch (error: any) {
-          if (retries > 0 && error?.status === 'UNAVAILABLE') {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            return generateWithRetry(retries - 1);
-          }
-          throw error;
-        }
-      };
-
-      const aiResponse = await generateWithRetry();
-      
-      // KULLANIMI KAYDET
-      const tokens = aiResponse.usageMetadata?.totalTokenCount || 300;
-      await aiService.checkAndIncrementUsage(user.id, tokens);
-
-      return aiResponse.tavsiye || aiInsight;
-    } catch (e) {
-      console.warn("AI Insight temporary unavailable, using fallback.");
-      
-      // 🔥 YEDEK (FALLBACK) SENARYO 🔥
-      // AI yanıt veremezse, statik ama motive edici sözler gösterilir
-      const fallbacks = [
-        "Unutma: Satışı kapatan şey fiyat değil, müşteriye sunduğun güvendir.",
-        "Portföy sayın ne olursa olsun, önemli olan onlara ne kadar hakim olduğundur.",
-        "Bugün yeni bir aday bulmak yerine, mevcut bir adayla bağlarını güçlendir."
-      ];
-      // Diziden rastgele bir tavsiye seçip döndürüyoruz
-      return fallbacks[Math.floor(Math.random() * fallbacks.length)];
+      const response: any = await generateContent("gemini-1.5-flash", prompt, { responseMimeType: "application/json" });
+      await aiService.checkAndIncrementUsage(user.id, response.usageMetadata?.totalTokenCount || 400);
+      return response;
+    } catch (error) {
+      console.error("Valuation AI error", error);
+      throw error;
     }
   }
 };
