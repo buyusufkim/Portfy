@@ -9,7 +9,7 @@ export const useRevenueStats = () => {
   const { profile } = useAuth();
   
   return useQuery<RevenueStats>({
-    queryKey: [QUERY_KEYS.REVENUE_STATS, profile?.uid],
+    queryKey: [QUERY_KEYS.REVENUE_STATS, profile?.id],
     queryFn: async () => {
       const [leads, properties, missedOpportunities] = await Promise.all([
         api.getLeads(),
@@ -19,7 +19,7 @@ export const useRevenueStats = () => {
 
       return calculateRevenueStats(leads, properties, missedOpportunities);
     },
-    enabled: !!profile?.uid,
+    enabled: !!profile?.id,
     staleTime: 1000 * 60 * 5, // 5 minutes
   });
 };

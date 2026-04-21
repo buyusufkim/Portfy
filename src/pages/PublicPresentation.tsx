@@ -29,11 +29,11 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
         if (propData) {
           setProperty(propData);
           // İlan sahibini çek
-          if (propData.agent_id) {
+          if (propData.user_id) {
             const { data: agentData } = await supabase
               .from('profiles')
               .select('*')
-              .eq('uid', propData.agent_id)
+              .eq('id', propData.user_id)
               .maybeSingle();
             if (agentData) setAgent(agentData);
           }
@@ -94,7 +94,7 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
   const floor = detailsObj.floor || '-';
 
   const agentName = agent?.display_name || 'Gayrimenkul Danışmanı';
-  const agentAvatar = agent?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${agent?.uid || 'agent'}`;
+  const agentAvatar = agent?.avatar_url || `https://api.dicebear.com/7.x/avataaars/svg?seed=${agent?.id || 'agent'}`;
   const agentPhone = agent?.phone || '';
   const agentEmail = agent?.email || '';
 

@@ -18,7 +18,7 @@ export const RegionSetupModal: React.FC<RegionSetupModalProps> = ({ profile, onC
   const [isSaving, setIsSaving] = useState(false);
 
   const updateProfileMutation = useMutation({
-    mutationFn: ({ uid, data }: { uid: string, data: Partial<UserProfile> }) => api.updateProfile(uid, data),
+    mutationFn: ({ id, data }: { id: string, data: Partial<UserProfile> }) => api.updateProfile(id, data),
     onSuccess: () => {
       onComplete();
     }
@@ -33,7 +33,7 @@ export const RegionSetupModal: React.FC<RegionSetupModalProps> = ({ profile, onC
     setIsSaving(true);
     try {
       await updateProfileMutation.mutateAsync({
-        uid: profile.uid,
+        id: profile.id,
         data: {
           region: { city, district, neighborhoods: neighborhoods.slice(0, 3) }
         }

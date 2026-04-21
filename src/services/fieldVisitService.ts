@@ -10,7 +10,7 @@ export const fieldVisitService = {
     const { data } = await supabase
       .from('field_visits')
       .select('*')
-      .eq('agent_id', userId);
+      .eq('user_id', userId);
     return (data || []) as Building[];
   },
 
@@ -21,7 +21,7 @@ export const fieldVisitService = {
       .from('field_visits')
       .insert({
         ...visit,
-        agent_id: userId,
+        user_id: userId,
         last_visit: new Date().toISOString()
       })
       .select()

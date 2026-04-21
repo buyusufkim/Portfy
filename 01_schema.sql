@@ -37,7 +37,7 @@ $$ language 'plpgsql';
 -- Column additions and renames are handled in the DO blocks below.
 
 CREATE TABLE IF NOT EXISTS profiles (
-    uid UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     display_name TEXT,
     email TEXT UNIQUE,
     role TEXT DEFAULT 'agent' CHECK (role IN ('agent', 'admin')),
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS profiles (
 
 CREATE TABLE IF NOT EXISTS tasks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     type TEXT, -- CHECK (type IN ('Arama', 'Randevu'...)) SİLİNDİ
     category TEXT DEFAULT 'main', -- CHECK SİLİNDİ
@@ -80,7 +80,7 @@ CREATE TABLE IF NOT EXISTS tasks (
 
 CREATE TABLE IF NOT EXISTS task_completions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     task_id UUID REFERENCES tasks(id) ON DELETE SET NULL,
     points_earned INTEGER NOT NULL,
     completed_at TIMESTAMPTZ DEFAULT NOW(),
@@ -89,7 +89,7 @@ CREATE TABLE IF NOT EXISTS task_completions (
 
 CREATE TABLE IF NOT EXISTS leads (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     phone TEXT,
     email TEXT,
@@ -106,7 +106,7 @@ CREATE TABLE IF NOT EXISTS leads (
 
 CREATE TABLE IF NOT EXISTS properties (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     type TEXT NOT NULL,
     category TEXT, -- CHECK (category IN ('Satılık', 'Kiralık')) SİLİNDİ
@@ -130,7 +130,7 @@ CREATE TABLE IF NOT EXISTS properties (
 
 CREATE TABLE IF NOT EXISTS daily_briefings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     date DATE DEFAULT CURRENT_DATE,
     type TEXT CHECK (type IN ('morning', 'evening')),
     content JSONB NOT NULL,
@@ -140,7 +140,7 @@ CREATE TABLE IF NOT EXISTS daily_briefings (
 
 CREATE TABLE IF NOT EXISTS ai_insights (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     type TEXT CHECK (type IN ('coaching', 'rescue', 'alert', 'opportunity')),
     title TEXT,
     description TEXT,
@@ -152,7 +152,7 @@ CREATE TABLE IF NOT EXISTS ai_insights (
 
 CREATE TABLE IF NOT EXISTS whatsapp_imports (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     analysis_result JSONB NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ DEFAULT NOW()
@@ -160,7 +160,7 @@ CREATE TABLE IF NOT EXISTS whatsapp_imports (
 
 CREATE TABLE IF NOT EXISTS performance_snapshots (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     date DATE DEFAULT CURRENT_DATE,
     metrics JSONB NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -169,7 +169,7 @@ CREATE TABLE IF NOT EXISTS performance_snapshots (
 
 CREATE TABLE IF NOT EXISTS subscription_state (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     tier TEXT NOT NULL,
     status TEXT DEFAULT 'active',
     current_period_start TIMESTAMPTZ DEFAULT NOW(),
@@ -181,7 +181,7 @@ CREATE TABLE IF NOT EXISTS subscription_state (
 
 CREATE TABLE IF NOT EXISTS gamified_tasks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     points INTEGER DEFAULT 0,
     category TEXT CHECK (category IN ('main', 'smart', 'sweet')),
@@ -197,7 +197,7 @@ CREATE TABLE IF NOT EXISTS gamified_tasks (
 
 CREATE TABLE IF NOT EXISTS categories (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     label TEXT NOT NULL,
     color TEXT NOT NULL,
     icon TEXT,
@@ -207,7 +207,7 @@ CREATE TABLE IF NOT EXISTS categories (
 
 CREATE TABLE IF NOT EXISTS user_stats (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     date DATE DEFAULT CURRENT_DATE,
     tasks_completed INTEGER DEFAULT 0,
     potential_revenue_handled NUMERIC DEFAULT 0,
@@ -222,7 +222,7 @@ CREATE TABLE IF NOT EXISTS user_stats (
 
 CREATE TABLE IF NOT EXISTS rescue_sessions (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     status TEXT DEFAULT 'active' CHECK (status IN ('active', 'completed', 'cancelled')),
     tasks JSONB DEFAULT '[]'::JSONB,
     date DATE DEFAULT CURRENT_DATE,
@@ -235,7 +235,7 @@ CREATE TABLE IF NOT EXISTS rescue_sessions (
 
 CREATE TABLE IF NOT EXISTS field_visits (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     address TEXT,
     last_visit TIMESTAMPTZ DEFAULT NOW(),
@@ -246,7 +246,7 @@ CREATE TABLE IF NOT EXISTS field_visits (
 
 CREATE TABLE IF NOT EXISTS map_pins (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     lat NUMERIC(10, 7) NOT NULL,
     lng NUMERIC(10, 7) NOT NULL,
@@ -257,7 +257,7 @@ CREATE TABLE IF NOT EXISTS map_pins (
 
 CREATE TABLE IF NOT EXISTS notes (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     title TEXT,
     content TEXT,
     color TEXT,
@@ -267,7 +267,7 @@ CREATE TABLE IF NOT EXISTS notes (
 
 CREATE TABLE IF NOT EXISTS personal_tasks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     is_completed BOOLEAN DEFAULT FALSE,
     due_date TIMESTAMPTZ,
@@ -290,7 +290,7 @@ CREATE TABLE IF NOT EXISTS global_settings (
 
 CREATE TABLE IF NOT EXISTS message_templates (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     content TEXT NOT NULL,
     is_default BOOLEAN DEFAULT FALSE,
@@ -299,7 +299,7 @@ CREATE TABLE IF NOT EXISTS message_templates (
 
 CREATE TABLE IF NOT EXISTS broker_accounts (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     store_name TEXT NOT NULL,
     api_key TEXT NOT NULL,
     connected_at TIMESTAMPTZ DEFAULT NOW()
@@ -307,7 +307,7 @@ CREATE TABLE IF NOT EXISTS broker_accounts (
 
 CREATE TABLE IF NOT EXISTS external_listings (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     ext_id TEXT NOT NULL,
     title TEXT,
     price BIGINT,
@@ -315,7 +315,7 @@ CREATE TABLE IF NOT EXISTS external_listings (
     url TEXT,
     district TEXT,
     last_sync TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(agent_id, ext_id)
+    UNIQUE(user_id, ext_id)
 );
 
 CREATE TABLE IF NOT EXISTS property_sync_links (
@@ -329,9 +329,9 @@ DECLARE
     t text;
 BEGIN 
     -- Profiles renames and additions
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='id' AND table_schema='public') THEN
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='uid' AND table_schema='public') THEN
-            ALTER TABLE profiles RENAME COLUMN id TO uid;
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='uid' AND table_schema='public') THEN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='id' AND table_schema='public') THEN
+            ALTER TABLE profiles RENAME COLUMN uid TO id;
         END IF;
     END IF;
 
@@ -360,7 +360,7 @@ BEGIN
         ALTER TABLE profiles ADD COLUMN last_end_day_xp_at TIMESTAMPTZ;
     END IF;
 
-    -- Generic agent_id rename and addition for all tables
+    -- Generic user_id rename and addition for all tables
     FOR t IN SELECT unnest(ARRAY[
         'tasks', 'task_completions', 'leads', 'properties', 
         'daily_briefings', 'ai_insights', 'whatsapp_imports', 
@@ -370,13 +370,13 @@ BEGIN
         'broker_accounts', 'external_listings'
     ])
     LOOP
-        -- Rename agentId/userId/user_id to agent_id if they exist
-        -- We try to find any variant and rename it to agent_id
+        -- Rename agentId/userId/agent_id to user_id if they exist
+        -- We try to find any variant and rename it to user_id
         
         -- agentId
         IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'agentId' AND table_schema = 'public') THEN
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'agent_id' AND table_schema = 'public') THEN
-                EXECUTE format('ALTER TABLE %I RENAME COLUMN "agentId" TO agent_id', t);
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'user_id' AND table_schema = 'public') THEN
+                EXECUTE format('ALTER TABLE %I RENAME COLUMN "agentId" TO user_id', t);
             ELSE
                 BEGIN
                     EXECUTE format('ALTER TABLE %I DROP COLUMN IF EXISTS "agentId" CASCADE', t);
@@ -385,10 +385,22 @@ BEGIN
             END IF;
         END IF;
 
+        -- agent_id
+        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'agent_id' AND table_schema = 'public') THEN
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'user_id' AND table_schema = 'public') THEN
+                EXECUTE format('ALTER TABLE %I RENAME COLUMN "agent_id" TO user_id', t);
+            ELSE
+                BEGIN
+                    EXECUTE format('ALTER TABLE %I DROP COLUMN IF EXISTS "agent_id" CASCADE', t);
+                EXCEPTION WHEN OTHERS THEN NULL;
+                END;
+            END IF;
+        END IF;
+
         -- userId
         IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'userId' AND table_schema = 'public') THEN
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'agent_id' AND table_schema = 'public') THEN
-                EXECUTE format('ALTER TABLE %I RENAME COLUMN "userId" TO agent_id', t);
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'user_id' AND table_schema = 'public') THEN
+                EXECUTE format('ALTER TABLE %I RENAME COLUMN "userId" TO user_id', t);
             ELSE
                 BEGIN
                     EXECUTE format('ALTER TABLE %I DROP COLUMN IF EXISTS "userId" CASCADE', t);
@@ -397,21 +409,9 @@ BEGIN
             END IF;
         END IF;
 
-        -- user_id
-        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'user_id' AND table_schema = 'public') THEN
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'agent_id' AND table_schema = 'public') THEN
-                EXECUTE format('ALTER TABLE %I RENAME COLUMN "user_id" TO agent_id', t);
-            ELSE
-                BEGIN
-                    EXECUTE format('ALTER TABLE %I DROP COLUMN IF EXISTS "user_id" CASCADE', t);
-                EXCEPTION WHEN OTHERS THEN NULL;
-                END;
-            END IF;
-        END IF;
-
-        -- Add agent_id if it still doesn't exist
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'agent_id' AND table_schema = 'public') THEN
-            EXECUTE format('ALTER TABLE %I ADD COLUMN agent_id UUID REFERENCES profiles(uid) ON DELETE CASCADE', t);
+        -- Add user_id if it still doesn't exist
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'user_id' AND table_schema = 'public') THEN
+            EXECUTE format('ALTER TABLE %I ADD COLUMN user_id UUID REFERENCES profiles(id) ON DELETE CASCADE', t);
         END IF;
     END LOOP;
 
@@ -463,13 +463,13 @@ BEGIN
 END $$;
 
 -- 5. Performance Indexes
-CREATE INDEX IF NOT EXISTS idx_tasks_agent_date ON tasks(agent_id, time);
-CREATE INDEX IF NOT EXISTS idx_leads_agent_status ON leads(agent_id, status);
-CREATE INDEX IF NOT EXISTS idx_properties_agent_status ON properties(agent_id, status);
-CREATE INDEX IF NOT EXISTS idx_gamified_tasks_agent_date ON gamified_tasks(agent_id, date);
-CREATE INDEX IF NOT EXISTS idx_user_stats_agent_date ON user_stats(agent_id, date);
-CREATE INDEX IF NOT EXISTS idx_message_templates_agent ON message_templates(agent_id);
-CREATE INDEX IF NOT EXISTS idx_broker_accounts_agent ON broker_accounts(agent_id);
-CREATE INDEX IF NOT EXISTS idx_external_listings_agent ON external_listings(agent_id);
+CREATE INDEX IF NOT EXISTS idx_tasks_user_date ON tasks(user_id, time);
+CREATE INDEX IF NOT EXISTS idx_leads_user_status ON leads(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_properties_user_status ON properties(user_id, status);
+CREATE INDEX IF NOT EXISTS idx_gamified_tasks_user_date ON gamified_tasks(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_user_stats_user_date ON user_stats(user_id, date);
+CREATE INDEX IF NOT EXISTS idx_message_templates_user ON message_templates(user_id);
+CREATE INDEX IF NOT EXISTS idx_broker_accounts_user ON broker_accounts(user_id);
+CREATE INDEX IF NOT EXISTS idx_external_listings_user ON external_listings(user_id);
 CREATE INDEX IF NOT EXISTS idx_external_listings_ext_id ON external_listings(ext_id);
-CREATE INDEX IF NOT EXISTS idx_rescue_sessions_date ON rescue_sessions(agent_id, date);
+CREATE INDEX IF NOT EXISTS idx_rescue_sessions_date ON rescue_sessions(user_id, date);

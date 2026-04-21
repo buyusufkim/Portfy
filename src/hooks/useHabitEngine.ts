@@ -10,24 +10,24 @@ export const useHabitEngine = () => {
   const queryClient = useQueryClient();
 
   const { data: gamifiedTasks = [], isLoading: tasksLoading, isError: tasksError } = useQuery({
-    queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid],
+    queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.id],
     queryFn: () => api.getDailyGamifiedTasks(),
-    enabled: !!profile?.uid
+    enabled: !!profile?.id
   });
 
   const { data: dailyStats = [], isLoading: statsLoading } = useQuery({
-    queryKey: [QUERY_KEYS.DAILY_STATS, profile?.uid],
+    queryKey: [QUERY_KEYS.DAILY_STATS, profile?.id],
     queryFn: () => api.getDailyStats(7),
-    enabled: !!profile?.uid
+    enabled: !!profile?.id
   });
 
   const completeTaskMutation = useMutation({
     mutationFn: ({ taskId }: { taskId: string }) => 
       api.completeGamifiedTask(taskId),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DAILY_STATS, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DAILY_STATS, profile?.id] });
       
       confetti({
         particleCount: 100,
@@ -40,7 +40,7 @@ export const useHabitEngine = () => {
   const startDayMutation = useMutation({
     mutationFn: api.completeMorningRitual,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.id] });
     }
   });
 
@@ -48,8 +48,8 @@ export const useHabitEngine = () => {
     mutationFn: (stats: { tasks_completed: number, revenue: number, calls: number, visits: number, social: number }) => 
       api.completeEveningRitual(stats),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DAILY_STATS, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DAILY_STATS, profile?.id] });
       confetti({
         particleCount: 200,
         spread: 90,

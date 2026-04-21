@@ -11,7 +11,7 @@ export const useAICoach = () => {
   const queryClient = useQueryClient();
 
   const { data: insight, isLoading, error, refetch } = useQuery({
-    queryKey: [QUERY_KEYS.AI_COACH_INSIGHT, profile?.uid],
+    queryKey: [QUERY_KEYS.AI_COACH_INSIGHT, profile?.id],
     queryFn: api.getDetailedCoachInsight,
     enabled: false,
     staleTime: 1000 * 60 * 15, // 15 dakika cache
@@ -20,7 +20,7 @@ export const useAICoach = () => {
   const convertToTaskMutation = useMutation({
     mutationFn: (action: AICoachAction) => coachService.convertActionToTask(action),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS, profile?.id] });
       confetti({
         particleCount: 50,
         spread: 40,

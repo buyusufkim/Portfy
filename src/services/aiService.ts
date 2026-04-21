@@ -14,7 +14,7 @@ export const aiService = {
     const { data: profile } = await supabase
       .from('profiles')
       .select('ai_tokens_used, tier')
-      .eq('uid', userId)
+      .eq('id', userId)
       .single();
 
     const currentUsage = profile?.ai_tokens_used || 0;

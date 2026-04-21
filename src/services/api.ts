@@ -25,9 +25,13 @@ export const api = {
 
   getLiveMarketAnalysis: async (property: any) => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(`${API_URL}/api/market/analyze`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session?.access_token || ''}`
+        },
         body: JSON.stringify({
           city: property.address?.city || 'Kayseri',
           district: property.address?.district || 'Talas',
@@ -117,12 +121,12 @@ export const api = {
     const { data: properties } = await supabase
       .from('properties')
       .select('*')
-      .eq('agent_id', agentId);
+      .eq('user_id', userId);
     
     const { count: leadsCount } = await supabase
       .from('leads')
       .select('*', { count: 'exact', head: true })
-      .eq('agent_id', agentId);
+      .eq('user_id', userId);
 
     const props = (properties || []) as Property[];
 
@@ -136,7 +140,7 @@ export const api = {
     const { data: tasks } = await supabase
       .from('tasks')
       .select('*')
-      .eq('agent_id', agentId);
+      .eq('user_id', userId);
     
     const tks = (tasks || []) as Task[];
     const completedTasks = tks.filter(t => t.completed).length;
@@ -170,18 +174,18 @@ export const api = {
     const { data } = await supabase
       .from('map_pins')
       .select('*')
-      .eq('agent_id', userId);
+      .eq('user_id', userId);
     return (data || []) as MapPin[];
   },
 
-  addMapPin: async (pin: Omit<MapPin, 'id' | 'agent_id' | 'created_at'>) => {
+  addMapPin: async (pin: Omit<MapPin, 'id' | 'user_id' | 'created_at'>) => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
     const { data, error } = await supabase
       .from('map_pins')
       .insert({
         ...pin,
-        agent_id: userId,
+        user_id: userId,
         created_at: new Date().toISOString()
       })
       .select()
@@ -257,18 +261,18 @@ export const api = {
     const { data } = await supabase
       .from('message_templates')
       .select('*')
-      .eq('agent_id', user.id);
+      .eq('user_id', user.id);
     return (data || []) as MessageTemplate[];
   },
 
-  addMessageTemplate: async (template: Omit<MessageTemplate, 'id' | 'agent_id'>) => {
+  addMessageTemplate: async (template: Omit<MessageTemplate, 'id' | 'user_id'>) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
     const { data, error } = await supabase
       .from('message_templates')
       .insert({
         ...template,
-        agent_id: user.id
+        user_id: user.id
       })
       .select()
       .single();

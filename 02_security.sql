@@ -19,7 +19,7 @@ RETURNS BOOLEAN AS $$
 BEGIN
   RETURN EXISTS (
     SELECT 1 FROM profiles
-    WHERE uid = auth.uid()
+    WHERE id = auth.uid()
       AND role = 'admin'
   );
 END;
@@ -38,9 +38,9 @@ BEGIN
 END $$;
 
 -- PROFILES Policies
-CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = uid);
-CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = uid);
-CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = uid);
+CREATE POLICY "Users can view own profile" ON profiles FOR SELECT USING (auth.uid() = id);
+CREATE POLICY "Users can update own profile" ON profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can insert own profile" ON profiles FOR INSERT WITH CHECK (auth.uid() = id);
 CREATE POLICY "Admins can view all profiles" ON profiles FOR SELECT USING (is_admin());
 CREATE POLICY "Admins can update all profiles" ON profiles FOR UPDATE USING (is_admin());
 
@@ -62,19 +62,19 @@ BEGIN
         ('map_pins'), ('notes'), ('personal_tasks'), ('message_templates'), 
         ('broker_accounts'), ('external_listings')
     LOOP
-        EXECUTE format('CREATE POLICY "Users can manage own %s" ON %I FOR ALL USING (agent_id = auth.uid())', t, t);
+        EXECUTE format('CREATE POLICY "Users can manage own %s" ON %I FOR ALL USING (user_id = auth.uid())', t, t);
     END LOOP;
 
     -- Special case for subscription_state: Users can only SELECT their own state.
     -- Writes are handled by the backend (service_role) via RPC.
-    CREATE POLICY "Users can view own subscription state" ON subscription_state FOR SELECT USING (agent_id = auth.uid());
+    CREATE POLICY "Users can view own subscription state" ON subscription_state FOR SELECT USING (user_id = auth.uid());
     CREATE POLICY "Admins can view all subscription states" ON subscription_state FOR SELECT USING (is_admin());
 END $$;
 
 -- PROPERTY_SYNC_LINKS Policy (Special case)
 CREATE POLICY "Users can manage own property sync links" ON property_sync_links 
 FOR ALL USING (
-    EXISTS (SELECT 1 FROM properties WHERE properties.id = property_sync_links.property_id AND properties.agent_id = auth.uid())
+    EXISTS (SELECT 1 FROM properties WHERE properties.id = property_sync_links.property_id AND properties.user_id = auth.uid())
 );
 
 -- 4. Triggers for updated_at

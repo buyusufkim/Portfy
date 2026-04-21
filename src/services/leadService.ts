@@ -11,18 +11,18 @@ export const leadService = {
     const { data } = await supabase
       .from('leads')
       .select('*')
-      .eq('agent_id', userId);
+      .eq('user_id', userId);
     return (data || []) as Lead[];
   },
 
-  addLead: async (lead: Omit<Lead, 'id' | 'agent_id' | 'last_contact'>) => {
+  addLead: async (lead: Omit<Lead, 'id' | 'user_id' | 'last_contact'>) => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
     const { data, error } = await supabase
       .from('leads')
       .insert({
         ...lead,
-        agent_id: userId,
+        user_id: userId,
         last_contact: new Date().toISOString(),
         behavior_metrics: {
           total_views: 0,

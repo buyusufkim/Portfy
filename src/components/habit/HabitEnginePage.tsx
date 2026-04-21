@@ -27,8 +27,8 @@ export const HabitEnginePage: React.FC = () => {
   };
 
   const todayISO = getTodayStr();
-  const localStarted = profile?.uid ? localStorage.getItem(`day_started_${profile.uid}_${todayISO}`) : null;
-  const localEnded = profile?.uid ? localStorage.getItem(`day_ended_${profile.uid}_${todayISO}`) : null;
+  const localStarted = profile?.id ? localStorage.getItem(`day_started_${profile.id}_${todayISO}`) : null;
+  const localEnded = profile?.id ? localStorage.getItem(`day_ended_${profile.id}_${todayISO}`) : null;
   
   const isDayStarted = (profile?.last_day_started_at?.startsWith(todayISO)) || 
                        (profile?.last_active_date === todayISO) || 
@@ -111,7 +111,7 @@ export const HabitEnginePage: React.FC = () => {
             <p className="text-slate-500 text-sm font-medium">Günlük disiplin ve satış pusulası.</p>
           </div>
           <div className="w-12 h-12 bg-slate-200 rounded-2xl overflow-hidden border-2 border-white shadow-sm">
-            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.uid}`} alt="Profile" referrerPolicy="no-referrer" />
+            <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile.id}`} alt="Profile" referrerPolicy="no-referrer" />
           </div>
         </header>
 

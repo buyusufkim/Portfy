@@ -42,14 +42,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
-        .eq('uid', user.id)
+        .eq('id', user.id)
         .maybeSingle();
 
       if (error) throw error;
       
       if (!data) {
         const newProfile = {
-          uid: user.id,
+          id: user.id,
           email: user.email || '',
           display_name: user.user_metadata?.full_name || 'İsimsiz Danışman',
           phone: user.user_metadata?.phone || '',
@@ -220,7 +220,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const { error } = await supabase
           .from('profiles')
           .update({ tier: 'free', subscription_type: 'none' })
-          .eq('uid', user.id);
+          .eq('id', user.id);
           
         if (error) throw error;
         await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, user.id] });
@@ -278,7 +278,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error } = await supabase
       .from('profiles')
       .update({ has_seen_onboarding: true })
-      .eq('uid', user.id);
+      .eq('id', user.id);
 
     if (error) {
       console.error('Onboarding update error:', error);
@@ -292,7 +292,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const { error } = await supabase
       .from('profiles')
       .update({ has_seen_tour: true })
-      .eq('uid', user.id);
+      .eq('id', user.id);
 
     if (error) {
       console.error('Tour update error:', error);

@@ -73,33 +73,33 @@ function MainApp() {
   const [leadAnalysis, setLeadAnalysis] = useState<string | null>(null);
   const [isAnalyzingLeads, setIsAnalyzingLeads] = useState(false);
 
-  const { data: leads = [] } = useQuery({ queryKey: [QUERY_KEYS.LEADS, profile?.uid], queryFn: api.getLeads, enabled: !!profile?.uid });
-  const { data: properties = [] } = useQuery({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid], queryFn: api.getProperties, enabled: !!profile?.uid });
-  const { data: personalTasks = [] } = useQuery({ queryKey: [QUERY_KEYS.PERSONAL_TASKS, profile?.uid], queryFn: api.getPersonalTasks, enabled: !!profile?.uid });
-  const { data: gamifiedTasks = [], isLoading: tasksLoading, isError: tasksError } = useQuery({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid], queryFn: () => api.getDailyGamifiedTasks(), enabled: !!profile?.uid });
-  const { data: fieldVisits = [] } = useQuery({ queryKey: [QUERY_KEYS.FIELD_VISITS, profile?.uid], queryFn: api.getFieldVisits, enabled: !!profile?.uid });
-  const { data: tasks = [] } = useQuery({ queryKey: [QUERY_KEYS.TASKS, profile?.uid], queryFn: api.getTasks, enabled: !!profile?.uid });
-  const { data: regionScores = [] } = useQuery({ queryKey: [QUERY_KEYS.REGION_SCORES, profile?.uid], queryFn: api.getRegionEfficiencyScores, enabled: !!profile?.uid });
-  const { data: brokerAccount } = useQuery({ queryKey: [QUERY_KEYS.BROKER_ACCOUNT, profile?.uid], queryFn: api.getBrokerAccount, enabled: !!profile?.uid });
-  const { data: externalListings = [] } = useQuery({ queryKey: [QUERY_KEYS.EXTERNAL_LISTINGS, profile?.uid], queryFn: api.getExternalListings, enabled: !!profile?.uid });
-  const { data: rescueSession } = useQuery({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.uid], queryFn: api.getRescueSession, enabled: !!profile?.uid });
-  const { data: missedOpportunities = [] } = useQuery({ queryKey: [QUERY_KEYS.MISSED_OPPORTUNITIES, profile?.uid], queryFn: api.getMissedOpportunities, enabled: !!profile?.uid });
-  const { data: dailyRadarData } = useQuery({ queryKey: [QUERY_KEYS.DAILY_RADAR, profile?.uid], queryFn: api.getDailyRadar, enabled: !!profile?.uid && showDailyRadar });
+  const { data: leads = [] } = useQuery({ queryKey: [QUERY_KEYS.LEADS, profile?.id], queryFn: api.getLeads, enabled: !!profile?.id });
+  const { data: properties = [] } = useQuery({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.id], queryFn: api.getProperties, enabled: !!profile?.id });
+  const { data: personalTasks = [] } = useQuery({ queryKey: [QUERY_KEYS.PERSONAL_TASKS, profile?.id], queryFn: api.getPersonalTasks, enabled: !!profile?.id });
+  const { data: gamifiedTasks = [], isLoading: tasksLoading, isError: tasksError } = useQuery({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.id], queryFn: () => api.getDailyGamifiedTasks(), enabled: !!profile?.id });
+  const { data: fieldVisits = [] } = useQuery({ queryKey: [QUERY_KEYS.FIELD_VISITS, profile?.id], queryFn: api.getFieldVisits, enabled: !!profile?.id });
+  const { data: tasks = [] } = useQuery({ queryKey: [QUERY_KEYS.TASKS, profile?.id], queryFn: api.getTasks, enabled: !!profile?.id });
+  const { data: regionScores = [] } = useQuery({ queryKey: [QUERY_KEYS.REGION_SCORES, profile?.id], queryFn: api.getRegionEfficiencyScores, enabled: !!profile?.id });
+  const { data: brokerAccount } = useQuery({ queryKey: [QUERY_KEYS.BROKER_ACCOUNT, profile?.id], queryFn: api.getBrokerAccount, enabled: !!profile?.id });
+  const { data: externalListings = [] } = useQuery({ queryKey: [QUERY_KEYS.EXTERNAL_LISTINGS, profile?.id], queryFn: api.getExternalListings, enabled: !!profile?.id });
+  const { data: rescueSession } = useQuery({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.id], queryFn: api.getRescueSession, enabled: !!profile?.id });
+  const { data: missedOpportunities = [] } = useQuery({ queryKey: [QUERY_KEYS.MISSED_OPPORTUNITIES, profile?.id], queryFn: api.getMissedOpportunities, enabled: !!profile?.id });
+  const { data: dailyRadarData } = useQuery({ queryKey: [QUERY_KEYS.DAILY_RADAR, profile?.id], queryFn: api.getDailyRadar, enabled: !!profile?.id && showDailyRadar });
 
-  const addLeadMutation = useMutation({ mutationFn: api.addLead, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.uid] }); setShowAddLead(false); setShowQuickAdd(false); }});
-  const updateLeadMutation = useMutation({ mutationFn: ({ id, data }: any) => api.updateLead(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.uid] }); setShowAddLead(false); setIsEditingLead(false); setSelectedLead(null); }});
-  const deleteLeadMutation = useMutation({ mutationFn: api.deleteLead, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.uid] }); setSelectedLead(null); }});
-  const addVisitMutation = useMutation({ mutationFn: api.addVisit, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.FIELD_VISITS, profile?.uid] }); setShowAddVisit(false); setShowQuickAdd(false); }});
-  const addTaskMutation = useMutation({ mutationFn: api.addTask, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS, profile?.uid] }); }});
+  const addLeadMutation = useMutation({ mutationFn: api.addLead, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.id] }); setShowAddLead(false); setShowQuickAdd(false); }});
+  const updateLeadMutation = useMutation({ mutationFn: ({ id, data }: any) => api.updateLead(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.id] }); setShowAddLead(false); setIsEditingLead(false); setSelectedLead(null); }});
+  const deleteLeadMutation = useMutation({ mutationFn: api.deleteLead, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.id] }); setSelectedLead(null); }});
+  const addVisitMutation = useMutation({ mutationFn: api.addVisit, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.FIELD_VISITS, profile?.id] }); setShowAddVisit(false); setShowQuickAdd(false); }});
+  const addTaskMutation = useMutation({ mutationFn: api.addTask, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS, profile?.id] }); }});
   const completeMorningRitualMutation = useMutation({ mutationFn: async () => { await api.startDay(); return api.completeMorningRitual(); }, onSuccess: () => { setShowDailyRadar(false); setToast({ message: "Güne harika bir başlangıç yaptın!", type: 'success' }); }, onError: () => { setShowDailyRadar(false); setToast({ message: "Güne zaten başlamıştın.", type: 'info' }); }});
   const completeEveningRitualMutation = useMutation({ mutationFn: async (stats: any) => { await api.endDay(stats); return api.completeEveningRitual(stats); }, onSuccess: () => { setShowDayCloser(false); setToast({ message: "Günü başarıyla kapattın. İyi dinlenmeler!", type: 'success' }); confetti(); }});
-  const cancelRescueMutation = useMutation({ mutationFn: api.cancelRescueSession, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.uid] }); }});
-  const completeRescueTaskMutation = useMutation({ mutationFn: ({ sessionId, taskId }: any) => api.completeRescueTask(sessionId, taskId), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.uid] }); }});
+  const cancelRescueMutation = useMutation({ mutationFn: api.cancelRescueSession, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.id] }); }});
+  const completeRescueTaskMutation = useMutation({ mutationFn: ({ sessionId, taskId }: any) => api.completeRescueTask(sessionId, taskId), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.id] }); }});
   const analyzeLeadsMutation = useMutation({ mutationFn: api.analyzeLeads, onSuccess: (data) => { setLeadAnalysis(data); setIsAnalyzingLeads(false); }});
-  const updateProfileMutation = useMutation({ mutationFn: ({ uid, data }: any) => api.updateProfile(uid, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] }); }});
-  const syncListingsMutation = useMutation({ mutationFn: api.syncExternalListings, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.EXTERNAL_LISTINGS, profile?.uid] }); }});
-  const linkPropertyMutation = useMutation({ mutationFn: ({ propertyId, externalId }: any) => api.linkPropertyToExternal(propertyId, externalId), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid] }); }});
-  const connectIntegrationMutation = useMutation({ mutationFn: api.connectSahibinden, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BROKER_ACCOUNT, profile?.uid] }); }});
+  const updateProfileMutation = useMutation({ mutationFn: ({ id, data }: any) => api.updateProfile(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.id] }); }});
+  const syncListingsMutation = useMutation({ mutationFn: api.syncExternalListings, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.EXTERNAL_LISTINGS, profile?.id] }); }});
+  const linkPropertyMutation = useMutation({ mutationFn: ({ propertyId, externalId }: any) => api.linkPropertyToExternal(propertyId, externalId), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.id] }); }});
+  const connectIntegrationMutation = useMutation({ mutationFn: api.connectSahibinden, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BROKER_ACCOUNT, profile?.id] }); }});
 
   const checkPortfoliosLimit = () => { if (isFree && properties.length >= 5) { setShowQuickAdd(false); setShowUpgradeModal(true); return false; } return true; };
   const checkLeadsLimit = () => { if (isFree && leads.length >= 10) { setShowQuickAdd(false); setShowUpgradeModal(true); return false; } return true; };
@@ -114,7 +114,7 @@ function MainApp() {
   return (
     <div className="min-h-screen bg-slate-50 pb-28 md:pb-0 font-sans text-slate-900 overflow-x-hidden">
       {(profile && (!profile.region || !profile.region.city)) || showRegionSetup ? (
-        <RegionSetupModal profile={profile!} onComplete={() => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] }); setShowRegionSetup(false); }} />
+        <RegionSetupModal profile={profile!} onComplete={() => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.id] }); setShowRegionSetup(false); }} />
       ) : null}
       
       <div className="flex flex-col md:flex-row w-full min-h-screen">

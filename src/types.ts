@@ -3,7 +3,7 @@ import React from 'react';
 export type LeadStatus = 'Aday' | 'Sıcak' | 'Yetki Alındı' | 'Pasif';
 
 export interface UserProfile {
-  uid: string;
+  id: string;
   email: string;
   display_name: string;
   phone?: string;
@@ -92,7 +92,7 @@ export interface SystemSettings {
 
 export interface Lead {
   id: string;
-  agent_id: string;
+  user_id: string;
   name: string;
   phone: string;
   type: string;
@@ -110,7 +110,7 @@ export interface Lead {
 
 export interface Task {
   id: string;
-  agent_id: string;
+  user_id: string;
   title: string;
   time: string;
   type: 'Arama' | 'Randevu' | 'Saha' | 'Takip' | 'Güncelleme' | 'Sosyal Medya';
@@ -119,7 +119,7 @@ export interface Task {
 
 export interface Property {
   id: string;
-  agent_id: string;
+  user_id: string;
   title: string;
   type: 'Daire' | 'Villa' | 'Arsa' | 'Ticari' | 'Fabrika' | 'Fabrika Arsası';
   category: 'Satılık' | 'Kiralık';
@@ -163,7 +163,7 @@ export interface Property {
 
 export interface MapPin {
   id: string;
-  agent_id: string;
+  user_id: string;
   lat: number;
   lng: number;
   type: string;
@@ -188,7 +188,7 @@ export interface DashboardStats {
 
 export interface Building {
   id: string;
-  agent_id: string;
+  user_id: string;
   title: string;
   address: string;
   district?: string;
@@ -199,7 +199,7 @@ export interface Building {
 
 export interface MessageTemplate {
   id: string;
-  agent_id: string;
+  user_id: string;
   name: string;
   content: string;
   is_default: boolean;
@@ -207,7 +207,7 @@ export interface MessageTemplate {
 
 export interface BrokerAccount {
   id: string;
-  agent_id: string;
+  user_id: string;
   store_name: string;
   api_key: string;
   connected_at: string;
@@ -215,7 +215,7 @@ export interface BrokerAccount {
 
 export interface ExternalListing {
   id: string;
-  agent_id: string;
+  user_id: string;
   ext_id: string;
   title: string;
   price: number;
@@ -242,7 +242,7 @@ export type GamifiedTaskCategory = 'sweet' | 'main' | 'smart';
 
 export interface GamifiedTask {
   id: string;
-  agent_id: string;
+  user_id: string;
   title: string;
   points: number;
   category: GamifiedTaskCategory;
@@ -275,7 +275,7 @@ export interface DailyMomentum {
 
 export interface DailyStats {
   id: string;
-  agent_id: string;
+  user_id: string;
   date: string;
   tasks_completed: number;
   potential_revenue_handled: number;
@@ -300,7 +300,7 @@ export interface RescueTask {
 
 export interface RescueSession {
   id: string;
-  agent_id: string;
+  user_id: string;
   date: string;
   status: 'active' | 'completed' | 'expired';
   tasks: RescueTask[];
@@ -312,6 +312,7 @@ export type OpportunityType = 'lead_followup' | 'property_stale' | 'visit_stale'
 
 export interface MissedOpportunity {
   id: string;
+  user_id: string;
   type: OpportunityType;
   title: string;
   description: string;
@@ -388,7 +389,7 @@ export interface MutationResult<TData = any, TVariables = void> {
 
 export interface UserNote {
   id: string;
-  agent_id: string;
+  user_id: string;
   title: string;
   content: string;
   tags?: string[];
@@ -400,7 +401,7 @@ export interface UserNote {
 
 export interface PersonalTask {
   id: string;
-  agent_id: string;
+  user_id: string;
   title: string;
   is_completed: boolean;
   created_at: string;

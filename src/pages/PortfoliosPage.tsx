@@ -107,9 +107,9 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
       ? api.updateProperty(selectedProperty.id, data)
       : api.addProperty(data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD_STATS, profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REGION_SCORES, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD_STATS, profile?.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REGION_SCORES, profile?.id] });
       setShowAddProperty(false);
       setIsEditing(false);
     }
@@ -118,8 +118,8 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   const deletePropertyMutation = useMutation({
     mutationFn: (id: string) => api.deleteProperty(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD_STATS, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD_STATS, profile?.id] });
       setSelectedProperty(null);
     }
   });
@@ -127,14 +127,14 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   const uploadImageMutation = useMutation({
     mutationFn: ({ id, file }: { id: string, file: File }) => api.uploadPropertyImage(id, file),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.id] });
     }
   });
 
   const importListingMutation = useMutation({
     mutationFn: api.importListingFromUrl,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.id] });
       setShowImportUrlModal(false);
       setIsEditing(false);
       setShowAddProperty(true);

@@ -17,13 +17,13 @@ export const useCategories = () => {
   const queryClient = useQueryClient();
 
   const { data: customCategories = [], isLoading: loading } = useQuery({
-    queryKey: [QUERY_KEYS.CATEGORIES, profile?.uid],
+    queryKey: [QUERY_KEYS.CATEGORIES, profile?.id],
     queryFn: async () => {
-      if (!profile?.uid) return [];
+      if (!profile?.id) return [];
       const { data, error } = await supabase
         .from('categories')
         .select('*')
-        .eq('agent_id', profile.uid);
+        .eq('user_id', profile.id);
       
       if (error) throw error;
       return (data || []).map(c => ({
@@ -31,16 +31,16 @@ export const useCategories = () => {
         icon: MapIcon
       }));
     },
-    enabled: !!profile?.uid
+    enabled: !!profile?.id
   });
 
   const addCategoryMutation = useMutation({
     mutationFn: async ({ name, color }: { name: string, color: string }) => {
-      if (!profile?.uid) throw new Error('Not authenticated');
+      if (!profile?.id) throw new Error('Not authenticated');
       const { data, error } = await supabase
         .from('categories')
         .insert({
-          agent_id: profile.uid,
+          user_id: profile.id,
           label: name,
           color: color,
           icon: 'MapIcon'
@@ -52,7 +52,7 @@ export const useCategories = () => {
       return data;
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CATEGORIES, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.CATEGORIES, profile?.id] });
     }
   });
 

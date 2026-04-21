@@ -14,7 +14,7 @@ export const rescueService = {
     const { data } = await supabase
       .from('rescue_sessions')
       .select('*')
-      .eq('agent_id', agentId)
+      .eq('user_id', agentId)
       .eq('date', today)
       .maybeSingle();
     
@@ -90,7 +90,7 @@ export const rescueService = {
     });
 
     const session: Omit<RescueSession, 'id'> = {
-      agent_id: agentId,
+      user_id: agentId,
       date: today,
       status: 'active',
       tasks,

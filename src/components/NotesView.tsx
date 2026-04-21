@@ -49,15 +49,15 @@ export const NotesView = () => {
   ];
 
   const { data: notes = [], isLoading } = useQuery({
-    queryKey: [QUERY_KEYS.PERSONAL_NOTES, profile?.uid],
+    queryKey: [QUERY_KEYS.PERSONAL_NOTES, profile?.id],
     queryFn: api.getNotes,
-    enabled: !!profile?.uid
+    enabled: !!profile?.id
   });
 
   const addNoteMutation = useMutation({
     mutationFn: api.addNote,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_NOTES, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_NOTES, profile?.id] });
       resetForm();
     }
   });
@@ -65,7 +65,7 @@ export const NotesView = () => {
   const updateNoteMutation = useMutation({
     mutationFn: ({ id, data }: { id: string, data: Partial<UserNote> }) => api.updateNote(id, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_NOTES, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_NOTES, profile?.id] });
       resetForm();
     }
   });
@@ -73,7 +73,7 @@ export const NotesView = () => {
   const deleteNoteMutation = useMutation({
     mutationFn: api.deleteNote,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_NOTES, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PERSONAL_NOTES, profile?.id] });
     }
   });
 
@@ -128,7 +128,7 @@ export const NotesView = () => {
     if (editingNote) {
       updateNoteMutation.mutate({ id: editingNote.id, data: noteData });
     } else {
-      addNoteMutation.mutate(noteData as Omit<UserNote, 'id' | 'agent_id' | 'created_at' | 'updated_at'>);
+      addNoteMutation.mutate(noteData as Omit<UserNote, 'id' | 'user_id' | 'created_at' | 'updated_at'>);
     }
   };
 

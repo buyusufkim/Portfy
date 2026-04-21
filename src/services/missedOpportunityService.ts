@@ -26,6 +26,7 @@ export const missedOpportunityService = {
       if (diff >= 7) {
         opportunities.push({
           id: `lead-${l.id}`,
+          user_id: agentId,
           type: 'lead_followup',
           title: `${l.name} ile temas kesildi`,
           description: `${diff} gündür bu müşteriyle iletişime geçmedin. Başkasına gitmeden hemen ara!`,
@@ -45,6 +46,7 @@ export const missedOpportunityService = {
       if (diff >= 14) {
         opportunities.push({
           id: `prop-${p.id}`,
+          user_id: agentId,
           type: 'property_stale',
           title: `"${p.title}" portföyü unutuldu`,
           description: `${diff} gündür bu ilanda hiçbir güncelleme yapmadın. İlanın güncelliği düşüyor.`,
@@ -59,6 +61,7 @@ export const missedOpportunityService = {
       if (p.market_analysis?.status === 'Pahalı' && p.sale_probability < 0.4) {
         opportunities.push({
           id: `price-${p.id}`,
+          user_id: agentId,
           type: 'price_drop_potential',
           title: `Fiyat revizyonu fırsatı: ${p.title}`,
           description: "Bu mülk pazarın üzerinde kalmış görünüyor. Malikle görüşüp fiyatı %5-10 aşağı çekersen satış ihtimali %40 artar.",
@@ -77,6 +80,7 @@ export const missedOpportunityService = {
       if (diff >= 30) {
         opportunities.push({
           id: `visit-${v.id}`,
+          user_id: agentId,
           type: 'visit_stale',
           title: `${v.address} ziyareti soğudu`,
           description: "Bu binayı 1 ay önce ziyaret etmiştin. Malikler taşınmış veya karar vermiş olabilir. Tekrar uğra!",

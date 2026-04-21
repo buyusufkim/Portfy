@@ -50,23 +50,23 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const { data: revenueStats, isLoading: revenueLoading } = useRevenueStats();
 
   const { data: gamifiedStats } = useQuery({
-    queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.uid],
+    queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.id],
     queryFn: api.getGamifiedStats,
-    enabled: !!profile?.uid
+    enabled: !!profile?.id
   });
 
   const { data: coachInsights } = useQuery({
-    queryKey: [QUERY_KEYS.COACH_INSIGHTS, profile?.uid],
+    queryKey: [QUERY_KEYS.COACH_INSIGHTS, profile?.id],
     queryFn: api.getCoachInsights,
-    enabled: !!profile?.uid
+    enabled: !!profile?.id
   });
 
   // Dashboard-specific mutations
   const refreshTasksMutation = useMutation({
     mutationFn: () => api.getDailyGamifiedTasks(true),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.id] });
       setToast({ message: 'Görevler başarıyla güncellendi', type: 'success' });
     },
     onError: (error: any) => {
@@ -85,10 +85,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     },
     // onSuccess parametresine 'variables' ekliyoruz ki tıklanan görevin puanına ve adına ulaşabilelim
     onSuccess: (data, variables) => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.COACH_INSIGHTS, profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.COACH_INSIGHTS, profile?.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.id] });
       
       // 🔥 İŞTE BURASI: Kendi UI kütüphanendeki bildirim sistemini XP için kullanıyoruz 🔥
       setToast({ 
@@ -124,14 +124,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       return true;
     },
     onSuccess: () => {
-      if (profile?.uid) {
+      if (profile?.id) {
         const todayISO = new Date().toISOString().split('T')[0];
-        localStorage.setItem(`day_started_${profile.uid}_${todayISO}`, new Date().toISOString());
+        localStorage.setItem(`day_started_${profile.id}_${todayISO}`, new Date().toISOString());
       }
       // Invalidate all relevant queries to sync UI
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.uid] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.id] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.id] });
       setToast({ message: "Günün başarıyla başlatıldı!", type: 'success' });
     },
     onError: (error: any) => {
@@ -139,13 +139,13 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       
       // If the error indicates it was already started, we should sync local state
       if (error.message?.includes("already awarded") || error.message?.includes("already started")) {
-        if (profile?.uid) {
+        if (profile?.id) {
           const todayISO = new Date().toISOString().split('T')[0];
-          localStorage.setItem(`day_started_${profile.uid}_${todayISO}`, new Date().toISOString());
+          localStorage.setItem(`day_started_${profile.id}_${todayISO}`, new Date().toISOString());
         }
-        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
-        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.uid] });
-        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.id] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.id] });
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.id] });
         setToast({ message: "Güne zaten başlamıştın, başarılar!", type: 'info' });
       } else {
         setToast({ message: "Günü başlatırken bir hata oluştu: " + (error.message || "Bilinmeyen hata"), type: 'error' });
@@ -156,14 +156,14 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const startRescueMutation = useMutation({
     mutationFn: api.startRescueSession,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.id] });
     }
   });
 
   // Auto-complete specific gamified tasks
   const completingTasks = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (gamifiedTasks && gamifiedTasks.length > 0 && profile?.uid) {
+    if (gamifiedTasks && gamifiedTasks.length > 0 && profile?.id) {
       // 1. Peş peşe girişini sürdür
       const loginTask = gamifiedTasks.find(t => t.title === "Peş peşe girişini sürdür" && !t.is_completed);
       if (loginTask && !completingTasks.current.has(loginTask.id)) {
@@ -178,7 +178,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         completeTaskMutation.mutate({ task: pointsTask });
       }
     }
-  }, [gamifiedTasks, profile?.uid, gamifiedStats?.points_today]);
+  }, [gamifiedTasks, profile?.id, gamifiedStats?.points_today]);
 
   return (
     <DashboardView 

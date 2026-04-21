@@ -13,7 +13,7 @@ export const useTokenUsage = () => {
       const { data } = await supabase
         .from('profiles')
         .select('ai_tokens_used, tier')
-        .eq('uid', user.id)
+        .eq('id', user.id)
         .single();
 
       if (data) {

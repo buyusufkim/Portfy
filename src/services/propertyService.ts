@@ -47,12 +47,12 @@ export const propertyService = {
     const { data } = await supabase
       .from('properties')
       .select('*')
-      .eq('agent_id', userId)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
     return (data || []) as Property[];
   },
 
-  addProperty: async (property: Omit<Property, 'id' | 'created_at' | 'updated_at' | 'agent_id' | 'sale_probability' | 'market_analysis'>) => {
+  addProperty: async (property: Omit<Property, 'id' | 'created_at' | 'updated_at' | 'user_id' | 'sale_probability' | 'market_analysis'>) => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
     
@@ -80,7 +80,7 @@ export const propertyService = {
       .insert({
         ...property,
         ...scores,
-        agent_id: userId,
+        user_id: userId,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       })
@@ -319,12 +319,12 @@ export const propertyService = {
   connectSahibinden: async (apiKey: string) => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
-    const agent_id = userId;
+    const user_id = userId;
     
     if (apiKey.length < 10) throw new Error('Geçersiz API anahtarı');
 
     const account: Omit<BrokerAccount, 'id'> = {
-      agent_id,
+      user_id,
       store_name: "Emlak Mağazası",
       api_key: apiKey.substring(0, 4) + "****",
       connected_at: new Date().toISOString()
@@ -345,7 +345,7 @@ export const propertyService = {
     const { data } = await supabase
       .from('broker_accounts')
       .select('*')
-      .eq('agent_id', userId)
+      .eq('user_id', userId)
       .maybeSingle();
     return data as BrokerAccount | null;
   },
@@ -356,14 +356,14 @@ export const propertyService = {
     const { data } = await supabase
       .from('external_listings')
       .select('*')
-      .eq('agent_id', userId);
+      .eq('user_id', userId);
     return (data || []) as ExternalListing[];
   },
 
   syncExternalListings: async () => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
-    const agent_id = userId;
+    const user_id = userId;
 
     const account = await propertyService.getBrokerAccount();
     if (!account) return [];
@@ -371,7 +371,7 @@ export const propertyService = {
     // Simulate fetching from external API
     const simulatedListings: Omit<ExternalListing, 'id'>[] = [
       {
-        agent_id,
+        user_id,
         ext_id: '123456789',
         title: 'Sahibinden Satılık Lüks Daire',
         price: 4500000,
@@ -381,7 +381,7 @@ export const propertyService = {
         last_sync: new Date().toISOString()
       },
       {
-        agent_id,
+        user_id,
         ext_id: '987654321',
         title: 'Kiralık Modern Ofis',
         price: 25000,
@@ -396,7 +396,7 @@ export const propertyService = {
     for (const listing of simulatedListings) {
       const { data, error } = await supabase
         .from('external_listings')
-        .upsert(listing, { onConflict: 'agent_id,ext_id' })
+        .upsert(listing, { onConflict: 'user_id,ext_id' })
         .select()
         .single();
       if (data) results.push(data as ExternalListing);

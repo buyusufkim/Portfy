@@ -80,8 +80,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const todayStr = new Date().toLocaleDateString('tr-TR', { day: 'numeric', month: 'long', year: 'numeric' });
   const todayISO = getTodayStr();
-  const localStarted = profile?.uid ? localStorage.getItem(`day_started_${profile.uid}_${todayISO}`) : null;
-  const localEnded = profile?.uid ? localStorage.getItem(`day_ended_${profile.uid}_${todayISO}`) : null;
+  const localStarted = profile?.id ? localStorage.getItem(`day_started_${profile.id}_${todayISO}`) : null;
+  const localEnded = profile?.id ? localStorage.getItem(`day_ended_${profile.id}_${todayISO}`) : null;
   
   const isDayStarted = !!(
     (profile?.last_day_started_at && profile.last_day_started_at.startsWith(todayISO)) || 
@@ -102,10 +102,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isTasksDisabled = (!isDayStarted || isDayEnded) && !startDayMutation.isSuccess && !completeMorningRitualMutation.isSuccess;
 
   React.useEffect(() => {
-    if (profile?.uid && !localStarted) {
+    if (profile?.id && !localStarted) {
       const dbStartedToday = profile.last_day_started_at?.startsWith(todayISO) || profile.last_active_date === todayISO;
       if (dbStartedToday) {
-        localStorage.setItem(`day_started_${profile.uid}_${todayISO}`, profile.last_day_started_at || new Date().toISOString());
+        localStorage.setItem(`day_started_${profile.id}_${todayISO}`, profile.last_day_started_at || new Date().toISOString());
       }
     }
   }, [profile, localStarted, todayISO]);
@@ -133,7 +133,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <div className="relative cursor-pointer active:scale-95 transition-transform" onClick={() => setActiveTab('profil')}>
             <div className="w-10 h-10 bg-slate-200 rounded-xl overflow-hidden border-2 border-white shadow-sm">
-              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.uid}`} alt="Profile" referrerPolicy="no-referrer" />
+              <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.id}`} alt="Profile" referrerPolicy="no-referrer" />
             </div>
             <div className="absolute -bottom-1 -right-1 w-3 h-3 bg-emerald-500 border-2 border-white rounded-full" />
           </div>
@@ -380,7 +380,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <h4 className="text-sm font-bold text-red-900">Bir Hata Oluştu</h4>
                     <p className="text-xs text-red-700 px-8">Görevler yüklenirken bir sorun oluştu.</p>
                     <button 
-                      onClick={() => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid] })}
+                      onClick={() => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.id] })}
                       className="mt-2 px-6 py-2.5 bg-red-600 text-white rounded-xl text-xs font-bold active:scale-95 transition-all"
                     >
                       Tekrar Dene

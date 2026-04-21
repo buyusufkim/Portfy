@@ -8,12 +8,12 @@ export const notesService = {
     const { data } = await supabase
       .from('notes')
       .select('*')
-      .eq('agent_id', user.id)
+      .eq('user_id', user.id)
       .order('updated_at', { ascending: false });
     return (data || []) as UserNote[];
   },
 
-  addNote: async (note: Omit<UserNote, 'id' | 'agent_id' | 'created_at' | 'updated_at'>) => {
+  addNote: async (note: Omit<UserNote, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
     const now = new Date().toISOString();
@@ -21,7 +21,7 @@ export const notesService = {
       .from('notes')
       .insert({
         ...note,
-        agent_id: user.id,
+        user_id: user.id,
         created_at: now,
         updated_at: now
       })

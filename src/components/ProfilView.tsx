@@ -47,7 +47,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
   >
     <div className="text-center space-y-4">
       <div className="w-24 h-24 bg-slate-200 rounded-[32px] mx-auto overflow-hidden border-4 border-white shadow-xl">
-        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.uid}`} alt="Profile" />
+        <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${profile?.id}`} alt="Profile" />
       </div>
       <div>
         <h2 className="text-2xl font-bold text-slate-900">{profile?.display_name}</h2>
@@ -168,7 +168,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
             onChange={(e) => {
               if (profile) {
                 updateProfileMutation.mutate({ 
-                  uid: profile.uid, 
+                  id: profile.id, 
                   data: { 
                     notification_settings: { 
                       ...(profile.notification_settings || { push: true, email: false, time: "09:00" }), 

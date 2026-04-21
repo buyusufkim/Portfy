@@ -94,23 +94,23 @@ export const BolgemView = ({
 
   // 1. Manuel Eklenen Saha Pinlerini Çek
   const { data: pins = [], isLoading: isLoadingPins } = useQuery({
-    queryKey: [QUERY_KEYS.MAP_PINS, profile?.uid],
+    queryKey: [QUERY_KEYS.MAP_PINS, profile?.id],
     queryFn: api.getMapPins,
-    enabled: !!profile?.uid
+    enabled: !!profile?.id
   });
 
   // 2. Portföyleri Çek
   const { data: properties = [], isLoading: isLoadingProperties } = useQuery({
-    queryKey: ['properties', profile?.uid],
+    queryKey: ['properties', profile?.id],
     queryFn: api.getProperties,
-    enabled: !!profile?.uid
+    enabled: !!profile?.id
   });
 
   // 3. Portföyleri ve Saha Pinlerini Harita İçin Birleştir
   const combinedPins = useMemo(() => {
     const propPins: MapPinType[] = properties.map((p: Property) => ({
       id: `prop-${p.id}`,
-      agent_id: p.agent_id,
+      user_id: p.user_id,
       lat: p.address?.lat || (mapCenter.lat + (Math.random() - 0.5) * 0.015),
       lng: p.address?.lng || (mapCenter.lng + (Math.random() - 0.5) * 0.015),
       type: 'portfoy', // Kategori ID'si
@@ -204,7 +204,7 @@ export const BolgemView = ({
   const addPinMutation = useMutation({
     mutationFn: api.addMapPin,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MAP_PINS, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MAP_PINS, profile?.id] });
       setShowAddPin(false);
       setNewPinData({
         title: '',

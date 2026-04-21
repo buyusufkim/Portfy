@@ -8,9 +8,9 @@ interface AdminUserTableProps {
   setSearchQuery: (val: string) => void;
   filteredUsers: UserProfile[];
   handleOpenUserDetail: (user: UserProfile) => void;
-  handleResetToken: (uid: string) => void;
+  handleResetToken: (id: string) => void;
   openEditUser: (user: UserProfile) => void;
-  handleDeleteUser: (uid: string, name: string) => void;
+  handleDeleteUser: (id: string, name: string) => void;
   getRemainingDays: (endDateStr?: string) => string | null;
 }
 
@@ -69,7 +69,7 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
                 const isExpired = remainingText === "Süresi Doldu";
 
                 return (
-                  <tr key={u.uid} className="hover:bg-slate-50 transition-colors">
+                  <tr key={u.id} className="hover:bg-slate-50 transition-colors">
                     <td className="px-6 py-4 cursor-pointer" onClick={() => handleOpenUserDetail(u)}>
                       <div className="font-bold text-slate-900 hover:text-orange-600 transition-colors">{u.display_name || 'İsimsiz Kullanıcı'}</div>
                       <div className="text-xs text-slate-500">{u.email}</div>
@@ -112,9 +112,9 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-2">
                         <button onClick={() => handleOpenUserDetail(u)} className="p-2 text-slate-400 hover:text-indigo-600 bg-white border border-slate-200 hover:border-indigo-200 hover:bg-indigo-50 rounded-lg transition-all shadow-sm" title="Detayları İncele"><Eye size={16} /></button>
-                        <button onClick={() => handleResetToken(u.uid)} className="p-2 text-slate-400 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 rounded-lg transition-all shadow-sm" title="Token Sıfırla"><RefreshCw size={16} /></button>
+                        <button onClick={() => handleResetToken(u.id)} className="p-2 text-slate-400 hover:text-slate-900 bg-white border border-slate-200 hover:border-slate-300 rounded-lg transition-all shadow-sm" title="Token Sıfırla"><RefreshCw size={16} /></button>
                         <button onClick={() => openEditUser(u)} className="px-4 py-2 bg-slate-900 text-white hover:bg-slate-800 text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2" title="Aboneliği Düzenle"><Edit2 size={14} /> Düzenle</button>
-                        <button onClick={() => handleDeleteUser(u.uid, u.display_name || 'Kullanıcı')} className="p-2 text-slate-400 hover:text-red-600 bg-white border border-slate-200 hover:border-red-200 hover:bg-red-50 rounded-lg transition-all shadow-sm" title="Kullanıcıyı Sil"><Trash2 size={16} /></button>
+                        <button onClick={() => handleDeleteUser(u.id, u.display_name || 'Kullanıcı')} className="p-2 text-slate-400 hover:text-red-600 bg-white border border-slate-200 hover:border-red-200 hover:bg-red-50 rounded-lg transition-all shadow-sm" title="Kullanıcıyı Sil"><Trash2 size={16} /></button>
                       </div>
                     </td>
                   </tr>

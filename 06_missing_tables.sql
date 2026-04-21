@@ -44,7 +44,7 @@ END $$;
 -- 3. user_usage_limits: Renamed from agent_id to user_id previously, ensuring consistency
 CREATE TABLE IF NOT EXISTS user_usage_limits (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    user_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     feature_name TEXT NOT NULL,
     current_usage INTEGER DEFAULT 0,
     max_limit INTEGER NOT NULL,
@@ -90,7 +90,7 @@ CREATE POLICY "Anyone can view active packages" ON subscription_packages FOR SEL
 
 DROP POLICY IF EXISTS "Admins can manage packages" ON subscription_packages;
 CREATE POLICY "Admins can manage packages" ON subscription_packages FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE uid = auth.uid() AND role = 'admin')
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
 );
 
 DROP POLICY IF EXISTS "Users can view own limits" ON user_usage_limits;
@@ -104,7 +104,7 @@ CREATE POLICY "Anyone can view settings" ON system_settings FOR SELECT USING (tr
 
 DROP POLICY IF EXISTS "Admins can manage settings" ON system_settings;
 CREATE POLICY "Admins can manage settings" ON system_settings FOR ALL USING (
-    EXISTS (SELECT 1 FROM profiles WHERE uid = auth.uid() AND role = 'admin')
+    EXISTS (SELECT 1 FROM profiles WHERE id = auth.uid() AND role = 'admin')
 );
 
 -- 8. Updated At Triggers (Additive)

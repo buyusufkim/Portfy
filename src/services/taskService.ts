@@ -10,18 +10,18 @@ export const taskService = {
     const { data } = await supabase
       .from('tasks')
       .select('*')
-      .eq('agent_id', userId);
+      .eq('user_id', userId);
     return (data || []) as Task[];
   },
 
-  addTask: async (task: Omit<Task, 'id' | 'agent_id'>) => {
+  addTask: async (task: Omit<Task, 'id' | 'user_id'>) => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
     const { data, error } = await supabase
       .from('tasks')
       .insert({
         ...task,
-        agent_id: userId
+        user_id: userId
       })
       .select()
       .single();

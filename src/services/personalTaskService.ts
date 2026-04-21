@@ -10,7 +10,7 @@ export const personalTaskService = {
     const { data } = await supabase
       .from('personal_tasks')
       .select('*')
-      .eq('agent_id', userId)
+      .eq('user_id', userId)
       .order('created_at', { ascending: false });
     
     return (data || []).map((t: any) => ({
@@ -19,14 +19,14 @@ export const personalTaskService = {
     })) as PersonalTask[];
   },
 
-  addPersonalTask: async (task: Omit<PersonalTask, 'id' | 'agent_id' | 'created_at'>) => {
+  addPersonalTask: async (task: Omit<PersonalTask, 'id' | 'user_id' | 'created_at'>) => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
     const { data, error } = await supabase
       .from('personal_tasks')
       .insert({
         ...task,
-        agent_id: userId,
+        user_id: userId,
         created_at: new Date().toISOString()
       })
       .select()

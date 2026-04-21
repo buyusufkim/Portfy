@@ -160,9 +160,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     }
   };
 
-  const handleResetToken = async (uid: string) => {
+  const handleResetToken = async (id: string) => {
     if (window.confirm("Bu kullanıcının AI Token kullanımını sıfırlamak istediğinize emin misiniz?")) {
-      const { error } = await supabase.from('profiles').update({ ai_tokens_used: 0 }).eq('uid', uid);
+      const { error } = await supabase.from('profiles').update({ ai_tokens_used: 0 }).eq('id', id);
       if (!error) {
         alert("Token başarıyla sıfırlandı!");
         fetchUsers();
@@ -172,7 +172,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     }
   };
 
-  const handleDeleteUser = async (uid: string, name: string) => {
+  const handleDeleteUser = async (id: string, name: string) => {
     if (window.confirm(`DİKKAT: ${name} adlı kullanıcıyı tamamen silmek istediğinize emin misiniz? Bu işlem geri alınamaz!`)) {
       setLoading(true);
       try {
@@ -182,7 +182,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${(await supabase.auth.getSession()).data.session?.access_token}`
           },
-          body: JSON.stringify({ uid })
+          body: JSON.stringify({ id })
         });
         
         if (response.ok) {
@@ -212,8 +212,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     
     try {
       const [propertiesRes, leadsRes] = await Promise.all([
-        supabase.from('properties').select('*', { count: 'exact', head: true }).eq('agent_id', user.uid),
-        supabase.from('leads').select('*', { count: 'exact', head: true }).eq('agent_id', user.uid)
+        supabase.from('properties').select('*', { count: 'exact', head: true }).eq('user_id', user.id),
+        supabase.from('leads').select('*', { count: 'exact', head: true }).eq('user_id', user.id)
       ]);
       
       setUserDetailStats({
@@ -248,7 +248,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     const finalEndDate = editEndDate ? new Date(editEndDate).toISOString() : null;
     const { error } = await supabase.from('profiles').update({ 
       tier: editTier, subscription_end_date: finalEndDate
-    }).eq('uid', editingUser.uid);
+    }).eq('id', editingUser.id);
 
     if (!error) {
       alert(`${editingUser.display_name} kullanıcısının paketi güncellendi!`);
@@ -342,7 +342,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   {/* Profil Başlığı */}
                   <div className="flex flex-col md:flex-row items-center md:items-start gap-6 bg-slate-50 p-6 rounded-2xl border border-slate-100">
                     <div className="w-24 h-24 bg-slate-200 rounded-2xl overflow-hidden border-4 border-white shadow-md shrink-0">
-                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedUserDetail.uid}`} alt="Profile" className="w-full h-full object-cover" />
+                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${selectedUserDetail.id}`} alt="Profile" className="w-full h-full object-cover" />
                     </div>
                     <div className="flex-1 text-center md:text-left">
                       <h2 className="text-2xl font-black text-slate-900">{selectedUserDetail.display_name || 'İsimsiz Kullanıcı'}</h2>
@@ -449,7 +449,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   {/* Kullanıcı Özeti */}
                   <div className="flex items-center gap-4 bg-slate-50 p-4 rounded-2xl border border-slate-100">
                     <div className="w-12 h-12 bg-slate-200 rounded-xl overflow-hidden border-2 border-white shadow-sm shrink-0">
-                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${editingUser.uid}`} alt="Profile" />
+                      <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${editingUser.id}`} alt="Profile" />
                     </div>
                     <div>
                       <div className="font-bold text-slate-900">{editingUser.display_name || 'İsimsiz Kullanıcı'}</div>

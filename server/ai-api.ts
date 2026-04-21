@@ -86,7 +86,7 @@ export const tokenTrackerMiddleware = (req: any, res: any, next: any) => {
           const { data: profile, error: fetchError } = await supabaseAdmin
             .from('profiles')
             .select('ai_tokens_used')
-            .eq('uid', userId)
+            .eq('id', userId)
             .single();
             
           if (fetchError && fetchError.code !== 'PGRST116') { // Not found harici hatalar
@@ -99,7 +99,7 @@ export const tokenTrackerMiddleware = (req: any, res: any, next: any) => {
           const { error: updateError } = await supabaseAdmin
             .from('profiles')
             .update({ ai_tokens_used: newTotal })
-            .eq('uid', userId);
+            .eq('id', userId);
 
           if (updateError) throw updateError;
             
@@ -135,7 +135,7 @@ export const handleAIGeneration = async (req: any, res: any) => {
     const { data: profile, error: fetchError } = await supabaseAdmin
       .from('profiles')
       .select('ai_tokens_used, tier')
-      .eq('uid', userId)
+      .eq('id', userId)
       .single();
 
     if (fetchError || !profile) {
@@ -225,7 +225,7 @@ export const handleUpdateProfile = async (req: any, res: any) => {
     const { error } = await supabaseAdmin
       .from('profiles')
       .update(filteredData)
-      .eq('uid', userId);
+      .eq('id', userId);
 
     if (error) throw error;
 
@@ -251,7 +251,7 @@ export const handleSubscribe = async (req: any, res: any) => {
     const { data: profile, error: fetchError } = await supabaseAdmin
       .from('profiles')
       .select('subscription_type, role')
-      .eq('uid', userId)
+      .eq('id', userId)
       .single();
 
     if (fetchError || !profile) {
@@ -301,27 +301,27 @@ export const handleSubscribe = async (req: any, res: any) => {
 
 export const handleAdminUpdateUser = async (req: any, res: any) => {
   try {
-    const { uid, data } = req.body;
+    const { id, data } = req.body;
     const adminId = req.user.id;
 
     const { data: adminProfile, error: adminError } = await supabaseAdmin
       .from('profiles')
       .select('role')
-      .eq('uid', adminId)
+      .eq('id', adminId)
       .single();
 
     if (adminError || adminProfile?.role !== 'admin') {
       return res.status(403).json({ error: "Unauthorized: Admin access required" });
     }
 
-    if (!uid || !data) {
-      return res.status(400).json({ error: "Missing uid or data" });
+    if (!id || !data) {
+      return res.status(400).json({ error: "Missing id or data" });
     }
 
     const { error } = await supabaseAdmin
       .from('profiles')
       .update(data)
-      .eq('uid', uid);
+      .eq('id', id);
 
     if (error) throw error;
 
@@ -334,24 +334,24 @@ export const handleAdminUpdateUser = async (req: any, res: any) => {
 
 export const handleAdminDeleteUser = async (req: any, res: any) => {
   try {
-    const { uid } = req.body;
+    const { id } = req.body;
     const adminId = req.user.id;
 
     const { data: adminProfile, error: adminError } = await supabaseAdmin
       .from('profiles')
       .select('role')
-      .eq('uid', adminId)
+      .eq('id', adminId)
       .single();
 
     if (adminError || adminProfile?.role !== 'admin') {
       return res.status(403).json({ error: "Unauthorized: Admin access required" });
     }
 
-    if (!uid) {
-      return res.status(400).json({ error: "Missing uid" });
+    if (!id) {
+      return res.status(400).json({ error: "Missing id" });
     }
 
-    const { error } = await supabaseAdmin.auth.admin.deleteUser(uid);
+    const { error } = await supabaseAdmin.auth.admin.deleteUser(id);
 
     if (error) throw error;
 
@@ -369,7 +369,7 @@ export const handleAdminGetUsers = async (req: any, res: any) => {
     const { data: adminProfile, error: adminError } = await supabaseAdmin
       .from('profiles')
       .select('role')
-      .eq('uid', adminId)
+      .eq('id', adminId)
       .single();
 
     if (adminError || adminProfile?.role !== 'admin') {
@@ -397,7 +397,7 @@ export const handleAdminGetSettings = async (req: any, res: any) => {
     const { data: adminProfile, error: adminError } = await supabaseAdmin
       .from('profiles')
       .select('role')
-      .eq('uid', adminId)
+      .eq('id', adminId)
       .single();
 
     if (adminError || adminProfile?.role !== 'admin') {
@@ -462,7 +462,7 @@ export const handleUpdateGlobalSettings = async (req: any, res: any) => {
     const { data: adminProfile, error: adminError } = await supabaseAdmin
       .from('profiles')
       .select('role')
-      .eq('uid', adminId)
+      .eq('id', adminId)
       .single();
 
     if (adminError || adminProfile?.role !== 'admin') {

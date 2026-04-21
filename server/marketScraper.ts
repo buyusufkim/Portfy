@@ -1,4 +1,3 @@
-import fetch from 'node-fetch';
 import * as dotenv from "dotenv";
 
 dotenv.config();
@@ -13,12 +12,23 @@ export const fetchMarketData = async (params: {
   const apiKey = process.env.EVOMI_API_KEY;
 
   if (!apiKey) {
-    throw new Error("EVOMI_API_KEY environment variable is missing.");
+    return {
+      status: "unavailable",
+      is_estimated: true,
+      source: "System",
+      error: "API key missing",
+      raw_count: 0,
+      averagePrice: null,
+      priceTrend: null,
+      demandScore: null,
+      saleProbability: null,
+      lastUpdated: new Date().toISOString()
+    };
   }
 
   try {
     const payload = {
-      source: "emlakjet", // Evomi scraping target
+      source: "emlakjet",
       url: `https://www.emlakjet.com/satilik-konut/${params.city.toLowerCase()}-${params.district.toLowerCase()}/`,
       render_js: false
     };
@@ -33,37 +43,54 @@ export const fetchMarketData = async (params: {
     });
 
     if (!response.ok) {
-      throw new Error(`Evomi API Error: ${response.statusText}`);
+      throw new Error(`Evomi API Error: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json();
+    const data = await response.json() as any;
     
-    // Gerçek Evomi dönüş verisine göre buradaki parse işlemi detaylandırılmalıdır.
-    // Şimdilik API verilerini çekiyoruz, eğer başarılıysa 'live' statüsüyle dönüyoruz.
-    const basePriceM2 = 25000 + (params.city === 'İstanbul' ? 15000 : 0);
-    const calculatedAvgPrice = basePriceM2 * params.m2;
+    // Veri doğrulama: Eğer gerekli alanlar yoksa live dönme
+    const hasData = data && (data.averagePrice || data.priceTrend);
+
+    if (!hasData) {
+      return {
+        status: "estimated",
+        is_estimated: true,
+        source: "Evomi (Partial)",
+        error: "Insufficient data for live status",
+        raw_count: data?.raw_count || 0,
+        averagePrice: data?.averagePrice || null,
+        priceTrend: data?.priceTrend || null,
+        demandScore: data?.demandScore || null,
+        saleProbability: data?.saleProbability || null,
+        lastUpdated: new Date().toISOString()
+      };
+    }
 
     return {
-      averagePrice: calculatedAvgPrice,
-      priceTrend: '+1.5%',
-      demandScore: 70,
-      saleProbability: 60,
-      source: "Evomi Market Data",
       status: "live",
+      is_estimated: false,
+      source: "Evomi Market Data",
+      error: null,
+      raw_count: data.raw_count || 0,
+      averagePrice: data.averagePrice,
+      priceTrend: data.priceTrend,
+      demandScore: data.demandScore || 70,
+      saleProbability: data.saleProbability || 0.65,
       lastUpdated: new Date().toISOString()
     };
 
   } catch (error) {
     console.error("Market Data Fetch Error:", error);
-    // API başarısızsa açıkça 'estimated' statüsüyle fallback dönüyoruz.
     return {
-      averagePrice: params.m2 * 20000, // Basit tahmin
-      priceTrend: '+0.0%',
-      demandScore: 50,
-      saleProbability: 40,
-      source: "Estimated Analysis (System Fallback)",
-      status: "estimated",
-      error: error instanceof Error ? error.message : "Bilinmeyen hata",
+      status: "unavailable",
+      is_estimated: true,
+      source: "Fallback",
+      error: error instanceof Error ? error.message : "Scraping failed",
+      raw_count: 0,
+      averagePrice: null,
+      priceTrend: null,
+      demandScore: null,
+      saleProbability: null,
       lastUpdated: new Date().toISOString()
     };
   }

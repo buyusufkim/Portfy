@@ -13,13 +13,13 @@ export const profileService = {
     const { data, error } = await supabase
       .from('profiles')
       .select('*')
-      .eq('uid', userId)
+      .eq('id', userId)
       .single();
     if (error) throw error;
     return data as UserProfile;
   },
 
-  updateProfile: async (uid: string, data: Partial<UserProfile>) => {
+  updateProfile: async (id: string, data: Partial<UserProfile>) => {
     const { data: { session } } = await supabase.auth.getSession();
     const response = await fetch('/api/ai/profile/update', {
       method: 'POST',
@@ -67,7 +67,7 @@ export const profileService = {
       const { data } = await supabase
         .from('user_stats')
         .select('*')
-        .eq('agent_id', userId)
+        .eq('user_id', userId)
         .order('date', { ascending: false })
         .limit(days);
       

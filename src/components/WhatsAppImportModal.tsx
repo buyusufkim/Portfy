@@ -24,7 +24,7 @@ export const WhatsAppImportModal: React.FC<WhatsAppImportModalProps> = ({
       return api.importLeadFromText(text);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.uid] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.id] });
       setShowWhatsAppImport(false);
     }
   });
