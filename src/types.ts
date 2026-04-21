@@ -6,7 +6,12 @@ export interface UserProfile {
   uid: string;
   email: string;
   display_name: string;
-  phone?: string; // Telefon numarası eklendi
+  phone?: string;
+  avatar_url?: string;
+  avatar_color?: string;
+  bio?: string;
+  city?: string;
+  district?: string;
   subscription_type: 'none' | 'trial' | '1-month' | '3-month' | '6-month' | '12-month';
   subscription_end_date: string | null;
   role: 'agent' | 'admin';
@@ -20,9 +25,9 @@ export interface UserProfile {
   region?: {
     city: string;
     district: string;
-    neighborhoods: string[]; // max 3
+    neighborhoods: string[];
   };
-  active_modules?: string[]; // Custom modules enabled for this user
+  active_modules?: string[];
   current_streak: number;
   longest_streak: number;
   total_xp: number;
@@ -56,10 +61,13 @@ export interface SubscriptionPackage {
   price_numeric: number;
   price_text: string;
   duration_months: number;
+  interval?: 'monthly' | 'yearly';
+  tier?: 'free' | 'pro' | 'elite' | 'master';
   is_active: boolean;
   features: string[];
   badge?: string;
   stripe_price_id?: string;
+  description?: string;
 }
 
 export interface TaskTemplate {
@@ -68,13 +76,17 @@ export interface TaskTemplate {
   title: string;
   description: string;
   priority: 'low' | 'medium' | 'high';
+  points?: number;
+  is_active?: boolean;
   auto_verify?: boolean;
 }
 
 export interface SystemSettings {
+  id?: number | string;
   key: string;
   value: any;
   description?: string;
+  whatsapp_number?: string;
 }
 
 export interface Lead {
@@ -136,7 +148,7 @@ export interface Property {
   sale_probability: number;
   market_analysis?: {
     avg_price_m2: number;
-    price_index: number; // 1.0 is market average
+    price_index: number;
     status: 'Fırsat' | 'Normal' | 'Pahalı';
   };
   images: string[];
@@ -175,9 +187,12 @@ export interface DashboardStats {
 export interface Building {
   id: string;
   agent_id: string;
-  title: string; // EKLENEN ALAN
+  title: string;
   address: string;
-} // DÜZELTME: Kapanmamış süslü parantez kapatıldı. Build hatası giderildi.
+  district?: string;
+  notes?: string;
+  last_visit?: string;
+}
 
 export interface MessageTemplate {
   id: string;
@@ -243,7 +258,7 @@ export interface UserStats {
   level: number;
   level_name: string;
   next_level_points: number;
-  daily_progress: number; // 0-100
+  daily_progress: number;
   tasks_completed_today: number;
   total_tasks_today: number;
 }
@@ -277,7 +292,7 @@ export interface RescueTask {
   estimated_minutes: number;
   points: number;
   is_completed: boolean;
-  target_id?: string; // Lead or Property ID
+  target_id?: string;
 }
 
 export interface RescueSession {
@@ -300,7 +315,7 @@ export interface MissedOpportunity {
   target_id: string;
   days_delayed: number;
   priority: 'high' | 'medium' | 'low';
-  potential_value?: number; // Estimated commission or points
+  potential_value?: number;
 }
 
 export interface VoiceParseResult {
@@ -333,12 +348,15 @@ export interface CoachInsight {
 export interface RegionEfficiencyScore {
   district: string;
   score: number;
+  leads?: number;
+  properties?: number;
+  sales?: number;
 }
 
 export interface Category {
   id: string;
   label: string;
-  icon: React.ElementType; // DÜZELTME: 'any' yerine React componenti olduğunu belirttik
+  icon: React.ElementType;
   color: string;
 }
 
@@ -355,9 +373,11 @@ export interface UserNote {
   agent_id: string;
   title: string;
   content: string;
+  tags?: string[];
+  is_pinned?: boolean;
+  color?: string;
   created_at: string;
   updated_at: string;
-  color?: string;
 }
 
 export interface PersonalTask {

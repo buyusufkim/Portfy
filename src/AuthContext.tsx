@@ -5,7 +5,6 @@ import { addMonths, isAfter, parseISO } from 'date-fns';
 import { Sparkles } from 'lucide-react';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS } from './constants/queryKeys';
-import { api } from './services/api';
 import { UserProfile } from './types';
 
 interface AuthContextType {
@@ -15,9 +14,9 @@ interface AuthContextType {
   isSubscribed: boolean;
   login: () => Promise<void>;
   loginWithEmail: (email: string, password: string) => Promise<void>;
-  registerWithEmail: (email: string, password: string, displayName: string, phone: string) => Promise<void>; // phone eklendi
+  registerWithEmail: (email: string, password: string, displayName: string, phone: string) => Promise<void>;
   logout: () => Promise<void>;
-  subscribe: (type: 'trial' | '1-month' | '3-month' | '6-month' | '12-month') => Promise<void>;
+  subscribe: (type: 'free' | 'trial' | '1-month' | '3-month' | '6-month' | '12-month') => Promise<boolean>;
   isSubscribing: boolean;
   completeOnboarding: () => Promise<void>;
   completeTour: () => Promise<void>;
@@ -49,7 +48,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       if (!data) {
-        // Create initial profile if it doesn't exist
         const newProfile = {
           uid: user.id,
           email: user.email || '',
@@ -76,7 +74,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     enabled: !!user?.id,
   });
   
-  // Synchronous detection to prevent first-frame app render in popup
   const isPopup = typeof window !== 'undefined' && (
     window.location.search.includes('popup=true') || 
     window.location.hash.includes('access_token=') ||
@@ -86,18 +83,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   );
 
   if (isPopup) {
-    console.log('AuthContext: Popup mode detected', {
-      search: window.location.search,
-      hash: !!window.location.hash,
-      name: window.name,
-      hasOpener: !!window.opener
-    });
+    console.log('AuthContext: Popup mode detected');
   }
 
   useEffect(() => {
     if (isPopup) {
       const handlePopupAuth = (session: Session | null) => {
-        console.log('AuthContext: handlePopupAuth called', !!session);
         if (session) {
           try {
             if (window.opener) {
@@ -112,11 +103,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           } catch (e) {
             console.error('PostMessage error:', e);
           }
-          // Fallback communication for main window
           localStorage.setItem('oauth_success', Date.now().toString());
-          
-          console.log('AuthContext: Closing popup in 500ms');
-          // Small delay to ensure message/storage is sent before closing
           setTimeout(() => {
             window.close();
           }, 500);
@@ -136,44 +123,30 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return () => popupSub.unsubscribe();
     }
 
-    // --- MAIN WINDOW LOGIC ---
-    // Listen for auth changes - this will handle initial session and subsequent changes.
-    // We avoid calling getSession() here because it can race with onAuthStateChange 
-    // and cause "lock stolen" errors in Supabase.
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
-      console.log('AuthContext: onAuthStateChange', event, !!session);
-      
       if (session?.user) {
         setUser(session.user);
         setLoading(false);
       } else {
-        // Clear all session data on logout (manual or automatic)
-        console.log('AuthContext: Clearing session data and cache');
         queryClient.clear();
         setUser(null);
         setLoading(false);
       }
     });
 
-    // Listen for popup success message
     const handleMessage = async (event: MessageEvent) => {
-      if (event.data?.type === 'OAUTH_AUTH_SUCCESS') {
-        console.log('AuthContext: Received OAUTH_AUTH_SUCCESS', !!event.data.session);
-        if (event.data.session) {
-          await supabase.auth.setSession({
-            access_token: event.data.session.access_token,
-            refresh_token: event.data.session.refresh_token
-          });
-        }
+      if (event.data?.type === 'OAUTH_AUTH_SUCCESS' && event.data.session) {
+        await supabase.auth.setSession({
+          access_token: event.data.session.access_token,
+          refresh_token: event.data.session.refresh_token
+        });
       }
     };
     window.addEventListener('message', handleMessage);
 
-    // Listen for localStorage fallback
     const handleStorage = (e: StorageEvent) => {
       if (e.key === 'oauth_success') {
-        console.log('AuthContext: Received oauth_success from storage');
-        // No need to call getSession, onAuthStateChange will pick it up
+        // Handled via onAuthStateChange
       }
     };
     window.addEventListener('storage', handleStorage);
@@ -183,7 +156,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       window.removeEventListener('message', handleMessage);
       window.removeEventListener('storage', handleStorage);
     };
-  }, [isPopup]);
+  }, [isPopup, queryClient]);
 
   const login = async () => {
     const { data, error } = await supabase.auth.signInWithOAuth({
@@ -227,7 +200,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       options: {
         data: {
           full_name: displayName,
-          phone: phone, // Telefon numarasını Supabase auth meta_data'sına yolluyoruz
+          phone: phone,
         }
       }
     });
@@ -235,27 +208,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const logout = async () => {
-    // Clear React Query cache to prevent data leaking between sessions
     queryClient.clear();
     const { error } = await supabase.auth.signOut();
     if (error) console.error('Logout error:', error);
   };
 
-  const subscribe = async (type: 'trial' | '1-month' | '3-month' | '6-month' | '12-month') => {
-    if (!user) return;
+  const subscribe = async (type: 'free' | 'trial' | '1-month' | '3-month' | '6-month' | '12-month'): Promise<boolean> => {
+    if (!user) return false;
     setIsSubscribing(true);
     
     try {
+      if (type === 'free') {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ tier: 'free', subscription_type: 'none' })
+          .eq('uid', user.id);
+          
+        if (error) throw error;
+        await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, user.id] });
+        return true;
+      }
+
       const session = (await supabase.auth.getSession()).data.session;
       if (!session) {
         throw new Error('Oturum süresi dolmuş. Lütfen tekrar giriş yapın.');
       }
 
       const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000); // 30 second timeout
+      const timeoutId = setTimeout(() => controller.abort(), 30000);
 
       try {
-        console.log(`[AuthContext] Initiating subscription request for ${type}`);
         const response = await fetch('/api/ai/subscribe', {
           method: 'POST',
           headers: {
@@ -270,26 +252,23 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const result = await response.json();
 
         if (!response.ok) {
-          console.error(`[AuthContext] Subscription API Error:`, result);
           throw new Error(result.error || result.details || 'Abonelik işlemi başarısız oldu.');
         }
 
-        console.log(`[AuthContext] Subscription SUCCESS`);
         await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, user.id] });
+        return true;
       } catch (err: unknown) {
         if (err instanceof Error && err.name === 'AbortError') {
-          console.error(`[AuthContext] Subscription TIMEOUT after 30s`);
           throw new Error('İstek zaman aşımına uğradı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.');
         }
-        console.error(`[AuthContext] Subscription Fetch Error:`, err);
         throw err;
       }
-
     } catch (error: unknown) {
       console.error('Subscription error:', error);
-      const message = error instanceof Error ? error.message : 'Abonelik işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.';
+      const message = error instanceof Error ? error.message : 'Abonelik işlemi sırasında bir hata oluştu.';
       alert(message);
       refetchProfile();
+      return false;
     } finally {
       setIsSubscribing(false);
     }
@@ -326,7 +305,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const updateProfileData = async (data: Partial<UserProfile>) => {
     if (!user) return;
     
-    // List of fields that are safe for users to update themselves
     const SAFE_FIELDS: (keyof UserProfile)[] = [
       'display_name',
       'phone',
@@ -340,7 +318,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       'notification_settings'
     ];
 
-    // Filter out any protected fields before sending to server
     const filteredData: Partial<UserProfile> = {};
     Object.keys(data).forEach(key => {
       const k = key as keyof UserProfile;

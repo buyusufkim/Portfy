@@ -14,19 +14,16 @@ export class ErrorBoundary extends Component<Props, State> {
     hasError: false
   };
 
-  public static getDerivedStateFromError(_: Error): State {
-    // Hata olduğunda state'i güncelleriz ve yedek UI (arayüz) tetiklenir
+  public static getDerivedStateFromError(error: Error): State {
     return { hasError: true };
   }
 
   public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    // Hatayı konsola yazdırıyoruz ki geliştirici (sen) ne olduğunu görebil
     console.error("Yakalanan Hata (Error Boundary):", error, errorInfo);
   }
 
   public render() {
     if (this.state.hasError) {
-      // HATA DURUMUNDA GÖSTERİLECEK ŞIK EKRAN (BEYAZ EKRAN YERİNE)
       return (
         <div className="min-h-[400px] w-full flex flex-col items-center justify-center p-6 text-center bg-slate-50 rounded-[32px] border border-slate-200 shadow-sm mt-6">
           <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 mb-4 shadow-inner">
@@ -47,7 +44,6 @@ export class ErrorBoundary extends Component<Props, State> {
       );
     }
 
-    // Hata yoksa uygulamanın normal halini gösterir
     return this.props.children;
   }
 }

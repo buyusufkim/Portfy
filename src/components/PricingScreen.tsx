@@ -34,11 +34,9 @@ export const PricingScreen = () => {
   }, []);
 
   const handleFreeChoice = async () => {
-    // subscribe fonksiyonu artık boolean dönecek şekilde AuthContext'te güncellendi
     const success = await subscribe('free');
     if (success) {
       console.log('Free plan activated, redirecting...');
-      // AuthContext içindeki invalidateQueries otomatik olarak App.tsx'i tetikleyecektir.
     }
   };
 
@@ -80,7 +78,6 @@ export const PricingScreen = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
               
-              {/* ÜCRETSİZ PLAN */}
               {freePkg && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-[32px] p-8 md:p-10 border border-slate-200 shadow-xl shadow-slate-200/50 flex flex-col relative">
                   <div className="space-y-4 mb-8">
@@ -107,7 +104,6 @@ export const PricingScreen = () => {
                 </motion.div>
               )}
 
-              {/* MASTER PLAN */}
               {selectedDuration && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-slate-900 rounded-[32px] p-8 md:p-10 shadow-2xl shadow-slate-900/40 flex flex-col relative border border-slate-800">
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest flex items-center gap-2 shadow-lg z-20 whitespace-nowrap">

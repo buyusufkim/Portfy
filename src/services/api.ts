@@ -18,6 +18,9 @@ import { coachService } from './coachService';
 import { fieldVisitService } from './fieldVisitService';
 import { whatsappService } from './whatsappService';
 
+// VITE ENV üzerinden API URL alınıyor, yoksa fallback olarak boş string bırakılıyor.
+const API_URL = import.meta.env.VITE_API_URL || '';
+
 export const api = {
 
   getLiveMarketAnalysis: async (property: any) => {
@@ -123,7 +126,6 @@ export const api = {
 
     const props = (properties || []) as Property[];
 
-    // Calculate Estimated Revenue with Probability Weighting
     const estimatedRevenue = props.reduce((acc, p) => {
       if (['Satıldı', 'Pasif'].includes(p.status)) return acc;
       const commission = (p.price * p.commission_rate) / 100;
@@ -131,7 +133,6 @@ export const api = {
       return acc + (commission * probability);
     }, 0);
 
-    // Calculate Discipline Score based on tasks
     const { data: tasks } = await supabase
       .from('tasks')
       .select('*')
@@ -142,12 +143,10 @@ export const api = {
     const totalTasks = tks.length;
     const disciplineScore = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 100;
 
-    // Calculate real stats from tasks
     const today = getTodayStr();
     const callsToday = tks.filter(t => t.type === 'Arama' && t.completed).length;
     const appointmentsToday = tks.filter(t => t.type === 'Randevu' && t.completed).length;
 
-    // Generate AI Insight via Gemini
     const aiInsight = await aiService.getDashboardInsight(props.length, leadsCount || 0, disciplineScore);
 
     return { 
@@ -189,7 +188,6 @@ export const api = {
       .single();
     if (error) throw error;
 
-    // Automatically register in CRM
     try {
       await leadService.addLead({
         name: pin.title,
@@ -237,27 +235,20 @@ export const api = {
     });
 
     return Object.entries(regionStats).map(([district, stats]) => {
-      // Score calculation: Leads (10 pts) + Properties (20 pts) + Sales (50 pts)
       const score = (stats.leads * 10) + (stats.properties * 20) + (stats.sales * 50);
       return {
         district,
-        score: Math.min(100, score), // Cap at 100 for display
+        score: Math.min(100, score),
         ...stats
       };
     }).sort((a, b) => b.score - a.score);
   },
-
-  // Profil Güncelleme
-  // (Moved to profileService)
 
   // Notlar ve Kişisel Görevler
   getNotes: notesService.getNotes,
   addNote: notesService.addNote,
   updateNote: notesService.updateNote,
   deleteNote: notesService.deleteNote,
-
-  // Habit Loop & Rituals
-  // (Moved to profileService)
 
   // Mesaj Şablonları
   getMessageTemplates: async () => {
@@ -292,9 +283,6 @@ export const api = {
       .eq('id', id);
     if (error) throw error;
   },
-
-  // Gamification MVP
-  // (Moved to profileService)
 
   // Rescue Mode (Günü Kurtar)
   getRescueSession: rescueService.getRescueSession,
