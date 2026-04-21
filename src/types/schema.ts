@@ -14,10 +14,18 @@ export interface Profile {
 export interface SubscriptionPackage {
   id: string;
   name: string;
-  price: number;
+  price_numeric: number;
+  price_text: string;
   interval: 'monthly' | 'yearly';
   features: string[];
   stripe_price_id?: string;
+  badge?: string;
+}
+
+export interface SystemSettings {
+  key: string;
+  value: any;
+  description?: string;
 }
 
 export interface UserUsageLimit {
@@ -34,6 +42,7 @@ export interface TaskTemplate {
   title: string;
   description: string;
   priority: 'low' | 'medium' | 'high';
+  auto_verify?: boolean;
 }
 
 // Global API Response Wrapper

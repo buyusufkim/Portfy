@@ -10,27 +10,33 @@ interface MarketComp { price: number; title: string; sqM: number; }
 
 export const aiService = {
   checkAndIncrementUsage: async (userId: string, tokensToAdd?: number): Promise<{ canProceed: boolean, usage?: any }> => {
-    const { data: usage } = await supabase
-      .from('user_usage_limits')
-      .select('current_month_usage, monthly_token_limit')
-      .eq('user_id', userId)
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('ai_tokens_used, tier')
+      .eq('uid', userId)
       .single();
 
-    const currentUsage = usage?.current_month_usage || 0;
-    const limit = usage?.monthly_token_limit || 500000;
+    const currentUsage = profile?.ai_tokens_used || 0;
+    const limit = profile?.tier === 'pro' ? 10000 : 1000;
 
     if (currentUsage >= limit) {
       return { canProceed: false };
     }
 
     if (tokensToAdd && tokensToAdd > 0) {
-      await supabase.rpc('increment_usage', {
-        uid: userId,
-        tokens_to_add: tokensToAdd
-      });
+      await supabase
+        .from('profiles')
+        .update({ ai_tokens_used: currentUsage + tokensToAdd })
+        .eq('uid', userId);
     }
 
-    return { canProceed: true, usage };
+    return { 
+      canProceed: true, 
+      usage: { 
+        current_month_usage: currentUsage + (tokensToAdd || 0), 
+        monthly_token_limit: limit 
+      } 
+    };
   },
 
   getDailyRadar: async (): Promise<{ tasks: string[], insight: string }> => {

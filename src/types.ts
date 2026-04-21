@@ -1,3 +1,5 @@
+import React from 'react';
+
 export type LeadStatus = 'Aday' | 'Sıcak' | 'Yetki Alındı' | 'Pasif';
 
 export interface UserProfile {
@@ -51,10 +53,28 @@ export interface GlobalSettings {
 export interface SubscriptionPackage {
   id: string;
   name: string;
-  price: number;
+  price_numeric: number;
+  price_text: string;
   duration_months: number;
   is_active: boolean;
   features: string[];
+  badge?: string;
+  stripe_price_id?: string;
+}
+
+export interface TaskTemplate {
+  id: string;
+  category: 'listing' | 'sale' | 'prospecting' | 'ritual';
+  title: string;
+  description: string;
+  priority: 'low' | 'medium' | 'high';
+  auto_verify?: boolean;
+}
+
+export interface SystemSettings {
+  key: string;
+  value: any;
+  description?: string;
 }
 
 export interface Lead {

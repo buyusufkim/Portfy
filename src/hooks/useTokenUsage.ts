@@ -11,17 +11,21 @@ export const useTokenUsage = () => {
       if (!user) return;
 
       const { data } = await supabase
-        .from('user_usage_limits')
-        .select('current_month_usage, monthly_token_limit')
-        .eq('user_id', user.id)
+        .from('profiles')
+        .select('ai_tokens_used, tier')
+        .eq('uid', user.id)
         .single();
 
       if (data) {
-        const percentage = (data.current_month_usage / data.monthly_token_limit) * 100;
+        // Frontend'de sabit limitler (Pro için 10.000)
+        const limit = data.tier === 'pro' ? 10000 : 1000; 
+        const currentUsage = data.ai_tokens_used || 0;
+        const percentage = (currentUsage / limit) * 100;
+
         setUsageData({
-          current: data.current_month_usage,
-          limit: data.monthly_token_limit,
-          percentage: Math.min(percentage, 100) // Yüzde 100'ü geçmesini engelliyoruz
+          current: currentUsage,
+          limit: limit,
+          percentage: Math.min(percentage, 100)
         });
       }
       setLoading(false);

@@ -26,13 +26,13 @@ CREATE TABLE IF NOT EXISTS subscription_packages (
 -- 3. user_usage_limits
 CREATE TABLE IF NOT EXISTS user_usage_limits (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-    agent_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
+    user_id UUID NOT NULL REFERENCES profiles(uid) ON DELETE CASCADE,
     feature_name TEXT NOT NULL,
     current_usage INTEGER DEFAULT 0,
     max_limit INTEGER NOT NULL,
     reset_at TIMESTAMPTZ,
     updated_at TIMESTAMPTZ DEFAULT NOW(),
-    UNIQUE(agent_id, feature_name)
+    UNIQUE(user_id, feature_name)
 );
 
 -- 4. task_templates
@@ -74,7 +74,7 @@ CREATE POLICY "Admins can manage packages" ON subscription_packages FOR ALL USIN
 
 -- user_usage_limits
 DROP POLICY IF EXISTS "Users can view own limits" ON user_usage_limits;
-CREATE POLICY "Users can view own limits" ON user_usage_limits FOR SELECT USING (agent_id = auth.uid());
+CREATE POLICY "Users can view own limits" ON user_usage_limits FOR SELECT USING (user_id = auth.uid());
 
 DROP POLICY IF EXISTS "Admins can manage all limits" ON user_usage_limits;
 CREATE POLICY "Admins can manage all limits" ON user_usage_limits FOR ALL USING (
