@@ -1,55 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
+import { rateLimit } from "express-rate-limit";
+import { createClient } from "@supabase/supabase-js";
+import { addMonths } from "date-fns";
 
 // API anahtarını SADECE burada, sunucuda okuyoruz.
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
-
-export const handleAIGeneration = async (req: any, res: any) => {
-  try {
-    if (!ai) {
-      return res.status(500).json({ error: "Sunucuda Gemini API anahtarı eksik. Sistem yöneticisine bildirin." });
-    }
-
-    const { model, contents, systemInstruction, responseSchema } = req.body;
-
-    if (!contents) {
-      return res.status(400).json({ error: "İşlenecek içerik (contents) gönderilmedi." });
-    }
-
-    // AI'ın kesinlikle JSON dönmesini sağlayan konfigürasyon
-    const config: any = {
-      responseMimeType: "application/json",
-    };
-
-    // Eğer frontend'den spesifik bir JSON şeması geldiyse, AI'ı buna zorla
-    if (responseSchema) {
-      config.responseSchema = responseSchema;
-    }
-
-    if (systemInstruction) {
-      config.systemInstruction = systemInstruction;
-    }
-
-    const response = await ai.models.generateContent({
-      model: model || "gemini-2.5-flash", // Hızlı işlemler için flash ideal
-      contents: contents,
-      config: config
-    });
-
-    // Artık AI saçma sapan metinler değil, doğrudan parse edilebilir JSON dönecek
-    const parsedData = JSON.parse(response.text || "{}");
-    
-    res.json({ success: true, data: parsedData });
-
-  } catch (error: any) {
-    console.error("AI Generation Backend Error:", error);
-    res.status(500).json({ error: "Yapay zeka işlemi başarısız oldu", details: error.message });
-  }
-};
-
-import { rateLimit } from "express-rate-limit";
-import { createClient } from "@supabase/supabase-js";
-import { addMonths } from "date-fns";
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
@@ -113,12 +69,106 @@ export const authenticate = async (req: any, res: any, next: any) => {
   }
 };
 
+// --- YENİ: TOKEN MUHASEBE MIDDLEWARE'İ ---
+// Yanıtı keser (intercept) ve token kullanımını arka planda asenkron olarak kaydeder.
+export const tokenTrackerMiddleware = (req: any, res: any, next: any) => {
+  const originalJson = res.json;
+  
+  res.json = function (body: any) {
+    const totalTokens = body?.usage?.totalTokenCount || body?.usage?.totalTokens;
+    const userId = req.user?.id; // authenticate'den geliyor
+
+    // Sadece başarılı dönen ve içinde usage barındıran AI yanıtlarını yakala
+    if (res.statusCode >= 200 && res.statusCode < 300 && userId && totalTokens && totalTokens > 0) {
+      // Yanıtın gecikmemesi için fire-and-forget asenkron çalıştırıyoruz
+      (async () => {
+        try {
+          const { data: profile, error: fetchError } = await supabaseAdmin
+            .from('profiles')
+            .select('ai_tokens_used')
+            .eq('uid', userId)
+            .single();
+            
+          if (fetchError && fetchError.code !== 'PGRST116') { // Not found harici hatalar
+            throw fetchError;
+          }
+            
+          const currentTokens = profile?.ai_tokens_used || 0;
+          const newTotal = currentTokens + totalTokens;
+          
+          const { error: updateError } = await supabaseAdmin
+            .from('profiles')
+            .update({ ai_tokens_used: newTotal })
+            .eq('uid', userId);
+
+          if (updateError) throw updateError;
+            
+          console.log(`[Token Muhasebe] Danışman ID: ${userId} | Harcanan: ${totalTokens} | Toplam: ${newTotal}`);
+        } catch (err: any) {
+          console.error("[Token Muhasebe Hatası]:", err.message);
+        }
+      })();
+    }
+    
+    // Akışı bozmadan orijinal json fonksiyonunu çağırıp frontend'e veriyi yolla
+    return originalJson.call(this, body);
+  };
+  next();
+};
+
+export const handleAIGeneration = async (req: any, res: any) => {
+  try {
+    if (!ai) {
+      return res.status(500).json({ error: "Sunucuda Gemini API anahtarı eksik. Sistem yöneticisine bildirin." });
+    }
+
+    const { model, contents, systemInstruction, responseSchema } = req.body;
+
+    if (!contents) {
+      return res.status(400).json({ error: "İşlenecek içerik (contents) gönderilmedi." });
+    }
+
+    const config: any = {
+      responseMimeType: "application/json",
+    };
+
+    if (responseSchema) {
+      config.responseSchema = responseSchema;
+    }
+
+    if (systemInstruction) {
+      config.systemInstruction = systemInstruction;
+    }
+
+    const response = await ai.models.generateContent({
+      model: model || "gemini-2.5-flash",
+      contents: contents,
+      config: config
+    });
+
+    const usageMetadata = response.usageMetadata;
+    let cleanJson = response.text || "{}";
+    cleanJson = cleanJson.replace(/```json/g, "").replace(/```/g, "").trim();
+    const parsedData = JSON.parse(cleanJson);
+    
+    // Sadece veriyi dönüyoruz. DB yazma işini middleware otomatik yakalayacak.
+    res.json({ 
+      success: true, 
+      data: parsedData,
+      usage: usageMetadata 
+    });
+
+  } catch (error: any) {
+    console.error("AI Generation Backend Error:", error);
+    res.status(500).json({ error: "Yapay zeka işlemi başarısız oldu", details: error.message });
+  }
+};
+
 export const handleUpdateProfile = async (req: any, res: any) => {
   try {
     const { data } = req.body;
     const userId = req.user.id;
 
-    // List of fields that are safe for users to update themselves
     const SAFE_FIELDS = [
       'display_name',
       'phone',
@@ -133,7 +183,6 @@ export const handleUpdateProfile = async (req: any, res: any) => {
       'notification_settings'
     ];
 
-    // Filter out any protected fields
     const filteredData: any = {};
     Object.keys(data).forEach(key => {
       if (SAFE_FIELDS.includes(key)) {
@@ -255,13 +304,11 @@ export const handleAdminUpdateUser = async (req: any, res: any) => {
   }
 };
 
-// KULLANICI SİLME İŞLEMİ EKLENDİ
 export const handleAdminDeleteUser = async (req: any, res: any) => {
   try {
     const { uid } = req.body;
     const adminId = req.user.id;
 
-    // Sadece admin yetkisi olanlar silebilir
     const { data: adminProfile, error: adminError } = await supabaseAdmin
       .from('profiles')
       .select('role')
@@ -276,7 +323,6 @@ export const handleAdminDeleteUser = async (req: any, res: any) => {
       return res.status(400).json({ error: "Missing uid" });
     }
 
-    // Kullanıcıyı auth katmanından tamamen siler (Profiller ve bağlı tüm veriler CASCADE ile silinir)
     const { error } = await supabaseAdmin.auth.admin.deleteUser(uid);
 
     if (error) throw error;

@@ -4,7 +4,7 @@ import dotenv from "dotenv";
 
 // UZANTI .js OLARAK DÜZELTİLDİ. Node.js ESM kuralları gereği derlenmiş dosyayı işaret etmelidir.
 import { 
-  authenticate, aiLimiter, handleUpdateProfile, handleSubscribe, 
+  authenticate, aiLimiter, tokenTrackerMiddleware, handleUpdateProfile, handleSubscribe, 
   handleAdminUpdateUser, handleAdminDeleteUser, handleAdminGetUsers, 
   handleAdminGetSettings, handleUpdateGlobalSettings, handleEarnXP, handleAIGeneration 
 } from "./server/ai-api.js";
@@ -28,7 +28,7 @@ app.use((req, res, next) => {
 });
 
 // Secure Profile Endpoints
-app.post("/api/ai/generate", authenticate, aiLimiter, handleAIGeneration);
+app.post("/api/ai/generate", authenticate, aiLimiter, tokenTrackerMiddleware, handleAIGeneration);
 app.post("/api/ai/profile/update", authenticate, handleUpdateProfile);
 app.post("/api/ai/subscribe", authenticate, handleSubscribe);
 app.post("/api/ai/earn-xp", authenticate, handleEarnXP);

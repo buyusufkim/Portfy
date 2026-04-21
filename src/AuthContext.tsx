@@ -1,34 +1,12 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { supabase } from './lib/supabase';
-import { User } from '@supabase/supabase-js';
+import { User, Session } from '@supabase/supabase-js';
 import { addMonths, isAfter, parseISO } from 'date-fns';
 import { Sparkles } from 'lucide-react';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS } from './constants/queryKeys';
 import { api } from './services/api';
-
-interface UserProfile {
-  uid: string;
-  email: string;
-  display_name: string;
-  phone?: string; // Telefon numarasını profile interface'ine ekledik
-  subscription_type: 'none' | 'trial' | '1-month' | '3-month' | '6-month' | '12-month';
-  subscription_end_date: string | null;
-  role: 'agent' | 'admin';
-  has_seen_onboarding?: boolean;
-  has_seen_tour?: boolean;
-  notification_settings?: { push: boolean; email: boolean; time: string };
-  region?: {
-    city: string;
-    district: string;
-    neighborhoods: string[];
-  };
-  tier: 'free' | 'pro' | 'elite' | 'master';
-  total_xp: number;
-  broker_level: number;
-  current_streak: number;
-  streak_freeze_count: number;
-}
+import { UserProfile } from './types';
 
 interface AuthContextType {
   user: User | null;
@@ -118,7 +96,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   useEffect(() => {
     if (isPopup) {
-      const handlePopupAuth = (session: any) => {
+      const handlePopupAuth = (session: Session | null) => {
         console.log('AuthContext: handlePopupAuth called', !!session);
         if (session) {
           try {
@@ -298,8 +276,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         console.log(`[AuthContext] Subscription SUCCESS`);
         await queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, user.id] });
-      } catch (err: any) {
-        if (err.name === 'AbortError') {
+      } catch (err: unknown) {
+        if (err instanceof Error && err.name === 'AbortError') {
           console.error(`[AuthContext] Subscription TIMEOUT after 30s`);
           throw new Error('İstek zaman aşımına uğradı. Lütfen internet bağlantınızı kontrol edip tekrar deneyin.');
         }
@@ -307,9 +285,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         throw err;
       }
 
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Subscription error:', error);
-      alert(error.message || 'Abonelik işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.');
+      const message = error instanceof Error ? error.message : 'Abonelik işlemi sırasında bir hata oluştu. Lütfen tekrar deneyin.';
+      alert(message);
       refetchProfile();
     } finally {
       setIsSubscribing(false);
@@ -348,7 +327,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (!user) return;
     
     // List of fields that are safe for users to update themselves
-    const SAFE_FIELDS = [
+    const SAFE_FIELDS: (keyof UserProfile)[] = [
       'display_name',
       'phone',
       'avatar_url',
@@ -362,10 +341,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     ];
 
     // Filter out any protected fields before sending to server
-    const filteredData: any = {};
+    const filteredData: Partial<UserProfile> = {};
     Object.keys(data).forEach(key => {
-      if (SAFE_FIELDS.includes(key)) {
-        filteredData[key] = (data as any)[key];
+      const k = key as keyof UserProfile;
+      if (SAFE_FIELDS.includes(k)) {
+        filteredData[k] = data[k];
       }
     });
 

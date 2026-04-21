@@ -1,4 +1,7 @@
-import { Property, BrokerAccount, ExternalListing, PropertySyncLink, Lead } from '../types';
+import { 
+  Property, BrokerAccount, ExternalListing, PropertySyncLink, Lead,
+  PropertyAIContent, InstagramMarketingContent, WhatsAppMarketingContent, MarketingModuleContent 
+} from '../types';
 import { supabase } from '../lib/supabase';
 import { getUserId } from './core/utils';
 import { gamificationService } from './gamificationService';
@@ -213,7 +216,7 @@ export const propertyService = {
     `;
 
     try {
-      const response: any = await generateContent("gemini-2.5-flash", prompt);
+      const response = await generateContent("gemini-2.5-flash", prompt) as PropertyAIContent;
       // JSON.parse ve response.text çöpe gitti. Backend'den JSON'ın içindeki 'metin' anahtarını okuyoruz.
       return response.metin || "İlan metni oluşturulamadı. Lütfen tekrar deneyin.";
     } catch (error) {
@@ -245,7 +248,7 @@ export const propertyService = {
     `;
     
     // JSON.parse çöpe gitti! Response zaten hazır obje.
-    const response: any = await generateContent("gemini-2.5-flash", prompt);
+    const response = await generateContent("gemini-2.5-flash", prompt) as InstagramMarketingContent;
     return response;
   },
 
@@ -271,7 +274,7 @@ export const propertyService = {
     `;
     
     // JSON.parse çöpe gitti!
-    const response: any = await generateContent("gemini-2.5-flash", prompt);
+    const response = await generateContent("gemini-2.5-flash", prompt) as WhatsAppMarketingContent;
     return response;
   },
 
@@ -308,7 +311,7 @@ export const propertyService = {
     `;
 
     // JSON.parse çöpe gitti!
-    const response: any = await generateContent("gemini-2.5-flash", prompt);
+    const response = await generateContent("gemini-2.5-flash", prompt) as MarketingModuleContent;
     return response;
   },
 

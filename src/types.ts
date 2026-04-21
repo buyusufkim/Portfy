@@ -4,6 +4,7 @@ export interface UserProfile {
   uid: string;
   email: string;
   display_name: string;
+  phone?: string; // Telefon numarası eklendi
   subscription_type: 'none' | 'trial' | '1-month' | '3-month' | '6-month' | '12-month';
   subscription_end_date: string | null;
   role: 'agent' | 'admin';
@@ -156,6 +157,7 @@ export interface Building {
   agent_id: string;
   title: string; // EKLENEN ALAN
   address: string;
+} // DÜZELTME: Kapanmamış süslü parantez kapatıldı. Build hatası giderildi.
 
 export interface MessageTemplate {
   id: string;
@@ -316,7 +318,7 @@ export interface RegionEfficiencyScore {
 export interface Category {
   id: string;
   label: string;
-  icon: any; // Lucide icon component
+  icon: React.ElementType; // DÜZELTME: 'any' yerine React componenti olduğunu belirttik
   color: string;
 }
 
@@ -347,4 +349,37 @@ export interface PersonalTask {
   priority: 'low' | 'medium' | 'high';
   reminder_time?: string;
   notified?: boolean;
+}
+
+export interface PropertyAIContent {
+  metin: string;
+}
+
+export interface InstagramMarketingContent {
+  corporate: string;
+  sales: string;
+  warm: string;
+}
+
+export interface WhatsAppMarketingContent {
+  single: string;
+  status: string;
+  investor: string;
+}
+
+export interface MarketingModuleContent {
+  instagram_posts: {
+    tone: string;
+    headline: string;
+    caption: string;
+    cta: string;
+    hashtags: string[];
+  }[];
+  whatsapp_messages: {
+    type: string;
+    text: string;
+    alternative_texts: string[];
+  }[];
+  summaries: string[];
+  cta_options: string[];
 }
