@@ -4,19 +4,6 @@
 -- 1. Extensions
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
--- Pre-cleanup for problematic columns
-DO $$ 
-BEGIN 
-    BEGIN
-        ALTER TABLE IF EXISTS subscription_state ALTER COLUMN "user_id" DROP NOT NULL;
-    EXCEPTION WHEN OTHERS THEN NULL;
-    END;
-    BEGIN
-        ALTER TABLE IF EXISTS subscription_state DROP COLUMN IF EXISTS "user_id" CASCADE;
-    EXCEPTION WHEN OTHERS THEN NULL;
-    END;
-END $$;
-
 -- 2. Helper for updated_at
 CREATE OR REPLACE FUNCTION update_updated_at_column()
 RETURNS TRIGGER AS $$
@@ -328,13 +315,7 @@ DO $$
 DECLARE
     t text;
 BEGIN 
-    -- Profiles renames and additions
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='uid' AND table_schema='public') THEN
-        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='id' AND table_schema='public') THEN
-            ALTER TABLE profiles RENAME COLUMN uid TO id;
-        END IF;
-    END IF;
-
+    -- Profiles parity additions
     IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='profiles' AND column_name='role') THEN
         ALTER TABLE profiles ADD COLUMN role TEXT DEFAULT 'agent' CHECK (role IN ('agent', 'admin'));
     END IF;
@@ -360,7 +341,7 @@ BEGIN
         ALTER TABLE profiles ADD COLUMN last_end_day_xp_at TIMESTAMPTZ;
     END IF;
 
-    -- Generic user_id rename and addition for all tables
+    -- Generic user_id parity for all tables
     FOR t IN SELECT unnest(ARRAY[
         'tasks', 'task_completions', 'leads', 'properties', 
         'daily_briefings', 'ai_insights', 'whatsapp_imports', 
@@ -370,45 +351,6 @@ BEGIN
         'broker_accounts', 'external_listings'
     ])
     LOOP
-        -- Rename agentId/userId/agent_id to user_id if they exist
-        -- We try to find any variant and rename it to user_id
-        
-        -- agentId
-        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'agentId' AND table_schema = 'public') THEN
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'user_id' AND table_schema = 'public') THEN
-                EXECUTE format('ALTER TABLE %I RENAME COLUMN "agentId" TO user_id', t);
-            ELSE
-                BEGIN
-                    EXECUTE format('ALTER TABLE %I DROP COLUMN IF EXISTS "agentId" CASCADE', t);
-                EXCEPTION WHEN OTHERS THEN NULL;
-                END;
-            END IF;
-        END IF;
-
-        -- agent_id
-        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'agent_id' AND table_schema = 'public') THEN
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'user_id' AND table_schema = 'public') THEN
-                EXECUTE format('ALTER TABLE %I RENAME COLUMN "agent_id" TO user_id', t);
-            ELSE
-                BEGIN
-                    EXECUTE format('ALTER TABLE %I DROP COLUMN IF EXISTS "agent_id" CASCADE', t);
-                EXCEPTION WHEN OTHERS THEN NULL;
-                END;
-            END IF;
-        END IF;
-
-        -- userId
-        IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'userId' AND table_schema = 'public') THEN
-            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'user_id' AND table_schema = 'public') THEN
-                EXECUTE format('ALTER TABLE %I RENAME COLUMN "userId" TO user_id', t);
-            ELSE
-                BEGIN
-                    EXECUTE format('ALTER TABLE %I DROP COLUMN IF EXISTS "userId" CASCADE', t);
-                EXCEPTION WHEN OTHERS THEN NULL;
-                END;
-            END IF;
-        END IF;
-
         -- Add user_id if it still doesn't exist
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = t AND column_name = 'user_id' AND table_schema = 'public') THEN
             EXECUTE format('ALTER TABLE %I ADD COLUMN user_id UUID REFERENCES profiles(id) ON DELETE CASCADE', t);

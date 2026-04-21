@@ -1,58 +1,43 @@
 -- 07_final_normalization.sql
 -- Final migration to enforce single standard: id for PK, user_id for FK.
--- This script is additive and safe.
+-- This script safely merges data from legacy columns into user_id and cleans them up.
 
 DO $$ 
 DECLARE 
-    t text;
+    tbl text;
+    col text;
 BEGIN
     -- 1. Profiles Table Normalization
     -- Ensure profiles PK is 'id' and not 'uid'
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'uid' AND table_schema = 'public') THEN
-        BEGIN
+        IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'profiles' AND column_name = 'id' AND table_schema = 'public') THEN
             ALTER TABLE profiles RENAME COLUMN uid TO id;
-        EXCEPTION WHEN OTHERS THEN
-            -- If 'id' already exists, we might need to merge or drop one. 
-            -- Assuming 'id' is already the PK from 01_schema.sql.
-            ALTER TABLE profiles DROP COLUMN IF EXISTS uid;
-        END;
+        ELSE
+            -- If both exist, we assume id is correct from 01_schema additions.
+            ALTER TABLE profiles DROP COLUMN uid CASCADE;
+        END IF;
     END IF;
 
-    -- 2. Bulk Rename agent_id -> user_id across all tables
-    FOR t IN 
-        SELECT table_name 
-        FROM information_schema.columns 
-        WHERE column_name = 'agent_id' 
-        AND table_schema = 'public'
+    -- 2. Bulk Merge legacy columns to user_id across all tables
+    FOR col IN SELECT unnest(ARRAY['agent_id', 'agentId', 'uid', 'userId'])
     LOOP
-        EXECUTE format('ALTER TABLE IF EXISTS %I RENAME COLUMN agent_id TO user_id', t);
+        FOR tbl IN 
+            SELECT table_name 
+            FROM information_schema.columns 
+            WHERE column_name = col 
+            AND table_schema = 'public'
+            AND table_name != 'profiles'
+        LOOP
+            IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = tbl AND column_name = 'user_id' AND table_schema = 'public') THEN
+                EXECUTE format('ALTER TABLE %I RENAME COLUMN %I TO user_id', tbl, col);
+            ELSE
+                -- Merge data if user_id is empty, then drop legacy column
+                EXECUTE format('UPDATE %I SET user_id = %I WHERE user_id IS NULL AND %I IS NOT NULL', tbl, col, col);
+                EXECUTE format('ALTER TABLE %I DROP COLUMN %I CASCADE', tbl, col);
+            END IF;
+        END LOOP;
     END LOOP;
 
-    -- 3. Bulk Rename uid -> user_id across all tables (excluding profiles where it should be 'id')
-    FOR t IN 
-        SELECT table_name 
-        FROM information_schema.columns 
-        WHERE column_name = 'uid' 
-        AND table_name != 'profiles'
-        AND table_schema = 'public'
-    LOOP
-        EXECUTE format('ALTER TABLE IF EXISTS %I RENAME COLUMN uid TO user_id', t);
-    END LOOP;
-
-    -- 4. Fix specific tables from old migrations
-    -- user_stats (previously has agent_id)
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'user_stats' AND column_name = 'agent_id') THEN
-        ALTER TABLE user_stats RENAME COLUMN agent_id TO user_id;
-    END IF;
-
-    -- subscription_state
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'subscription_state' AND column_name = 'agent_id') THEN
-        ALTER TABLE subscription_state RENAME COLUMN agent_id TO user_id;
-    END IF;
-
-    -- 5. Foreign Key Standardization
-    -- Ensure all user_id columns reference profiles(id)
-    -- This part is descriptive; 01_schema.sql handles most, but we ensure consistency here.
 END $$;
 
 -- 6. RLS Policy Normalization

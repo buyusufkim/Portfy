@@ -14,14 +14,6 @@ CREATE TABLE IF NOT EXISTS subscription_state (
     updated_at TIMESTAMPTZ DEFAULT NOW()
 );
 
--- Ensure correct columns exists (Additive)
-DO $$ 
-BEGIN 
-    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'subscription_state' AND column_name = 'agent_id') THEN
-        ALTER TABLE subscription_state RENAME COLUMN agent_id TO user_id;
-    END IF;
-END $$;
-
 -- 2. Add a partial unique index to prevent multiple 'trial' records for the same user.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_unique_trial_per_user 
 ON subscription_state (user_id) 
