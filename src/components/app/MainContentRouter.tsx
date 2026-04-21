@@ -108,6 +108,8 @@ export interface UtilityProps {
   setShowDayCloser: (val: boolean) => void;
   setToast: (toast: { message: string, type: 'success' | 'error' | 'info' } | null) => void;
   completeMorningRitualMutation: MutationResult<any, any>;
+  tasksLoading: boolean;
+  tasksError: boolean;
   showVoiceQuickAdd: boolean;
   setShowVoiceQuickAdd: (val: boolean) => void;
   addTaskMutation: MutationResult<any, any>;
@@ -142,6 +144,8 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
           profile={navigation.profile}
           properties={portfolios.properties || []}
           gamifiedTasks={utilities.gamifiedTasks || []}
+          isGamifiedTasksLoading={utilities.tasksLoading}
+          isGamifiedTasksError={utilities.tasksError}
           personalTasks={utilities.personalTasks || []}
           tasks={utilities.tasks || []}
           rescueSession={utilities.rescueSession}

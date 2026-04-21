@@ -51,7 +51,7 @@ export const TemplateSelectorModal: React.FC<TemplateSelectorModalProps> = ({
                   }}
                   className="w-full p-4 bg-slate-50 rounded-2xl text-left hover:bg-slate-100 transition-all border border-slate-100"
                 >
-                  <div className="font-bold text-slate-900 text-sm">{t.title}</div>
+                  <div className="font-bold text-slate-900 text-sm">{t.name}</div>
                   <p className="text-[10px] text-slate-500 mt-1 line-clamp-1">{t.content}</p>
                 </button>
               ))}

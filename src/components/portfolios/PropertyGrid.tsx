@@ -9,6 +9,9 @@ interface PropertyGridProps {
   propertiesLoading: boolean;
   filteredProperties: Property[];
   setSelectedProperty: (p: Property) => void;
+  setIsEditing?: (editing: boolean) => void;
+  setShowAddProperty?: (show: boolean) => void;
+  renderMagicLink?: (id: string) => React.ReactNode;
 }
 
 export const PropertyGrid: React.FC<PropertyGridProps> = ({

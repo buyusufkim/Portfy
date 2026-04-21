@@ -10,8 +10,7 @@ import { generateContent } from '../lib/aiClient';
 interface MarketComp { price: number; title: string; sqM: number; }
 
 export const aiService = {
-  checkAndIncrementUsage: async (userId: string, tokensToAdd?: number): Promise<{ canProceed: boolean, usage?: { current_month_usage: number, monthly_token_limit: number } }> => {
-    // Frontend'de sadece limit kontrolü yapıyoruz, increment işlemi ARTIK BACKEND'DE yapılıyor.
+  checkUsage: async (userId: string): Promise<{ current: number, limit: number }> => {
     const { data: profile } = await supabase
       .from('profiles')
       .select('ai_tokens_used, tier')
@@ -21,30 +20,12 @@ export const aiService = {
     const currentUsage = profile?.ai_tokens_used || 0;
     const limit = profile?.tier === 'pro' ? 10000 : 1000;
 
-    if (currentUsage >= limit) {
-      return { canProceed: false };
-    }
-
-    return { 
-      canProceed: true, 
-      usage: { 
-        current_month_usage: currentUsage, 
-        monthly_token_limit: limit 
-      } 
-    };
+    return { current: currentUsage, limit };
   },
 
   getDailyRadar: async (): Promise<{ tasks: string[], insight: string }> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
-
-    const { canProceed } = await aiService.checkAndIncrementUsage(user.id);
-    if (!canProceed) {
-      return {
-        tasks: ["Kullanım limitiniz doldu", "Lütfen paketinizi yükseltin", "Portfy Pro'yu inceleyin"],
-        insight: "Bu ayki AI kullanım limitinize ulaştınız. Yarın tekrar deneyebilir veya planınızı yükseltebilirsiniz."
-      };
-    }
 
     const [tasks, leads, properties] = await Promise.all([
       taskService.getTasks(),
@@ -99,9 +80,6 @@ export const aiService = {
   generateValuationReport: async (propertyDetails: Partial<Property>, marketComps: MarketComp[]): Promise<any> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
-
-    const { canProceed } = await aiService.checkAndIncrementUsage(user.id);
-    if (!canProceed) throw new Error("AI limiti aşıldı.");
 
     // Ortalama piyasa hesaplamaları
     const avgPrice = marketComps.reduce((acc, curr) => acc + curr.price, 0) / (marketComps.length || 1);

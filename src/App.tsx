@@ -76,7 +76,7 @@ function MainApp() {
   const { data: leads = [] } = useQuery({ queryKey: [QUERY_KEYS.LEADS, profile?.uid], queryFn: api.getLeads, enabled: !!profile?.uid });
   const { data: properties = [] } = useQuery({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.uid], queryFn: api.getProperties, enabled: !!profile?.uid });
   const { data: personalTasks = [] } = useQuery({ queryKey: [QUERY_KEYS.PERSONAL_TASKS, profile?.uid], queryFn: api.getPersonalTasks, enabled: !!profile?.uid });
-  const { data: gamifiedTasks = [] } = useQuery({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid], queryFn: () => api.getDailyGamifiedTasks(), enabled: !!profile?.uid });
+  const { data: gamifiedTasks = [], isLoading: tasksLoading, isError: tasksError } = useQuery({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid], queryFn: () => api.getDailyGamifiedTasks(), enabled: !!profile?.uid });
   const { data: fieldVisits = [] } = useQuery({ queryKey: [QUERY_KEYS.FIELD_VISITS, profile?.uid], queryFn: api.getFieldVisits, enabled: !!profile?.uid });
   const { data: tasks = [] } = useQuery({ queryKey: [QUERY_KEYS.TASKS, profile?.uid], queryFn: api.getTasks, enabled: !!profile?.uid });
   const { data: regionScores = [] } = useQuery({ queryKey: [QUERY_KEYS.REGION_SCORES, profile?.uid], queryFn: api.getRegionEfficiencyScores, enabled: !!profile?.uid });
@@ -107,7 +107,7 @@ function MainApp() {
   const navigationProps: NavigationProps = { activeTab, setActiveTab, showAdminPanel, setShowAdminPanel, logout, profile, updateProfileMutation };
   const leadProps: LeadProps = { leads, leadsLoading: false, categories, setShowWhatsAppImport, setShowAddLead: (show) => { if (show && !checkLeadsLimit()) return; setShowAddLead(show); }, setIsAnalyzingLeads, analyzeLeadsMutation, isAnalyzingLeads, addLeadMutation, updateLeadMutation, deleteLeadMutation, leadAnalysis, setLeadAnalysis, showAddLead, showWhatsAppImport, selectedLead, setSelectedLead, isEditingLead, setIsEditingLead };
   const portfolioProps: PortfolioProps = { properties, propertiesLoading: false, setSelectedProperty, selectedDistrict, setSelectedDistrict, viewMode, setViewMode, setShowImportUrlModal, regionScores, brokerAccount, setShowExternalListings, setShowIntegrationModal, syncListingsMutation, linkPropertyMutation, connectIntegrationMutation, showAddProperty, setShowAddProperty: (show) => { if (show && !checkPortfoliosLimit()) return; setShowAddProperty(show); }, showImportUrlModal, showIntegrationModal, showExternalListings, selectedProperty, externalListings, isEditing, setIsEditing, setShowRegionSetup };
-  const utilityProps: UtilityProps = { gamifiedTasks, personalTasks, tasks, rescueSession, missedOpportunities, setShowDailyRadar, setShowDayCloser, setShowMissedOpportunities, setToast, completeMorningRitualMutation, showVoiceQuickAdd, setShowVoiceQuickAdd, addTaskMutation, showAddVisit, setShowAddVisit, addVisitMutation, fieldVisits, cancelRescueMutation, completeRescueTaskMutation, showMissedOpportunities, setActiveTab };
+  const utilityProps: UtilityProps = { gamifiedTasks, tasksLoading, tasksError, personalTasks, tasks, rescueSession, missedOpportunities, setShowDailyRadar, setShowDayCloser, setShowMissedOpportunities, setToast, completeMorningRitualMutation, showVoiceQuickAdd, setShowVoiceQuickAdd, addTaskMutation, showAddVisit, setShowAddVisit, addVisitMutation, fieldVisits, cancelRescueMutation, completeRescueTaskMutation, showMissedOpportunities, setActiveTab };
 
   const appProps = { navigation: navigationProps, leads: leadProps, portfolios: portfolioProps, utilities: utilityProps };
 
@@ -165,7 +165,7 @@ const AppContent = () => {
   // 1. Ücretli aboneliği varsa (isSubscribed)
   // 2. VEYA ücretsiz planı açıkça seçmişse (tier === 'free') içeri girer.
   // Yeni kullanıcılar tier='none' başladığı için PricingScreen görürler.
-  const hasAccess = isSubscribed || (profile && profile.tier !== 'none');
+  const hasAccess = isSubscribed || profile;
   
   if (!hasAccess) return (
     <React.Suspense fallback={<LoadingFallback />}>

@@ -344,22 +344,7 @@ export const BolgemView = ({
             </div>
           </div>
 
-          {/* View Toggle */}
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-20 bg-slate-900/90 backdrop-blur-xl p-1.5 rounded-2xl flex shadow-2xl border border-white/10">
-            <button 
-              onClick={() => setView('map')}
-              className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${view === 'map' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}
-            >
-              <MapIcon size={14} /> Radar
-            </button>
-            <button 
-              onClick={() => setView('list')}
-              className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${view === 'list' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}
-            >
-              <LayoutDashboard size={14} /> Analiz
-            </button>
-          </div>
-
+          {/* View Toggle removed from here */}
           <RegionMap 
             isLoaded={isLoaded}
             mapZoom={mapZoom}
@@ -471,6 +456,22 @@ export const BolgemView = ({
           </div>
         )}
       </AnimatePresence>
+
+      {/* View Toggle - Global */}
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-40 bg-slate-900/90 backdrop-blur-xl p-2 rounded-2xl flex shadow-2xl border border-white/10 pointer-events-auto">
+        <button 
+          onClick={() => setView('map')}
+          className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${view === 'map' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}
+        >
+          <MapIcon size={14} /> Radar
+        </button>
+        <button 
+          onClick={() => setView('list')}
+          className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${view === 'list' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}
+        >
+          <LayoutDashboard size={14} /> Analiz
+        </button>
+      </div>
 
       {/* Field Notes Drawer */}
       <AnimatePresence>

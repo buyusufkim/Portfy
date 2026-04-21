@@ -38,7 +38,8 @@ export interface UserProfile {
   last_active_date?: string;
   created_at: string;
   updated_at: string;
-  tier: 'free' | 'pro' | 'elite' | 'master';
+  tier: 'free' | 'pro' | 'elite' | 'master' | 'trial';
+  ai_tokens_used: number;
 }
 
 export interface GlobalSettings {
@@ -138,6 +139,7 @@ export interface Property {
     rooms: string;
     age: number;
     floor: number;
+    totalFloors?: number;
   };
   owner: {
     name: string;
@@ -362,10 +364,23 @@ export interface Category {
   color: string;
 }
 
-// DÜZELTME: Void mutation'lar için opsiyonel mutate parametresi
+export interface WhatsAppAnalysis {
+  customer_name: string;
+  customer_type: string;
+  interest_level: string;
+  hotness_score: number;
+  budget_signal: string;
+  suggested_action: string;
+  follow_up_date: string;
+  extracted_details: string;
+  confidence_score: number;
+}
+
+// DÜZELTME: MutationResult için isSuccess ve mutate parametresi
 export interface MutationResult<TData = any, TVariables = void> {
   mutate: TVariables extends void ? () => void : (variables: TVariables) => void;
   isPending: boolean;
+  isSuccess: boolean;
   error: any;
   variables?: TVariables;
   data?: TData;

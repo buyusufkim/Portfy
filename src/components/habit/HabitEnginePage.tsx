@@ -86,14 +86,16 @@ export const HabitEnginePage: React.FC = () => {
               tasks_completed: gamifiedTasks.filter(t => t.is_completed).length,
               revenue: 150000, // Example revenue
               calls: 12,
-              visits: 3
+              visits: 3,
+              social: 0
             }}
             onComplete={() => {
               endDay({
                 tasks_completed: gamifiedTasks.filter(t => t.is_completed).length,
                 revenue: 150000,
                 calls: 12,
-                visits: 3
+                visits: 3,
+                social: 0
               });
               setShowCloser(false);
             }}

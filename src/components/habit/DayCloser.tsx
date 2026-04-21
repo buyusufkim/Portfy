@@ -12,6 +12,7 @@ interface DayCloserProps {
   };
   onComplete: () => void;
   isPending?: boolean;
+  onClose?: () => void;
 }
 
 export const DayCloser: React.FC<DayCloserProps> = ({ stats, onComplete, isPending }) => {

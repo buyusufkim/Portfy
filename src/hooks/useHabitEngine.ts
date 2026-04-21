@@ -9,7 +9,7 @@ export const useHabitEngine = () => {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: gamifiedTasks = [], isLoading: tasksLoading } = useQuery({
+  const { data: gamifiedTasks = [], isLoading: tasksLoading, isError: tasksError } = useQuery({
     queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.uid],
     queryFn: () => api.getDailyGamifiedTasks(),
     enabled: !!profile?.uid
@@ -45,7 +45,7 @@ export const useHabitEngine = () => {
   });
 
   const endDayMutation = useMutation({
-    mutationFn: (stats: { tasks_completed: number, revenue: number, calls: number, visits: number }) => 
+    mutationFn: (stats: { tasks_completed: number, revenue: number, calls: number, visits: number, social: number }) => 
       api.completeEveningRitual(stats),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.uid] });
@@ -66,6 +66,8 @@ export const useHabitEngine = () => {
     profile,
     gamifiedTasks,
     dailyStats,
+    tasksLoading,
+    tasksError,
     isLoading: tasksLoading || statsLoading,
     completeTask: completeTaskMutation.mutate,
     isCompletingTask: completeTaskMutation.isPending,

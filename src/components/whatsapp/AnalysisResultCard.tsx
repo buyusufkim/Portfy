@@ -43,19 +43,19 @@ export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({ result }
               <User size={28} />
             </div>
             <div>
-              <h3 className="text-xl font-bold text-slate-900 tracking-tight">{result.customerName}</h3>
+              <h3 className="text-xl font-bold text-slate-900 tracking-tight">{result.customer_name}</h3>
               <div className="flex items-center gap-2 mt-1">
-                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider border ${getInterestColor(result.interestLevel)}`}>
-                  {result.interestLevel} İlgi
+                <span className={`px-2 py-0.5 rounded-lg text-[10px] font-black uppercase tracking-wider border ${getInterestColor(result.interest_level)}`}>
+                  {result.interest_level} İlgi
                 </span>
                 <span className="px-2 py-0.5 bg-slate-100 text-slate-500 rounded-lg text-[10px] font-black uppercase tracking-wider border border-slate-200">
-                  {result.customerType}
+                  {result.customer_type}
                 </span>
               </div>
             </div>
           </div>
           <div className="text-right">
-            <div className="text-2xl font-black text-emerald-600">%{result.hotnessScore}</div>
+            <div className="text-2xl font-black text-emerald-600">%{result.hotness_score}</div>
             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Sıcaklık Skoru</div>
           </div>
         </div>
@@ -71,7 +71,7 @@ export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({ result }
             <div className="flex items-center gap-2 text-blue-600 font-bold text-[10px] uppercase tracking-wider">
               <DollarSign size={14} /> Bütçe Sinyali
             </div>
-            <p className="text-sm text-slate-900 font-bold leading-relaxed">{result.budgetSignal}</p>
+            <p className="text-sm text-slate-900 font-bold leading-relaxed">{result.budget_signal}</p>
           </div>
         </div>
 
@@ -80,9 +80,9 @@ export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({ result }
             <Target size={14} /> Önerilen Aksiyon
           </div>
           <div className="p-6 bg-emerald-50 border border-emerald-100 rounded-[32px] space-y-2">
-            <p className="text-sm text-emerald-900 font-bold leading-relaxed">{result.suggestedAction}</p>
+            <p className="text-sm text-emerald-900 font-bold leading-relaxed">{result.suggested_action}</p>
             <div className="flex items-center gap-2 text-xs text-emerald-600 font-medium">
-              <Calendar size={14} /> Takip Tarihi: {new Date(result.followUpDate).toLocaleDateString('tr-TR')}
+              <Calendar size={14} /> Takip Tarihi: {new Date(result.follow_up_date).toLocaleDateString('tr-TR')}
             </div>
           </div>
         </div>
@@ -91,20 +91,20 @@ export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({ result }
           <div className="space-y-1">
             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Lokasyon Tercihi</div>
             <div className="text-sm font-bold text-slate-900 flex items-center gap-1">
-              <MapPin size={14} className="text-slate-400" /> {result.extractedDetails.locationPreference || 'Belirtilmedi'}
+              <MapPin size={14} className="text-slate-400" /> {result.extracted_details.location_preference || 'Belirtilmedi'}
             </div>
           </div>
           <div className="space-y-1">
             <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mülk Tipi</div>
             <div className="text-sm font-bold text-slate-900 flex items-center gap-1">
-              <Home size={14} className="text-slate-400" /> {result.extractedDetails.propertyType || 'Belirtilmedi'}
+              <Home size={14} className="text-slate-400" /> {result.extracted_details.property_type || 'Belirtilmedi'}
             </div>
           </div>
         </div>
 
         <div className="flex items-center justify-between text-[10px] font-bold text-slate-400 uppercase tracking-wider pt-4">
           <div className="flex items-center gap-1">
-            <ShieldCheck size={14} className="text-emerald-500" /> AI Güven Skoru: %{result.confidenceScore}
+            <ShieldCheck size={14} className="text-emerald-500" /> AI Güven Skoru: %{result.confidence_score}
           </div>
           <div>{new Date().toLocaleDateString('tr-TR')}</div>
         </div>

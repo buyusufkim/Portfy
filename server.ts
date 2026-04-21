@@ -3,11 +3,8 @@ import path from "path";
 import dotenv from "dotenv";
 
 // UZANTI .js OLARAK DÜZELTİLDİ. Node.js ESM kuralları gereği derlenmiş dosyayı işaret etmelidir.
-import { 
-  authenticate, aiLimiter, tokenTrackerMiddleware, handleUpdateProfile, handleSubscribe, 
-  handleAdminUpdateUser, handleAdminDeleteUser, handleAdminGetUsers, 
-  handleAdminGetSettings, handleUpdateGlobalSettings, handleEarnXP, handleAIGeneration 
-} from "./server/ai-api.js";
+import { authenticate, aiLimiter, tokenTrackerMiddleware, handleUpdateProfile, handleSubscribe, handleAdminUpdateUser, handleAdminDeleteUser, handleAdminGetUsers, handleAdminGetSettings, handleUpdateGlobalSettings, handleEarnXP, handleAIGeneration } from "./server/ai-api.js";
+import { rateLimit } from 'express-rate-limit';
 
 // ✅ YENİ MARKET SCRAPER İÇERİ AKTARILDI (ESM formatına uygun olarak .js uzantısıyla)
 import { fetchMarketData } from "./server/marketScraper.js";
@@ -40,8 +37,18 @@ app.post("/api/ai/admin/update-user", authenticate, handleAdminUpdateUser);
 app.post("/api/ai/admin/delete-user", authenticate, handleAdminDeleteUser);
 app.post("/api/ai/admin/update-settings", authenticate, handleUpdateGlobalSettings);
 
-// ✅ YENİ MARKET ANALİZ ENDPOİNTİ - GÜVENLİ HALE GETİRİLDİ
-app.post('/api/market/analyze', authenticate, async (req: any, res: any) => {
+// Market Analiz Limitleyici (Abuse Koruması - 15 dk'da 15 istek)
+const marketLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 15,
+  keyGenerator: (req: any) => req.user?.id || req.ip,
+  message: { error: "Piyasa analizi için kullanım limitine ulaştınız. Lütfen daha sonra tekrar deneyin." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// ✅ YENİ MARKET ANALİZ ENDPOİNTİ - GÜVENLİ VE LİMİTLİ
+app.post('/api/market/analyze', authenticate, marketLimiter, async (req: any, res: any) => {
   try {
     const { city, district, neighborhood, propertyType, m2 } = req.body;
     

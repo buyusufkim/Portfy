@@ -34,6 +34,12 @@ interface DashboardViewProps {
   queryClient: QueryClient;
   startDayMutation: MutationResult<any, any>;
   completeMorningRitualMutation: MutationResult<any, any>;
+  tasks?: Task[];
+  personalTasks?: PersonalTask[];
+  setShowAdminPanel?: (show: boolean) => void;
+  setShowDailyRadar?: (show: boolean) => void;
+  setShowMissedOpportunities?: (show: boolean) => void;
+  missedOpportunities?: any[];
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -287,7 +293,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
                     </div>
                     <button 
-                      onClick={() => startRescueMutation.mutate()}
+                      onClick={() => startRescueMutation.mutate(undefined)}
                       disabled={startRescueMutation.isPending}
                       className="px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-orange-200 active:scale-95 transition-all"
                     >
@@ -335,7 +341,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <h2 className="text-lg font-bold text-slate-900 tracking-tight">Günün Görevleri</h2>
                 <div className="flex items-center gap-2">
                   <button 
-                    onClick={() => refreshTasksMutation.mutate()}
+                    onClick={() => refreshTasksMutation.mutate(undefined)}
                     disabled={refreshTasksMutation.isPending || isGamifiedTasksLoading}
                     className="p-1.5 text-slate-400 hover:text-orange-600 transition-colors disabled:opacity-50"
                     title="Görevleri Yeniden Oluştur"
@@ -388,7 +394,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <h4 className="text-sm font-bold text-slate-900">Görevler Bulunamadı</h4>
                     <p className="text-xs text-slate-400 px-8">Bugün için henüz görevlerin oluşturulmadı.</p>
                     <button 
-                      onClick={() => refreshTasksMutation.mutate()}
+                      onClick={() => refreshTasksMutation.mutate(undefined)}
                       disabled={refreshTasksMutation.isPending}
                       className="mt-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold active:scale-95 transition-all disabled:opacity-50"
                     >

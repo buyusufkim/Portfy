@@ -254,10 +254,10 @@ interface PortfoliosPageProps {
   setViewMode: (mode: 'list' | 'pipeline') => void;
   setShowImportUrlModal: (show: boolean) => void;
   setSelectedProperty: (p: Property) => void;
-  isEditing: boolean;
-  setIsEditing: (editing: boolean) => void;
-  showAddProperty: boolean;
-  setShowAddProperty: (show: boolean) => void;
+  isEditing?: boolean;
+  setIsEditing?: (editing: boolean) => void;
+  showAddProperty?: boolean;
+  setShowAddProperty?: (show: boolean) => void;
 }
 
 export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({

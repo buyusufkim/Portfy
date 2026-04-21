@@ -8,6 +8,7 @@ interface UpgradeModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectPlan?: (tier: string) => void;
+  onActivateTrial?: () => Promise<void> | void;
 }
 
 export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose }) => {

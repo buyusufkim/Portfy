@@ -2,6 +2,7 @@ import { SubscriptionTier, FeatureKey, FeatureConfig } from '../types/subscripti
 
 export const TIER_HIERARCHY: Record<SubscriptionTier, number> = {
   free: 0,
+  trial: 1,
   pro: 1,
   elite: 2,
   master: 3

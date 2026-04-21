@@ -11,6 +11,8 @@ interface DashboardPageProps {
   profile: UserProfile | null;
   properties: Property[];
   gamifiedTasks: GamifiedTask[];
+  isGamifiedTasksLoading: boolean;
+  isGamifiedTasksError: boolean;
   personalTasks: PersonalTask[];
   tasks: Task[];
   rescueSession: RescueSession | null;
@@ -28,6 +30,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   profile,
   properties,
   gamifiedTasks,
+  isGamifiedTasksLoading,
+  isGamifiedTasksError,
   personalTasks,
   tasks,
   rescueSession,
@@ -179,6 +183,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   return (
     <DashboardView 
       gamifiedTasks={gamifiedTasks}
+      isGamifiedTasksLoading={isGamifiedTasksLoading}
+      isGamifiedTasksError={isGamifiedTasksError}
       properties={properties}
       profile={profile}
       gamifiedStats={gamifiedStats}

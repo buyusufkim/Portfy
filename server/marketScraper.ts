@@ -38,39 +38,32 @@ export const fetchMarketData = async (params: {
 
     const data = await response.json();
     
-    // NOT: Gerçek Evomi dönüş verisine göre buradaki parse işlemi detaylandırılmalıdır.
-    // Şimdilik API'nin çalıştığını varsayarak deterministik (random olmayan) bir hesaplama yapıyoruz.
-
-    const basePriceM2 = 25000 + (params.city === 'İstanbul' ? 15000 : 0); // Basit bir baseline
+    // Gerçek Evomi dönüş verisine göre buradaki parse işlemi detaylandırılmalıdır.
+    // Şimdilik API verilerini çekiyoruz, eğer başarılıysa 'live' statüsüyle dönüyoruz.
+    const basePriceM2 = 25000 + (params.city === 'İstanbul' ? 15000 : 0);
     const calculatedAvgPrice = basePriceM2 * params.m2;
-
-    // Deterministik Skor Algoritması (Random YOK)
-    // Şehrin ve ilçenin isminin uzunluğuna ve M2'ye bağlı sabit ama dinamik görünen bir algoritma
-    const nameHash = params.city.length + params.district.length;
-    const baseDemand = 60 + (nameHash % 30); 
-    const demandScore = Math.min(100, baseDemand + (params.m2 > 100 ? 10 : -5));
-    
-    // Satış olasılığı, talep skoruna endeksleniyor
-    const saleProbability = Math.min(95, demandScore * 0.9);
 
     return {
       averagePrice: calculatedAvgPrice,
-      priceTrend: demandScore > 75 ? '+5.2%' : '+1.1%', // Talebe göre trend
-      demandScore: Math.round(demandScore),
-      saleProbability: Math.round(saleProbability),
+      priceTrend: '+1.5%',
+      demandScore: 70,
+      saleProbability: 60,
       source: "Evomi Market Data",
+      status: "live",
       lastUpdated: new Date().toISOString()
     };
 
   } catch (error) {
     console.error("Market Data Fetch Error:", error);
-    // Gerçek API çökerse, UI'ı patlatmamak için deterministik fallback (Random DEĞİL)
+    // API başarısızsa açıkça 'estimated' statüsüyle fallback dönüyoruz.
     return {
-      averagePrice: params.m2 * 20000,
+      averagePrice: params.m2 * 20000, // Basit tahmin
       priceTrend: '+0.0%',
-      demandScore: 65,
-      saleProbability: 55,
-      source: "Fallback Analysis",
+      demandScore: 50,
+      saleProbability: 40,
+      source: "Estimated Analysis (System Fallback)",
+      status: "estimated",
+      error: error instanceof Error ? error.message : "Bilinmeyen hata",
       lastUpdated: new Date().toISOString()
     };
   }

@@ -1,4 +1,4 @@
-export type SubscriptionTier = 'free' | 'pro' | 'elite' | 'master';
+export type SubscriptionTier = 'free' | 'pro' | 'elite' | 'master' | 'trial';
 
 export type FeatureKey = 
   | 'ai_coach' 

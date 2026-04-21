@@ -39,7 +39,7 @@ export const useWhatsAppAnalysis = () => {
     }
   });
 
-  const isPremium = profile?.brokerLevel && profile.brokerLevel >= 2;
+  const isPremium = profile?.broker_level && profile.broker_level >= 2;
 
   return {
     analyze: analyzeMutation.mutate,

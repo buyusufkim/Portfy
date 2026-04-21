@@ -22,8 +22,9 @@ export const Badge: React.FC<{
   );
 };
 
-export const Card: React.FC<{ children: React.ReactNode, className?: string, onClick?: () => void }> = ({ children, className = "", onClick }) => (
+export const Card: React.FC<{ children: React.ReactNode, className?: string, onClick?: () => void, id?: string }> = ({ children, className = "", onClick, id }) => (
   <div 
+    id={id}
     onClick={onClick}
     className={`bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden ${onClick ? 'cursor-pointer active:scale-[0.98] transition-all' : ''} ${className}`}
   >
