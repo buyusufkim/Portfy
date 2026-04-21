@@ -145,9 +145,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     window.addEventListener('message', handleMessage);
 
     const handleStorage = (e: StorageEvent) => {
-      if (e.key === 'oauth_success') {
-        // Handled via onAuthStateChange
-      }
+      // Handled via onAuthStateChange
     };
     window.addEventListener('storage', handleStorage);
 
@@ -319,10 +317,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     ];
 
     const filteredData: Partial<UserProfile> = {};
-    Object.keys(data).forEach(key => {
-      const k = key as keyof UserProfile;
-      if (SAFE_FIELDS.includes(k)) {
-        filteredData[k] = data[k];
+    SAFE_FIELDS.forEach(key => {
+      if (data[key] !== undefined) {
+        // DÜZELTME: TS indekseme hatasını güvenli şekilde atlamak için Type Assertion eklendi
+        (filteredData as any)[key] = data[key];
       }
     });
 

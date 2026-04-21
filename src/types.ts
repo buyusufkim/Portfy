@@ -192,6 +192,7 @@ export interface Building {
   district?: string;
   notes?: string;
   last_visit?: string;
+  status?: string;
 }
 
 export interface MessageTemplate {
@@ -316,6 +317,7 @@ export interface MissedOpportunity {
   days_delayed: number;
   priority: 'high' | 'medium' | 'low';
   potential_value?: number;
+  reason?: string;
 }
 
 export interface VoiceParseResult {
@@ -360,8 +362,9 @@ export interface Category {
   color: string;
 }
 
-export interface MutationResult<TData = any, TVariables = any> {
-  mutate: (variables: TVariables) => void;
+// DÜZELTME: Void mutation'lar için opsiyonel mutate parametresi
+export interface MutationResult<TData = any, TVariables = void> {
+  mutate: TVariables extends void ? () => void : (variables: TVariables) => void;
   isPending: boolean;
   error: any;
   variables?: TVariables;

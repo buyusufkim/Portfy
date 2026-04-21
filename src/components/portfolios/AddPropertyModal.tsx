@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, Trash2, Upload, ImageIcon } from 'lucide-react';
+import { X, Plus, Trash2, MapPin } from 'lucide-react';
+import { GoogleMap, useLoadScript, Marker } from '@react-google-maps/api';
 import { locationService } from '../../services/locationService';
 import { Property, Lead } from '../../types';
 import { api } from '../../services/api';
@@ -14,6 +15,8 @@ interface AddPropertyModalProps {
   leads: Lead[];
 }
 
+const mapLibraries: ("places")[] = ["places"];
+
 export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
   show,
   onClose,
@@ -22,17 +25,23 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
   initialData,
   leads
 }) => {
+  const { isLoaded } = useLoadScript({
+    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
+    libraries: mapLibraries,
+  });
+
   const [step, setStep] = useState(1);
   const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showLeadResults, setShowLeadResults] = useState(false);
+  
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
     type: initialData?.type || 'Daire',
     category: initialData?.category || 'Satılık',
     price: initialData?.price ? new Intl.NumberFormat('tr-TR').format(initialData.price) : '',
     status: initialData?.status || 'Yeni',
-    address: initialData?.address || { city: 'İstanbul', district: '', neighborhood: '', fullAddress: '' },
+    address: initialData?.address || { city: 'Kayseri', district: '', neighborhood: '', fullAddress: '', lat: undefined, lng: undefined },
     details: {
       brut_m2: initialData?.details?.brut_m2?.toString() || '',
       net_m2: initialData?.details?.net_m2?.toString() || '',
@@ -50,7 +59,6 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
     investment_suitability: initialData?.investment_suitability || ''
   });
 
-  // Reset form when initialData changes
   React.useEffect(() => {
     if (initialData) {
       setFormData({
@@ -83,7 +91,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
         category: 'Satılık',
         price: '',
         status: 'Yeni',
-        address: { city: 'İstanbul', district: '', neighborhood: '', fullAddress: '' },
+        address: { city: 'Kayseri', district: '', neighborhood: '', fullAddress: '', lat: undefined, lng: undefined },
         details: { brut_m2: '', net_m2: '', rooms: '', floor: '', totalFloors: '', age: '' },
         owner: { name: '', phone: '', trust_score: 80 },
         commission_rate: 2,
@@ -110,6 +118,41 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
     setFormData({...formData, price: formatted});
   };
 
+  const handleAddressNext = () => {
+    // 2.adımdan haritaya geçerken seçilen mahalleye göre haritayı otomatik ortala
+    if (!formData.address.lat && isLoaded && window.google) {
+      const addressString = `${formData.address.neighborhood}, ${formData.address.district}, ${formData.address.city}, Türkiye`;
+      const geocoder = new window.google.maps.Geocoder();
+      
+      geocoder.geocode({ address: addressString }, (results, status) => {
+        if (status === 'OK' && results && results[0]) {
+          setFormData(prev => ({
+            ...prev,
+            address: {
+              ...prev.address,
+              lat: results[0].geometry.location.lat(),
+              lng: results[0].geometry.location.lng()
+            }
+          }));
+        }
+      });
+    }
+    setStep(3);
+  };
+
+  const handleMapClick = (e: google.maps.MapMouseEvent) => {
+    if (e.latLng) {
+      setFormData(prev => ({
+        ...prev,
+        address: {
+          ...prev.address,
+          lat: e.latLng.lat(),
+          lng: e.latLng.lng()
+        }
+      }));
+    }
+  };
+
   const handleSubmit = () => {
     if (!formData.title || !formData.price || !formData.address.district) {
       alert('Lütfen zorunlu alanları doldurunuz (Başlık, Fiyat, İlçe)');
@@ -132,10 +175,11 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
 
   const steps = [
     { id: 1, title: 'Temel Bilgiler' },
-    { id: 2, title: 'Konum' },
-    { id: 3, title: 'Mülk Detayları' },
-    { id: 4, title: 'Fotoğraflar' },
-    { id: 5, title: 'Mal Sahibi & Notlar' }
+    { id: 2, title: 'Adres' },
+    { id: 3, title: 'Harita Konumu' },
+    { id: 4, title: 'Mülk Detayları' },
+    { id: 5, title: 'Fotoğraflar' },
+    { id: 6, title: 'Mal Sahibi & Notlar' }
   ];
 
   const handleUploadImage = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -143,7 +187,6 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
     if (!file) return;
 
     if (initialData) {
-      // If editing, upload directly to server
       setIsUploading(true);
       try {
         const url = await api.uploadPropertyImage(initialData.id, file);
@@ -158,10 +201,6 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
         setIsUploading(false);
       }
     } else {
-      // For new property, we'd need a different approach or just wait.
-      // For now, let's just show a message that photos can be added after saving
-      // or implement a temporary upload if needed.
-      // Actually, let's just allow it if we have a way to upload without ID or just mock it.
       alert('Yeni portföyler için fotoğrafları kaydettikten sonra detay ekranından ekleyebilirsiniz.');
     }
   };
@@ -195,15 +234,11 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
     <AnimatePresence>
       {show && (
         <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+          initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
           className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[200] flex items-end sm:items-center justify-center"
         >
           <motion.div 
-            initial={{ y: "100%" }}
-            animate={{ y: 0 }}
-            exit={{ y: "100%" }}
+            initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
             className="bg-white w-full max-w-md rounded-t-[40px] sm:rounded-[40px] p-8 max-h-[90vh] overflow-auto"
           >
             <div className="flex justify-between items-center mb-6">
@@ -224,20 +259,19 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
             </div>
 
             <div className="mb-8">
-              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Adım {step}/5</div>
+              <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Adım {step}/6</div>
               <div className="text-sm font-bold text-slate-900">{steps.find(s => s.id === step)?.title}</div>
             </div>
 
+            {/* ADIM 1: TEMEL BİLGİLER */}
             {step === 1 && (
               <div className="space-y-6">
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">İlan Başlığı</label>
                   <input 
-                    type="text" 
-                    placeholder="Örn: Gül Sokak'ta Manzaralı 3+1"
+                    type="text" placeholder="Örn: Gül Sokak'ta Manzaralı 3+1"
                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                    value={formData.title}
-                    onChange={e => setFormData({...formData, title: e.target.value})}
+                    value={formData.title} onChange={e => setFormData({...formData, title: e.target.value})}
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-4">
@@ -245,25 +279,18 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mülk Tipi</label>
                     <select 
                       className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                      value={formData.type}
-                      onChange={e => setFormData({...formData, type: e.target.value as any})}
+                      value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as any})}
                     >
-                      <option>Daire</option>
-                      <option>Villa</option>
-                      <option>Arsa</option>
-                      <option>Ticari</option>
-                      <option>Fabrika</option>
+                      <option>Daire</option><option>Villa</option><option>Arsa</option><option>Ticari</option><option>Fabrika</option>
                     </select>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kategori</label>
                     <select 
                       className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                      value={formData.category}
-                      onChange={e => setFormData({...formData, category: e.target.value as any})}
+                      value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as any})}
                     >
-                      <option>Satılık</option>
-                      <option>Kiralık</option>
+                      <option>Satılık</option><option>Kiralık</option>
                     </select>
                   </div>
                 </div>
@@ -271,26 +298,18 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fiyat</label>
                   <div className="relative">
                     <input 
-                      type="text" 
-                      placeholder="Örn: 5.000.000"
+                      type="text" placeholder="Örn: 5.000.000"
                       className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 pr-12 text-sm focus:border-orange-500 outline-none font-medium"
-                      value={formData.price}
-                      onChange={handlePriceChange}
+                      value={formData.price} onChange={handlePriceChange}
                     />
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">
-                      TL
-                    </div>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">TL</div>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setStep(2)}
-                  className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20"
-                >
-                  Sonraki Adım
-                </button>
+                <button onClick={() => setStep(2)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20">Sonraki Adım</button>
               </div>
             )}
 
+            {/* ADIM 2: ADRES SEÇİMİ */}
             {step === 2 && (
               <div className="space-y-6">
                 <div className="space-y-2">
@@ -298,7 +317,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                   <select 
                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
                     value={formData.address.city}
-                    onChange={e => setFormData({...formData, address: {...formData.address, city: e.target.value, district: '', neighborhood: ''}})}
+                    onChange={e => setFormData({...formData, address: {...formData.address, city: e.target.value, district: '', neighborhood: '', lat: undefined, lng: undefined}})}
                   >
                     {cities.map(c => <option key={c} value={c}>{c}</option>)}
                   </select>
@@ -308,7 +327,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                   <select 
                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
                     value={formData.address.district}
-                    onChange={e => setFormData({...formData, address: {...formData.address, district: e.target.value, neighborhood: ''}})}
+                    onChange={e => setFormData({...formData, address: {...formData.address, district: e.target.value, neighborhood: '', lat: undefined, lng: undefined}})}
                   >
                     <option value="">İlçe Seçiniz</option>
                     {districts.map(d => <option key={d} value={d}>{d}</option>)}
@@ -319,7 +338,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                   <select 
                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
                     value={formData.address.neighborhood}
-                    onChange={e => setFormData({...formData, address: {...formData.address, neighborhood: e.target.value}})}
+                    onChange={e => setFormData({...formData, address: {...formData.address, neighborhood: e.target.value, lat: undefined, lng: undefined}})}
                   >
                     <option value="">Mahalle Seçiniz</option>
                     {neighborhoods.map(n => <option key={n} value={n}>{n}</option>)}
@@ -327,56 +346,45 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                 </div>
                 <div className="flex gap-4">
                   <button onClick={() => setStep(1)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm">Geri</button>
-                  <button onClick={() => setStep(3)} className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20">Sonraki Adım</button>
+                  <button onClick={handleAddressNext} className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20">Sonraki Adım</button>
                 </div>
               </div>
             )}
 
+            {/* YENİ ADIM 3: HARİTA ÜZERİNDEN TAM KONUM SEÇİMİ */}
             {step === 3 && (
               <div className="space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Brüt M2</label>
-                    <input 
-                      type="number" 
-                      placeholder="Örn: 120"
-                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                      value={formData.details.brut_m2}
-                      onChange={e => setFormData({...formData, details: {...formData.details, brut_m2: e.target.value}})}
-                    />
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider flex items-center gap-1">
+                    <MapPin size={14} className="text-orange-500" /> Tam Konumu İşaretleyin
+                  </label>
+                  <p className="text-xs text-slate-500 mb-2">
+                    Harita üzerinde portföyün tam bulunduğu sokağa/binaya dokunarak pin ekleyin.
+                  </p>
+                  <div className="w-full h-[280px] rounded-2xl overflow-hidden border-2 border-slate-100 relative">
+                    {isLoaded ? (
+                      <GoogleMap
+                        mapContainerStyle={{ width: '100%', height: '100%' }}
+                        center={
+                          formData.address.lat && formData.address.lng 
+                            ? { lat: formData.address.lat, lng: formData.address.lng } 
+                            : { lat: 38.7205, lng: 35.4826 } // Default Kayseri
+                        }
+                        zoom={formData.address.lat ? 16 : 13}
+                        onClick={handleMapClick}
+                        options={{ disableDefaultUI: true, zoomControl: true }}
+                      >
+                        {formData.address.lat && formData.address.lng && (
+                          <Marker position={{ lat: formData.address.lat, lng: formData.address.lng }} />
+                        )}
+                      </GoogleMap>
+                    ) : (
+                      <div className="flex items-center justify-center w-full h-full bg-slate-50 text-slate-400 text-sm">Harita yükleniyor...</div>
+                    )}
                   </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Net M2</label>
-                    <input 
-                      type="number" 
-                      placeholder="Örn: 100"
-                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                      value={formData.details.net_m2}
-                      onChange={e => setFormData({...formData, details: {...formData.details, net_m2: e.target.value}})}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Oda Sayısı</label>
-                    <input 
-                      type="text" 
-                      placeholder="Örn: 3+1"
-                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                      value={formData.details.rooms}
-                      onChange={e => setFormData({...formData, details: {...formData.details, rooms: e.target.value}})}
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bina Yaşı</label>
-                    <input 
-                      type="number" 
-                      placeholder="Örn: 5"
-                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                      value={formData.details.age}
-                      onChange={e => setFormData({...formData, details: {...formData.details, age: e.target.value}})}
-                    />
-                  </div>
+                  {!formData.address.lat && (
+                     <p className="text-[10px] text-red-500 font-bold mt-2">Lütfen haritaya dokunarak bir konum belirleyin.</p>
+                  )}
                 </div>
                 <div className="flex gap-4">
                   <button onClick={() => setStep(2)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm">Geri</button>
@@ -385,7 +393,54 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
               </div>
             )}
 
+            {/* ADIM 4: MÜLK DETAYLARI */}
             {step === 4 && (
+              <div className="space-y-6">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Brüt M2</label>
+                    <input 
+                      type="number" placeholder="Örn: 120"
+                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
+                      value={formData.details.brut_m2} onChange={e => setFormData({...formData, details: {...formData.details, brut_m2: e.target.value}})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Net M2</label>
+                    <input 
+                      type="number" placeholder="Örn: 100"
+                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
+                      value={formData.details.net_m2} onChange={e => setFormData({...formData, details: {...formData.details, net_m2: e.target.value}})}
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Oda Sayısı</label>
+                    <input 
+                      type="text" placeholder="Örn: 3+1"
+                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
+                      value={formData.details.rooms} onChange={e => setFormData({...formData, details: {...formData.details, rooms: e.target.value}})}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bina Yaşı</label>
+                    <input 
+                      type="number" placeholder="Örn: 5"
+                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
+                      value={formData.details.age} onChange={e => setFormData({...formData, details: {...formData.details, age: e.target.value}})}
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-4">
+                  <button onClick={() => setStep(3)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm">Geri</button>
+                  <button onClick={() => setStep(5)} className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20">Sonraki Adım</button>
+                </div>
+              </div>
+            )}
+
+            {/* ADIM 5: FOTOĞRAFLAR */}
+            {step === 5 && (
               <div className="space-y-6">
                 <div className="grid grid-cols-2 gap-4">
                   {formData.images.map((url, index) => (
@@ -419,20 +474,20 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                   </p>
                 )}
                 <div className="flex gap-4">
-                  <button onClick={() => setStep(3)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm">Geri</button>
-                  <button onClick={() => setStep(5)} className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20">Sonraki Adım</button>
+                  <button onClick={() => setStep(4)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm">Geri</button>
+                  <button onClick={() => setStep(6)} className="flex-[2] py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20">Sonraki Adım</button>
                 </div>
               </div>
             )}
 
-            {step === 5 && (
+            {/* ADIM 6: MAL SAHİBİ & KAYDET */}
+            {step === 6 && (
               <div className="space-y-6">
                 <div className="space-y-2 relative">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mal Sahibi Ara / Ekle</label>
                   <div className="relative">
                     <input 
-                      type="text" 
-                      placeholder="İsim veya telefon ile ara..."
+                      type="text" placeholder="İsim veya telefon ile ara..."
                       className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
                       value={searchTerm}
                       onChange={e => {
@@ -470,29 +525,24 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mal Sahibi Telefon</label>
                   <input 
-                    type="text" 
-                    placeholder="Örn: 0532 123 45 67"
+                    type="text" placeholder="Örn: 0532 123 45 67"
                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                    value={formData.owner.phone}
-                    onChange={e => setFormData({...formData, owner: {...formData.owner, phone: e.target.value}})}
+                    value={formData.owner.phone} onChange={e => setFormData({...formData, owner: {...formData.owner, phone: e.target.value}})}
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Hedef Müşteri Tipi</label>
                   <input 
-                    type="text" 
-                    placeholder="Örn: Genç aileler, Yatırımcılar"
+                    type="text" placeholder="Örn: Genç aileler, Yatırımcılar"
                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                    value={formData.target_customer_type}
-                    onChange={e => setFormData({...formData, target_customer_type: e.target.value})}
+                    value={formData.target_customer_type} onChange={e => setFormData({...formData, target_customer_type: e.target.value})}
                   />
                 </div>
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Yatırım Uygunluğu</label>
                   <select 
                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                    value={formData.investment_suitability}
-                    onChange={e => setFormData({...formData, investment_suitability: e.target.value})}
+                    value={formData.investment_suitability} onChange={e => setFormData({...formData, investment_suitability: e.target.value})}
                   >
                     <option value="">Seçiniz</option>
                     <option value="Yüksek">Yüksek</option>
@@ -504,12 +554,11 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Notlar</label>
                   <textarea 
                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none h-24 resize-none"
-                    value={formData.notes}
-                    onChange={e => setFormData({...formData, notes: e.target.value})}
+                    value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})}
                   />
                 </div>
                 <div className="flex gap-4">
-                  <button onClick={() => setStep(4)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm">Geri</button>
+                  <button onClick={() => setStep(5)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm">Geri</button>
                   <button 
                     onClick={handleSubmit}
                     disabled={isPending}

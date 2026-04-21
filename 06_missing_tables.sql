@@ -113,3 +113,46 @@ CREATE TRIGGER update_task_templates_modtime BEFORE UPDATE ON task_templates FOR
 
 DROP TRIGGER IF EXISTS update_system_settings_modtime ON system_settings;
 CREATE TRIGGER update_system_settings_modtime BEFORE UPDATE ON system_settings FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+
+-- Eksik olan system_settings, subscription_packages ve task_templates tablolarının UI ile tam uyumlu şeması
+
+DROP TABLE IF EXISTS public.subscription_packages CASCADE;
+CREATE TABLE public.subscription_packages (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    name text NOT NULL,
+    price_numeric numeric NOT NULL DEFAULT 0,
+    price_text text NOT NULL DEFAULT '0₺',
+    duration_months integer NOT NULL DEFAULT 1,
+    interval text DEFAULT 'monthly',
+    tier text DEFAULT 'pro',
+    is_active boolean DEFAULT true,
+    features jsonb DEFAULT '[]'::jsonb,
+    badge text,
+    description text,
+    stripe_price_id text,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+DROP TABLE IF EXISTS public.system_settings CASCADE;
+CREATE TABLE public.system_settings (
+    id serial PRIMARY KEY,
+    key text UNIQUE NOT NULL,
+    value jsonb,
+    description text,
+    whatsapp_number text,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL,
+    updated_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);
+
+DROP TABLE IF EXISTS public.task_templates CASCADE;
+CREATE TABLE public.task_templates (
+    id uuid DEFAULT gen_random_uuid() PRIMARY KEY,
+    category text NOT NULL,
+    title text NOT NULL,
+    description text,
+    priority text DEFAULT 'medium',
+    points integer DEFAULT 10,
+    is_active boolean DEFAULT true,
+    auto_verify boolean DEFAULT false,
+    created_at timestamp with time zone DEFAULT timezone('utc'::text, now()) NOT NULL
+);

@@ -1,8 +1,20 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
-import { LogOut, ShieldCheck, Zap, CheckCircle2, Building2, Crown, Sparkles, ArrowRight, Briefcase } from 'lucide-react';
+import { LogOut, CheckCircle2, Building2, Crown, Sparkles, ArrowRight, Briefcase } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../lib/supabase';
+
+interface FeatureItemProps {
+  text: string;
+  dark?: boolean;
+}
+
+const FeatureItem: React.FC<FeatureItemProps> = ({ text, dark = false }) => (
+  <li className={`flex items-start gap-3 text-sm font-medium ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
+    <CheckCircle2 size={18} className={`shrink-0 mt-0.5 ${dark ? 'text-indigo-400' : 'text-emerald-500'}`} />
+    <span>{text}</span>
+  </li>
+);
 
 export const PricingScreen = () => {
   const { subscribe, logout, isSubscribing } = useAuth();
@@ -94,7 +106,7 @@ export const PricingScreen = () => {
                   
                   <ul className="space-y-4 flex-1 mb-8">
                     {(freePkg.features || []).map((f: string, i: number) => (
-                      <FeatureItem key={i} text={f} />
+                      <FeatureItem key={`free-${i}`} text={f} />
                     ))}
                   </ul>
                   
@@ -140,7 +152,7 @@ export const PricingScreen = () => {
                       <Sparkles size={18} className="text-indigo-400" /> Başlangıçtaki her şey, artı:
                     </li>
                     {(selectedDuration.features || []).map((f: string, i: number) => (
-                      <FeatureItem key={i} text={f} dark />
+                      <FeatureItem key={`master-${i}`} text={f} dark />
                     ))}
                   </ul>
                   
@@ -157,12 +169,5 @@ export const PricingScreen = () => {
     </div>
   );
 };
-
-const FeatureItem = ({ text, dark = false }: { text: string, dark?: boolean }) => (
-  <li className={`flex items-start gap-3 text-sm font-medium ${dark ? 'text-slate-300' : 'text-slate-600'}`}>
-    <CheckCircle2 size={18} className={`shrink-0 mt-0.5 ${dark ? 'text-indigo-400' : 'text-emerald-500'}`} />
-    <span>{text}</span>
-  </li>
-);
 
 export default PricingScreen;
