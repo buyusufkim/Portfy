@@ -1,4 +1,5 @@
 // src/services/aiService.ts
+import { Property } from '../types';
 import { supabase } from '../lib/supabase';
 import { taskService } from './taskService';
 import { leadService } from './leadService';
@@ -9,7 +10,8 @@ import { generateContent } from '../lib/aiClient';
 interface MarketComp { price: number; title: string; sqM: number; }
 
 export const aiService = {
-  checkAndIncrementUsage: async (userId: string, tokensToAdd?: number): Promise<{ canProceed: boolean, usage?: any }> => {
+  checkAndIncrementUsage: async (userId: string, tokensToAdd?: number): Promise<{ canProceed: boolean, usage?: { current_month_usage: number, monthly_token_limit: number } }> => {
+    // Frontend'de sadece limit kontrolü yapıyoruz, increment işlemi ARTIK BACKEND'DE yapılıyor.
     const { data: profile } = await supabase
       .from('profiles')
       .select('ai_tokens_used, tier')
@@ -23,17 +25,10 @@ export const aiService = {
       return { canProceed: false };
     }
 
-    if (tokensToAdd && tokensToAdd > 0) {
-      await supabase
-        .from('profiles')
-        .update({ ai_tokens_used: currentUsage + tokensToAdd })
-        .eq('uid', userId);
-    }
-
     return { 
       canProceed: true, 
       usage: { 
-        current_month_usage: currentUsage + (tokensToAdd || 0), 
+        current_month_usage: currentUsage, 
         monthly_token_limit: limit 
       } 
     };
@@ -61,7 +56,7 @@ export const aiService = {
       Sen bir emlak danışmanı koçusun. Danışmanın verileri:
       - Görevler: ${JSON.stringify(tasks.filter(t => !t.completed).slice(0, 5))}
       - Sıcak Leadler: ${JSON.stringify(leads.filter(l => l.status === 'Sıcak').slice(0, 3))}
-      - Portföyler: ${JSON.stringify(properties.slice(0, 3))}
+      - Portföy Özeti: Toplam ${properties.length} portföyünüz var.
       
       Bugün için en kritik 3 hamleyi seç ve kısa, vurucu birer cümle olarak yaz. 
       Ayrıca genel bir motivasyonel içgörü ver.
@@ -74,13 +69,10 @@ export const aiService = {
 
     try {
       const response: any = await generateContent(
-        "gemini-1.5-flash",
+        "gemini-2.0-flash",
         prompt,
         { responseMimeType: "application/json" }
       );
-
-      const tokens = response.usageMetadata?.totalTokenCount || 500; 
-      await aiService.checkAndIncrementUsage(user.id, tokens);
 
       return response;
     } catch (e) {
@@ -104,7 +96,7 @@ export const aiService = {
   /**
    * YENİ ÖZELLİK: Portföy Değerleme & Satıcı İkna Raporu (CMA Motoru)
    */
-  generateValuationReport: async (propertyDetails: any, marketComps: MarketComp[]): Promise<any> => {
+  generateValuationReport: async (propertyDetails: Partial<Property>, marketComps: MarketComp[]): Promise<any> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
@@ -116,7 +108,7 @@ export const aiService = {
 
     const prompt = `
       Sen üst düzey, otoriter ve premium bir gayrimenkul danışmanısın. 
-      Elimizde ${propertyDetails.city} ${propertyDetails.district} bölgesinde bir satılık portföy adayı var. 
+      Elimizde ${propertyDetails.address?.city} ${propertyDetails.address?.district} bölgesinde bir satılık portföy adayı var. 
       Özellikleri: ${JSON.stringify(propertyDetails)}
       
       Sahibinden ve diğer portallardan çektiğimiz bölgedeki ${marketComps.length} adet rakip ilanın ortalama fiyatı: ${avgPrice} TL.
@@ -134,8 +126,7 @@ export const aiService = {
     `;
 
     try {
-      const response: any = await generateContent("gemini-1.5-flash", prompt, { responseMimeType: "application/json" });
-      await aiService.checkAndIncrementUsage(user.id, response.usageMetadata?.totalTokenCount || 400);
+      const response = await generateContent("gemini-2.0-flash", prompt, { responseMimeType: "application/json" }) as any;
       return response;
     } catch (error) {
       console.error("Valuation AI error", error);

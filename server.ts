@@ -40,8 +40,8 @@ app.post("/api/ai/admin/update-user", authenticate, handleAdminUpdateUser);
 app.post("/api/ai/admin/delete-user", authenticate, handleAdminDeleteUser);
 app.post("/api/ai/admin/update-settings", authenticate, handleUpdateGlobalSettings);
 
-// ✅ YENİ MARKET ANALİZ ENDPOİNTİ
-app.post('/api/market/analyze', async (req, res) => {
+// ✅ YENİ MARKET ANALİZ ENDPOİNTİ - GÜVENLİ HALE GETİRİLDİ
+app.post('/api/market/analyze', authenticate, async (req: any, res: any) => {
   try {
     const { city, district, neighborhood, propertyType, m2 } = req.body;
     

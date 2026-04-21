@@ -319,8 +319,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const filteredData: Partial<UserProfile> = {};
     SAFE_FIELDS.forEach(key => {
       if (data[key] !== undefined) {
-        // DÜZELTME: TS indekseme hatasını güvenli şekilde atlamak için Type Assertion eklendi
-        (filteredData as any)[key] = data[key];
+        // DÜZELTME: Type-safe property assignment
+        const value = data[key];
+        (filteredData as Record<string, unknown>)[key as string] = value;
       }
     });
 

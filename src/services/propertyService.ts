@@ -216,7 +216,7 @@ export const propertyService = {
     `;
 
     try {
-      const response = await generateContent("gemini-2.5-flash", prompt) as PropertyAIContent;
+      const response = await generateContent("gemini-2.0-flash", prompt) as PropertyAIContent;
       // JSON.parse ve response.text çöpe gitti. Backend'den JSON'ın içindeki 'metin' anahtarını okuyoruz.
       return response.metin || "İlan metni oluşturulamadı. Lütfen tekrar deneyin.";
     } catch (error) {
@@ -248,7 +248,7 @@ export const propertyService = {
     `;
     
     // JSON.parse çöpe gitti! Response zaten hazır obje.
-    const response = await generateContent("gemini-2.5-flash", prompt) as InstagramMarketingContent;
+    const response = await generateContent("gemini-2.0-flash", prompt) as InstagramMarketingContent;
     return response;
   },
 
@@ -274,7 +274,7 @@ export const propertyService = {
     `;
     
     // JSON.parse çöpe gitti!
-    const response = await generateContent("gemini-2.5-flash", prompt) as WhatsAppMarketingContent;
+    const response = await generateContent("gemini-2.0-flash", prompt) as WhatsAppMarketingContent;
     return response;
   },
 
@@ -311,7 +311,7 @@ export const propertyService = {
     `;
 
     // JSON.parse çöpe gitti!
-    const response = await generateContent("gemini-2.5-flash", prompt) as MarketingModuleContent;
+    const response = await generateContent("gemini-2.0-flash", prompt) as MarketingModuleContent;
     return response;
   },
 

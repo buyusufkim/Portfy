@@ -123,6 +123,34 @@ export const handleAIGeneration = async (req: any, res: any) => {
     }
 
     const { model, contents, systemInstruction, responseSchema } = req.body;
+    const userId = req.user?.id;
+
+    // 1. Model Allowlist Check
+    const targetModel = model || "gemini-2.0-flash";
+    if (!ALLOWED_MODELS.includes(targetModel)) {
+      return res.status(400).json({ error: `Geçersiz model seçimi: ${targetModel}. Sadece izin verilen modeller kullanılabilir.` });
+    }
+
+    // 2. Token Limit Check (Server-side Enforcement)
+    const { data: profile, error: fetchError } = await supabaseAdmin
+      .from('profiles')
+      .select('ai_tokens_used, tier')
+      .eq('uid', userId)
+      .single();
+
+    if (fetchError || !profile) {
+      return res.status(404).json({ error: "Kullanıcı profili bulunamadı." });
+    }
+
+    const limit = profile.tier === 'pro' ? 10000 : 1000;
+    const currentUsage = profile.ai_tokens_used || 0;
+
+    if (currentUsage >= limit) {
+      return res.status(403).json({ 
+        error: "Yapay zeka kullanım limitiniz doldu.", 
+        details: "Daha fazla kullanım için Portfy Pro paketinize geçiş yapabilir veya bir sonraki ayı bekleyebilirsiniz." 
+      });
+    }
 
     if (!contents) {
       return res.status(400).json({ error: "İşlenecek içerik (contents) gönderilmedi." });
@@ -141,7 +169,7 @@ export const handleAIGeneration = async (req: any, res: any) => {
     }
 
     const response = await ai.models.generateContent({
-      model: model || "gemini-2.5-flash",
+      model: targetModel,
       contents: contents,
       config: config
     });

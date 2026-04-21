@@ -70,7 +70,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   const [showMarketingHub, setShowMarketingHub] = useState(false);
 
   const generateContentMutation = useMutation({
-    mutationFn: (prop: Property) => api.generatePropertyContent(prop.id, 'listing'),
+    mutationFn: (prop: Property) => api.generatePropertyContent(prop),
     onSuccess: (data) => {
       setAiContent(data);
       setIsGenerating(false);
@@ -78,7 +78,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   });
 
   const generateInstagramMutation = useMutation({
-    mutationFn: (prop: Property) => api.generateInstagramCaptions(prop.id),
+    mutationFn: (prop: Property) => api.generateInstagramCaptions(prop),
     onSuccess: (data) => {
       setInstagramCaptions(data);
       setIsGenerating(false);
@@ -86,7 +86,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   });
 
   const generateWhatsAppMutation = useMutation({
-    mutationFn: (prop: Property) => api.generateWhatsAppMessages(prop.id),
+    mutationFn: (prop: Property) => api.generateWhatsAppMessages(prop),
     onSuccess: (data) => {
       setWhatsappMessages(data);
       setIsGenerating(false);
