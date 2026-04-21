@@ -32,6 +32,7 @@ const ALLOWED_MODELS = [
   "gemini-flash-latest",
   "gemini-3-flash-preview",
   "gemini-3.1-pro-preview",
+  "gemini-2.5-flash",
   "gemini-2.0-flash",
   "gemini-2.0-flash-lite-preview",
   "gemini-2.0-pro-exp-02-05"
@@ -254,7 +255,12 @@ export const handleSubscribe = async (req: any, res: any) => {
       .eq('id', userId)
       .single();
 
-    if (fetchError || !profile) {
+    if (fetchError) {
+      console.error(`[handleSubscribe] Error fetching profile:`, fetchError);
+      return res.status(404).json({ error: "User profile not found", details: fetchError });
+    }
+    if (!profile) {
+      console.error(`[handleSubscribe] No profile found for id: ${userId}`);
       return res.status(404).json({ error: "User profile not found" });
     }
 

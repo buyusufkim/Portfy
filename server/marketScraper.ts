@@ -48,8 +48,12 @@ export const fetchMarketData = async (params: {
 
     const data = await response.json() as any;
     
-    // Veri doğrulama: Eğer gerekli alanlar yoksa live dönme
-    const hasData = data && (data.averagePrice || data.priceTrend);
+    // Tam doğrulama: Gerekli alanlar var mı?
+    const hasData = data && 
+       (data.averagePrice !== null && data.averagePrice !== undefined) &&
+       (data.priceTrend !== null && data.priceTrend !== undefined) &&
+       (data.demandScore !== null && data.demandScore !== undefined) &&
+       (data.saleProbability !== null && data.saleProbability !== undefined);
 
     if (!hasData) {
       return {
@@ -58,10 +62,10 @@ export const fetchMarketData = async (params: {
         source: "Evomi (Partial)",
         error: "Insufficient data for live status",
         raw_count: data?.raw_count || 0,
-        averagePrice: data?.averagePrice || null,
-        priceTrend: data?.priceTrend || null,
-        demandScore: data?.demandScore || null,
-        saleProbability: data?.saleProbability || null,
+        averagePrice: null,
+        priceTrend: null,
+        demandScore: null,
+        saleProbability: null,
         lastUpdated: new Date().toISOString()
       };
     }
@@ -74,8 +78,8 @@ export const fetchMarketData = async (params: {
       raw_count: data.raw_count || 0,
       averagePrice: data.averagePrice,
       priceTrend: data.priceTrend,
-      demandScore: data.demandScore || 70,
-      saleProbability: data.saleProbability || 0.65,
+      demandScore: data.demandScore,
+      saleProbability: data.saleProbability,
       lastUpdated: new Date().toISOString()
     };
 

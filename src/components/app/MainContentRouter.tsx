@@ -37,7 +37,7 @@ export interface NavigationProps {
   setShowAdminPanel: (val: boolean) => void;
   logout: () => void;
   profile: UserProfile | null;
-  updateProfileMutation: MutationResult<any, { uid: string, data: Partial<UserProfile> }>;
+  updateProfileMutation: MutationResult<any, { id: string, data: Partial<UserProfile> }>;
 }
 
 export interface LeadProps {

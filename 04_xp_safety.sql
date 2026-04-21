@@ -2,14 +2,14 @@
 
 -- 1. Cleanup duplicates if any before adding constraint
 DELETE FROM user_stats a USING user_stats b
-WHERE a.id < b.id AND a.agent_id = b.agent_id AND a.date = b.date;
+WHERE a.id < b.id AND a.user_id = b.user_id AND a.date = b.date;
 
 -- 2. Add unique constraint to user_stats to prevent duplicate rows per day
 -- This allows us to use ON CONFLICT for atomic updates.
 DO $$ 
 BEGIN 
-    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unique_agent_date') THEN
-        ALTER TABLE user_stats ADD CONSTRAINT unique_agent_date UNIQUE (agent_id, date);
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'unique_user_date') THEN
+        ALTER TABLE user_stats ADD CONSTRAINT unique_user_date UNIQUE (user_id, date);
     END IF;
 END $$;
 
@@ -32,7 +32,7 @@ DECLARE
     v_entity RECORD;
 BEGIN
     -- 1. Lock profile row to prevent concurrent XP updates for the same user
-    SELECT * INTO v_profile FROM profiles WHERE uid = p_user_id FOR UPDATE;
+    SELECT * INTO v_profile FROM profiles WHERE id = p_user_id FOR UPDATE;
     IF NOT FOUND THEN
         RETURN jsonb_build_object('success', false, 'error', 'Profile not found');
     END IF;
@@ -64,7 +64,7 @@ BEGIN
             -- Lock lead row to prevent concurrent XP awards for the same lead
             SELECT * INTO v_entity FROM leads WHERE id = p_entity_id FOR UPDATE;
             IF NOT FOUND THEN RETURN jsonb_build_object('success', false, 'error', 'Lead not found'); END IF;
-            IF v_entity.agent_id != p_user_id THEN RETURN jsonb_build_object('success', false, 'error', 'Unauthorized'); END IF;
+            IF v_entity.user_id != p_user_id THEN RETURN jsonb_build_object('success', false, 'error', 'Unauthorized'); END IF;
             IF v_entity.xp_awarded THEN RETURN jsonb_build_object('success', false, 'error', 'XP already awarded'); END IF;
             v_amount := 20;
             UPDATE leads SET xp_awarded = true WHERE id = p_entity_id;
@@ -73,7 +73,7 @@ BEGIN
             -- Lock property row
             SELECT * INTO v_entity FROM properties WHERE id = p_entity_id FOR UPDATE;
             IF NOT FOUND THEN RETURN jsonb_build_object('success', false, 'error', 'Property not found'); END IF;
-            IF v_entity.agent_id != p_user_id THEN RETURN jsonb_build_object('success', false, 'error', 'Unauthorized'); END IF;
+            IF v_entity.user_id != p_user_id THEN RETURN jsonb_build_object('success', false, 'error', 'Unauthorized'); END IF;
             IF v_entity.xp_awarded THEN RETURN jsonb_build_object('success', false, 'error', 'XP already awarded'); END IF;
             v_amount := 50;
             UPDATE properties SET xp_awarded = true WHERE id = p_entity_id;
@@ -82,7 +82,7 @@ BEGIN
             -- Lock session row
             SELECT * INTO v_entity FROM rescue_sessions WHERE id = p_entity_id FOR UPDATE;
             IF NOT FOUND THEN RETURN jsonb_build_object('success', false, 'error', 'Session not found'); END IF;
-            IF v_entity.agent_id != p_user_id THEN RETURN jsonb_build_object('success', false, 'error', 'Unauthorized'); END IF;
+            IF v_entity.user_id != p_user_id THEN RETURN jsonb_build_object('success', false, 'error', 'Unauthorized'); END IF;
             IF v_entity.xp_awarded THEN RETURN jsonb_build_object('success', false, 'error', 'XP already awarded'); END IF;
             IF v_entity.status != 'completed' THEN RETURN jsonb_build_object('success', false, 'error', 'Session not completed'); END IF;
             v_amount := 150;
@@ -92,7 +92,7 @@ BEGIN
             -- Lock personal task row
             SELECT * INTO v_entity FROM personal_tasks WHERE id = p_entity_id FOR UPDATE;
             IF NOT FOUND THEN RETURN jsonb_build_object('success', false, 'error', 'Task not found'); END IF;
-            IF v_entity.agent_id != p_user_id THEN RETURN jsonb_build_object('success', false, 'error', 'Unauthorized'); END IF;
+            IF v_entity.user_id != p_user_id THEN RETURN jsonb_build_object('success', false, 'error', 'Unauthorized'); END IF;
             IF v_entity.xp_awarded THEN RETURN jsonb_build_object('success', false, 'error', 'XP already awarded'); END IF;
             IF NOT v_entity.is_completed THEN RETURN jsonb_build_object('success', false, 'error', 'Task not completed'); END IF;
             v_amount := 10;
@@ -102,7 +102,7 @@ BEGIN
             -- Lock gamified task row
             SELECT * INTO v_entity FROM gamified_tasks WHERE id = p_entity_id FOR UPDATE;
             IF NOT FOUND THEN RETURN jsonb_build_object('success', false, 'error', 'Task not found'); END IF;
-            IF v_entity.agent_id != p_user_id THEN RETURN jsonb_build_object('success', false, 'error', 'Unauthorized'); END IF;
+            IF v_entity.user_id != p_user_id THEN RETURN jsonb_build_object('success', false, 'error', 'Unauthorized'); END IF;
             IF v_entity.xp_awarded THEN RETURN jsonb_build_object('success', false, 'error', 'XP already awarded'); END IF;
             IF NOT v_entity.is_completed THEN RETURN jsonb_build_object('success', false, 'error', 'Task not completed'); END IF;
             v_amount := COALESCE(v_entity.points, 10);
@@ -143,10 +143,10 @@ BEGIN
         last_evening_ritual_xp_at = CASE WHEN p_action_type = 'EVENING_RITUAL' THEN p_now ELSE last_evening_ritual_xp_at END,
         last_end_day_xp_at = CASE WHEN p_action_type = 'END_DAY' THEN p_now ELSE last_end_day_xp_at END,
         updated_at = p_now
-    WHERE uid = p_user_id;
+    WHERE id = p_user_id;
 
     -- 6. Update user_stats atomically using ON CONFLICT
-    INSERT INTO user_stats (agent_id, date, xp_earned, day_started_at, day_ended_at, tasks_completed, calls_made, visits_made, potential_revenue_handled)
+    INSERT INTO user_stats (user_id, date, xp_earned, day_started_at, day_ended_at, tasks_completed, calls_made, visits_made, potential_revenue_handled)
     VALUES (
         p_user_id, 
         p_today, 
@@ -158,7 +158,7 @@ BEGIN
         COALESCE((p_stats->>'visits_made')::INTEGER, 0),
         COALESCE((p_stats->>'potential_revenue_handled')::NUMERIC, 0)
     )
-    ON CONFLICT (agent_id, date) DO UPDATE SET
+    ON CONFLICT (user_id, date) DO UPDATE SET
         xp_earned = user_stats.xp_earned + EXCLUDED.xp_earned,
         day_started_at = COALESCE(user_stats.day_started_at, EXCLUDED.day_started_at),
         day_ended_at = COALESCE(EXCLUDED.day_ended_at, user_stats.day_ended_at),

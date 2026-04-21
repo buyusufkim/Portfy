@@ -65,10 +65,11 @@ DECLARE
 BEGIN
     -- Refresh policies for tables with user_id
     FOR t IN 
-        SELECT DISTINCT table_name 
-        FROM information_schema.columns 
-        WHERE column_name = 'user_id' 
-        AND table_schema = 'public'
+        SELECT DISTINCT c.table_name 
+        FROM information_schema.columns c
+        JOIN information_schema.tables t ON c.table_name = t.table_name AND t.table_type = 'BASE TABLE'
+        WHERE c.column_name = 'user_id' 
+        AND c.table_schema = 'public'
     LOOP
         EXECUTE format('DROP POLICY IF EXISTS "Users can manage own %s" ON %I', t, t);
         EXECUTE format('CREATE POLICY "Users can manage own %s" ON %I FOR ALL USING (user_id = auth.uid())', t, t);

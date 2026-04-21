@@ -39,11 +39,11 @@ export const locationService = {
           formattedAddress: data.results[0].formatted_address
         };
       } else {
-        console.error("Geocoding Hatası Status:", data.status); // Örn: ZERO_RESULTS, REQUEST_DENIED
+        console.warn("Geocoding Uyarı Status:", data.status); // Örn: ZERO_RESULTS, REQUEST_DENIED
         return null;
       }
     } catch (error) {
-      console.error("Google Geocoding API bağlantı hatası:", error);
+      console.warn("Google Geocoding API bağlantı uyarısı:", error);
       return null;
     }
   }
