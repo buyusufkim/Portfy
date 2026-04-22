@@ -181,7 +181,6 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
           setIsEditing(true);
           setShowAddProperty(true);
         }}
-        // ONDELTE İŞLEMİ DÜZELTİLDİ: Çift-doğrulama (double-confirm) spam'i kaldırıldı
         onDelete={() => {
           if (selectedProperty) {
             deletePropertyMutation.mutate(selectedProperty.id);
@@ -191,6 +190,10 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
           if (selectedProperty) uploadImageMutation.mutate({ id: selectedProperty.id, file });
         }}
         isUploading={uploadImageMutation.isPending}
+        
+        // YENİ EKLENEN SATIR:
+        isDeleting={deletePropertyMutation.isPending} 
+        
         magicLinkSlot={selectedProperty ? <MagicLinkButton propertyId={selectedProperty.id} /> : null}
       />
       <AddPropertyModal 
