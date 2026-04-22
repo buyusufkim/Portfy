@@ -1,5 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
+import crypto from 'crypto';
 dotenv.config({ override: true });
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
@@ -16,7 +17,7 @@ export const handleGetPortalData = async (req: any, res: any) => {
     const { token } = req.params;
 
     if (!token) {
-      return res.status(400).json({ error: 'Token is required' });
+      return res.status(400).json({ error: 'Geçersiz parametre' });
     }
 
     // Validate token
@@ -26,20 +27,21 @@ export const handleGetPortalData = async (req: any, res: any) => {
       .eq('token', token)
       .single();
 
+    // Generic error for invalid/expired/revoked to prevent info leakage
     if (tokenError || !tokenData) {
       return res.status(404).json({ error: 'Geçersiz veya süresi dolmuş bağlantı.' });
     }
 
     if (tokenData.revoked_at || new Date(tokenData.expires_at) < new Date()) {
-      return res.status(403).json({ error: 'Bu bağlantının süresi dolmuş veya iptal edilmiş.' });
+      return res.status(404).json({ error: 'Geçersiz veya süresi dolmuş bağlantı.' });
     }
 
-    // Update view count and last_viewed_at without blocking the rest
+    // Update view count and last_viewed_at atomically
     supabaseAdmin
-      .from('owner_portal_tokens')
-      .update({ last_viewed_at: new Date().toISOString() }) // For simplicity, just update last_viewed_at, or if we want +1 we must do it via RPC. We will just set last_viewed_at.
-      .eq('token', token)
-      .then();
+      .rpc('increment_portal_view', { token_val: token })
+      .then(res => {
+        if (res.error) console.error("Atomic increment failed:", res.error);
+      });
 
     const propertyId = tokenData.property_id;
 
@@ -53,19 +55,20 @@ export const handleGetPortalData = async (req: any, res: any) => {
         price,
         sale_probability,
         address,
-        user_id
+        user_id,
+        created_at
       `)
       .eq('id', propertyId)
       .single();
 
     if (propError || !property) {
-      return res.status(404).json({ error: 'Mülk bulunamadı.' });
+      return res.status(404).json({ error: 'Geçersiz veya süresi dolmuş bağlantı.' });
     }
 
-    // Fetch agent info
+    // Fetch agent info - Display name only
     const { data: agent, error: agentError } = await supabaseAdmin
       .from('profiles')
-      .select('display_name, phone')
+      .select('display_name')
       .eq('id', property.user_id)
       .single();
       
@@ -77,39 +80,42 @@ export const handleGetPortalData = async (req: any, res: any) => {
       .eq('completed', true)
       .order('time', { ascending: false });
 
-    // Calculate generic stats
-    const visits = tasks?.filter(t => t.type === 'Randevu').length || 0;
+    // Calculate generic stats: Visits include both 'Randevu' and 'Saha'
+    const visits = tasks?.filter(t => t.type === 'Randevu' || t.type === 'Saha').length || 0;
     const calls = tasks?.filter(t => t.type === 'Arama').length || 0;
 
+    // Recent activities DTO (Safety first: no private info)
     const recentActivities = tasks?.slice(0, 5).map(t => ({
-      id: Math.random().toString(), // fake ID since we only need display info
       title: t.title,
       type: t.type,
       time: t.time
     })) || [];
 
-    // Calculate days on market (just a rough estimate if we don't have created_at pulled)
-    // Actually let's fetch created_at of property
-    const { data: propWithDate } = await supabaseAdmin
-      .from('properties')
-      .select('created_at')
-      .eq('id', propertyId)
-      .single();
-      
-    const createdDate = propWithDate?.created_at ? new Date(propWithDate.created_at) : new Date();
+    const createdDate = property.created_at ? new Date(property.created_at) : new Date();
     const daysOnMarket = Math.max(1, Math.floor((new Date().getTime() - createdDate.getTime()) / (1000 * 3600 * 24)));
+
+    // Minimal Address DTO
+    const summaryAddress = property.address ? {
+      city: property.address.city,
+      district: property.address.district,
+      neighborhood: property.address.neighborhood
+    } : null;
 
     // Return strictly minimal payload
     res.json({
       property: {
+        id: property.id,
         title: property.title,
         status: property.status,
         price: property.price,
         sale_probability: property.sale_probability,
-        address: property.address,
+        address: summaryAddress,
+        created_at: property.created_at,
         notes: "Portföyünüzün pazarlama süreci aktif olarak devam etmektedir. Tüm kanallardan gelen talepler titizlikle değerlendirilmektedir."
       },
-      agent: agent || null,
+      agent: {
+        display_name: agent?.display_name || 'Danışman'
+      },
       stats: {
         calls,
         visits,
@@ -120,6 +126,81 @@ export const handleGetPortalData = async (req: any, res: any) => {
 
   } catch (error: any) {
     console.error("Portal API Error:", error);
+    res.status(404).json({ error: 'Geçersiz veya süresi dolmuş bağlantı.' });
+  }
+};
+
+export const handleCreatePortalToken = async (req: any, res: any) => {
+  try {
+    const { propertyId, expiresInDays = 30 } = req.body;
+    const userId = req.user?.id;
+
+    if (!propertyId || !userId) {
+      return res.status(400).json({ error: 'Geçersiz parametreler' });
+    }
+
+    // Check if the property belongs to the user
+    const { data: property, error: propError } = await supabaseAdmin
+      .from('properties')
+      .select('id')
+      .eq('id', propertyId)
+      .eq('user_id', userId)
+      .single();
+
+    if (propError || !property) {
+      return res.status(403).json({ error: 'Bu mülk için yetkiniz yok.' });
+    }
+
+    const token = crypto.randomBytes(32).toString('hex');
+    const expiresAt = new Date();
+    expiresAt.setDate(expiresAt.getDate() + expiresInDays);
+
+    const { data: tokenData, error: insertError } = await supabaseAdmin
+      .from('owner_portal_tokens')
+      .insert({
+        property_id: propertyId,
+        token: token,
+        expires_at: expiresAt.toISOString(),
+        created_by: userId
+      })
+      .select()
+      .single();
+
+    if (insertError || !tokenData) {
+      console.error("Token insert error:", insertError);
+      return res.status(500).json({ error: 'Token oluşturulamadı.' });
+    }
+
+    res.json({ token: tokenData.token, expires_at: tokenData.expires_at });
+  } catch (error: any) {
+    console.error("Create Portal Token Error:", error);
+    res.status(500).json({ error: 'Sunucu hatası' });
+  }
+};
+
+export const handleRevokePortalTokens = async (req: any, res: any) => {
+  try {
+    const { propertyId } = req.body;
+    const userId = req.user?.id;
+
+    if (!propertyId || !userId) {
+      return res.status(400).json({ error: 'Geçersiz parametreler' });
+    }
+
+    const { error: updateError } = await supabaseAdmin
+      .from('owner_portal_tokens')
+      .update({ revoked_at: new Date().toISOString() })
+      .eq('property_id', propertyId)
+      .eq('created_by', userId)
+      .is('revoked_at', null);
+
+    if (updateError) {
+      return res.status(500).json({ error: 'Token iptal edilemedi.' });
+    }
+
+    res.json({ success: true });
+  } catch (error: any) {
+    console.error("Revoke Portal Token Error:", error);
     res.status(500).json({ error: 'Sunucu hatası' });
   }
 };

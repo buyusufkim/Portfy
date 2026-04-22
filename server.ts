@@ -2,23 +2,19 @@ import express from "express";
 import path from "path";
 import dotenv from "dotenv";
 
-// UZANTI .js OLARAK DÜZELTİLDİ. Node.js ESM kuralları gereği derlenmiş dosyayı işaret etmelidir.
 import { authenticate, aiLimiter, tokenTrackerMiddleware, handleUpdateProfile, handleSubscribe, handleAdminUpdateUser, handleAdminDeleteUser, handleAdminGetUsers, handleAdminGetSettings, handleUpdateGlobalSettings, handleEarnXP, handleAIGeneration } from "./server/ai-api.js";
 import { rateLimit } from 'express-rate-limit';
-
-// ✅ YENİ MARKET SCRAPER İÇERİ AKTARILDI (ESM formatına uygun olarak .js uzantısıyla)
 import { fetchMarketData } from "./server/marketScraper.js";
 
-import { handleGetPortalData } from "./server/portal-api.js";
+// YENİ: Meta Webhook işleyicileri
+import { handleMetaWebhookGet, handleMetaWebhookPost } from "./server/meta-api.js";
 
 dotenv.config({ override: true });
 
 const app = express();
 
-// Global body size limit for security
 app.use(express.json({ limit: "100kb" }));
 
-// Logging middleware for debugging
 app.use((req, res, next) => {
   if (req.url.startsWith('/api')) {
     console.log(`[API Request] ${req.method} ${req.url}`);
@@ -26,8 +22,9 @@ app.use((req, res, next) => {
   next();
 });
 
-// Portal Endpoint (Public but requires secure token)
-app.get('/api/portal/:token', handleGetPortalData);
+// Meta (Instagram) Webhook Endpoints
+app.get("/api/webhooks/meta", handleMetaWebhookGet);
+app.post("/api/webhooks/meta", handleMetaWebhookPost);
 
 // Secure Profile Endpoints
 app.post("/api/ai/generate", authenticate, aiLimiter, tokenTrackerMiddleware, handleAIGeneration);
@@ -42,7 +39,7 @@ app.post("/api/ai/admin/update-user", authenticate, handleAdminUpdateUser);
 app.post("/api/ai/admin/delete-user", authenticate, handleAdminDeleteUser);
 app.post("/api/ai/admin/update-settings", authenticate, handleUpdateGlobalSettings);
 
-// Market Analiz Limitleyici (Abuse Koruması - 15 dk'da 15 istek)
+// Market Analiz Limitleyici
 const marketLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 15,
@@ -52,7 +49,6 @@ const marketLimiter = rateLimit({
   legacyHeaders: false,
 });
 
-// ✅ YENİ MARKET ANALİZ ENDPOİNTİ - GÜVENLİ VE LİMİTLİ
 app.post('/api/market/analyze', authenticate, marketLimiter, async (req: any, res: any) => {
   try {
     const { city, district, neighborhood, propertyType, m2 } = req.body;
@@ -76,12 +72,10 @@ app.post('/api/market/analyze', authenticate, marketLimiter, async (req: any, re
   }
 });
 
-// 404 Handler for API routes to prevent falling back to HTML
 app.use("/api/*", (req, res) => {
   res.status(404).json({ error: `API route not found: ${req.originalUrl}` });
 });
 
-// Global Error Handler for API
 app.use((err: any, req: any, res: any, next: any) => {
   if (req.url.startsWith('/api')) {
     console.error('[API Error]', err);
@@ -90,7 +84,6 @@ app.use((err: any, req: any, res: any, next: any) => {
   next(err);
 });
 
-// VERCEL ORTAMINDA DEĞİLSEK SUNUCUYU BAŞLAT
 if (!process.env.VERCEL) {
   const PORT = 3000;
   if (process.env.NODE_ENV !== "production") {
@@ -116,5 +109,4 @@ if (!process.env.VERCEL) {
   }
 }
 
-// Vercel'in API'yi okuyabilmesi için Export Edilmesi Zorunludur
 export default app;

@@ -81,7 +81,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   const [aiContent, setAiContent] = useState<string | null>(null);
   const [instagramCaptions, setInstagramCaptions] = useState<{ corporate: string, sales: string, warm: string } | null>(null);
   const [whatsappMessages, setWhatsappMessages] = useState<{ single: string, status: string, investor: string } | null>(null);
-  const [marketingHubData, setMarketingHubData] = useState<any | null>(null);
+  const [marketingHubData, setMarketingHubData] = useState<unknown | null>(null);
   const [aiMarketingType, setAiMarketingType] = useState<'listing' | 'instagram' | 'whatsapp' | 'share' | 'hub' | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showMarketingHub, setShowMarketingHub] = useState(false);
@@ -122,7 +122,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   });
 
   const addPropertyMutation = useMutation({
-    mutationFn: (data: any) => isEditing && selectedProperty 
+    mutationFn: (data: Omit<Property, 'id' | 'user_id'>) => isEditing && selectedProperty 
       ? api.updateProperty(selectedProperty.id, data)
       : api.addProperty(data),
     onSuccess: (data) => {
@@ -152,7 +152,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD_STATS, profile?.id] });
       setSelectedProperty(null);
     },
-    onError: (err: any) => {
+    onError: (err: Error) => {
       alert("Silme işlemi sırasında bir hata oluştu: " + err.message);
       console.error("Delete Property Error:", err);
     }
@@ -316,6 +316,7 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
   setShowAddProperty
 }) => {
   const [showSmartMatch, setShowSmartMatch] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const { profile } = useAuth();
   
   // Eksik olan useQuery buraya eklendi
@@ -328,9 +329,15 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
   const filteredProperties = useMemo(() => { 
     return properties.filter(p => {
       const matchesDistrict = selectedDistrict === 'all' || p.address.district === selectedDistrict;
-      return matchesDistrict;
+      const lowerQuery = searchQuery.toLocaleLowerCase('tr-TR');
+      const matchesSearch = !searchQuery || 
+        p.title.toLocaleLowerCase('tr-TR').includes(lowerQuery) ||
+        p.address.district.toLocaleLowerCase('tr-TR').includes(lowerQuery) ||
+        p.address.neighborhood.toLocaleLowerCase('tr-TR').includes(lowerQuery);
+
+      return matchesDistrict && matchesSearch;
     });
-  }, [properties, selectedDistrict]);
+  }, [properties, selectedDistrict, searchQuery]);
 
   return (
     <motion.div 
@@ -346,6 +353,8 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
         regionScores={regionScores}
         setShowImportUrlModal={setShowImportUrlModal}
         onOpenSmartMatch={() => setShowSmartMatch(true)}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
       />
       
       <PropertyGrid 
@@ -356,6 +365,8 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
         setIsEditing={setIsEditing}
         setShowAddProperty={setShowAddProperty}
         renderMagicLink={(id: string) => <MagicLinkButton propertyId={id} />}
+        hasActiveFilters={searchQuery !== '' || selectedDistrict !== 'all'}
+        onClearFilters={() => { setSearchQuery(''); setSelectedDistrict('all'); }}
       />
 
       <SmartMatchModal 

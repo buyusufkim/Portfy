@@ -12,13 +12,17 @@ interface PropertyGridProps {
   setIsEditing?: (editing: boolean) => void;
   setShowAddProperty?: (show: boolean) => void;
   renderMagicLink?: (id: string) => React.ReactNode;
+  hasActiveFilters?: boolean;
+  onClearFilters?: () => void;
 }
 
 export const PropertyGrid: React.FC<PropertyGridProps> = ({
   viewMode,
   propertiesLoading,
   filteredProperties,
-  setSelectedProperty
+  setSelectedProperty,
+  hasActiveFilters,
+  onClearFilters
 }) => {
   const statuses = ['Yeni', 'Hazırlanıyor', 'Yayında', 'İlgi Var', 'Pazarlık', 'Satıldı'];
 
@@ -45,7 +49,20 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
               <div className="w-20 h-20 bg-slate-100 rounded-[32px] flex items-center justify-center mx-auto text-slate-300">
                 <Home size={40} />
               </div>
-              <p className="text-slate-500 text-sm">Bu bölgede henüz portföy yok.</p>
+              {hasActiveFilters ? (
+                <>
+                  <p className="text-slate-700 text-sm font-semibold">Filtreye uygun portföy bulunamadı.</p>
+                  <p className="text-slate-400 text-xs">Filtreleri veya aramayı temizleyerek tekrar deneyin.</p>
+                  <button 
+                    onClick={onClearFilters}
+                    className="mt-3 px-4 py-2 bg-orange-600 text-white rounded-xl text-xs font-bold"
+                  >
+                    Filtreleri Sıfırla
+                  </button>
+                </>
+              ) : (
+                <p className="text-slate-500 text-sm">Bu bölgede henüz portföy yok.</p>
+              )}
             </div>
           ) : filteredProperties.map(p => (
             <div key={p.id} className="relative group">

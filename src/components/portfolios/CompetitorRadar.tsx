@@ -44,6 +44,17 @@ export const CompetitorRadar: React.FC<CompetitorRadarProps> = ({ property }) =>
     );
   }
 
+  if (report.source_type === 'unavailable' || report.competitors.length === 0) {
+    return (
+      <Card className="p-8 text-center bg-slate-50 border-slate-100">
+        <Info className="mx-auto text-slate-400 mb-4" size={32} />
+        <h4 className="text-sm font-bold text-slate-900 mb-2">Bölgesel Veri Doğrulanamadı</h4>
+        <p className="text-xs text-slate-500 mb-4">Gerçek zamanlı piyasa verileri şu an doğrulanamıyor. Sistemi yanıltmamak adına güvenilir olmayan veriler gizlenmiştir.</p>
+        <p className="text-xs font-bold text-slate-600 italic">İpucu: Kendi piyasa bilginize tecrübenize dayanarak mal sahibiyle iletişime geçin.</p>
+      </Card>
+    );
+  }
+
   const getChangeIcon = (type: string) => {
     switch (type) {
       case 'price_drop': return <TrendingDown size={14} className="text-emerald-500" />;

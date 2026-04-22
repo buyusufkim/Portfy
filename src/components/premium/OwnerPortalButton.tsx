@@ -24,27 +24,34 @@ export const OwnerPortalButton: React.FC<OwnerPortalButtonProps> = ({ propertyId
     setLoading(true);
 
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error("Not logged in");
+      const { data: { session } } = await supabase.auth.getSession();
+      const authToken = session?.access_token;
 
-      // Rastgele, 32 karakterlik tahmin edilemez bir token oluştur (crypto.randomUUID ve biraz text)
-      const token = Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15) + Date.now().toString(36);
-      
-      const thirtyDaysLater = new Date();
-      thirtyDaysLater.setDate(thirtyDaysLater.getDate() + 30);
+      if (!authToken) throw new Error("Not logged in");
 
-      const { error } = await supabase.from('owner_portal_tokens').insert({
-        property_id: propertyId,
-        token: token,
-        expires_at: thirtyDaysLater.toISOString(),
-        created_by: user.id
+      const response = await fetch('/api/portal/create', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${authToken}`
+        },
+        body: JSON.stringify({ propertyId, expiresInDays: 30 })
       });
 
-      if (error) throw error;
+      if (!response.ok) {
+        let errStr = 'Token oluşturulamadı';
+        try {
+          const errBody = await response.json();
+          errStr = errBody.error || errStr;
+        } catch(e) {}
+        throw new Error(errStr);
+      }
+
+      const data = await response.json();
 
       // Linki oluştur ve panoya kopyala
       const baseUrl = window.location.origin;
-      const portalLink = `${baseUrl}/portal/${token}`;
+      const portalLink = `${baseUrl}/portal/${data.token}`;
       
       await navigator.clipboard.writeText(portalLink);
       setCopied(true);

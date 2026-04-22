@@ -5,7 +5,7 @@ import { api } from '../services/api';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { DashboardView } from '../components/DashboardView';
 import { useRevenueStats } from '../hooks/useRevenueStats';
-import { UserProfile, Property, GamifiedTask, Task, PersonalTask, RescueSession, MissedOpportunity } from '../types';
+import { UserProfile, Property, GamifiedTask, Task, PersonalTask, RescueSession, MissedOpportunity, MutationResult } from '../types';
 
 interface DashboardPageProps {
   profile: UserProfile | null;
@@ -23,7 +23,7 @@ interface DashboardPageProps {
   setShowDayCloser: (show: boolean) => void;
   setShowMissedOpportunities: (show: boolean) => void;
   setToast: (toast: { message: string, type: 'success' | 'error' | 'info' } | null) => void;
-  completeMorningRitualMutation: any;
+  completeMorningRitualMutation: MutationResult<void, void>;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -69,7 +69,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.id] });
       setToast({ message: 'Görevler başarıyla güncellendi', type: 'success' });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error('Task refresh error:', error);
       setToast({ message: 'Görevler oluşturulurken bir hata oluştu', type: 'error' });
     }
@@ -104,7 +104,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
         colors: ['#ea580c', '#f97316', '#fb923c', '#fdba74']
       });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error("Görev tamamlama hatası:", error);
       setToast({ message: error.message, type: 'error' });
     }
@@ -134,7 +134,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.id] });
       setToast({ message: "Günün başarıyla başlatıldı!", type: 'success' });
     },
-    onError: (error: any) => {
+    onError: (error: Error) => {
       console.error("Günü başlatma hatası:", error);
       
       // If the error indicates it was already started, we should sync local state

@@ -1,18 +1,21 @@
 import React, { useMemo } from 'react';
-import { Globe, LayoutDashboard, BarChart3, Search, Filter, Zap } from 'lucide-react';
+import { Globe, LayoutDashboard, BarChart3, Search, Filter, Zap, X } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { useAuth } from '../../AuthContext';
+import { RegionEfficiencyScore } from '../../types';
 
 interface PortfoliosToolbarProps {
   viewMode: 'list' | 'pipeline';
   setViewMode: (mode: 'list' | 'pipeline') => void;
   selectedDistrict: string;
   setSelectedDistrict: (district: string) => void;
-  regionScores: any[];
+  regionScores: RegionEfficiencyScore[];
   setShowImportUrlModal: (show: boolean) => void;
-  onOpenSmartMatch: () => void; // YENİ EKLENDİ
+  onOpenSmartMatch: () => void;
+  searchQuery: string;
+  setSearchQuery: (query: string) => void;
 }
 
 export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
@@ -22,7 +25,9 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
   setSelectedDistrict,
   regionScores,
   setShowImportUrlModal,
-  onOpenSmartMatch
+  onOpenSmartMatch,
+  searchQuery,
+  setSearchQuery
 }) => {
   const { profile } = useAuth();
   
@@ -44,6 +49,8 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
     });
     return matches.length;
   }, [properties, leads]);
+
+  const hasActiveFilters = searchQuery !== '' || selectedDistrict !== 'all';
 
   return (
     <div className="p-6 pb-2 space-y-4 bg-white border-b border-slate-100">
@@ -96,6 +103,8 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
             <input 
               type="text" 
               placeholder="Portföy ara..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full bg-slate-100 border-none rounded-2xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-orange-500"
             />
           </div>
@@ -111,7 +120,7 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
           >
             Tümü
           </button>
-          {regionScores.map((region: any) => (
+          {regionScores.map((region) => (
             <button 
               key={region.district}
               onClick={() => setSelectedDistrict(region.district)}
@@ -124,6 +133,34 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
             </button>
           ))}
         </div>
+
+        {hasActiveFilters && (
+          <div className="flex flex-wrap items-center gap-2 pt-2 border-t border-slate-100">
+            <span className="text-[10px] font-bold text-slate-400 mr-1">Aktif Filtreler:</span>
+            {searchQuery && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-100">
+                {searchQuery}
+                <button onClick={() => setSearchQuery('')} className="hover:text-orange-900 transition-colors">
+                  <X size={12} />
+                </button>
+              </span>
+            )}
+            {selectedDistrict !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-100">
+                {selectedDistrict}
+                <button onClick={() => setSelectedDistrict('all')} className="hover:text-orange-900 transition-colors">
+                  <X size={12} />
+                </button>
+              </span>
+            )}
+            <button 
+              onClick={() => { setSearchQuery(''); setSelectedDistrict('all'); }}
+              className="text-[10px] font-bold text-slate-500 hover:text-slate-700 underline underline-offset-2 ml-2 transition-colors"
+            >
+              Filtreleri Sıfırla
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );

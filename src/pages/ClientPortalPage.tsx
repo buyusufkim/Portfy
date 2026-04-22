@@ -179,7 +179,7 @@ export const ClientPortalPage: React.FC = () => {
               <div className="space-y-4">
                 {recentActivities.length > 0 ? (
                   recentActivities.map((task, idx) => (
-                    <div key={task.id} className="flex items-start gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
+                    <div key={idx} className="flex items-start gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
                       <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${
                         task.type === 'Arama' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'
                       }`}>
@@ -229,13 +229,10 @@ export const ClientPortalPage: React.FC = () => {
               </div>
               
               <div className="space-y-3">
-                <a 
-                  href={`tel:${agent?.phone}`}
-                  className="w-full bg-white text-indigo-600 py-3 rounded-2xl font-bold flex items-center justify-center gap-2 hover:bg-indigo-50 transition-colors"
-                >
-                  <Phone size={18} />
-                  Hemen Ara
-                </a>
+                <div className="w-full bg-white/10 text-white py-3 rounded-2xl font-bold flex items-center justify-center gap-2 border border-white/20">
+                  <Activity size={18} />
+                  Aktif Süreç
+                </div>
               </div>
             </motion.div>
 

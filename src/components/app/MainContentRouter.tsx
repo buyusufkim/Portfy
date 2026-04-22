@@ -37,7 +37,7 @@ export interface NavigationProps {
   setShowAdminPanel: (val: boolean) => void;
   logout: () => void;
   profile: UserProfile | null;
-  updateProfileMutation: MutationResult<any, { id: string, data: Partial<UserProfile> }>;
+  updateProfileMutation: MutationResult<void, { id: string, data: Partial<UserProfile> }>;
 }
 
 export interface LeadProps {
@@ -50,12 +50,12 @@ export interface LeadProps {
   setShowWhatsAppImport: (val: boolean) => void;
   leadAnalysis: string | null;
   setLeadAnalysis: (val: string | null) => void;
-  analyzeLeadsMutation: MutationResult<string, any>;
+  analyzeLeadsMutation: MutationResult<string, Lead[]>;
   isAnalyzingLeads: boolean;
   setIsAnalyzingLeads: (val: boolean) => void;
-  addLeadMutation: MutationResult<any, any>;
-  updateLeadMutation: MutationResult<any, any>;
-  deleteLeadMutation: MutationResult<any, any>;
+  addLeadMutation: MutationResult<Lead, Omit<Lead, 'id' | 'user_id' | 'last_contact'>>;
+  updateLeadMutation: MutationResult<void, { id: string, lead: Partial<Lead> }>;
+  deleteLeadMutation: MutationResult<void, string>;
   selectedLead: Lead | null;
   setSelectedLead: (val: Lead | null) => void;
   isEditingLead: boolean;
@@ -122,7 +122,7 @@ export interface UtilityProps {
   setShowVoiceQuickAdd: (val: boolean) => void;
   showAddTask: boolean;
   setShowAddTask: (val: boolean) => void;
-  addTaskMutation: MutationResult<any, any>;
+  addTaskMutation: MutationResult<string, Omit<Task, 'id' | 'user_id'>>;
   setActiveTab: (tab: string) => void;
   leads: Lead[];
   properties: Property[];
@@ -131,7 +131,7 @@ export interface UtilityProps {
   documentAutomationProperty: Property | null;
   documentAutomationLead: Lead | null;
   profile: UserProfile | null;
-  addLeadMutation: MutationResult<any, any>;
+  addLeadMutation: MutationResult<Lead, Omit<Lead, 'id' | 'user_id' | 'last_contact'>>;
 }
 
 export interface MainContentRouterProps {

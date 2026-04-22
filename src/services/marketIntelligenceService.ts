@@ -11,7 +11,8 @@ export const marketIntelligenceService = {
       market_mood: 'stable',
       action_tip: "Gerçek veri doğrulaması sağlanana kadar kendi piyasa analizlerinize dayanarak mal sahibi ile iletişimde bulunun.",
       competitors: [],
-      created_at: new Date().toISOString()
+      created_at: new Date().toISOString(),
+      source_type: 'unavailable'
     };
   }
 };

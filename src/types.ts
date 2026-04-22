@@ -480,4 +480,5 @@ export interface MarketIntelligenceReport {
   market_mood: 'heating' | 'cooling' | 'stable';
   action_tip: string;
   created_at: string;
+  source_type?: 'verified' | 'unavailable';
 }
