@@ -323,9 +323,15 @@ export interface MissedOpportunity {
   reason?: string;
 }
 
+export interface VoiceParseAction {
+  type: 'lead' | 'task' | 'note';
+  payload: any;
+  explanation: string;
+}
+
 export interface VoiceParseResult {
   original_text: string;
-  intent: 'lead' | 'task' | 'note' | 'unknown';
+  intent: 'lead' | 'task' | 'note' | 'composite' | 'unknown';
   confidence: number;
   extracted_data: {
     name?: string;
@@ -334,7 +340,9 @@ export interface VoiceParseResult {
     location?: string;
     due_date?: string;
     description?: string;
+    task_type?: string;
   };
+  actions?: VoiceParseAction[];
 }
 
 export interface CoachInsight {

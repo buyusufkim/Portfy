@@ -44,7 +44,7 @@ export const personalTaskService = {
 
     if (is_completed) {
       try {
-        await gamificationService.earnXP('COMPLETE_BASIC_TASK', { taskId: id });
+        await gamificationService.earnXP('COMPLETE_BASIC_TASK', id);
       } catch (e) {
         console.warn("XP award failed for togglePersonalTask:", e);
       }

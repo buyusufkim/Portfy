@@ -1,406 +1,189 @@
-import { UserProfile, GamifiedTask, UserStats, Lead } from '../types';
 import { supabase } from '../lib/supabase';
-import { getUserId, getTodayStr } from './core/utils';
-import { leadService } from './leadService';
-
-// GMT+3 (Türkiye) saatiyle bugünün tarihini (YYYY-MM-DD) net olarak alır
-const getTurkishTodayStr = () => {
-  const d = new Date();
-  const utc = d.getTime() + (d.getTimezoneOffset() * 60000);
-  const nd = new Date(utc + (3600000 * 3));
-  return nd.toISOString().split('T')[0];
-};
+import { getTodayStr, getUserId } from './core/utils';
+import { GamifiedTask, UserStats, GamifiedTaskCategory } from '../types';
 
 export const gamificationService = {
-  earnXP: async (actionType: string, ids: { taskId?: string, leadId?: string, propertyId?: string, sessionId?: string } = {}, stats?: any) => {
-    const { data: { session } } = await supabase.auth.getSession();
-    if (!session) throw new Error('Not authenticated');
-
-    const response = await fetch('/api/ai/earn-xp', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${session.access_token}`
-      },
-      body: JSON.stringify({ actionType, ...ids, stats })
-    });
-
-    if (!response.ok) {
-      const err = await response.json();
-      throw new Error(err.error || 'XP update failed');
-    }
-  },
-
-  getDailyGamifiedTasks: async (force: boolean = false): Promise<GamifiedTask[]> => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return [];
-      const userId = user.id;
+  getDailyGamifiedTasks: async (forceRefresh: boolean = false) => {
+    const userId = await getUserId();
+    if (!userId) throw new Error('Not authenticated');
+    const today = getTodayStr();
+    
+    // 🔥 OTOMATİK SERİ (STREAK), GÜNLÜK GİRİŞ VE CEZA KONTROLÜ 🔥
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).single();
+    if (profile && profile.last_active_date !== today) {
+      const lastActiveDateStr = profile.last_active_date;
+      let newStreak = profile.current_streak || 0;
+      let newTotalXp = profile.total_xp || 0;
       
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', userId)
-        .maybeSingle();
-      
-      if (!profile) {
-        await supabase.from('profiles').insert({
-          id: userId,
-          email: user.email || '',
-          display_name: user.user_metadata?.full_name || 'İsimsiz Danışman',
-          role: 'agent'
-        });
-      }
-      
-      const today = getTurkishTodayStr();
-
-      // 🔥 OTOMATİK SERİ (STREAK), GÜNLÜK GİRİŞ VE CEZA KONTROLÜ 🔥
-      if (profile && profile.last_active_date !== today) {
-        const lastActiveDateStr = profile.last_active_date;
-        let newStreak = profile.current_streak || 0;
-        let newTotalXp = profile.total_xp || 0;
+      if (lastActiveDateStr) {
+        const lastActiveDate = new Date(lastActiveDateStr);
+        const todayDate = new Date(today);
+        const diffTime = Math.abs(todayDate.getTime() - lastActiveDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
         
-        if (lastActiveDateStr) {
-          const lastActiveDate = new Date(lastActiveDateStr);
-          const todayDate = new Date(today);
-          const diffTime = Math.abs(todayDate.getTime() - lastActiveDate.getTime());
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          
-          if (diffDays === 1) {
-            newStreak += 1; // Dün de girmiş, seriyi bozmadan devam et
-          } else if (diffDays > 1) {
-            newStreak = 1; // Dün girmemiş, seri bozuldu, baştan başla
-          }
-
-          // 🔥 GÜNÜ KAPATMAMA CEZASI 🔥
-          // last_ritual_completed_at değerinin sadece tarih kısmını (YYYY-MM-DD) alıp kontrol ediyoruz
-          const lastClosedDateStr = profile.last_ritual_completed_at ? profile.last_ritual_completed_at.substring(0, 10) : null;
-          
-          if (lastClosedDateStr !== lastActiveDateStr) {
-             // Kullanıcı en son aktif olduğu gün 'Günü Kapat' butonuna basmamış!
-             newTotalXp = Math.max(0, newTotalXp - 50); // Puanı 50 düşür (0'ın altına inmemesini sağla)
-             
-             // Kullanıcıya ceza yediğini bildiren ve Dashboard'da görünecek bir "Eksi" kayıt ekliyoruz
-             await supabase.from('gamified_tasks').insert({
-                user_id: userId,
-                title: `Günü Kapatmama Cezası`,
-                points: -50,
-                category: 'main',
-                is_completed: true,
-                date: today,
-                ai_reason: "Dün 00:00'dan önce Günü Kapatmadığın için -50 XP ceza aldın. Serini korumak için gün sonu kapanışını unutma!"
-             });
-          }
-
-        } else {
-          newStreak = 1; // İlk defa giriyor
+        if (diffDays === 1) {
+          newStreak += 1; // Dün de girmiş, seriyi bozmadan devam et
+        } else if (diffDays > 1) {
+          newStreak = 0; // 24 saatten fazla boşluk, seri sıfırlandı!
         }
-
-        // Arka planda profili sessizce yeni XP, Seri ve Tarih ile güncelle
-        await supabase.from('profiles').update({
-          last_active_date: today,
-          current_streak: newStreak,
-          total_xp: newTotalXp
-        }).eq('id', userId);
-      }
-
-      const { data: existingTasksData } = await supabase
-        .from('gamified_tasks')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('date', today);
-      
-      let existingTasks = (existingTasksData || []) as GamifiedTask[];
-
-      const coreTasks = [
-        { title: "Peş peşe girişini sürdür", points: 10, category: 'sweet' as const },
-        { title: "Bugün 100 puan kazan", points: 20, category: 'sweet' as const }
-      ];
-
-      if (existingTasks.length > 0 && !force) {
-        const missingCore = coreTasks.filter(ct => !existingTasks.find(et => et.title === ct.title));
-        if (missingCore.length > 0) {
-          for (const ct of missingCore) {
-            const newTask = { user_id: userId, ...ct, is_completed: false, date: today };
-            const { data: created } = await supabase.from('gamified_tasks').insert(newTask).select().single();
-            if (created) existingTasks.push(created as any);
-          }
-        }
-        return existingTasks;
-      }
-
-      if (force && existingTasks.length > 0) {
-        await supabase
-          .from('gamified_tasks')
-          .delete()
-          .eq('user_id', userId)
-          .eq('date', today);
-        existingTasks = [];
-      }
-
-      const sweetTemplates = [
-        "Bugünkü hedefini belirle",
-        "Cevapsız mesajlarını temizle",
-        "1 müşteriye dönüş yap",
-        "1 portföy notu güncelle",
-        "Gün sonu raporunu tamamla",
-        "Eski bir müşterini ara",
-        "Bölge haberlerini oku",
-        "Instagram story paylaşımı yap",
-        "LinkedIn bağlantı isteği gönder"
-      ];
-      const mainTemplates = [
-        "5 malik araması yap",
-        "1 saha ziyareti kaydet",
-        "1 yeni portföy ekle",
-        "2 müşteri takibi yap",
-        "1 randevu oluştur",
-        "Bölge esnafı ziyareti",
-        "İlan fiyat analizi yap",
-        "Portföyün için Reels videosu çek",
-        "Müşteri yorumu paylaş"
-      ];
-      
-      const tasks: any[] = [];
-      tasks.push({ user_id: userId, title: "Peş peşe girişini sürdür", points: 10, category: 'sweet', is_completed: false, date: today });
-      tasks.push({ user_id: userId, title: "Bugün 100 puan kazan", points: 20, category: 'sweet', is_completed: false, date: today });
-
-      const shuffledSweet = [...sweetTemplates].sort(() => 0.5 - Math.random());
-      shuffledSweet.slice(0, 3).forEach(t => tasks.push({ user_id: userId, title: t, points: 10, category: 'sweet', is_completed: false, date: today }));
-
-      const shuffledMain = [...mainTemplates].sort(() => 0.5 - Math.random());
-      shuffledMain.slice(0, 2).forEach(t => tasks.push({ user_id: userId, title: t, points: 50, category: 'main', is_completed: false, date: today }));
-
-      const leads = await leadService.getLeads();
-      const neglectedLeads = leads.filter(l => {
-        const lastContact = new Date(l.last_contact);
-        const diffDays = Math.floor((new Date().getTime() - lastContact.getTime()) / (1000 * 60 * 60 * 24));
-        return diffDays >= 7 && l.status !== 'Pasif';
-      });
-
-      if (neglectedLeads.length > 0) {
-        const targetLead = neglectedLeads[0];
-        tasks.push({ 
-          user_id: userId, 
-          title: `"${targetLead.name}" isimli müşteriyi ara`, 
-          points: 100, 
-          category: 'smart', 
-          is_completed: false, 
-          date: today,
-          ai_reason: `Bu müşteri ${targetLead.status} statüsünde ama uzun süredir temas kurulmadı.`
-        });
       } else {
-        tasks.push({ 
-          user_id: userId, 
-          title: "Bölgendeki yeni bir esnafla tanış", 
-          points: 100, 
-          category: 'smart', 
-          is_completed: false, 
-          date: today,
-          ai_reason: "Tüm müşterilerinle güncel iletişimdesin, yeni bağlantılar kurma zamanı."
-        });
+        newStreak = 1; // İlk defa giriyor
       }
 
-      const createdTasks: GamifiedTask[] = [];
-      for (const task of tasks) {
-        const { data: created } = await supabase.from('gamified_tasks').insert(task).select().single();
-        if (created) createdTasks.push(created as any);
-      }
-
-      return createdTasks as GamifiedTask[];
-    } catch (error) {
-      console.error("Error in getDailyGamifiedTasks:", error);
-      throw error;
+      await supabase.from('profiles').update({
+        last_active_date: today,
+        current_streak: newStreak,
+        total_xp: newTotalXp
+      }).eq('id', userId);
     }
+
+    // Görevleri getir
+    let { data: tasks } = await supabase
+      .from('gamified_tasks')
+      .select('*')
+      .eq('user_id', userId)
+      .eq('date', today);
+
+    // Eğer bugün hiç görev yoksa varsayılan görevleri oluştur
+    if (!tasks || tasks.length === 0) {
+      const defaultTasks = [
+        { user_id: userId, title: 'Güne Erken Başla (Sabah Ritüelini Tamamla)', reward_points: 100, category: 'routine', date: today, is_completed: false },
+        { user_id: userId, title: 'Bugün 3 Yeni Lead Ekle', reward_points: 150, category: 'lead', date: today, is_completed: false },
+        { user_id: userId, title: 'Bugün 1 Yeni Portföy Ekle', reward_points: 300, category: 'portfolio', date: today, is_completed: false },
+        { user_id: userId, title: 'Akşam Gün Kapanışını (Ritüeli) Tamamla', reward_points: 100, category: 'routine', date: today, is_completed: false },
+        { user_id: userId, title: '1 Kişisel Görev Tamamla', reward_points: 50, category: 'routine', date: today, is_completed: false },
+        { user_id: userId, title: 'Peş peşe girişini sürdür', reward_points: 50, category: 'routine', date: today, is_completed: false }
+      ];
+      
+      const { data: newTasks, error: insertError } = await supabase.from('gamified_tasks').insert(defaultTasks).select();
+      if (!insertError && newTasks) {
+         tasks = newTasks;
+      }
+    }
+
+    return (tasks || []) as GamifiedTask[];
   },
 
   completeGamifiedTask: async (taskId: string) => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
-    
-    const { error: taskError } = await supabase.from('gamified_tasks').update({ is_completed: true }).eq('id', taskId);
-    if (taskError) throw taskError;
 
-    await gamificationService.earnXP('COMPLETE_TASK', { taskId });
-    
-    return { success: true };
-  },
-
-  verifyGamifiedTask: async (task: GamifiedTask): Promise<{ verified: boolean, message?: string }> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-    const userId = user.id;
-    const today = getTurkishTodayStr();
-
-    if (task.is_completed) return { verified: true };
-
-    try {
-      const title = task.title.toLowerCase();
-
-      // 🔥 KUSURSUZ ÇÖZÜM: Giriş Görevi Asla Hata Vermez
-      if (title.includes("peş peşe girişini sürdür")) {
-        return { verified: true }; // Zaten butona basabiliyorsa uygulamaya girmiştir!
-      }
-
-      // 🔥 1. DOĞRUDAN ONAYLANAN MANUEL GÖREVLER
-      if (
-        title.includes("linkedin") || 
-        title.includes("instagram") || 
-        title.includes("reels") || 
-        title.includes("story") || 
-        title.includes("haberlerini oku") || 
-        title.includes("sosyal medya") || 
-        title.includes("paylaşım") ||
-        title.includes("hedefini belirle") ||
-        title.includes("gün sonu raporu") ||
-        title.includes("günü kurtar")
-      ) {
-        return { verified: true };
-      }
-
-      // 🔥 2. "NASIL YAPILIR?" YÖNLENDİRMELİ SİSTEM GÖREVLERİ
-      if (title.includes("cevapsız mesaj") || title.includes("müşteriye dönüş yap")) {
-        const { data: leads } = await supabase.from('leads').select('id').eq('user_id', userId).gte('last_contact', today);
-        if (leads && leads.length >= 1) return { verified: true };
-        return { verified: false, message: "Bu görevi tamamlamak için CRM (Adaylar) ekranına gidip, bir müşterinin detayına yeni bir not veya görüşme kaydetmelisin." };
-      }
-
-      if (title.includes("malik araması") || title.includes("5 malik araması")) {
-        const { data: tasks } = await supabase.from('tasks').select('id').eq('user_id', userId).eq('type', 'Arama').eq('completed', true).gte('created_at', today);
-        const count = tasks?.length || 0;
-        if (count >= 5) return { verified: true };
-        return { verified: false, message: `Şu an ${count}/5 arama yaptın. CRM üzerinden bir müşteriye 'Arama' görevi ekleyip tamamlandı olarak işaretlemelisin.` };
-      }
-
-      if (title.includes("saha ziyareti") || title.includes("esnafı ziyareti") || title.includes("esnafla tanış")) {
-        const { data: visits } = await supabase.from('tasks').select('id').eq('user_id', userId).eq('type', 'Saha').eq('completed', true).gte('created_at', today);
-        if (visits && visits.length >= 1) return { verified: true };
-        return { verified: false, message: "Bu görevi tamamlamak için CRM ekranından 'Saha' tipinde bir görev/ziyaret ekleyip tamamlamalısın." };
-      }
-
-      if (title.includes("yeni portföy ekle")) {
-        const { data: props } = await supabase.from('properties').select('id').eq('user_id', userId).gte('created_at', today);
-        if (props && props.length >= 1) return { verified: true };
-        return { verified: false, message: "Bu görevi tamamlamak için 'Portföyler' sekmesinden sisteme yeni bir ilan eklemelisin." };
-      }
-
-      if (title.includes("müşteri takibi")) {
-        const { data: tasks } = await supabase.from('tasks').select('id').eq('user_id', userId).eq('type', 'Takip').eq('completed', true).gte('created_at', today);
-        const count = tasks?.length || 0;
-        if (count >= 2) return { verified: true };
-        return { verified: false, message: `Şu an ${count}/2 takip yaptın. CRM üzerinden 'Takip' görevleri oluşturup tamamlamalısın.` };
-      }
-
-      if (title.includes("randevu oluştur")) {
-        const { data: tasks } = await supabase.from('tasks').select('id').eq('user_id', userId).eq('type', 'Randevu').gte('created_at', today);
-        if (tasks && tasks.length >= 1) return { verified: true };
-        return { verified: false, message: "Bu görevi tamamlamak için CRM'de bir müşteriye 'Randevu' tipinde yeni bir etkinlik planlamalısın." };
-      }
-
-      if (title.includes("100 puan kazan")) {
-        const { data: completedToday } = await supabase.from('gamified_tasks').select('points').eq('user_id', userId).eq('is_completed', true).eq('date', today);
-        const totalPointsToday = completedToday?.reduce((acc, t) => acc + t.points, 0) || 0;
-        if (totalPointsToday >= 100) return { verified: true };
-        return { verified: false, message: `Bugün ${totalPointsToday}/100 puan topladın. Listeden başka görevler yaparak bu kilidi açabilirsin!` };
-      }
-
-      if (title.includes("fiyat analizi") || title.includes("portföy notu güncelle")) {
-        const { data: props } = await supabase.from('properties').select('id').eq('user_id', userId).gte('updated_at', today);
-        if (props && props.length >= 1) return { verified: true };
-        return { verified: false, message: "Bu görevi tamamlamak için Portföyler ekranından bir ilanın detayına girip düzenleme (fiyat veya not) yapmalısın." };
-      }
-
-      if (title.includes("eski bir müşterini ara") || title.includes("isimli müşteriyi ara")) {
-        const { data: tasks } = await supabase.from('tasks').select('id').eq('user_id', userId).eq('type', 'Arama').eq('completed', true).gte('created_at', today);
-        if (tasks && tasks.length >= 1) return { verified: true };
-        return { verified: false, message: "Bu görevi tamamlamak için CRM üzerinden iletişimde olmadığın bir müşteriye 'Arama' kaydı girmelisin." };
-      }
-
-      // Güvenlik Ağı: Sweet kategorisi
-      if (task.category === 'sweet') {
-         return { verified: true };
-      }
-
-      return { verified: false, message: "Bu görevi tamamlamak için ilgili modülden işleminizi sisteme kaydetmelisiniz." };
-    } catch (error) {
-      console.error("Verification error:", error);
-      return { verified: false, message: "Sistemde anlık bir doğrulama hatası oluştu, lütfen sayfayı yenileyin." };
-    }
-  },
-  
-  updateGamifiedTask: async (taskId: string, data: Partial<GamifiedTask>) => {
-    const dbData: any = {};
-    if (data.is_completed !== undefined) dbData.is_completed = data.is_completed;
-    if (data.ai_reason !== undefined) dbData.ai_reason = data.ai_reason;
-    if (data.title !== undefined) dbData.title = data.title;
-    if (data.points !== undefined) dbData.points = data.points;
-    if (data.category !== undefined) dbData.category = data.category;
-    if (data.date !== undefined) dbData.date = data.date;
-    if (data.notified !== undefined) dbData.notified = data.notified;
-    if (data.reminder_time !== undefined) dbData.reminder_time = data.reminder_time;
+    const { data: task } = await supabase.from('gamified_tasks').select('*').eq('id', taskId).single();
+    if (!task || task.is_completed) return; // Zaten tamamlanmış
 
     const { error } = await supabase
       .from('gamified_tasks')
-      .update(dbData)
+      .update({ is_completed: true, completed_at: new Date().toISOString() })
       .eq('id', taskId);
+      
+    if (error) throw error;
+
+    // Ödül puanını ver
+    if (task.reward_points > 0) {
+      await gamificationService.earnXP('COMPLETE_GAMIFIED_TASK', taskId, { points: task.reward_points });
+    }
+  },
+
+  updateGamifiedTask: async (id: string, data: Partial<GamifiedTask>) => {
+    const { error } = await supabase.from('gamified_tasks').update(data).eq('id', id);
     if (error) throw error;
   },
 
-  getGamifiedStats: async (): Promise<UserStats> => {
+  verifyGamifiedTask: async (task: GamifiedTask) => {
+    const title = task.title.toLowerCase();
+    const todayStr = getTodayStr();
+    const userId = await getUserId();
+    
+    if (task.is_completed) return { verified: false, message: "Bu görevi bugün zaten tamamladın." };
+
+    try {
+      if (title.includes("peş peşe girişini sürdür")) {
+        return { verified: true };
+      }
+
+      if (title.includes("müşteri") || title.includes("lead")) {
+        const { count } = await supabase.from('leads').select('*', { count: 'exact', head: true })
+          .eq('user_id', userId).gte('created_at', `${todayStr}T00:00:00`);
+        
+        const match = title.match(/(\d+)/);
+        const target = match ? parseInt(match[1]) : 1;
+        
+        if ((count || 0) >= target) return { verified: true };
+        return { verified: false, message: `Bugün ${count || 0}/${target} müşteri ekledin. ${target - (count || 0)} kişi daha eklemelisin!` };
+      }
+
+      if (title.includes("portföy")) {
+        const { count } = await supabase.from('properties').select('*', { count: 'exact', head: true })
+          .eq('user_id', userId).gte('created_at', `${todayStr}T00:00:00`);
+        
+        const match = title.match(/(\d+)/);
+        const target = match ? parseInt(match[1]) : 1;
+        
+        if ((count || 0) >= target) return { verified: true };
+        return { verified: false, message: `Bugün ${count || 0}/${target} portföy ekledin. ${target - (count || 0)} portföy daha eklemelisin!` };
+      }
+      
+      if (title.includes("görev")) {
+        const { count } = await supabase.from('personal_tasks').select('*', { count: 'exact', head: true })
+          .eq('user_id', userId).eq('is_completed', true).gte('updated_at', `${todayStr}T00:00:00`);
+        
+        const match = title.match(/(\d+)/);
+        // "1 kişisel görev" - check for numbers
+        const target = match ? parseInt(match[1]) : 1;
+
+        if ((count || 0) >= target) return { verified: true };
+        return { verified: false, message: `Bugün ${count || 0}/${target} kişisel görev tamamladın!` };
+      }
+
+      if (title.includes("sabah ritüeli") || title.includes("erken başla")) {
+         const profile = await supabase.from('profiles').select('morning_ritual_completed').eq('id', userId).single();
+         if (profile.data?.morning_ritual_completed) return { verified: true };
+         return { verified: false, message: "Sabah ritüelini henüz tamamlamadın." };
+      }
+
+      if (title.includes("akşam ritüeli") || title.includes("kapanış")) {
+         const profile = await supabase.from('profiles').select('evening_ritual_completed').eq('id', userId).single();
+         if (profile.data?.evening_ritual_completed) return { verified: true };
+         return { verified: false, message: "Gün kapanışını henüz yapmadın." };
+      }
+    } catch(e) {
+      console.error("verify error:", e);
+    }
+    
+    // Fallback: If it's a generic task, just verify
+    return { verified: true };
+  },
+
+  earnXP: async (actionType: string, entityId?: string, stats?: any) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
-    const userId = user.id;
-    const today = getTurkishTodayStr();
-
-    const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).maybeSingle();
-    const points = profile ? (profile.total_xp || 0) : 0;
-
-    const { data: tasksData } = await supabase
-      .from('gamified_tasks')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('date', today);
     
-    const tasks = (tasksData || []).map((t: any) => ({
-      ...t,
-      user_id: t.user_id,
-      is_completed: t.is_completed,
-      ai_reason: t.ai_reason
-    })) as GamifiedTask[];
+    const { data, error } = await supabase.rpc('award_xp', {
+      p_user_id: user.id,
+      p_action_type: actionType,
+      p_entity_id: entityId || null,
+      p_stats: stats || {}
+    });
     
-    const completedTasks = tasks.filter(t => t.is_completed);
-    const pointsToday = completedTasks.reduce((sum, t) => sum + t.points, 0);
-    const mainTasks = tasks.filter(t => t.category === 'main');
-    const completedMainTasks = mainTasks.filter(t => t.is_completed);
+    if (error) throw error;
+    return data;
+  },
 
-    const completionRate = tasks.length > 0 ? (completedTasks.length / tasks.length) : 0;
-    const mainCompletionRate = mainTasks.length > 0 ? (mainTasks.filter(t => t.is_completed).length / mainTasks.length) : 0;
-    
-    let streak = profile ? (profile.current_streak || 0) : 0;
-    
-    const streakEffect = streak > 0 ? 20 : 0;
-    const momentum = Math.round((completionRate * 50) + (mainCompletionRate * 30) + streakEffect);
-
-    let level = 1;
-    let level_name = "Başlangıç";
-    let next_level_points = 1000;
-
-    if (points > 15000) { level = 5; level_name = "Kapanışa Yakın"; next_level_points = 30000; }
-    else if (points > 7000) { level = 4; level_name = "Saha Oyuncusu"; next_level_points = 15000; }
-    else if (points > 3000) { level = 3; level_name = "Üretici"; next_level_points = 7000; }
-    else if (points > 1000) { level = 2; level_name = "Aktif"; next_level_points = 3000; }
-
+  getGamifiedStats: async () => {
+    const userId = await getUserId();
+    if (!userId) throw new Error('Not authenticated');
+    const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).single();
     return {
-      points,
-      points_today: pointsToday,
-      streak,
-      momentum,
-      level,
-      level_name,
-      next_level_points,
-      daily_progress: Math.round(completionRate * 100),
-      tasks_completed_today: completedTasks.length,
-      total_tasks_today: tasks.length
+      points: profile.total_xp || 0,
+      points_today: 0,
+      streak: profile.current_streak || 0,
+      momentum: 0,
+      level: profile.broker_level || 1,
+      level_name: 'Junior',
+      next_level_points: 1000,
+      daily_progress: 0,
+      tasks_completed_today: 0,
+      total_tasks_today: 10
     };
   }
 };

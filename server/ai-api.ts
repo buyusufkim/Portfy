@@ -2,10 +2,18 @@ import { GoogleGenAI } from "@google/genai";
 import { rateLimit } from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
 import { addMonths } from "date-fns";
+import * as dotenv from "dotenv";
 
-// API anahtarını SADECE burada, sunucuda okuyoruz.
-const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
-const ai = GEMINI_API_KEY ? new GoogleGenAI({ apiKey: GEMINI_API_KEY }) : null;
+dotenv.config({ override: true });
+
+function getGenerativeAI() {
+  const GEMINI_API_KEY = process.env.GEMINI_API_KEY || process.env.GEMINI_SV_KEY || process.env.GOOGLE_API_KEY;
+  if (!GEMINI_API_KEY) {
+      console.warn("WARNING: GEMINI_API_KEY is not defined. AI won't work.");
+      return null;
+  }
+  return new GoogleGenAI({ apiKey: GEMINI_API_KEY });
+}
 
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
 const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
@@ -32,10 +40,11 @@ const ALLOWED_MODELS = [
   "gemini-flash-latest",
   "gemini-3-flash-preview",
   "gemini-3.1-pro-preview",
-  "gemini-2.5-flash",
   "gemini-2.0-flash",
   "gemini-2.0-flash-lite-preview",
-  "gemini-2.0-pro-exp-02-05"
+  "gemini-2.0-pro-exp-02-05",
+  "gemini-1.5-flash-latest",
+  "gemini-1.5-pro-latest"
 ];
 
 // Rate Limiting Middleware
@@ -119,15 +128,11 @@ export const tokenTrackerMiddleware = (req: any, res: any, next: any) => {
 
 export const handleAIGeneration = async (req: any, res: any) => {
   try {
-    if (!ai) {
-      return res.status(500).json({ error: "Sunucuda Gemini API anahtarı eksik. Sistem yöneticisine bildirin." });
-    }
-
     const { model, contents, systemInstruction, responseSchema } = req.body;
     const userId = req.user?.id;
 
     // 1. Model Allowlist Check
-    const targetModel = model || "gemini-2.0-flash";
+    const targetModel = model || "gemini-3-flash-preview";
     if (!ALLOWED_MODELS.includes(targetModel)) {
       return res.status(400).json({ error: `Geçersiz model seçimi: ${targetModel}. Sadece izin verilen modeller kullanılabilir.` });
     }
@@ -169,7 +174,12 @@ export const handleAIGeneration = async (req: any, res: any) => {
       config.systemInstruction = systemInstruction;
     }
 
-    const response = await ai.models.generateContent({
+    const genAi = getGenerativeAI();
+    if (!genAi) {
+      return res.status(500).json({ error: "Yapay zeka servisi yapılandırılmamış." });
+    }
+
+    const response = await genAi.models.generateContent({
       model: targetModel,
       contents: contents,
       config: config

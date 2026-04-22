@@ -37,7 +37,7 @@ export const leadService = {
     
     // Award XP for adding a lead
     try {
-      await gamificationService.earnXP('ADD_LEAD', { leadId: data.id });
+      await gamificationService.earnXP('ADD_LEAD', data.id);
     } catch (e) {
       console.warn("XP award failed for addLead:", e);
     }

@@ -7,10 +7,22 @@ import {
   Sparkles, 
   Users, 
   User as UserIcon, 
-  Phone 
+  Phone,
+  Filter,
+  Flame,
+  ArrowUpDown
 } from 'lucide-react';
 import { Lead } from '../types';
 import { Card, Badge, Skeleton } from './UI';
+
+interface LeadCategory {
+  label: string;
+  color: string;
+}
+
+interface AnalyzeLeadsMutation {
+  mutate: (leads: Lead[]) => void;
+}
 
 interface CRMViewProps {
   leads: Lead[];
@@ -19,10 +31,16 @@ interface CRMViewProps {
   setShowAddLead: (show: boolean) => void;
   isAnalyzingLeads: boolean;
   setIsAnalyzingLeads: (analyzing: boolean) => void;
-  analyzeLeadsMutation: any;
-  categories: any[];
+  analyzeLeadsMutation: AnalyzeLeadsMutation;
+  categories: LeadCategory[];
   onSelectLead: (lead: Lead) => void;
 }
+
+const parseContactDate = (value?: string) => {
+  if (!value) return 0;
+  const timestamp = new Date(value).getTime();
+  return Number.isNaN(timestamp) ? 0 : timestamp;
+};
 
 export const CRMView: React.FC<CRMViewProps> = ({
   leads,
@@ -34,12 +52,68 @@ export const CRMView: React.FC<CRMViewProps> = ({
   analyzeLeadsMutation,
   categories,
   onSelectLead
-}) => (
-  <motion.div 
-    initial={{ opacity: 0 }}
-    animate={{ opacity: 1 }}
-    className="p-6 space-y-6"
-  >
+}) => {
+  const [searchTerm, setSearchTerm] = React.useState('');
+  const [debouncedSearchTerm, setDebouncedSearchTerm] = React.useState('');
+  const [statusFilter, setStatusFilter] = React.useState<'all' | Lead['status']>('all');
+  const [typeFilter, setTypeFilter] = React.useState<'all' | Lead['type']>('all');
+  const [sortBy, setSortBy] = React.useState<'recent' | 'name'>('recent');
+  const [showAdvancedFilters, setShowAdvancedFilters] = React.useState(false);
+
+  React.useEffect(() => {
+    const timeout = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
+    return () => clearTimeout(timeout);
+  }, [searchTerm]);
+
+  const leadTypes = React.useMemo(() => {
+    return Array.from(new Set(leads.map(l => l.type))).sort((a, b) => a.localeCompare(b, 'tr')) as Lead['type'][];
+  }, [leads]);
+
+  const filteredLeads = React.useMemo(() => {
+    const normalizedQuery = debouncedSearchTerm.trim().toLocaleLowerCase('tr');
+    const result = leads.filter((lead) => {
+      const matchesSearch = !normalizedQuery || [lead.name, lead.phone, lead.district].some((value) =>
+        value?.toLocaleLowerCase('tr').includes(normalizedQuery)
+      );
+      const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
+      const matchesType = typeFilter === 'all' || lead.type === typeFilter;
+      return matchesSearch && matchesStatus && matchesType;
+    });
+
+    return result.sort((a, b) => {
+      if (sortBy === 'name') {
+        return a.name.localeCompare(b.name, 'tr');
+      }
+      return parseContactDate(b.last_contact) - parseContactDate(a.last_contact);
+    });
+  }, [leads, debouncedSearchTerm, statusFilter, typeFilter, sortBy]);
+
+  const hotLeadCount = leads.filter((lead) => lead.status === 'Sıcak').length;
+  const buyerCount = leads.filter((lead) => lead.type === 'Alıcı').length;
+  const sellerCount = leads.filter((lead) => lead.type === 'Satıcı').length;
+  const hasActiveFilters = searchTerm.length > 0 || statusFilter !== 'all' || typeFilter !== 'all' || sortBy !== 'recent';
+
+  const filterPills = [
+    statusFilter !== 'all' ? { key: 'status', label: `Durum: ${statusFilter}` } : null,
+    typeFilter !== 'all' ? { key: 'type', label: `Tip: ${typeFilter}` } : null,
+    sortBy !== 'recent' ? { key: 'sort', label: 'Sıralama: İsme Göre' } : null,
+    debouncedSearchTerm.trim() ? { key: 'search', label: `Arama: ${debouncedSearchTerm}` } : null
+  ].filter(Boolean) as Array<{ key: string; label: string }>;
+
+  const clearFilters = () => {
+    setSearchTerm('');
+    setDebouncedSearchTerm('');
+    setStatusFilter('all');
+    setTypeFilter('all');
+    setSortBy('recent');
+  };
+
+  return (
+    <motion.div 
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      className="p-6 space-y-6"
+    >
     <div className="flex justify-between items-center">
       <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Müşteri Rehberi</h1>
       <div className="flex gap-2">
@@ -56,12 +130,50 @@ export const CRMView: React.FC<CRMViewProps> = ({
       </div>
     </div>
 
+    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <Card className="p-4 border-orange-100 bg-orange-50/50">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center">
+            <Users size={18} />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 font-medium">Toplam Rehber</p>
+            <p className="text-lg font-black text-slate-900">{leads.length}</p>
+          </div>
+        </div>
+      </Card>
+      <Card className="p-4 border-red-100 bg-red-50/50">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center">
+            <Flame size={18} />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 font-medium">Sıcak Müşteri</p>
+            <p className="text-lg font-black text-slate-900">{hotLeadCount}</p>
+          </div>
+        </div>
+      </Card>
+      <Card className="p-4 border-emerald-100 bg-emerald-50/50">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
+            <Filter size={18} />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 font-medium">Alıcı / Satıcı</p>
+            <p className="text-lg font-black text-slate-900">{buyerCount} / {sellerCount}</p>
+          </div>
+        </div>
+      </Card>
+    </div>
+
     <div className="flex gap-3">
       <div className="flex-1 relative">
         <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
         <input 
           type="text" 
           placeholder="Müşteri ara..." 
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
           className="w-full bg-white border border-slate-100 rounded-2xl py-3 pl-10 pr-4 text-sm shadow-sm"
         />
       </div>
@@ -75,6 +187,72 @@ export const CRMView: React.FC<CRMViewProps> = ({
         ) : <Sparkles size={16} />}
         Rehber Analizi
       </button>
+    </div>
+
+    <div className="space-y-3">
+      <button
+        onClick={() => setShowAdvancedFilters(prev => !prev)}
+        className="w-full md:w-auto bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm shadow-sm text-slate-700 flex items-center justify-center gap-2"
+      >
+        <Filter size={16} />
+        {showAdvancedFilters ? 'Gelişmiş Filtreleri Gizle' : 'Gelişmiş Filtreleri Aç'}
+      </button>
+
+      {showAdvancedFilters && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <select
+            value={statusFilter}
+            onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+            className="bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm shadow-sm text-slate-700"
+          >
+            <option value="all">Tüm Durumlar</option>
+            <option value="Aday">Aday</option>
+            <option value="Sıcak">Sıcak</option>
+            <option value="Yetki Alındı">Yetki Alındı</option>
+            <option value="Pasif">Pasif</option>
+          </select>
+          <select
+            value={typeFilter}
+            onChange={(e) => setTypeFilter(e.target.value as Lead['type'] | 'all')}
+            className="bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm shadow-sm text-slate-700"
+          >
+            <option value="all">Tüm Tipler</option>
+            {leadTypes.map((type) => (
+              <option key={type} value={type}>
+                {type}
+              </option>
+            ))}
+          </select>
+          <button
+            onClick={() => setSortBy(sortBy === 'recent' ? 'name' : 'recent')}
+            className="bg-white border border-slate-100 rounded-2xl py-3 px-4 text-sm shadow-sm text-slate-700 flex items-center justify-center gap-2"
+          >
+            <ArrowUpDown size={16} />
+            {sortBy === 'recent' ? 'Son Temasa Göre' : 'İsme Göre'}
+          </button>
+          {hasActiveFilters && (
+            <button
+              onClick={clearFilters}
+              className="bg-slate-100 rounded-2xl py-3 px-4 text-sm font-bold text-slate-700"
+            >
+              Filtreleri Sıfırla
+            </button>
+          )}
+        </div>
+      )}
+
+      {filterPills.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {filterPills.map((pill) => (
+            <span
+              key={pill.key}
+              className="inline-flex items-center px-3 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-100"
+            >
+              {pill.label}
+            </span>
+          ))}
+        </div>
+      )}
     </div>
 
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -101,7 +279,21 @@ export const CRMView: React.FC<CRMViewProps> = ({
           </div>
           <p className="text-slate-500 text-sm">Henüz müşteri kaydetmedin.</p>
         </div>
-      ) : leads.map(lead => {
+      ) : filteredLeads.length === 0 ? (
+        <div className="text-center p-20 space-y-4 col-span-full bg-white rounded-3xl border border-slate-100">
+          <div className="w-20 h-20 bg-slate-100 rounded-[32px] flex items-center justify-center mx-auto text-slate-300">
+            <Search size={36} />
+          </div>
+          <p className="text-slate-700 text-sm font-semibold">Filtreye uygun müşteri bulunamadı.</p>
+          <p className="text-slate-400 text-xs">Arama veya filtre ayarlarını değiştirip tekrar deneyebilirsin.</p>
+          <button
+            onClick={clearFilters}
+            className="mt-3 px-4 py-2 bg-orange-600 text-white rounded-xl text-xs font-bold"
+          >
+            Filtreleri Sıfırla
+          </button>
+        </div>
+      ) : filteredLeads.map(lead => {
         const category = categories.find(c => c.label === lead.type);
         const iconColor = category ? category.color : (lead.type === 'Alıcı' ? '#ea580c' : '#9333ea');
         const iconBg = category ? `${category.color}20` : (lead.type === 'Alıcı' ? '#fff7ed' : '#faf5ff');
@@ -130,6 +322,8 @@ export const CRMView: React.FC<CRMViewProps> = ({
             <div className="flex gap-2" onClick={e => e.stopPropagation()}>
               <a 
                 href={`tel:${lead.phone}`}
+                aria-label={`${lead.name} ara`}
+                title={`${lead.name} ara`}
                 className="p-2 bg-slate-50 rounded-xl text-orange-600 hover:bg-orange-50 transition-colors"
               >
                 <Phone size={18} />
@@ -138,6 +332,8 @@ export const CRMView: React.FC<CRMViewProps> = ({
                 href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`}
                 target="_blank"
                 rel="noreferrer"
+                aria-label={`${lead.name} ile WhatsApp üzerinden yazış`}
+                title={`${lead.name} ile WhatsApp üzerinden yazış`}
                 className="p-2 bg-slate-50 rounded-xl text-emerald-500 hover:bg-emerald-50 transition-colors"
               >
                 <MessageSquare size={18} />
@@ -147,5 +343,6 @@ export const CRMView: React.FC<CRMViewProps> = ({
         );
       })}
     </div>
-  </motion.div>
-);
+    </motion.div>
+  );
+};

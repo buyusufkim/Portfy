@@ -1,38 +1,57 @@
 import React from 'react';
-import { MapPin, TrendingUp, Users, Activity } from 'lucide-react';
+import { MapPin, TrendingUp, Users, Activity, Loader2 } from 'lucide-react';
 import { UserProfile, MapPin as MapPinType } from '../types';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../services/api';
 
 interface RegionStatsProps {
   profile?: UserProfile;
-  pins?: MapPinType[]; // Haritadaki gerçek verileri almak için eklendi
+  pins?: MapPinType[];
 }
 
 export const RegionStats: React.FC<RegionStatsProps> = ({ profile, pins = [] }) => {
   if (!profile?.region) return null;
 
-  // Dinamik Veri Hesaplamaları
+  const { data: marketData, isLoading } = useQuery({
+    queryKey: ['region-market-analysis', profile.region.city, profile.region.district],
+    queryFn: () => api.getLiveMarketAnalysis({
+        address: { city: profile.region?.city, district: profile.region?.district, neighborhood: profile.region?.neighborhoods?.[0] },
+        type: 'Konut',
+        details: { brut_m2: 100 }
+    }),
+    enabled: !!profile?.region?.city && !!profile?.region?.district,
+    staleTime: 5 * 60 * 1000
+  });
+
   const totalPins = pins.length;
   const esnafCount = pins.filter(pin => pin.type === 'esnaf').length;
   
-  // Pazar Hareketliliği Algoritması (Pin sayısına göre)
-  let marketActivity = "Düşük Seviye";
+  let marketActivity = "Hesaplanıyor...";
   let activityColor = "text-slate-500";
-  if (totalPins > 20) {
-    marketActivity = "Yüksek Seviye";
-    activityColor = "text-emerald-500";
-  } else if (totalPins > 5) {
-    marketActivity = "Orta Seviye";
-    activityColor = "text-orange-500";
+  let displayScore = "0";
+
+  if (marketData && !isLoading) {
+    const demand = marketData.demandScore || 50;
+    displayScore = demand.toString();
+    if (demand >= 75) {
+      marketActivity = "Çok Yüksek";
+      activityColor = "text-emerald-500";
+    } else if (demand >= 50) {
+      marketActivity = "Dengeli";
+      activityColor = "text-orange-500";
+    } else {
+      marketActivity = "Düşük";
+      activityColor = "text-red-500";
+    }
   }
 
-  // Bölge Verimlilik Skoru (Temel bir artış algoritması)
-  const baseScore = 40;
-  const calculatedScore = Math.min(100, baseScore + (totalPins * 2));
-  const isHighEfficiency = calculatedScore >= 70;
+  const isHighEfficiency = parseInt(displayScore) >= 70;
+  
+  const avgPrice = marketData?.averagePrice ? (marketData.averagePrice / 1000000).toFixed(2) + "M ₺" : "Veri Yok";
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-      {/* 1. Aktif Bölge (Gerçek Veri) */}
+      {/* 1. Aktif Bölge */}
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
         <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
           <MapPin size={24} />
@@ -43,30 +62,31 @@ export const RegionStats: React.FC<RegionStatsProps> = ({ profile, pins = [] }) 
         </div>
       </div>
 
-      {/* 2. Bölge Verimlilik (Dinamik Hesaplama) */}
+      {/* 2. Bölge Pazar Ortalaması (Yeni) */}
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isHighEfficiency ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'}`}>
-          <TrendingUp size={24} />
+        <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-indigo-100 text-indigo-600`}>
+          {isLoading ? <Loader2 className="animate-spin" size={24} /> : <TrendingUp size={24} />}
         </div>
         <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Bölge Verimlilik</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ortalama Fiyat</p>
           <p className="text-sm font-bold text-slate-900">
-            %{calculatedScore} 
-            <span className={`text-[10px] ml-1 ${isHighEfficiency ? 'text-emerald-500' : 'text-amber-500'}`}>
-              {isHighEfficiency ? '↑ Yüksek' : '→ Normal'}
-            </span>
+            {avgPrice}
+            {marketData?.priceTrend === 'up' && <span className="text-[10px] ml-1 text-emerald-500">↑ Artış</span>}
+            {marketData?.priceTrend === 'down' && <span className="text-[10px] ml-1 text-red-500">↓ Düşüş</span>}
           </p>
         </div>
       </div>
 
-      {/* 3. Pazar Hareketliliği (Dinamik Hesaplama) */}
+      {/* 3. Talep Skoru (Gerçek API Verisi) */}
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
         <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center">
-          <Activity size={24} />
+          {isLoading ? <Loader2 className="animate-spin" size={24} /> : <Activity size={24} />}
         </div>
         <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pazar Hareketliliği</p>
-          <p className={`text-sm font-bold ${activityColor}`}>{marketActivity}</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pazar Hareketliliği / Talep</p>
+          <p className={`text-sm font-bold ${activityColor}`}>
+             {marketActivity} <span className="text-xs text-slate-400">({displayScore}/100)</span>
+          </p>
         </div>
       </div>
 
@@ -76,9 +96,9 @@ export const RegionStats: React.FC<RegionStatsProps> = ({ profile, pins = [] }) 
           <Users size={24} />
         </div>
         <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Esnaf Ağı</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ağ Çapı (Esnaf / Pin)</p>
           <p className="text-sm font-bold text-slate-900">
-            {esnafCount > 0 ? `${esnafCount} Kayıtlı` : 'Kayıt Yok'}
+            {totalPins} İşaret ({esnafCount} Esnaf)
           </p>
         </div>
       </div>

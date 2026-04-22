@@ -84,7 +84,7 @@ function MainApp() {
   const { data: externalListings = [] } = useQuery({ queryKey: [QUERY_KEYS.EXTERNAL_LISTINGS, profile?.id], queryFn: api.getExternalListings, enabled: !!profile?.id });
   const { data: rescueSession } = useQuery({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.id], queryFn: api.getRescueSession, enabled: !!profile?.id });
   const { data: missedOpportunities = [] } = useQuery({ queryKey: [QUERY_KEYS.MISSED_OPPORTUNITIES, profile?.id], queryFn: api.getMissedOpportunities, enabled: !!profile?.id });
-  const { data: dailyRadarData } = useQuery({ queryKey: [QUERY_KEYS.DAILY_RADAR, profile?.id], queryFn: api.getDailyRadar, enabled: !!profile?.id && showDailyRadar });
+  const { data: dailyRadarData } = useQuery({ queryKey: [QUERY_KEYS.DAILY_RADAR, profile?.id], queryFn: () => api.getDailyRadar(), enabled: !!profile?.id && showDailyRadar });
 
   const addLeadMutation = useMutation({ mutationFn: api.addLead, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.id] }); setShowAddLead(false); setShowQuickAdd(false); }});
   const updateLeadMutation = useMutation({ mutationFn: ({ id, data }: any) => api.updateLead(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.id] }); setShowAddLead(false); setIsEditingLead(false); setSelectedLead(null); }});

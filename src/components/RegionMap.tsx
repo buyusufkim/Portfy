@@ -1,5 +1,6 @@
-import React from 'react';
-import { GoogleMap, Marker, InfoWindow } from '@react-google-maps/api';
+import React, { useEffect } from 'react';
+import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Circle } from 'react-leaflet';
+import L from 'leaflet';
 import { Plus, Layers, Crosshair, X } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { MapPin as MapPinType } from '../types';
@@ -8,8 +9,8 @@ interface RegionMapProps {
   isLoaded: boolean;
   mapZoom: number;
   mapCenter: { lat: number; lng: number };
-  onMapLoad: (mapInstance: google.maps.Map) => void;
-  handleMapClick: (e: google.maps.MapMouseEvent) => void;
+  onMapLoad: (mapInstance: any) => void;
+  handleMapClick: (e: any) => void;
   is3D: boolean;
   setIs3D: (val: boolean) => void;
   setMapZoom: (val: number) => void;
@@ -17,7 +18,7 @@ interface RegionMapProps {
   setShowAddPin: (val: boolean) => void;
   userLocation: { lat: number; lng: number } | null;
   filteredPins: MapPinType[];
-  getPinIcon: (type: string) => string; // DOĞRU PROPS İSMİ BURAYA EKLENDİ
+  getPinIcon: (type: string) => string;
   setSelectedPin: (pin: MapPinType | null) => void;
   selectedPin: MapPinType | null;
   showAddPin: boolean;
@@ -26,12 +27,33 @@ interface RegionMapProps {
   handleAddPin: () => void;
   addPinMutation: any;
   categories: any[];
-  mapStyles: any[];
+  mapStyles?: any[];
   search: string;
+  hotspots?: {lat: number, lng: number, intensity: number, color: string}[]; // New prop!
 }
 
+// Component to handle map center/zoom updates and clicks
+const MapController = ({ center, zoom, onClick, onMapLoad }: any) => {
+  const map = useMap();
+  useEffect(() => {
+    if (center && typeof center.lat === 'number' && typeof center.lng === 'number') {
+      map.setView([center.lat, center.lng], zoom);
+    }
+  }, [center, zoom, map]);
+
+  useEffect(() => {
+    onMapLoad(map);
+  }, [map, onMapLoad]);
+
+  useMapEvents({
+    click(e) {
+      onClick({ latLng: { lat: () => e.latlng.lat, lng: () => e.latlng.lng } });
+    }
+  });
+  return null;
+};
+
 export const RegionMap: React.FC<RegionMapProps> = ({
-  isLoaded,
   mapZoom,
   mapCenter,
   onMapLoad,
@@ -43,7 +65,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
   setShowAddPin,
   userLocation,
   filteredPins,
-  getPinIcon, // DOĞRU PROPS
+  getPinIcon,
   setSelectedPin,
   selectedPin,
   showAddPin,
@@ -52,21 +74,39 @@ export const RegionMap: React.FC<RegionMapProps> = ({
   handleAddPin,
   addPinMutation,
   categories,
-  mapStyles,
-  search
+  search,
+  hotspots = []
 }) => {
-  if (!isLoaded) {
+  const isValidCoords = (lat: any, lng: any) => {
+    return typeof lat === 'number' && typeof lng === 'number' && isFinite(lat) && isFinite(lng);
+  };
+
+  const createLeafletIcon = (url: string, size: number) => {
+    return L.icon({
+      iconUrl: url,
+      iconSize: [size, size],
+      iconAnchor: [size / 2, size]
+    });
+  };
+
+  const tileLayerUrl = is3D 
+    ? "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}" // Satellite
+    : "https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"; // Clean Map
+
+  if (!isValidCoords(mapCenter.lat, mapCenter.lng)) {
     return (
-      <div className="absolute inset-0 flex items-center justify-center bg-[#020617]">
-        <div className="w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full animate-spin" />
+      <div className="w-full h-full flex items-center justify-center bg-slate-50 text-slate-400">
+        <div className="text-center">
+          <Layers className="mx-auto mb-2 opacity-20" size={48} />
+          <p className="text-sm font-medium">Bölge koordinatları bekleniyor...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="w-full h-full relative">
-      {/* Map Controls - Floating right */}
-      <div className="absolute right-4 top-40 flex flex-col gap-2 z-10">
+    <div className="w-full h-full relative z-0">
+      <div className="absolute right-4 top-40 flex flex-col gap-2 z-[400]">
         <button 
           onClick={() => setShowAddPin(true)}
           className="w-14 h-14 rounded-2xl bg-orange-600 text-white flex items-center justify-center shadow-2xl hover:bg-orange-700 transition-all mb-2"
@@ -80,7 +120,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
             if (!is3D) setMapZoom(18);
           }}
           className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all ${is3D ? 'bg-orange-500 text-white' : 'bg-slate-900/90 backdrop-blur-md text-slate-300 hover:text-white'}`}
-          title="3D Görünüm"
+          title="Uydu Görünümü"
         >
           <Layers size={24} />
         </button>
@@ -93,78 +133,72 @@ export const RegionMap: React.FC<RegionMapProps> = ({
         </button>
       </div>
 
-      <GoogleMap
-        mapContainerStyle={{ width: '100%', height: '100%' }}
+      <MapContainer
+        center={[mapCenter.lat, mapCenter.lng]}
         zoom={mapZoom}
-        center={mapCenter}
-        onLoad={onMapLoad}
-        onClick={handleMapClick}
-        mapTypeId={is3D ? 'hybrid' : 'roadmap'}
-        tilt={is3D ? 45 : 0}
-        heading={is3D ? 45 : 0}
-        options={{
-          disableDefaultUI: true,
-          zoomControl: false,
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-          styles: mapStyles
-        }}
+        style={{ height: "100%", width: "100%" }}
+        zoomControl={false}
       >
-        {userLocation && (
+        <MapController center={mapCenter} zoom={mapZoom} onClick={handleMapClick} onMapLoad={onMapLoad} />
+        <TileLayer
+          attribution='&copy; <a href="https://carto.com/">CARTO</a>'
+          url={tileLayerUrl}
+        />
+        
+        {hotspots.filter(spot => spot && isValidCoords(spot.lat, spot.lng)).map((spot, i) => (
+          <Circle
+            key={`hotspot-${i}`}
+            center={[spot.lat, spot.lng]}
+            pathOptions={{ fillColor: spot.color, fillOpacity: spot.intensity, color: 'transparent' }}
+            radius={200}
+          />
+        ))}
+
+        {userLocation && isValidCoords(userLocation.lat, userLocation.lng) && (
           <Marker
-            position={userLocation}
-            icon={{
-              url: getPinIcon('user_location') || '', 
-              scaledSize: new window.google.maps.Size(40, 40),
-              anchor: new window.google.maps.Point(20, 40)
-            }}
-            zIndex={100}
+            position={[userLocation.lat, userLocation.lng]}
+            icon={createLeafletIcon(getPinIcon('user_location'), 40)}
+            zIndexOffset={1000}
           />
         )}
 
-        {filteredPins.map((pin: MapPinType) => {
-          const isHighlighted = search.trim().length > 0;
+        {filteredPins.filter(pin => pin && isValidCoords(pin.lat, pin.lng)).map((pin: MapPinType) => {
+          const isHighlighted = search.trim().length > 0 && 
+            (pin.title.toLowerCase().includes(search.toLowerCase()) || (pin.address && pin.address.toLowerCase().includes(search.toLowerCase())));
+          
           return (
             <Marker
               key={pin.id}
-              position={{ lat: pin.lat, lng: pin.lng }}
-              icon={{
-                url: getPinIcon(pin.type),
-                scaledSize: isHighlighted ? new window.google.maps.Size(40, 40) : new window.google.maps.Size(32, 32),
-                anchor: isHighlighted ? new window.google.maps.Point(20, 40) : new window.google.maps.Point(16, 32)
+              position={[pin.lat, pin.lng]}
+              icon={createLeafletIcon(getPinIcon(pin.type), isHighlighted ? 40 : 32)}
+              eventHandlers={{
+                click: () => setSelectedPin(pin)
               }}
-              animation={isHighlighted ? window.google.maps.Animation.DROP : undefined}
-              onClick={() => setSelectedPin(pin)}
             />
           );
         })}
 
-        {showAddPin && (
+        {showAddPin && newPinData && isValidCoords(newPinData.lat, newPinData.lng) && (
           <Marker
-            position={{ lat: newPinData.lat, lng: newPinData.lng }}
-            icon={{
-              url: getPinIcon(newPinData.type),
-              scaledSize: new window.google.maps.Size(40, 40),
-              anchor: new window.google.maps.Point(20, 40)
-            }}
-            animation={window.google.maps.Animation.BOUNCE}
+            position={[newPinData.lat, newPinData.lng]}
+            icon={createLeafletIcon(getPinIcon(newPinData.type), 40)}
           />
         )}
 
-        {selectedPin && (
-          <InfoWindow
-            position={{ lat: selectedPin.lat, lng: selectedPin.lng }}
-            onCloseClick={() => setSelectedPin(null)}
+        {selectedPin && isValidCoords(selectedPin.lat, selectedPin.lng) && (
+          <Popup
+            position={[selectedPin.lat, selectedPin.lng]}
+            eventHandlers={{ remove: () => setSelectedPin(null) }}
+            className="custom-popup"
           >
-            <div className="p-2 max-w-[200px]">
-              <h3 className="font-bold text-slate-900 text-sm mb-1">{selectedPin.title}</h3>
-              <p className="text-xs text-slate-500 mb-2">{selectedPin.address}</p>
-              <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded-lg">{selectedPin.notes}</p>
+            <div className="p-1 max-w-[200px]">
+              <h3 className="font-bold text-slate-900 text-sm mb-1 m-0">{selectedPin.title}</h3>
+              <p className="text-xs text-slate-500 mb-2 m-0">{selectedPin.address}</p>
+              <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded-lg m-0">{selectedPin.notes}</p>
             </div>
-          </InfoWindow>
+          </Popup>
         )}
-      </GoogleMap>
+      </MapContainer>
 
       {/* Add Pin Modal */}
       <AnimatePresence>
@@ -173,7 +207,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 pointer-events-none pb-24 sm:pb-4"
+            className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center p-4 pointer-events-none pb-24 sm:pb-4"
           >
             <motion.div 
               initial={{ scale: 0.95, opacity: 0 }}

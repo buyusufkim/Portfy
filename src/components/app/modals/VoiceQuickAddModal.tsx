@@ -113,29 +113,69 @@ export const VoiceQuickAddModal: React.FC<VoiceQuickAddModalProps> = ({
   const handleSave = async () => {
     if (!parsedResult) return;
     
-    if (parsedResult.intent === 'lead') {
-      await addLeadMutation.mutateAsync({
-        name: parsedResult.extracted_data.name || 'İsimsiz Müşteri',
-        phone: parsedResult.extracted_data.phone || '',
-        type: 'Alıcı',
-        status: 'Aday',
-        district: parsedResult.extracted_data.location || '',
-        notes: parsedResult.extracted_data.description || parsedResult.original_text
-      } as any);
-    } else if (parsedResult.intent === 'task') {
-      await addTaskMutation.mutateAsync({
-        title: parsedResult.extracted_data.description || 'Yeni Görev',
-        time: parsedResult.extracted_data.due_date || new Date().toISOString(),
-        type: (parsedResult.extracted_data as any).task_type || 'Arama',
-        completed: false
-      } as any);
-    } else if (parsedResult.intent === 'note') {
-      await addVisitMutation.mutateAsync({
-        address: parsedResult.extracted_data.location || 'Bilinmeyen Adres',
-        district: parsedResult.extracted_data.location || '',
-        status: 'Potansiyel',
-        notes: parsedResult.extracted_data.description || parsedResult.original_text
-      } as any);
+    try {
+      if (parsedResult.actions && parsedResult.actions.length > 0) {
+        // Handle composite actions simultaneously
+        for (const action of parsedResult.actions) {
+          if (action.type === 'lead') {
+            const budgetText = action.payload.budget ? `\nTahmini Bütçe: ${action.payload.budget}` : '';
+            const notes = `${action.payload.notes || parsedResult.original_text}${budgetText}`;
+            
+            await addLeadMutation.mutateAsync({
+              name: action.payload.name || 'İsimsiz Müşteri',
+              phone: action.payload.phone || '',
+              type: 'Alıcı',
+              status: 'Aday',
+              district: action.payload.district || action.payload.location || '',
+              notes: notes
+            } as any);
+          } else if (action.type === 'task') {
+            await addTaskMutation.mutateAsync({
+              title: action.payload.title || 'Yeni Görev',
+              time: action.payload.time || action.payload.due_date || new Date().toISOString(),
+              type: action.payload.type || 'Arama',
+              completed: false
+            } as any);
+          } else if (action.type === 'note') {
+            await addVisitMutation.mutateAsync({
+              address: action.payload.location || 'Bilinmeyen Adres',
+              district: action.payload.location || '',
+              status: 'Potansiyel',
+              notes: action.payload.notes || action.payload.description || parsedResult.original_text
+            } as any);
+          }
+        }
+      } else {
+        // Fallback for single intent
+        if (parsedResult.intent === 'lead') {
+          const budgetText = parsedResult.extracted_data.budget ? `\nTahmini Bütçe: ${parsedResult.extracted_data.budget}` : '';
+          const notes = `${parsedResult.extracted_data.description || parsedResult.original_text}${budgetText}`;
+          await addLeadMutation.mutateAsync({
+            name: parsedResult.extracted_data.name || 'İsimsiz Müşteri',
+            phone: parsedResult.extracted_data.phone || '',
+            type: 'Alıcı',
+            status: 'Aday',
+            district: parsedResult.extracted_data.location || '',
+            notes: notes
+          } as any);
+        } else if (parsedResult.intent === 'task') {
+          await addTaskMutation.mutateAsync({
+            title: parsedResult.extracted_data.description || 'Yeni Görev',
+            time: parsedResult.extracted_data.due_date || new Date().toISOString(),
+            type: (parsedResult.extracted_data as any).task_type || 'Arama',
+            completed: false
+          } as any);
+        } else if (parsedResult.intent === 'note') {
+          await addVisitMutation.mutateAsync({
+            address: parsedResult.extracted_data.location || 'Bilinmeyen Adres',
+            district: parsedResult.extracted_data.location || '',
+            status: 'Potansiyel',
+            notes: parsedResult.extracted_data.description || parsedResult.original_text
+          } as any);
+        }
+      }
+    } catch (e) {
+      console.error("Error saving composite actions", e);
     }
 
     setShowVoiceQuickAdd(false);
@@ -250,11 +290,15 @@ export const VoiceQuickAddModal: React.FC<VoiceQuickAddModalProps> = ({
                 </>
               )}
 
-              {transcript && (
-                <div className="w-full p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                  <p className="text-sm text-slate-700 italic">"{transcript}"</p>
-                </div>
-              )}
+              <div className="w-full px-4">
+                <textarea
+                  value={transcript}
+                  onChange={(e) => setTranscript(e.target.value)}
+                  disabled={isListening || isParsing}
+                  placeholder="Veya konuşma metninizi buraya yapıştırın/yazın..."
+                  className="w-full h-24 p-4 bg-slate-50 border border-slate-200 rounded-2xl text-sm focus:ring-2 focus:ring-orange-500 outline-none resize-none disabled:opacity-70"
+                />
+              </div>
 
               {isParsing && (
                 <div className="flex items-center gap-2 text-orange-600">
@@ -279,24 +323,47 @@ export const VoiceQuickAddModal: React.FC<VoiceQuickAddModalProps> = ({
                   <Badge variant="info" className="bg-orange-50 text-orange-700 border-orange-200">
                     {parsedResult.intent === 'lead' ? '👤 Müşteri' : 
                      parsedResult.intent === 'task' ? '📅 Görev' : 
-                     parsedResult.intent === 'note' ? '📝 Saha Notu' : '❓ Bilinmeyen'}
+                     parsedResult.intent === 'note' ? '📝 Saha Notu' : 
+                     parsedResult.intent === 'composite' ? '🔄 Çoklu İşlem' : '❓ Bilinmeyen'}
                   </Badge>
                 </div>
                 
-                {Object.entries(parsedResult.extracted_data).map(([key, value]) => {
-                  if (!value) return null;
-                  return (
-                    <div key={key} className="space-y-1">
-                      <label className="text-xs font-bold text-slate-500 uppercase">{key}</label>
-                      <input 
-                        type="text" 
-                        value={value as string} 
-                        onChange={(e) => setParsedResult({...parsedResult, extracted_data: {...parsedResult.extracted_data, [key]: e.target.value}})}
-                        className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-900 focus:ring-2 focus:ring-orange-500 outline-none"
-                      />
-                    </div>
-                  );
-                })}
+                {parsedResult.intent === 'composite' && parsedResult.actions ? (
+                  <div className="space-y-4">
+                    {parsedResult.actions.map((action, idx) => (
+                      <div key={idx} className="p-3 bg-white border border-slate-200 rounded-xl space-y-2">
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-bold text-slate-700 uppercase">{action.type}</span>
+                          <span className="text-xs text-slate-500">{action.explanation}</span>
+                        </div>
+                        {Object.entries(action.payload).map(([k, v]) => {
+                          if (!v) return null;
+                          return (
+                            <div key={k} className="flex flex-col">
+                              <span className="text-[10px] text-slate-400 capitalize">{k}</span>
+                              <span className="text-sm text-slate-800">{String(v)}</span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  Object.entries(parsedResult.extracted_data).map(([key, value]) => {
+                    if (!value) return null;
+                    return (
+                      <div key={key} className="space-y-1">
+                        <label className="text-xs font-bold text-slate-500 uppercase">{key}</label>
+                        <input 
+                          type="text" 
+                          value={value as string} 
+                          onChange={(e) => setParsedResult({...parsedResult, extracted_data: {...parsedResult.extracted_data, [key]: e.target.value}})}
+                          className="w-full p-2 bg-white border border-slate-200 rounded-lg text-sm font-medium text-slate-900 focus:ring-2 focus:ring-orange-500 outline-none"
+                        />
+                      </div>
+                    );
+                  })
+                )}
               </div>
 
               <div className="p-3 bg-slate-50 rounded-xl">

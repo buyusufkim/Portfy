@@ -49,7 +49,7 @@ export const profileService = {
     if (!user) throw new Error('Not authenticated');
     
     // Use server-side EVENING_RITUAL action to handle streaks, timestamps, and XP securely
-    await gamificationService.earnXP('EVENING_RITUAL', {}, {
+    await gamificationService.earnXP('EVENING_RITUAL', null, {
       tasks_completed: stats.tasksCompleted !== undefined ? stats.tasksCompleted : (stats.tasks_completed || 0),
       potential_revenue_handled: stats.revenue,
       calls_made: stats.calls,
@@ -93,7 +93,7 @@ export const profileService = {
     if (!userId) throw new Error('Not authenticated');
 
     // Use server-side END_DAY action to update timestamps, stats, and award XP securely
-    await gamificationService.earnXP('END_DAY', {}, {
+    await gamificationService.earnXP('END_DAY', null, {
       tasks_completed: stats.tasks_completed,
       calls_made: stats.calls,
       visits_made: stats.visits,

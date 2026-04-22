@@ -51,7 +51,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const { data: gamifiedStats } = useQuery({
     queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.id],
-    queryFn: api.getGamifiedStats,
+    queryFn: () => api.getGamifiedStats(),
     enabled: !!profile?.id
   });
 

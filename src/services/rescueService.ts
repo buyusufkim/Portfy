@@ -124,7 +124,7 @@ export const rescueService = {
     if (updatedTasks.every(t => t.is_completed)) {
       await supabase.from('rescue_sessions').update({ status: 'completed' }).eq('id', sessionId);
       // Award bonus points
-      await gamificationService.earnXP('RESCUE_SESSION_BONUS', { sessionId });
+      await gamificationService.earnXP('RESCUE_SESSION_BONUS', sessionId);
     }
   }
 };

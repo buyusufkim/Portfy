@@ -21,29 +21,26 @@ export const locationService = {
     return `${neighborhood ? neighborhood + ', ' : ''}${districtName}, ${cityName}, Türkiye`;
   },
 
-  // Google Geocoding API Entegrasyonu
-  getCoordsFromGoogle: async (address: string) => {
-    const API_KEY = import.meta.env.VITE_GOOGLE_MAPS_API_KEY; // .env dosandaki değişken adı
-    
+  // OpenStreetMap Nominatim Geocoding API Entegrasyonu (Google Maps yerine ücretsiz)
+  getCoordsFromOSM: async (address: string) => {
     try {
       const response = await fetch(
-        `https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${API_KEY}&language=tr`
+        `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(address)}&format=json&limit=1`
       );
       const data = await response.json();
 
-      if (data.status === 'OK') {
-        const { lat, lng } = data.results[0].geometry.location;
+      if (data && data.length > 0) {
         return {
-          lat: lat,
-          lng: lng,
-          formattedAddress: data.results[0].formatted_address
+          lat: parseFloat(data[0].lat),
+          lng: parseFloat(data[0].lon),
+          formattedAddress: data[0].display_name
         };
       } else {
-        console.warn("Geocoding Uyarı Status:", data.status); // Örn: ZERO_RESULTS, REQUEST_DENIED
+        console.warn("Geocoding Uyarı: Sonuç bulunamadı");
         return null;
       }
     } catch (error) {
-      console.warn("Google Geocoding API bağlantı uyarısı:", error);
+      console.warn("OSM Geocoding API bağlantı uyarısı:", error);
       return null;
     }
   }

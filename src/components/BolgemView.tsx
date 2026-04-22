@@ -1,7 +1,6 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { motion, AnimatePresence } from 'motion/react';
-import { GoogleMap, useLoadScript, Marker, InfoWindow } from '@react-google-maps/api';
 import { MapIcon, LayoutDashboard, Store, User, Building2, Home, Star, Filter, Search, Plus, X, Layers, Crosshair, MessageSquare, MapPin } from 'lucide-react';
 import { useCategories } from '../hooks/useCategories';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -9,35 +8,13 @@ import { api } from '../services/api';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { MapPin as MapPinType, UserProfile, Property } from '../types';
 import { locationService } from '../services/locationService';
+import L from 'leaflet';
 
 import { RegionMap } from './RegionMap';
 import { RegionStats } from './RegionStats';
 import { CompetitorList } from './CompetitorList';
 
 const defaultCenter = { lat: 38.7205, lng: 35.4826 }; // Kayseri Default
-const libraries: ("places")[] = ["places"];
-
-// Bloomberg / Fizbot Premium Karanlık Google Maps Stili
-const darkMapStyles = [
-  { elementType: 'geometry', stylers: [{ color: '#242f3e' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#242f3e' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#746855' }] },
-  { featureType: 'administrative.locality', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
-  { featureType: 'poi', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
-  { featureType: 'poi.park', elementType: 'geometry', stylers: [{ color: '#263c3f' }] },
-  { featureType: 'poi.park', elementType: 'labels.text.fill', stylers: [{ color: '#6b9a76' }] },
-  { featureType: 'road', elementType: 'geometry', stylers: [{ color: '#38414e' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#212a37' }] },
-  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#9ca5b3' }] },
-  { featureType: 'road.highway', elementType: 'geometry', stylers: [{ color: '#746855' }] },
-  { featureType: 'road.highway', elementType: 'geometry.stroke', stylers: [{ color: '#1f2835' }] },
-  { featureType: 'road.highway', elementType: 'labels.text.fill', stylers: [{ color: '#f3d19c' }] },
-  { featureType: 'transit', elementType: 'geometry', stylers: [{ color: '#2f3948' }] },
-  { featureType: 'transit.station', elementType: 'labels.text.fill', stylers: [{ color: '#d59563' }] },
-  { featureType: 'water', elementType: 'geometry', stylers: [{ color: '#17263c' }] },
-  { featureType: 'water', elementType: 'labels.text.fill', stylers: [{ color: '#515c6d' }] },
-  { featureType: 'water', elementType: 'labels.text.stroke', stylers: [{ color: '#17263c' }] }
-];
 
 // Helper to create SVG data URI for map pins
 const createSvgPin = (color: string, Icon: any) => {
@@ -57,11 +34,6 @@ export const BolgemView = ({
   profile?: UserProfile,
   setToast?: (toast: { message: string, type: 'success' | 'error' | 'info' } | null) => void
 }) => {
-  const { isLoaded, loadError } = useLoadScript({
-    googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY || '',
-    libraries,
-  });
-
   const queryClient = useQueryClient();
   const { categories, addCategory } = useCategories();
   const [view, setView] = useState<'map' | 'list'>('map');
@@ -90,7 +62,27 @@ export const BolgemView = ({
     lng: defaultCenter.lng
   });
 
-  const [map, setMap] = useState<google.maps.Map | null>(null);
+  const [map, setMap] = useState<any>(null);
+
+  const hotspots = useMemo(() => {
+    if (!profile?.region?.city || !mapCenter) return [];
+    
+    // Rastgele oluşturmak yerine, member'ın bölgesine yakın sabit bir dağılım
+    // ya da daha sistematik bir yaklaşım kullanabiliriz.
+    // Şimdilik merkezden biraz sapmalı sabit noktalar:
+    const offsets = [
+        { lat: 0.005, lng: 0.005 },
+        { lat: -0.005, lng: 0.005 },
+        { lat: 0, lng: -0.008 }
+    ];
+
+    return offsets.map(offset => ({
+        lat: mapCenter.lat + offset.lat,
+        lng: mapCenter.lng + offset.lng,
+        intensity: 0.3, 
+        color: '#f97316' // Portfy ana rengiyle uyumlu
+    }));
+  }, [mapCenter, profile?.region]);
 
   // 1. Manuel Eklenen Saha Pinlerini Çek
   const { data: pins = [], isLoading: isLoadingPins } = useQuery({
@@ -108,24 +100,33 @@ export const BolgemView = ({
 
   // 3. Portföyleri ve Saha Pinlerini Harita İçin Birleştir
   const combinedPins = useMemo(() => {
-    const propPins: MapPinType[] = properties.map((p: Property) => ({
-      id: `prop-${p.id}`,
-      user_id: p.user_id,
-      lat: p.address?.lat || (mapCenter.lat + (Math.random() - 0.5) * 0.015),
-      lng: p.address?.lng || (mapCenter.lng + (Math.random() - 0.5) * 0.015),
-      type: 'portfoy', // Kategori ID'si
-      title: `🏠 ${p.title}`,
-      address: `${p.address?.neighborhood || ''}, ${p.address?.district || ''}/${p.address?.city || ''}`,
-      notes: `Fiyat: ${p.price?.toLocaleString('tr-TR')} TL | Durum: ${p.status} | Tip: ${p.type}`,
-      created_at: p.created_at
-    }));
+    const propPins: MapPinType[] = properties.map((p: Property) => {
+      const lat = (typeof p.address?.lat === 'number' && isFinite(p.address.lat)) 
+        ? p.address.lat 
+        : (mapCenter.lat + (Math.random() - 0.5) * 0.015);
+      const lng = (typeof p.address?.lng === 'number' && isFinite(p.address.lng)) 
+        ? p.address.lng 
+        : (mapCenter.lng + (Math.random() - 0.5) * 0.015);
+
+      return {
+        id: `prop-${p.id}`,
+        user_id: p.user_id,
+        lat,
+        lng,
+        type: 'portfoy',
+        title: `🏠 ${p.title}`,
+        address: `${p.address?.neighborhood || ''}, ${p.address?.district || ''}/${p.address?.city || ''}`,
+        notes: `Fiyat: ${p.price?.toLocaleString('tr-TR')} TL | Durum: ${p.status} | Tip: ${p.type}`,
+        created_at: p.created_at
+      };
+    });
 
     return [...pins, ...propPins];
   }, [pins, properties, mapCenter]);
 
   useEffect(() => {
     const geocodeProfileRegion = async () => {
-      if (isLoaded && profile?.region?.city && profile?.region?.district && !hasGeocoded) {
+      if (profile?.region?.city && profile?.region?.district && !hasGeocoded) {
         const addressToGeocode = locationService.getGeocodeAddressString(
           profile.region.city, 
           profile.region.district, 
@@ -133,13 +134,13 @@ export const BolgemView = ({
         );
         
         if (addressToGeocode) {
-          const coords = await locationService.getCoordsFromGoogle(addressToGeocode);
+          const coords = await locationService.getCoordsFromOSM(addressToGeocode);
           
           if (coords) {
-            setMapCenter({ lat: coords.lat, lng: coords.lng });
-            if (map && combinedPins.length === 0) {
-              map.setCenter({ lat: coords.lat, lng: coords.lng });
-              map.setZoom(14);
+            const newCenter = { lat: coords.lat, lng: coords.lng };
+            setMapCenter(newCenter);
+            if (map) {
+              map.setView([newCenter.lat, newCenter.lng], 14);
             }
             setHasGeocoded(true);
           }
@@ -147,9 +148,9 @@ export const BolgemView = ({
       }
     };
     geocodeProfileRegion();
-  }, [profile?.region, isLoaded, map, hasGeocoded, combinedPins.length]);
+  }, [profile?.region, map, hasGeocoded, combinedPins.length]);
 
-  const onMapLoad = (mapInstance: google.maps.Map) => {
+  const onMapLoad = (mapInstance: any) => {
     setMap(mapInstance);
   };
 
@@ -176,26 +177,22 @@ export const BolgemView = ({
 
   useEffect(() => {
     if (map && (filteredPins || []).length > 0) {
-      const bounds = new window.google.maps.LatLngBounds();
       let hasValidPins = false;
+      const latlngs: L.LatLngTuple[] = [];
 
       (filteredPins || []).forEach((pin: MapPinType) => {
         if (pin.lat && pin.lng) {
-          bounds.extend({ lat: pin.lat, lng: pin.lng });
+          latlngs.push([pin.lat, pin.lng]);
           hasValidPins = true;
         }
       });
       
       if (hasValidPins) {
         if ((filteredPins || []).length === 1 && search.trim().length > 0) {
-          map.setCenter({ lat: filteredPins[0].lat, lng: filteredPins[0].lng });
-          map.setZoom(17); 
+          map.setView([filteredPins[0].lat, filteredPins[0].lng], 17);
         } else {
-          map.fitBounds(bounds);
-          const listener = google.maps.event.addListener(map, 'idle', () => {
-            if (map.getZoom()! > 16) map.setZoom(16);
-            google.maps.event.removeListener(listener);
-          });
+          const bounds = L.latLngBounds(latlngs);
+          map.fitBounds(bounds, { padding: [50, 50], maxZoom: 16 });
         }
       }
     }
@@ -224,10 +221,10 @@ export const BolgemView = ({
     setShowAddFilter(false);
   };
 
-  const handleMapClick = (e: google.maps.MapMouseEvent) => {
+  const handleMapClick = async (e: any) => {
     if (e.latLng) {
-      const lat = e.latLng.lat();
-      const lng = e.latLng.lng();
+      const lat = typeof e.latLng.lat === 'function' ? e.latLng.lat() : e.latLng.lat;
+      const lng = typeof e.latLng.lng === 'function' ? e.latLng.lng() : e.latLng.lng;
 
       setNewPinData(prev => ({
         ...prev,
@@ -237,20 +234,20 @@ export const BolgemView = ({
       }));
       setShowAddPin(true);
 
-      const geocoder = new window.google.maps.Geocoder();
-      geocoder.geocode({ location: { lat, lng } }, (results, status) => {
-        if (status === 'OK' && results && results[0]) {
+      try {
+        const response = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lng}`);
+        const data = await response.json();
+        if (data && data.display_name) {
           setNewPinData(prev => ({
             ...prev,
-            address: results[0].formatted_address
+            address: data.display_name
           }));
         } else {
-          setNewPinData(prev => ({
-            ...prev,
-            address: ''
-          }));
+          setNewPinData(prev => ({...prev, address: ''}));
         }
-      });
+      } catch {
+        setNewPinData(prev => ({...prev, address: ''}));
+      }
     }
   };
 
@@ -285,7 +282,8 @@ export const BolgemView = ({
     return createSvgPin(typeObj?.color || '#eab308', typeObj?.icon || Building2);
   };
 
-  if (loadError) return <div className="p-6 text-center text-red-500">Harita yüklenirken bir hata oluştu.</div>;
+  // Loading state removed
+
 
   return (
     <motion.div 
@@ -346,7 +344,7 @@ export const BolgemView = ({
 
           {/* View Toggle removed from here */}
           <RegionMap 
-            isLoaded={isLoaded}
+            isLoaded={true}
             mapZoom={mapZoom}
             mapCenter={mapCenter}
             onMapLoad={onMapLoad}
@@ -367,8 +365,8 @@ export const BolgemView = ({
             handleAddPin={handleAddPin}
             addPinMutation={addPinMutation}
             categories={categories}
-            mapStyles={darkMapStyles} // KARANLIK TEMA GÖNDERİLİYOR
             search={search}
+            hotspots={hotspots}
           />
         </div>
       ) : (
