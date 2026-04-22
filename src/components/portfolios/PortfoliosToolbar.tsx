@@ -1,5 +1,9 @@
-import React from 'react';
-import { Globe, LayoutDashboard, BarChart3, Search, Filter } from 'lucide-react';
+import React, { useMemo } from 'react';
+import { Globe, LayoutDashboard, BarChart3, Search, Filter, Zap } from 'lucide-react';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../../services/api';
+import { QUERY_KEYS } from '../../constants/queryKeys';
+import { useAuth } from '../../AuthContext';
 
 interface PortfoliosToolbarProps {
   viewMode: 'list' | 'pipeline';
@@ -8,6 +12,7 @@ interface PortfoliosToolbarProps {
   setSelectedDistrict: (district: string) => void;
   regionScores: any[];
   setShowImportUrlModal: (show: boolean) => void;
+  onOpenSmartMatch: () => void; // YENİ EKLENDİ
 }
 
 export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
@@ -16,28 +21,68 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
   selectedDistrict,
   setSelectedDistrict,
   regionScores,
-  setShowImportUrlModal
+  setShowImportUrlModal,
+  onOpenSmartMatch
 }) => {
+  const { profile } = useAuth();
+  
+  // Arka planda eşleşme sayısını hesaplamak için verileri çekiyoruz
+  const { data: leads = [] } = useQuery({ queryKey: [QUERY_KEYS.LEADS, profile?.id], queryFn: api.getLeads, enabled: !!profile?.id });
+  const { data: properties = [] } = useQuery({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.id], queryFn: api.getProperties, enabled: !!profile?.id });
+
+  // Eşleşen portföy sayısını hesapla
+  const matchCount = useMemo(() => {
+    const activeProperties = properties.filter(p => !['Satıldı', 'Pasif'].includes(p.status));
+    const activeLeads = leads.filter(l => !['Pasif'].includes(l.status) && ['Alıcı', 'Yatırımcı', 'Aday'].includes(l.type));
+
+    const matches = activeProperties.filter(property => {
+      return activeLeads.some(lead => {
+        const isDistrictMatch = lead.district && property.address?.district && lead.district.toLowerCase() === property.address.district.toLowerCase();
+        const isTypeMatch = lead.notes && lead.notes.toLowerCase().includes(property.type.toLowerCase());
+        return isDistrictMatch || isTypeMatch;
+      });
+    });
+    return matches.length;
+  }, [properties, leads]);
+
   return (
     <div className="p-6 pb-2 space-y-4 bg-white border-b border-slate-100">
       <div className="flex justify-between items-center">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Portföylerim</h1>
         <div className="flex gap-2">
+          
+          {/* YENİ: Akıllı Eşleşmeler Butonu */}
+          <button 
+            onClick={onOpenSmartMatch}
+            className="relative p-2 px-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-100 transition-all flex items-center gap-2 text-xs font-bold"
+          >
+            <Zap size={18} />
+            <span className="hidden sm:inline">Eşleşmeler</span>
+            {matchCount > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-red-500 text-[10px] font-bold text-white shadow-md border-2 border-white animate-pulse">
+                {matchCount}
+              </span>
+            )}
+          </button>
+
           <button 
             onClick={() => setShowImportUrlModal(true)}
-            className="p-2 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 transition-all flex items-center gap-2 text-xs font-bold"
+            className="p-2 px-3 bg-orange-50 text-orange-600 rounded-xl hover:bg-orange-100 transition-all flex items-center gap-2 text-xs font-bold"
           >
-            <Globe size={18} /> URL İçe Aktar
+            <Globe size={18} /> <span className="hidden sm:inline">İçe Aktar</span>
           </button>
+          
+          <div className="w-px h-8 bg-slate-200 mx-1"></div>
+
           <button 
             onClick={() => setViewMode('list')}
-            className={`p-2 rounded-xl transition-all ${viewMode === 'list' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'}`}
+            className={`p-2 rounded-xl transition-all ${viewMode === 'list' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
           >
             <LayoutDashboard size={20} />
           </button>
           <button 
             onClick={() => setViewMode('pipeline')}
-            className={`p-2 rounded-xl transition-all ${viewMode === 'pipeline' ? 'bg-slate-900 text-white' : 'bg-slate-100 text-slate-400'}`}
+            className={`p-2 rounded-xl transition-all ${viewMode === 'pipeline' ? 'bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'bg-slate-100 text-slate-400 hover:bg-slate-200'}`}
           >
             <BarChart3 size={20} />
           </button>
@@ -54,7 +99,7 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
               className="w-full bg-slate-100 border-none rounded-2xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-orange-500"
             />
           </div>
-          <button className="p-3 bg-slate-100 rounded-2xl text-slate-600">
+          <button className="p-3 bg-slate-100 rounded-2xl text-slate-600 hover:bg-slate-200 transition-colors">
             <Filter size={20} />
           </button>
         </div>
@@ -62,7 +107,7 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
         <div className="flex gap-2 overflow-x-auto pb-2 -mx-6 px-6 no-scrollbar">
           <button 
             onClick={() => setSelectedDistrict('all')}
-            className={`px-4 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all ${selectedDistrict === 'all' ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-400'}`}
+            className={`px-4 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap transition-all ${selectedDistrict === 'all' ? 'bg-orange-600 text-white shadow-md shadow-orange-500/20' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
           >
             Tümü
           </button>
@@ -70,10 +115,10 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
             <button 
               key={region.district}
               onClick={() => setSelectedDistrict(region.district)}
-              className={`px-4 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap flex items-center gap-2 transition-all ${selectedDistrict === region.district ? 'bg-orange-600 text-white' : 'bg-slate-100 text-slate-400'}`}
+              className={`px-4 py-2 rounded-xl text-[10px] font-bold whitespace-nowrap flex items-center gap-2 transition-all ${selectedDistrict === region.district ? 'bg-orange-600 text-white shadow-md shadow-orange-500/20' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}
             >
               {region.district}
-              <span className={`text-[8px] px-1.5 py-0.5 rounded-md ${selectedDistrict === region.district ? 'bg-orange-500 text-white' : 'bg-orange-100 text-orange-600'}`}>
+              <span className={`text-[8px] px-1.5 py-0.5 rounded-md ${selectedDistrict === region.district ? 'bg-white/20 text-white' : 'bg-white text-slate-400 shadow-sm'}`}>
                 %{region.score}
               </span>
             </button>

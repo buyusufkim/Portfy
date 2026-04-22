@@ -57,7 +57,7 @@ export const propertyService = {
     if (!userId) throw new Error('Not authenticated');
     
     // Check if owner exists in leads, if not add them
-    if (property.owner.name && property.owner.phone) {
+    if (property.owner?.name && property.owner?.phone) {
       const leads = await leadService.getLeads();
       const existingLead = leads.find(l => l.phone === property.owner.phone);
       

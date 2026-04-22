@@ -25,6 +25,9 @@ interface LeadModalsProps {
   isEditingLead: boolean;
   setIsEditingLead: (val: boolean) => void;
   properties: Property[];
+  setShowDocumentAutomation: (val: boolean) => void;
+  setDocumentAutomationLead: (val: Lead | null) => void;
+  setDocumentAutomationProperty: (val: Property | null) => void;
 }
 
 export const LeadModals: React.FC<LeadModalsProps> = ({
@@ -47,7 +50,10 @@ export const LeadModals: React.FC<LeadModalsProps> = ({
   setSelectedLead,
   isEditingLead,
   setIsEditingLead,
-  properties
+  properties,
+  setShowDocumentAutomation,
+  setDocumentAutomationLead,
+  setDocumentAutomationProperty
 }) => {
   return (
     <>
@@ -68,6 +74,9 @@ export const LeadModals: React.FC<LeadModalsProps> = ({
         isEditing={isEditingLead}
         setIsEditing={setIsEditingLead}
         properties={properties}
+        setShowDocumentAutomation={setShowDocumentAutomation}
+        setDocumentAutomationLead={setDocumentAutomationLead}
+        setDocumentAutomationProperty={setDocumentAutomationProperty}
       />
       <VoiceQuickAddModal 
         showVoiceQuickAdd={showVoiceQuickAdd} 

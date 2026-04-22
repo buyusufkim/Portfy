@@ -39,6 +39,9 @@ export const AppModals: React.FC<AppModalsProps> = ({
         isEditingLead={leads.isEditingLead}
         setIsEditingLead={leads.setIsEditingLead}
         properties={portfolios.properties || []}
+        setShowDocumentAutomation={leads.setShowDocumentAutomation}
+        setDocumentAutomationLead={leads.setDocumentAutomationLead}
+        setDocumentAutomationProperty={leads.setDocumentAutomationProperty}
       />
       <PortfolioModals 
         showAddProperty={portfolios.showAddProperty}
@@ -60,11 +63,21 @@ export const AppModals: React.FC<AppModalsProps> = ({
         regionScores={portfolios.regionScores || []}
         isEditing={portfolios.isEditing}
         setIsEditing={portfolios.setIsEditing}
+        setShowAddTask={portfolios.setShowAddTask}
+        tasks={portfolios.tasks || []}
+        setShowDocumentAutomation={portfolios.setShowDocumentAutomation}
+        setDocumentAutomationProperty={portfolios.setDocumentAutomationProperty}
+        setDocumentAutomationLead={portfolios.setDocumentAutomationLead}
       />
       <UtilityModals 
         showAddVisit={utilities.showAddVisit}
         setShowAddVisit={utilities.setShowAddVisit}
         addVisitMutation={utilities.addVisitMutation}
+        showAddTask={utilities.showAddTask}
+        setShowAddTask={utilities.setShowAddTask}
+        addTaskMutation={utilities.addTaskMutation}
+        leads={utilities.leads || []}
+        properties={utilities.properties || []}
         tasks={utilities.tasks || []}
         fieldVisits={utilities.fieldVisits || []}
         rescueSession={utilities.rescueSession}
@@ -74,6 +87,12 @@ export const AppModals: React.FC<AppModalsProps> = ({
         setShowMissedOpportunities={utilities.setShowMissedOpportunities}
         missedOpportunities={utilities.missedOpportunities || []}
         setActiveTab={utilities.setActiveTab}
+        showDocumentAutomation={utilities.showDocumentAutomation}
+        setShowDocumentAutomation={utilities.setShowDocumentAutomation}
+        documentAutomationProperty={utilities.documentAutomationProperty}
+        documentAutomationLead={utilities.documentAutomationLead}
+        profile={utilities.profile}
+        addLeadMutation={utilities.addLeadMutation}
       />
     </>
   );

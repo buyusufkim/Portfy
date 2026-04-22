@@ -359,6 +359,11 @@ BEGIN
         END IF;
     END LOOP;
 
+    -- Add property_id to tasks
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='tasks' AND column_name='property_id') THEN
+        ALTER TABLE tasks ADD COLUMN property_id UUID REFERENCES properties(id) ON DELETE SET NULL;
+    END IF;
+
     -- Personal Tasks is_completed & completed_at parity
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='personal_tasks' AND column_name='isCompleted') THEN
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='personal_tasks' AND column_name='is_completed') THEN

@@ -1,9 +1,12 @@
+// Dosya: src/pages/PortfoliosPage.tsx
+
 import React, { useState, useMemo } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+// DÜZELTME: useQuery eklendi
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; 
 import { motion } from 'motion/react';
 import { api } from '../services/api';
 import { QUERY_KEYS } from '../constants/queryKeys';
-import { Property, BrokerAccount, ExternalListing, Lead, RegionEfficiencyScore, MutationResult } from '../types';
+import { Property, BrokerAccount, ExternalListing, Lead, RegionEfficiencyScore, MutationResult, Task } from '../types';
 import { AddPropertyModal } from '../components/portfolios/AddPropertyModal';
 import { IntegrationModal } from '../components/portfolios/IntegrationModal';
 import { ExternalListingsModal } from '../components/portfolios/ExternalListingsModal';
@@ -15,6 +18,10 @@ import { PortfoliosToolbar } from '../components/portfolios/PortfoliosToolbar';
 import { PropertyGrid } from '../components/portfolios/PropertyGrid';
 import { useAuth } from '../AuthContext';
 import { MagicLinkButton } from '../components/premium/MagicLinkButton';
+
+// YENİ EKLENEN MODÜLLER
+import { useSmartMatch } from '../hooks/useSmartMatch';
+import { SmartMatchModal } from '../components/portfolios/SmartMatchModal';
 
 interface PortfolioModalsProps {
   showAddProperty: boolean;
@@ -36,6 +43,11 @@ interface PortfolioModalsProps {
   regionScores: RegionEfficiencyScore[];
   isEditing: boolean;
   setIsEditing: (editing: boolean) => void;
+  setShowAddTask: (show: boolean) => void;
+  tasks: Task[];
+  setShowDocumentAutomation: (show: boolean) => void;
+  setDocumentAutomationProperty: (p: Property | null) => void;
+  setDocumentAutomationLead: (l: Lead | null) => void;
 }
 
 export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
@@ -57,7 +69,12 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   leads,
   regionScores,
   isEditing,
-  setIsEditing
+  setIsEditing,
+  setShowAddTask,
+  tasks,
+  setShowDocumentAutomation,
+  setDocumentAutomationProperty,
+  setDocumentAutomationLead
 }) => {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
@@ -68,6 +85,8 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   const [aiMarketingType, setAiMarketingType] = useState<'listing' | 'instagram' | 'whatsapp' | 'share' | 'hub' | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showMarketingHub, setShowMarketingHub] = useState(false);
+
+  const { runSmartMatchAsync } = useSmartMatch();
 
   const generateContentMutation = useMutation({
     mutationFn: (prop: Property) => api.generatePropertyContent(prop),
@@ -106,16 +125,26 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
     mutationFn: (data: any) => isEditing && selectedProperty 
       ? api.updateProperty(selectedProperty.id, data)
       : api.addProperty(data),
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.id] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD_STATS, profile?.id] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REGION_SCORES, profile?.id] });
+      
       setShowAddProperty(false);
+      
+      if (!isEditing && data) {
+        const propertyId = typeof data === 'string' ? data : data.id;
+        
+        if (propertyId) {
+          runSmartMatchAsync(propertyId)
+            .catch(err => console.error("Smart Match Hatası:", err));
+        }
+      }
+
       setIsEditing(false);
     }
   });
 
-  // SİLME İŞLEMİ DÜZELTİLDİ: Hata yakalama (onError) eklendi
   const deletePropertyMutation = useMutation({
     mutationFn: (id: string) => api.deleteProperty(id),
     onSuccess: () => {
@@ -175,6 +204,11 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         regionScores={regionScores}
         leads={leads}
         brokerAccount={brokerAccount}
+        setShowAddTask={setShowAddTask}
+        tasks={tasks}
+        setShowDocumentAutomation={setShowDocumentAutomation}
+        setDocumentAutomationProperty={setDocumentAutomationProperty}
+        setDocumentAutomationLead={setDocumentAutomationLead}
         onShowExternalListings={() => setShowExternalListings(true)}
         onGenerateMarketingHub={() => { if (!selectedProperty) return; setAiMarketingType('hub'); setIsGenerating(true); generateMarketingMutation.mutate(selectedProperty); }}
         onEdit={() => {
@@ -190,10 +224,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
           if (selectedProperty) uploadImageMutation.mutate({ id: selectedProperty.id, file });
         }}
         isUploading={uploadImageMutation.isPending}
-        
-        // YENİ EKLENEN SATIR:
         isDeleting={deletePropertyMutation.isPending} 
-        
         magicLinkSlot={selectedProperty ? <MagicLinkButton propertyId={selectedProperty.id} /> : null}
       />
       <AddPropertyModal 
@@ -284,6 +315,16 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
   showAddProperty,
   setShowAddProperty
 }) => {
+  const [showSmartMatch, setShowSmartMatch] = useState(false);
+  const { profile } = useAuth();
+  
+  // Eksik olan useQuery buraya eklendi
+  const { data: leads = [] } = useQuery({ 
+    queryKey: [QUERY_KEYS.LEADS, profile?.id], 
+    queryFn: api.getLeads, 
+    enabled: !!profile?.id 
+  });
+
   const filteredProperties = useMemo(() => { 
     return properties.filter(p => {
       const matchesDistrict = selectedDistrict === 'all' || p.address.district === selectedDistrict;
@@ -304,7 +345,9 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
         setSelectedDistrict={setSelectedDistrict}
         regionScores={regionScores}
         setShowImportUrlModal={setShowImportUrlModal}
+        onOpenSmartMatch={() => setShowSmartMatch(true)}
       />
+      
       <PropertyGrid 
         viewMode={viewMode}
         propertiesLoading={propertiesLoading}
@@ -314,6 +357,14 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
         setShowAddProperty={setShowAddProperty}
         renderMagicLink={(id: string) => <MagicLinkButton propertyId={id} />}
       />
+
+      <SmartMatchModal 
+        show={showSmartMatch} 
+        onClose={() => setShowSmartMatch(false)} 
+        properties={properties}
+        leads={leads}
+      />
+
     </motion.div>
   );
 };

@@ -111,10 +111,14 @@ export interface Lead {
 export interface Task {
   id: string;
   user_id: string;
+  property_id?: string;
+  lead_id?: string;
   title: string;
   time: string;
   type: 'Arama' | 'Randevu' | 'Saha' | 'Takip' | 'Güncelleme' | 'Sosyal Medya';
   completed: boolean;
+  is_drip?: boolean;
+  ai_suggestion?: string;
 }
 
 export interface Property {
@@ -388,6 +392,7 @@ export interface WhatsAppAnalysis {
 
 export interface MutationResult<TData = any, TVariables = void> {
   mutate: TVariables extends void ? () => void : (variables: TVariables) => void;
+  mutateAsync: TVariables extends void ? () => Promise<TData> : (variables: TVariables) => Promise<TData>;
   isPending: boolean;
   isSuccess: boolean;
   error: any;
@@ -450,4 +455,26 @@ export interface MarketingModuleContent {
   }[];
   summaries: string[];
   cta_options: string[];
+}
+
+export interface CompetitorListing {
+  id: string;
+  external_id: string;
+  title: string;
+  price: number;
+  old_price?: number;
+  change_type: 'new_listing' | 'price_drop' | 'sold_or_removed';
+  date: string;
+  location: string;
+  distance: string;
+  url?: string;
+}
+
+export interface MarketIntelligenceReport {
+  property_id: string;
+  summary: string;
+  competitors: CompetitorListing[];
+  market_mood: 'heating' | 'cooling' | 'stable';
+  action_tip: string;
+  created_at: string;
 }

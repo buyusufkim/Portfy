@@ -10,7 +10,9 @@ import {
   Calendar,
   MapPin,
   Tag,
-  AlertCircle
+  AlertCircle,
+  FileText,
+  Plus
 } from 'lucide-react';
 import { Lead, Property } from '../types';
 
@@ -20,6 +22,9 @@ interface LeadDetailModalProps {
   onEdit: () => void;
   onDelete: (id: string) => void;
   properties: Property[];
+  setShowDocumentAutomation?: (val: boolean) => void;
+  setDocumentAutomationLead?: (val: Lead | null) => void;
+  setDocumentAutomationProperty?: (val: Property | null) => void;
 }
 
 export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
@@ -27,7 +32,10 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
   onClose,
   onEdit,
   onDelete,
-  properties
+  properties,
+  setShowDocumentAutomation,
+  setDocumentAutomationLead,
+  setDocumentAutomationProperty
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
 
@@ -165,6 +173,28 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                   </div>
                 </div>
               )}
+              {/* DOKÜMAN OTOMASYONU BUTONU */}
+              <div className="pt-6 border-t border-slate-100">
+                <button 
+                  onClick={() => {
+                    setDocumentAutomationLead?.(lead);
+                    setDocumentAutomationProperty?.(null); // Lead detayındayız, mülk henüz seçili değil (seçtirilebilir)
+                    setShowDocumentAutomation?.(true);
+                  }}
+                  className="w-full p-5 bg-white border-2 border-slate-100 rounded-3xl flex items-center justify-between hover:border-orange-500 transition-all group"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600">
+                      <FileText size={24} />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-base font-black text-slate-900">Resmi Doküman Oluştur</div>
+                      <div className="text-xs text-slate-400 mt-1">Yer gösterme veya teklif formu</div>
+                    </div>
+                  </div>
+                  <Plus size={24} className="text-slate-300 group-hover:text-orange-500 transition-all" />
+                </button>
+              </div>
             </div>
           </motion.div>
 

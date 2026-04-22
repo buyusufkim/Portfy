@@ -1,3 +1,5 @@
+// Dosya: src/components/portfolios/AddPropertyModal.tsx
+
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Plus, Trash2, MapPin } from 'lucide-react';
@@ -5,7 +7,6 @@ import { GoogleMap, useLoadScript, Marker } from '@react-google-maps/api';
 import { locationService } from '../../services/locationService';
 import { Property, Lead } from '../../types';
 import { api } from '../../services/api';
-import { useSmartMatch } from '../../hooks/useSmartMatch';
 
 interface AddPropertyModalProps {
   show: boolean;
@@ -35,8 +36,6 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showLeadResults, setShowLeadResults] = useState(false);
-  
-  const { runSmartMatchAsync } = useSmartMatch();
   
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
@@ -174,20 +173,8 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
     };
 
     try {
-      const result = await onSubmit(payload);
-      
-      if (!initialData && result) {
-        // ap.addProperty ID'yi doğrudan string döndürüyor olabilir
-        const propertyId = typeof result === 'string' ? result : result.id;
-        
-        if (propertyId) {
-          const matchedLeads = await runSmartMatchAsync(propertyId);
-          
-          if (matchedLeads && matchedLeads.length > 0) {
-             alert(`🎯 Akıllı Eşleşme (Smart Match) Bulundu!\n\nBu portföy kriterlerine uyan ${matchedLeads.length} sıcak müşteriniz var. AI Koç paneline bir fırsat bildirimi düştü.`);
-          }
-        }
-      }
+      // Sadece formu gönderir. Eşleştirme artık PortfoliosPage.tsx içinde yapılacak.
+      await onSubmit(payload);
     } catch (error) {
       console.error("Submit işleminde hata:", error);
     }

@@ -23,6 +23,9 @@ interface CRMModalsProps {
   isEditing: boolean;
   setIsEditing: (editing: boolean) => void;
   properties: Property[];
+  setShowDocumentAutomation: (val: boolean) => void;
+  setDocumentAutomationLead: (val: Lead | null) => void;
+  setDocumentAutomationProperty: (val: Property | null) => void;
 }
 
 export const CRMModals: React.FC<CRMModalsProps> = ({
@@ -41,7 +44,10 @@ export const CRMModals: React.FC<CRMModalsProps> = ({
   setSelectedLead,
   isEditing,
   setIsEditing,
-  properties
+  properties,
+  setShowDocumentAutomation,
+  setDocumentAutomationLead,
+  setDocumentAutomationProperty
 }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -237,6 +243,9 @@ export const CRMModals: React.FC<CRMModalsProps> = ({
         }}
         onDelete={(id) => deleteLeadMutation.mutate(id)}
         properties={properties}
+        setShowDocumentAutomation={setShowDocumentAutomation}
+        setDocumentAutomationLead={setDocumentAutomationLead}
+        setDocumentAutomationProperty={setDocumentAutomationProperty}
       />
     </>
   );

@@ -1,7 +1,7 @@
 import React from 'react';
 import { PortfolioModals as BasePortfolioModals } from '../../../pages/PortfoliosPage';
 
-import { Property, BrokerAccount, ExternalListing, MessageTemplate, Lead, RegionEfficiencyScore, MutationResult } from '../../../types';
+import { Property, BrokerAccount, ExternalListing, MessageTemplate, Lead, RegionEfficiencyScore, MutationResult, Task } from '../../../types';
 
 interface PortfolioModalsProps {
   showAddProperty: boolean;
@@ -23,6 +23,11 @@ interface PortfolioModalsProps {
   regionScores: RegionEfficiencyScore[];
   isEditing: boolean;
   setIsEditing: (val: boolean) => void;
+  setShowAddTask: (val: boolean) => void;
+  tasks: Task[];
+  setShowDocumentAutomation: (val: boolean) => void;
+  setDocumentAutomationProperty: (val: Property | null) => void;
+  setDocumentAutomationLead: (val: Lead | null) => void;
 }
 
 export const PortfolioModalsComponent: React.FC<PortfolioModalsProps> = ({
@@ -44,7 +49,12 @@ export const PortfolioModalsComponent: React.FC<PortfolioModalsProps> = ({
   leads,
   regionScores,
   isEditing,
-  setIsEditing
+  setIsEditing,
+  setShowAddTask,
+  tasks,
+  setShowDocumentAutomation,
+  setDocumentAutomationProperty,
+  setDocumentAutomationLead
 }) => {
   return (
     <>
@@ -68,6 +78,11 @@ export const PortfolioModalsComponent: React.FC<PortfolioModalsProps> = ({
         regionScores={regionScores}
         isEditing={isEditing}
         setIsEditing={setIsEditing}
+        setShowAddTask={setShowAddTask}
+        tasks={tasks}
+        setShowDocumentAutomation={setShowDocumentAutomation}
+        setDocumentAutomationProperty={setDocumentAutomationProperty}
+        setDocumentAutomationLead={setDocumentAutomationLead}
       />
     </>
   );

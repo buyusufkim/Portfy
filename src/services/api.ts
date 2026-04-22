@@ -17,6 +17,7 @@ import { voiceService } from './voiceService';
 import { coachService } from './coachService';
 import { fieldVisitService } from './fieldVisitService';
 import { whatsappService } from './whatsappService';
+import { marketIntelligenceService } from './marketIntelligenceService';
 
 // VITE ENV üzerinden API URL alınıyor, yoksa fallback olarak boş string bırakılıyor.
 const API_URL = import.meta.env.VITE_API_URL || '';
@@ -299,5 +300,6 @@ export const api = {
   parseVoiceCommand: voiceService.parseVoiceCommand,
 
   getCoachInsights: coachService.getSimpleInsight,
-  getDetailedCoachInsight: coachService.getDetailedInsight
+  getDetailedCoachInsight: coachService.getDetailedInsight,
+  getCompetitorPulse: marketIntelligenceService.getCompetitorPulse
 };

@@ -60,6 +60,9 @@ export interface LeadProps {
   setSelectedLead: (val: Lead | null) => void;
   isEditingLead: boolean;
   setIsEditingLead: (val: boolean) => void;
+  setShowDocumentAutomation: (val: boolean) => void;
+  setDocumentAutomationLead: (val: Lead | null) => void;
+  setDocumentAutomationProperty: (val: Property | null) => void;
 }
 
 export interface PortfolioProps {
@@ -88,6 +91,11 @@ export interface PortfolioProps {
   isEditing: boolean;
   setIsEditing: (val: boolean) => void;
   setShowRegionSetup: (val: boolean) => void;
+  setShowAddTask: (val: boolean) => void;
+  tasks: Task[];
+  setShowDocumentAutomation: (val: boolean) => void;
+  setDocumentAutomationProperty: (val: Property | null) => void;
+  setDocumentAutomationLead: (val: Lead | null) => void;
 }
 
 export interface UtilityProps {
@@ -112,8 +120,18 @@ export interface UtilityProps {
   tasksError: boolean;
   showVoiceQuickAdd: boolean;
   setShowVoiceQuickAdd: (val: boolean) => void;
+  showAddTask: boolean;
+  setShowAddTask: (val: boolean) => void;
   addTaskMutation: MutationResult<any, any>;
   setActiveTab: (tab: string) => void;
+  leads: Lead[];
+  properties: Property[];
+  showDocumentAutomation: boolean;
+  setShowDocumentAutomation: (val: boolean) => void;
+  documentAutomationProperty: Property | null;
+  documentAutomationLead: Lead | null;
+  profile: UserProfile | null;
+  addLeadMutation: MutationResult<any, any>;
 }
 
 export interface MainContentRouterProps {

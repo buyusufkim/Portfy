@@ -3,9 +3,11 @@ import { TokenUsageAlert } from './TokenUsageAlert.tsx';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Building2, Sparkles, Trophy, Zap, CheckCircle2, 
-  RefreshCw, Circle, Moon, ArrowRight, AlertCircle, ClipboardList, Lock
+  RefreshCw, Circle, Moon, ArrowRight, AlertCircle, ClipboardList, Lock,
+  MessageSquare, Send, Copy, Ghost
 } from 'lucide-react';
 import { Card, Badge, Skeleton } from './UI';
+import { api } from '../services/api';
 import { RevenueOverview } from './revenue/RevenueOverview';
 import { PipelineFunnel } from './revenue/PipelineFunnel';
 import { QUERY_KEYS } from '../constants/queryKeys';
@@ -60,7 +62,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   setShowDayCloser,
   queryClient,
   startDayMutation,
-  completeMorningRitualMutation
+  completeMorningRitualMutation,
+  tasks = []
 }) => {
   const [dashboardTab, setDashboardTab] = useState<'action' | 'analysis'>('action');
   
@@ -335,6 +338,79 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </Card>
               )}
             </section>
+
+            {/* Ghosting Önleyici Akıllı Hatırlatıcılar */}
+            {(tasks || []).filter(t => t.is_drip && !t.completed).length > 0 && (
+              <section className="space-y-4">
+                <div className="flex justify-between items-center px-1">
+                  <div className="flex items-center gap-2">
+                    <Ghost size={18} className="text-orange-500" />
+                    <h2 className="text-lg font-bold text-slate-900 tracking-tight">Ghosting Önleyici</h2>
+                  </div>
+                  <Badge variant="warning" className="bg-orange-100 text-orange-600 border-none px-2 py-0.5">
+                    {(tasks || []).filter(t => t.is_drip && !t.completed).length} Kritik Takip
+                  </Badge>
+                </div>
+                
+                <div className="space-y-3">
+                  {(tasks || []).filter(t => t.is_drip && !t.completed).map(task => (
+                    <Card key={task.id} className="p-4 md:p-6 bg-white border-l-4 border-l-orange-500 shadow-xl shadow-orange-500/5 group">
+                      <div className="flex flex-col gap-4">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-orange-50 rounded-xl flex items-center justify-center text-orange-600">
+                              <MessageSquare size={20} />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-slate-900">{task.title}</h4>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Akıllı Hatırlatıcı</p>
+                            </div>
+                          </div>
+                          <button 
+                            onClick={() => api.updateTaskStatus(task.id, true).then(() => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS, profile?.id] }))}
+                            className="p-2 hover:bg-emerald-50 hover:text-emerald-600 text-slate-400 rounded-lg transition-colors"
+                          >
+                            <CheckCircle2 size={18} />
+                          </button>
+                        </div>
+                        
+                        <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 relative">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Sparkles size={12} className="text-orange-500" />
+                            <span className="text-[10px] font-bold text-orange-600 uppercase tracking-widest">AI Koç Önerisi</span>
+                          </div>
+                          <p className="text-xs text-slate-700 leading-relaxed italic">
+                            {task.ai_suggestion}
+                          </p>
+                          <div className="mt-4 flex gap-2">
+                            <button 
+                              onClick={() => {
+                                const msg = task.ai_suggestion?.match(/"([^"]+)"/)?.[1] || task.ai_suggestion;
+                                navigator.clipboard.writeText(msg || '');
+                              }}
+                              className="flex-1 flex items-center justify-center gap-2 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-95"
+                            >
+                              <Copy size={12} />
+                              Mesajı Kopyala
+                            </button>
+                            <button 
+                              onClick={() => {
+                                const msg = task.ai_suggestion?.match(/"([^"]+)"/)?.[1] || task.ai_suggestion;
+                                window.open(`https://wa.me/?text=${encodeURIComponent(msg || '')}`);
+                              }}
+                              className="flex-1 flex items-center justify-center gap-2 py-2 bg-emerald-500 text-white rounded-xl text-[10px] font-bold hover:bg-emerald-600 shadow-lg shadow-emerald-200 transition-all active:scale-95"
+                            >
+                              <Send size={12} />
+                              Hemen Gönder
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+                </div>
+              </section>
+            )}
 
             <section className="space-y-4">
               <div className="flex justify-between items-center px-1">

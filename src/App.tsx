@@ -25,6 +25,7 @@ import { PricingScreen } from './components/PricingScreen';
 import { QUERY_KEYS } from './constants/queryKeys';
 import { useCategories } from './hooks/useCategories';
 import { PublicPresentation } from './pages/PublicPresentation';
+import { ClientPortalPage } from './pages/ClientPortalPage';
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 2, staleTime: 1000 * 60 * 5 } },
@@ -56,13 +57,17 @@ function MainApp() {
   const [showMissedOpportunities, setShowMissedOpportunities] = useState(false);
   const [showRegionSetup, setShowRegionSetup] = useState(false);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showAddTask, setShowAddTask] = useState(false);
+  const [showDocumentAutomation, setShowDocumentAutomation] = useState(false);
+  const [documentAutomationProperty, setDocumentAutomationProperty] = useState<any | null>(null);
+  const [documentAutomationLead, setDocumentAutomationLead] = useState<any | null>(null);
 
   const closeAllModals = () => {
     setShowQuickAdd(false); setShowVoiceQuickAdd(false); setShowAddProperty(false);
     setShowAddLead(false); setShowAddVisit(false); setShowWhatsAppImport(false);
     setShowDailyRadar(false); setShowDayCloser(false); setShowIntegrationModal(false);
     setShowExternalListings(false); setShowImportUrlModal(false); setShowMissedOpportunities(false);
-    setShowRegionSetup(false);
+    setShowRegionSetup(false); setShowAddTask(false); setShowDocumentAutomation(false);
   };
 
   const [selectedProperty, setSelectedProperty] = useState<any | null>(null);
@@ -105,9 +110,97 @@ function MainApp() {
   const checkLeadsLimit = () => { if (isFree && leads.length >= 10) { setShowQuickAdd(false); setShowUpgradeModal(true); return false; } return true; };
 
   const navigationProps: NavigationProps = { activeTab, setActiveTab, showAdminPanel, setShowAdminPanel, logout, profile, updateProfileMutation };
-  const leadProps: LeadProps = { leads, leadsLoading: false, categories, setShowWhatsAppImport, setShowAddLead: (show) => { if (show && !checkLeadsLimit()) return; setShowAddLead(show); }, setIsAnalyzingLeads, analyzeLeadsMutation, isAnalyzingLeads, addLeadMutation, updateLeadMutation, deleteLeadMutation, leadAnalysis, setLeadAnalysis, showAddLead, showWhatsAppImport, selectedLead, setSelectedLead, isEditingLead, setIsEditingLead };
-  const portfolioProps: PortfolioProps = { properties, propertiesLoading: false, setSelectedProperty, selectedDistrict, setSelectedDistrict, viewMode, setViewMode, setShowImportUrlModal, regionScores, brokerAccount, setShowExternalListings, setShowIntegrationModal, syncListingsMutation, linkPropertyMutation, connectIntegrationMutation, showAddProperty, setShowAddProperty: (show) => { if (show && !checkPortfoliosLimit()) return; setShowAddProperty(show); }, showImportUrlModal, showIntegrationModal, showExternalListings, selectedProperty, externalListings, isEditing, setIsEditing, setShowRegionSetup };
-  const utilityProps: UtilityProps = { gamifiedTasks, tasksLoading, tasksError, personalTasks, tasks, rescueSession, missedOpportunities, setShowDailyRadar, setShowDayCloser, setShowMissedOpportunities, setToast, completeMorningRitualMutation, showVoiceQuickAdd, setShowVoiceQuickAdd, addTaskMutation, showAddVisit, setShowAddVisit, addVisitMutation, fieldVisits, cancelRescueMutation, completeRescueTaskMutation, showMissedOpportunities, setActiveTab };
+  const leadProps: LeadProps = { 
+    leads, 
+    leadsLoading: false, 
+    categories, 
+    setShowWhatsAppImport, 
+    setShowAddLead: (show) => { if (show && !checkLeadsLimit()) return; setShowAddLead(show); }, 
+    setIsAnalyzingLeads, 
+    analyzeLeadsMutation, 
+    isAnalyzingLeads, 
+    addLeadMutation, 
+    updateLeadMutation, 
+    deleteLeadMutation, 
+    leadAnalysis, 
+    setLeadAnalysis, 
+    showAddLead, 
+    showWhatsAppImport, 
+    selectedLead, 
+    setSelectedLead, 
+    isEditingLead, 
+    setIsEditingLead,
+    setShowDocumentAutomation,
+    setDocumentAutomationLead,
+    setDocumentAutomationProperty
+  };
+  const portfolioProps: PortfolioProps = { 
+    properties, 
+    propertiesLoading: false, 
+    setSelectedProperty, 
+    selectedDistrict, 
+    setSelectedDistrict, 
+    viewMode, 
+    setViewMode, 
+    setShowImportUrlModal, 
+    regionScores, 
+    brokerAccount, 
+    setShowExternalListings, 
+    setShowIntegrationModal, 
+    syncListingsMutation, 
+    linkPropertyMutation, 
+    connectIntegrationMutation, 
+    showAddProperty, 
+    setShowAddProperty: (show) => { if (show && !checkPortfoliosLimit()) return; setShowAddProperty(show); }, 
+    showImportUrlModal, 
+    showIntegrationModal, 
+    showExternalListings, 
+    selectedProperty, 
+    externalListings, 
+    isEditing, 
+    setIsEditing, 
+    setShowRegionSetup,
+    setShowAddTask,
+    tasks,
+    setShowDocumentAutomation,
+    setDocumentAutomationProperty,
+    setDocumentAutomationLead
+  };
+  const utilityProps: UtilityProps = { 
+    gamifiedTasks, 
+    tasksLoading, 
+    tasksError, 
+    personalTasks, 
+    tasks, 
+    rescueSession, 
+    missedOpportunities, 
+    setShowDailyRadar, 
+    setShowDayCloser, 
+    setShowMissedOpportunities, 
+    setToast, 
+    completeMorningRitualMutation, 
+    showVoiceQuickAdd, 
+    setShowVoiceQuickAdd, 
+    showAddTask,
+    setShowAddTask,
+    addTaskMutation, 
+    showAddVisit, 
+    setShowAddVisit, 
+    addVisitMutation, 
+    fieldVisits, 
+    cancelRescueMutation, 
+    completeRescueTaskMutation, 
+    showMissedOpportunities, 
+    setActiveTab,
+    leads,
+    properties,
+    showDocumentAutomation,
+    setShowDocumentAutomation,
+    documentAutomationProperty,
+    documentAutomationLead,
+    profile,
+    addLeadMutation
+  };
 
   const appProps = { navigation: navigationProps, leads: leadProps, portfolios: portfolioProps, utilities: utilityProps };
 
@@ -136,7 +229,15 @@ function MainApp() {
 />
       <FloatingActionButton onClick={() => setShowQuickAdd(true)} />
 
-      <QuickAddMenu show={showQuickAdd} onClose={() => setShowQuickAdd(false)} onVoice={() => { closeAllModals(); setShowVoiceQuickAdd(true); }} onVisit={() => { closeAllModals(); setShowAddVisit(true); }} onLead={() => { if(checkLeadsLimit()) { closeAllModals(); setShowAddLead(true); } }} onPortfolio={() => { if(checkPortfoliosLimit()) { closeAllModals(); setIsEditing(false); setShowAddProperty(true); } }} />
+      <QuickAddMenu 
+        show={showQuickAdd} 
+        onClose={() => setShowQuickAdd(false)} 
+        onVoice={() => { closeAllModals(); setShowVoiceQuickAdd(true); }} 
+        onVisit={() => { closeAllModals(); setShowAddVisit(true); }} 
+        onLead={() => { if(checkLeadsLimit()) { closeAllModals(); setShowAddLead(true); } }} 
+        onPortfolio={() => { if(checkPortfoliosLimit()) { closeAllModals(); setIsEditing(false); setShowAddProperty(true); } }} 
+        onActivity={() => { closeAllModals(); setShowAddTask(true); }}
+      />
       
       <AppModals {...appProps} />
       <MobileNav activeTab={activeTab} showAdminPanel={showAdminPanel} profile={profile} onTabChange={(tab) => { setActiveTab(tab); setShowAdminPanel(false); }} onAdminClick={() => setShowAdminPanel(true)} />
@@ -183,6 +284,14 @@ export default function App() {
     return (
       <QueryClientProvider client={queryClient}>
         <PublicPresentation propertyId={propertyId} />
+      </QueryClientProvider>
+    );
+  }
+
+  if (path.startsWith('/portal/')) {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ClientPortalPage />
       </QueryClientProvider>
     );
   }

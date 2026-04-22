@@ -15,38 +15,25 @@ import {
   MessageSquare, 
   MapPin,
   User as UserIcon,
+  Users,
   Phone,
   Plus,
   Edit2,
   Trash2,
   Upload,
   Database,
-  Loader2
+  Loader2,
+  CheckCircle2,
+  ClipboardList,
+  FileText,
+  Radar as RadarIcon
 } from 'lucide-react';
-import { Property } from '../../types';
+import { Property, Lead } from '../../types';
 import { Badge, Card } from '../UI';
 import { MagicLinkButton } from '../premium/MagicLinkButton';
+import { OwnerPortalButton } from '../premium/OwnerPortalButton';
+import { CompetitorRadar } from './CompetitorRadar';
 import { api } from '../../services/api';
-
-const Users = ({ size, className }: { size: number, className?: string }) => (
-  <svg 
-    xmlns="http://www.w3.org/2000/svg" 
-    width={size} 
-    height={size} 
-    viewBox="0 0 24 24" 
-    fill="none" 
-    stroke="currentColor" 
-    strokeWidth="2" 
-    strokeLinecap="round" 
-    strokeLinejoin="round" 
-    className={className}
-  >
-    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
-    <circle cx="9" cy="7" r="4" />
-    <path d="M22 21v-2a4 4 0 0 0-3-3.87" />
-    <path d="M16 3.13a4 4 0 0 1 0 7.75" />
-  </svg>
-);
 
 interface PropertyDetailModalProps {
   selectedProperty: Property | null;
@@ -60,8 +47,13 @@ interface PropertyDetailModalProps {
   onDelete: () => void;
   onUploadImage: (file: File) => void;
   isUploading: boolean;
-  isDeleting?: boolean; // YENİ: Siliniyor durumu
+  isDeleting?: boolean;
   magicLinkSlot?: React.ReactNode;
+  setShowAddTask?: (show: boolean) => void;
+  tasks?: any[];
+  setShowDocumentAutomation?: (val: boolean) => void;
+  setDocumentAutomationProperty?: (val: Property | null) => void;
+  setDocumentAutomationLead?: (val: Lead | null) => void;
 }
 
 export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
@@ -76,10 +68,18 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
   onDelete,
   onUploadImage,
   isUploading,
-  isDeleting = false, // Varsayılan değer eklendi
-  magicLinkSlot
+  isDeleting = false,
+  magicLinkSlot,
+  setShowAddTask,
+  tasks = [],
+  setShowDocumentAutomation,
+  setDocumentAutomationProperty,
+  setDocumentAutomationLead
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+  
+  // YENİ: Tarayıcı engellerine karşı kendi özel onay (confirm) mekanizmamız
+  const [confirmDelete, setConfirmDelete] = React.useState(false);
 
   const { data: liveMarketAnalysis, isLoading: isMarketLoading } = useQuery({
     queryKey: ['liveMarketAnalysis', selectedProperty?.id],
@@ -144,7 +144,7 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
           {/* Header Image */}
           <div className="relative h-64 shrink-0">
             <img 
-              src={selectedProperty.images[selectedProperty.images.length - 1] || `https://picsum.photos/seed/${selectedProperty.id}/800/600`} 
+              src={selectedProperty.images?.[selectedProperty.images?.length - 1] || `https://picsum.photos/seed/${selectedProperty.id}/800/600`} 
               className="w-full h-full object-cover"
               alt={selectedProperty.title}
               referrerPolicy="no-referrer"
@@ -158,20 +158,42 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                 <Edit2 size={20} />
               </button>
               
-              {/* SİLME BUTONU GÜNCELLENDİ: Spinner ve e.stopPropagation eklendi */}
-              <button 
-                onClick={(e) => {
-                  e.stopPropagation(); // Tıklamanın başka yerleri tetiklemesini engeller
-                  if (window.confirm('Bu portföyü silmek istediğinize emin misiniz?')) {
-                    onDelete();
-                  }
-                }}
-                disabled={isDeleting}
-                className="p-3 bg-red-500/20 backdrop-blur-md text-white rounded-2xl hover:bg-red-500/40 transition-all disabled:opacity-50"
-                title="Sil"
-              >
-                {isDeleting ? <Loader2 size={20} className="animate-spin" /> : <Trash2 size={20} />}
-              </button>
+              {/* YENİ SİLME BUTONU: Tarayıcı engelini aşan özel UI */}
+              {confirmDelete ? (
+                <div className="flex items-center gap-2 bg-red-600/95 backdrop-blur-xl p-1.5 pr-4 rounded-2xl shadow-xl animate-in fade-in slide-in-from-left-4">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setConfirmDelete(false); }}
+                    className="p-2 bg-white/20 text-white rounded-xl hover:bg-white/30 transition-all"
+                  >
+                    <X size={16} />
+                  </button>
+                  <span className="text-white text-xs font-bold whitespace-nowrap">Kalıcı Silinsin mi?</span>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setConfirmDelete(false);
+                      onDelete();
+                    }}
+                    disabled={isDeleting}
+                    className="px-3 py-1.5 bg-white text-red-600 rounded-xl text-xs font-black shadow-sm hover:bg-red-50 transition-all flex items-center gap-1"
+                  >
+                    {isDeleting ? <Loader2 size={14} className="animate-spin" /> : null}
+                    EVET
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setConfirmDelete(true);
+                  }}
+                  disabled={isDeleting}
+                  className="p-3 bg-red-500/20 backdrop-blur-md text-white rounded-2xl hover:bg-red-500/40 transition-all disabled:opacity-50"
+                  title="Sil"
+                >
+                  {isDeleting ? <Loader2 size={20} className="animate-spin" /> : <Trash2 size={20} />}
+                </button>
+              )}
 
               <button 
                 onClick={() => fileInputRef.current?.click()}
@@ -230,18 +252,50 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
           <div className="flex-1 overflow-auto p-8 space-y-8 no-scrollbar">
 
             {/* SİHİRLİ LİNK BANNER'I */}
-            <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-3xl p-6 border border-indigo-100 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
-              <div>
-                <h3 className="text-lg font-black text-indigo-900 flex items-center gap-2">
-                  <Sparkles className="text-indigo-500" size={20} />
-                  Müşteriye Özel Sunum
-                </h3>
-                <p className="text-sm text-indigo-700 font-medium mt-1">Bu portföy için kendi fotoğrafın ve markanla anında web sitesi linki oluştur.</p>
-              </div>
-              <div className="w-full sm:w-auto min-w-[220px]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-3xl p-6 border border-indigo-100 shadow-sm flex flex-col items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-black text-indigo-900 flex items-center gap-2">
+                    <Sparkles className="text-indigo-500" size={16} />
+                    Alıcı Sunumu
+                  </h3>
+                  <p className="text-[10px] text-indigo-700 font-medium mt-1">İlanın web sitesi linkini paylaş.</p>
+                </div>
                 {magicLinkSlot || <MagicLinkButton propertyId={selectedProperty.id} />}
               </div>
+
+              <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-3xl p-6 border border-slate-700 shadow-sm flex flex-col items-start justify-between gap-4">
+                <div>
+                  <h3 className="text-sm font-black text-white flex items-center gap-2">
+                    <TrendingUp className="text-indigo-400" size={16} />
+                    Mülk Sahibi Portalı
+                  </h3>
+                  <p className="text-[10px] text-slate-400 font-medium mt-1">Şeffaflık raporu linkini mülk sahibine gönder.</p>
+                </div>
+                <OwnerPortalButton propertyId={selectedProperty.id} />
+              </div>
             </div>
+
+            {/* DOKÜMAN OTOMASYONU BUTONU */}
+            <button 
+              onClick={() => {
+                setDocumentAutomationProperty?.(selectedProperty);
+                setDocumentAutomationLead?.(null); // Mülk detayındayız, müşteri henüz seçili değil
+                setShowDocumentAutomation?.(true);
+              }}
+              className="w-full p-5 bg-white border-2 border-slate-100 rounded-3xl flex items-center justify-between hover:border-orange-500 transition-all group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600">
+                  <FileText size={24} />
+                </div>
+                <div className="text-left">
+                  <div className="text-base font-black text-slate-900">Resmi Doküman Oluştur</div>
+                  <div className="text-xs text-slate-400 mt-1">Yer gösterme, yetki sözleşmesi veya teklif formu</div>
+                </div>
+              </div>
+              <Plus size={24} className="text-slate-300 group-hover:text-orange-500 transition-all" />
+            </button>
 
             {/* Veri Kaynakları Göstergesi */}
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -286,6 +340,15 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
               </Card>
             </div>
 
+            {/* Rekabet Radarı */}
+            <div className="space-y-4">
+              <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                <RadarIcon size={18} className="text-orange-600" />
+                Rekabet Radarı
+              </h3>
+              <CompetitorRadar property={selectedProperty} />
+            </div>
+
             <div className="grid grid-cols-3 gap-4">
               <div className="bg-slate-50 p-4 rounded-3xl text-center">
                 <div className="text-[10px] font-bold text-slate-400 uppercase mb-1">Oda</div>
@@ -301,7 +364,7 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
               </div>
             </div>
 
-            {/* Pazarlama Butonu vb... (Diğer kodlar aynen korundu) */}
+            {/* Pazarlama */}
             <div className="space-y-4">
               <h3 className="font-bold text-slate-900 flex items-center gap-2">
                 <Sparkles size={18} className="text-orange-600" />
@@ -324,7 +387,133 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                 <ChevronRight size={24} className="text-slate-500 group-hover:translate-x-1 group-hover:text-white transition-all" />
               </button>
             </div>
-            
+
+            {/* Matching Leads */}
+            <div className="space-y-4">
+              <h3 className="font-bold text-slate-900 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Activity size={18} className="text-orange-600" />
+                  Aktivite Geçmişi
+                </div>
+                {/* 
+                  NOT: Bu butonu App.tsx'teki showAddTask state'ine bağladık.
+                */}
+                <button 
+                  onClick={() => setShowAddTask?.(true)}
+                  className="text-[10px] font-bold text-orange-600 uppercase bg-orange-50 px-3 py-1 rounded-full hover:bg-orange-100 transition-colors"
+                >
+                  Yeni Ekle
+                </button>
+              </h3>
+              
+              {/* Activity List */}
+              <div className="space-y-3">
+                {(() => {
+                  const propertyTasks = tasks.filter(t => t.property_id === selectedProperty.id);
+                  if (propertyTasks.length === 0) {
+                    return (
+                      <div className="p-4 bg-slate-50 border border-slate-100 rounded-3xl text-center py-10">
+                        <ClipboardList size={32} className="text-slate-200 mx-auto mb-2" />
+                        <p className="text-xs text-slate-400">Bu portföy için henüz aktivite kaydedilmemiş.</p>
+                      </div>
+                    );
+                  }
+                  
+                  return propertyTasks.map(task => (
+                    <div key={task.id} className="p-4 bg-white border border-slate-100 rounded-2xl flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${
+                          task.type === 'Arama' ? 'bg-orange-100 text-orange-600' : 
+                          task.type === 'Randevu' ? 'bg-blue-100 text-blue-600' : 'bg-emerald-100 text-emerald-600'
+                        }`}>
+                          {task.type === 'Arama' ? <Phone size={18} /> : 
+                           task.type === 'Randevu' ? <Users size={18} /> : <MapPin size={18} />}
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-slate-900">{task.title}</div>
+                          <div className="text-[10px] text-slate-400 font-medium">
+                            {new Date(task.due_date).toLocaleDateString('tr-TR')}
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {task.completed && <CheckCircle2 size={16} className="text-emerald-500" />}
+                      </div>
+                    </div>
+                  ));
+                })()}
+              </div>
+            </div>
+
+            {/* Matching Leads */}
+            <div className="space-y-4">
+              <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                <Users size={18} className="text-orange-600" />
+                Eşleşen Müşteriler
+              </h3>
+              <div className="space-y-3">
+                {(matchedLeads || []).length === 0 ? (
+                  <Card className="bg-slate-50 border-dashed border-slate-200 p-10 flex flex-col items-center text-center gap-6">
+                    <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-slate-300 shadow-sm">
+                      <Users size={40} />
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-base font-bold text-slate-900">Henüz otomatik eşleşme yok</h4>
+                      <p className="text-xs text-slate-500 max-w-[240px] mx-auto">
+                        Bu mülk için şu an aktif bir adayımız bulunmuyor.
+                      </p>
+                    </div>
+                  </Card>
+                ) : (matchedLeads || []).slice(0, 3).map(lead => (
+                  <Card key={lead.id} className="p-5 space-y-4 bg-white border-slate-100">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400">
+                          <UserIcon size={24} />
+                        </div>
+                        <div>
+                          <div className="text-sm font-bold text-slate-900">{lead.name}</div>
+                          <div className="flex gap-2 mt-1">
+                            <Badge variant="success">Uyumluluk: %92</Badge>
+                            <Badge variant="info">Bütçe: Uygun</Badge>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex gap-2">
+                        <button className="p-3 bg-slate-50 text-slate-600 rounded-2xl hover:bg-slate-100 transition-colors">
+                          <Phone size={18} />
+                        </button>
+                        <button 
+                          onClick={() => {
+                            const cleanPhone = lead.phone.replace(/\D/g, '');
+                            const waPhone = cleanPhone.startsWith('0') ? '9' + cleanPhone : (cleanPhone.length === 10 ? '90' + cleanPhone : cleanPhone);
+                            const text = encodeURIComponent(`Merhaba ${lead.name}, bu mülk ilginizi çekebilir: ${selectedProperty.title || ''}\nFiyat: ₺${selectedProperty.price.toLocaleString()}\nDetaylar için: https://portfy.app/ilan/${selectedProperty.id}`);
+                            window.open(`https://wa.me/${waPhone}?text=${text}`, '_blank');
+                          }}
+                          className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl hover:bg-emerald-100 transition-colors"
+                        >
+                          <MessageSquare size={18} />
+                        </button>
+                      </div>
+                    </div>
+                    <div className="p-3 bg-slate-50 rounded-2xl text-[10px] text-slate-500 italic">
+                      "Müşteri bölgede arayışta, bütçesi bu ilan için ideal."
+                    </div>
+                    <button className="w-full py-2 border border-slate-200 rounded-xl text-[10px] font-bold text-slate-400 flex items-center justify-center gap-2">
+                      <Plus size={12} /> Not Ekle
+                    </button>
+                  </Card>
+                ))}
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <h3 className="font-bold text-slate-900">Konum Bilgisi</h3>
+              <div className="flex items-center gap-3 text-slate-500 text-sm">
+                <MapPin size={18} />
+                <span>{selectedProperty.address?.neighborhood}, {selectedProperty.address?.district}, {selectedProperty.address?.city}</span>
+              </div>
+            </div>
           </div>
         </motion.div>
       </motion.div>
