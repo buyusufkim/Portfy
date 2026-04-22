@@ -22,7 +22,47 @@ export const aiService = {
 
     return { current: currentUsage, limit };
   },
+/**
+   * Kartvizitten Lead Çıkarma (OCR Asistanı)
+   */
+  parseBusinessCard: async (base64Image: string, mimeType: string): Promise<any> => {
+    const prompt = `
+      Sen yetenekli bir OCR ve veri çıkarma asistanısın. 
+      Bu kartvizit görselini analiz et ve bir emlak müşterisi (Lead) kaydı oluşturmak için şu bilgileri çıkar:
+      İsim (name), Telefon (phone), E-posta (email), ve eğer varsa Şirket/Unvan/Adres bilgisini notlar (notes) kısmına yaz.
+      Telefon numarasını başında 0 olacak şekilde (örn: 05551234567) ve boşluksuz formatla.
+      Bulamadığın alanları boş string ("") olarak bırak.
+      
+      Yanıtı sadece JSON formatında ver:
+      {
+        "name": "İsim Soyisim",
+        "phone": "Telefon numarası",
+        "email": "E-posta",
+        "notes": "Unvan / Şirket / Ek bilgiler"
+      }
+    `;
 
+    // Gemini API'sine gönderilecek format
+    const contents = [
+      {
+        role: 'user',
+        parts: [
+          { text: prompt },
+          { inlineData: { data: base64Image.split(',')[1], mimeType: mimeType } } // Base64 başlığını temizliyoruz
+        ]
+      }
+    ];
+
+    try {
+      // aiClient içindeki mevcut generateContent fonksiyonunu kullanıyoruz
+      const response = await generateContent("gemini-2.0-flash", contents, { responseMimeType: "application/json" });
+      return response;
+    } catch (error) {
+      console.error("Business Card OCR Error:", error);
+      throw new Error("Kartvizit okunamadı. Görselin net olduğundan emin olun.");
+    }
+  },
+  
   getDailyRadar: async (): Promise<{ tasks: string[], insight: string }> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');

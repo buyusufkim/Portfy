@@ -1,13 +1,13 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MapPin, Users, Home, Activity } from 'lucide-react';
+import { Mic, MapPin, Users, Home } from 'lucide-react';
 
 const QuickAddBtn = ({ icon, label, color, onClick }: { icon: React.ReactNode, label: string, color: string, onClick?: () => void }) => (
   <button onClick={onClick} className="flex flex-col items-center gap-3 group">
-    <div className={`w-16 h-16 ${color} rounded-3xl flex items-center justify-center transition-transform group-active:scale-90`}>
+    <div className={`w-16 h-16 ${color} rounded-3xl flex items-center justify-center transition-transform group-active:scale-90 shadow-sm`}>
       {icon}
     </div>
-    <span className="text-xs font-bold text-slate-600 truncate max-w-full">{label}</span>
+    <span className="text-xs font-bold text-slate-600">{label}</span>
   </button>
 );
 
@@ -18,7 +18,6 @@ interface QuickAddMenuProps {
   onVisit: () => void;
   onLead: () => void;
   onPortfolio: () => void;
-  onActivity: () => void;
 }
 
 export const QuickAddMenu = ({ 
@@ -27,8 +26,7 @@ export const QuickAddMenu = ({
   onVoice, 
   onVisit, 
   onLead, 
-  onPortfolio,
-  onActivity
+  onPortfolio 
 }: QuickAddMenuProps) => (
   <AnimatePresence>
     {show && (
@@ -49,7 +47,8 @@ export const QuickAddMenu = ({
         >
           <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8" />
           <h2 className="text-xl font-bold text-slate-900 mb-6 text-center">Hızlı Kayıt</h2>
-          <div className="grid grid-cols-5 gap-2 px-1">
+          
+          <div className="flex flex-wrap justify-center gap-6">
             <QuickAddBtn 
               onClick={onVoice}
               icon={<Mic size={24} />} 
@@ -65,8 +64,8 @@ export const QuickAddMenu = ({
             <QuickAddBtn 
               onClick={onLead}
               icon={<Users size={24} />} 
-              label="Müşteri" 
-              color="bg-emerald-50 text-emerald-600" 
+              label="Lead" 
+              color="bg-blue-50 text-blue-600" 
             />
             <QuickAddBtn 
               onClick={onPortfolio}
@@ -74,16 +73,11 @@ export const QuickAddMenu = ({
               label="Portföy" 
               color="bg-purple-50 text-purple-600" 
             />
-            <QuickAddBtn 
-              onClick={onActivity}
-              icon={<Activity size={24} />} 
-              label="Aktivite" 
-              color="bg-blue-50 text-blue-600" 
-            />
           </div>
+
           <button 
             onClick={onClose}
-            className="w-full mt-8 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm"
+            className="w-full mt-8 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold text-sm transition-colors"
           >
             Vazgeç
           </button>

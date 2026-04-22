@@ -26,6 +26,9 @@ import { QUERY_KEYS } from './constants/queryKeys';
 import { useCategories } from './hooks/useCategories';
 import { PublicPresentation } from './pages/PublicPresentation';
 import { ClientPortalPage } from './pages/ClientPortalPage';
+import { LeadEntryMethodModal } from './components/crm/LeadEntryMethodModal';
+import { BusinessCardScannerModal } from './components/crm/BusinessCardScannerModal';
+
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 2, staleTime: 1000 * 60 * 5 } },
@@ -68,6 +71,7 @@ function MainApp() {
     setShowDailyRadar(false); setShowDayCloser(false); setShowIntegrationModal(false);
     setShowExternalListings(false); setShowImportUrlModal(false); setShowMissedOpportunities(false);
     setShowRegionSetup(false); setShowAddTask(false); setShowDocumentAutomation(false);
+    setShowRegionSetup(false); setShowLeadMethodModal(false); setShowScanner(false);
   };
 
   const [selectedProperty, setSelectedProperty] = useState<any | null>(null);
@@ -203,6 +207,8 @@ function MainApp() {
   };
 
   const appProps = { navigation: navigationProps, leads: leadProps, portfolios: portfolioProps, utilities: utilityProps };
+  const [showLeadMethodModal, setShowLeadMethodModal] = useState(false);
+  const [showScanner, setShowScanner] = useState(false);
 
   return (
     <div className="min-h-screen bg-slate-50 pb-28 md:pb-0 font-sans text-slate-900 overflow-x-hidden">
@@ -234,9 +240,27 @@ function MainApp() {
         onClose={() => setShowQuickAdd(false)} 
         onVoice={() => { closeAllModals(); setShowVoiceQuickAdd(true); }} 
         onVisit={() => { closeAllModals(); setShowAddVisit(true); }} 
-        onLead={() => { if(checkLeadsLimit()) { closeAllModals(); setShowAddLead(true); } }} 
+        onLead={() => { if(checkLeadsLimit()) { closeAllModals(); setShowLeadMethodModal(true); } }} 
         onPortfolio={() => { if(checkPortfoliosLimit()) { closeAllModals(); setIsEditing(false); setShowAddProperty(true); } }} 
-        onActivity={() => { closeAllModals(); setShowAddTask(true); }}
+      />
+      <LeadEntryMethodModal
+        isOpen={showLeadMethodModal}
+        onClose={() => setShowLeadMethodModal(false)}
+        onSelectManual={() => { setShowLeadMethodModal(false); setShowAddLead(true); }}
+        onSelectScan={() => { setShowLeadMethodModal(false); setShowScanner(true); }}
+      />
+
+      <BusinessCardScannerModal 
+        isOpen={showScanner} 
+        onClose={() => setShowScanner(false)} 
+        onSuccess={(scannedData) => {
+          setShowScanner(false);
+          addLeadMutation.mutate(scannedData, {
+            onSuccess: () => {
+              setToast({ message: "Kartvizit başarıyla Lead olarak kaydedildi!", type: 'success' });
+            }
+          });
+        }} 
       />
       
       <AppModals {...appProps} />

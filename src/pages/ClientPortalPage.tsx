@@ -1,5 +1,4 @@
 import React from 'react';
-import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { portalService } from '../services/portalService';
 import { 
@@ -20,12 +19,12 @@ import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
 export const ClientPortalPage: React.FC = () => {
-  const { propertyId } = useParams<{ propertyId: string }>();
+  const token = window.location.pathname.split('/portal/')[1];
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['portal', propertyId],
-    queryFn: () => portalService.getPropertyData(propertyId!),
-    enabled: !!propertyId,
+    queryKey: ['portal', token],
+    queryFn: () => portalService.getSecurePortalData(token!),
+    enabled: !!token,
   });
 
   if (isLoading) {
@@ -59,8 +58,7 @@ export const ClientPortalPage: React.FC = () => {
     );
   }
 
-  const { property, stats, recentActivities } = data;
-  const agent = (property as any).profiles;
+  const { property, agent, stats, recentActivities } = data;
 
   return (
     <div className="min-h-screen bg-slate-50 pb-12">

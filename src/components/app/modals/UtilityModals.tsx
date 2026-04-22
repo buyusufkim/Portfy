@@ -3,7 +3,8 @@ import { AddVisitModal } from './AddVisitModal';
 import { RescueModeModal } from './RescueModeModal';
 import { MissedOpportunitiesModal } from './MissedOpportunitiesModal';
 import { AddTaskModal } from './AddTaskModal';
-import { DocumentAutomationModal } from '../../documents/DocumentAutomationModal';
+// Lazy load DocumentAutomationModal
+const DocumentAutomationModal = React.lazy(() => import('../../documents/DocumentAutomationModal').then(m => ({ default: m.DocumentAutomationModal })));
 
 import { Task, Building, RescueSession, MissedOpportunity, MutationResult, Lead, Property, UserProfile } from '../../../types';
 
@@ -86,16 +87,20 @@ export const UtilityModals: React.FC<UtilityModalsProps> = ({
         missedOpportunities={missedOpportunities} 
         setActiveTab={setActiveTab} 
       />
-      <DocumentAutomationModal 
-        isOpen={showDocumentAutomation}
-        onClose={() => setShowDocumentAutomation(false)}
-        property={documentAutomationProperty}
-        lead={documentAutomationLead}
-        agentProfile={profile}
-        allLeads={leads}
-        allProperties={properties}
-        addLeadMutation={addLeadMutation}
-      />
+      <React.Suspense fallback={null}>
+        {showDocumentAutomation && (
+          <DocumentAutomationModal 
+            isOpen={showDocumentAutomation}
+            onClose={() => setShowDocumentAutomation(false)}
+            property={documentAutomationProperty}
+            lead={documentAutomationLead}
+            agentProfile={profile}
+            allLeads={leads}
+            allProperties={properties}
+            addLeadMutation={addLeadMutation}
+          />
+        )}
+      </React.Suspense>
     </>
   );
 };

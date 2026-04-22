@@ -115,10 +115,13 @@ export interface Task {
   lead_id?: string;
   title: string;
   time: string;
+  due_date?: string;
+  notes?: string;
   type: 'Arama' | 'Randevu' | 'Saha' | 'Takip' | 'Güncelleme' | 'Sosyal Medya';
   completed: boolean;
   is_drip?: boolean;
   ai_suggestion?: string;
+  drip_type?: string;
 }
 
 export interface Property {

@@ -1,6 +1,3 @@
-import { jsPDF } from 'jspdf';
-import html2canvas from 'html2canvas';
-
 export type DocumentType = 'yer-gosterme' | 'yetki-sozlesmesi' | 'teklif-formu';
 
 interface DocumentData {
@@ -16,7 +13,12 @@ export const documentService = {
     const element = document.getElementById(elementId);
     if (!element) return;
 
-    const canvas = await html2canvas(element, {
+    // Dynamically import heavy libraries only when needed
+    const { jsPDF } = await import('jspdf');
+    const html2canvasModule = await import('html2canvas');
+    const html2canvas = html2canvasModule.default ? html2canvasModule.default : html2canvasModule;
+
+    const canvas = await (html2canvas as any)(element, {
       scale: 2,
       useCORS: true,
       logging: false,

@@ -37,7 +37,7 @@ export const coachService = {
 
     try {
       const response: any = await generateContent(
-        "gemini-2.5-flash",
+        "gemini-2.0-flash",
         prompt,
         {
           // @ts-ignore
@@ -46,7 +46,6 @@ export const coachService = {
         }
       );
 
-      // JSON.parse çöpe gitti!
       return response as AICoachResponse;
     } catch (error) {
       console.error("AI Coach Service Error:", error);
@@ -101,7 +100,7 @@ export const coachService = {
 
     try {
       const response: any = await generateContent(
-        'gemini-2.5-flash',
+        'gemini-2.0-flash',
         prompt,
         {
           responseMimeType: 'application/json',

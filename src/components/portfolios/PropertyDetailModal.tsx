@@ -32,7 +32,8 @@ import { Property, Lead } from '../../types';
 import { Badge, Card } from '../UI';
 import { MagicLinkButton } from '../premium/MagicLinkButton';
 import { OwnerPortalButton } from '../premium/OwnerPortalButton';
-import { CompetitorRadar } from './CompetitorRadar';
+// Lazy load the Competitor Radar component
+const CompetitorRadar = React.lazy(() => import('./CompetitorRadar').then(m => ({ default: m.CompetitorRadar })));
 import { api } from '../../services/api';
 
 interface PropertyDetailModalProps {
@@ -346,7 +347,9 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                 <RadarIcon size={18} className="text-orange-600" />
                 Rekabet Radarı
               </h3>
+            <React.Suspense fallback={<div className="p-4 flex items-center justify-center"><div className="w-6 h-6 border-2 border-orange-500 border-t-transparent animate-spin rounded-full"></div></div>}>
               <CompetitorRadar property={selectedProperty} />
+            </React.Suspense>
             </div>
 
             <div className="grid grid-cols-3 gap-4">

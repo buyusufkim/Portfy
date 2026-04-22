@@ -9,6 +9,8 @@ import { rateLimit } from 'express-rate-limit';
 // ✅ YENİ MARKET SCRAPER İÇERİ AKTARILDI (ESM formatına uygun olarak .js uzantısıyla)
 import { fetchMarketData } from "./server/marketScraper.js";
 
+import { handleGetPortalData } from "./server/portal-api.js";
+
 dotenv.config({ override: true });
 
 const app = express();
@@ -23,6 +25,9 @@ app.use((req, res, next) => {
   }
   next();
 });
+
+// Portal Endpoint (Public but requires secure token)
+app.get('/api/portal/:token', handleGetPortalData);
 
 // Secure Profile Endpoints
 app.post("/api/ai/generate", authenticate, aiLimiter, tokenTrackerMiddleware, handleAIGeneration);

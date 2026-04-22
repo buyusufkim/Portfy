@@ -142,7 +142,10 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
 
               <button 
                 onClick={() => {
-                  onSubmit(formData);
+                  onSubmit({
+                    ...formData,
+                    time: new Date(formData.due_date).toISOString()
+                  });
                   setFormData({
                     title: '',
                     type: 'Arama',

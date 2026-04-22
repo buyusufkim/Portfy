@@ -42,7 +42,7 @@ export const leadService = {
       console.warn("XP award failed for addLead:", e);
     }
 
-    return data.id;
+    return data as Lead;
   },
 
   updateLead: async (id: string, lead: Partial<Lead>) => {
