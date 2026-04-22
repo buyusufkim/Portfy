@@ -5,11 +5,12 @@ import { GoogleMap, useLoadScript, Marker } from '@react-google-maps/api';
 import { locationService } from '../../services/locationService';
 import { Property, Lead } from '../../types';
 import { api } from '../../services/api';
+import { useSmartMatch } from '../../hooks/useSmartMatch';
 
 interface AddPropertyModalProps {
   show: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => void;
+  onSubmit: (data: any) => any;
   isPending: boolean;
   initialData?: Property | null;
   leads: Lead[];
@@ -34,6 +35,8 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
   const [isUploading, setIsUploading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [showLeadResults, setShowLeadResults] = useState(false);
+  
+  const { runSmartMatchAsync } = useSmartMatch();
   
   const [formData, setFormData] = useState({
     title: initialData?.title || '',
@@ -119,7 +122,6 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
   };
 
   const handleAddressNext = () => {
-    // 2.adımdan haritaya geçerken seçilen mahalleye göre haritayı otomatik ortala
     if (!formData.address.lat && isLoaded && window.google) {
       const addressString = `${formData.address.neighborhood}, ${formData.address.district}, ${formData.address.city}, Türkiye`;
       const geocoder = new window.google.maps.Geocoder();
@@ -153,7 +155,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
     }
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (!formData.title || !formData.price || !formData.address.district) {
       alert('Lütfen zorunlu alanları doldurunuz (Başlık, Fiyat, İlçe)');
       return;
@@ -170,7 +172,25 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
         age: Number(formData.details.age)
       }
     };
-    onSubmit(payload);
+
+    try {
+      const result = await onSubmit(payload);
+      
+      if (!initialData && result) {
+        // ap.addProperty ID'yi doğrudan string döndürüyor olabilir
+        const propertyId = typeof result === 'string' ? result : result.id;
+        
+        if (propertyId) {
+          const matchedLeads = await runSmartMatchAsync(propertyId);
+          
+          if (matchedLeads && matchedLeads.length > 0) {
+             alert(`🎯 Akıllı Eşleşme (Smart Match) Bulundu!\n\nBu portföy kriterlerine uyan ${matchedLeads.length} sıcak müşteriniz var. AI Koç paneline bir fırsat bildirimi düştü.`);
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Submit işleminde hata:", error);
+    }
   };
 
   const steps = [
@@ -351,7 +371,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
               </div>
             )}
 
-            {/* YENİ ADIM 3: HARİTA ÜZERİNDEN TAM KONUM SEÇİMİ */}
+            {/* ADIM 3: HARİTA ÜZERİNDEN TAM KONUM SEÇİMİ */}
             {step === 3 && (
               <div className="space-y-6">
                 <div className="space-y-2">
@@ -368,7 +388,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                         center={
                           formData.address.lat && formData.address.lng 
                             ? { lat: formData.address.lat, lng: formData.address.lng } 
-                            : { lat: 38.7205, lng: 35.4826 } // Default Kayseri
+                            : { lat: 38.7205, lng: 35.4826 }
                         }
                         zoom={formData.address.lat ? 16 : 13}
                         onClick={handleMapClick}

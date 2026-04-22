@@ -55,8 +55,8 @@ CREATE TABLE IF NOT EXISTS tasks (
     id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
-    type TEXT, -- CHECK (type IN ('Arama', 'Randevu'...)) SİLİNDİ
-    category TEXT DEFAULT 'main', -- CHECK SİLİNDİ
+    type TEXT,
+    category TEXT DEFAULT 'main',
     time TIMESTAMPTZ,
     completed BOOLEAN DEFAULT FALSE,
     points INTEGER DEFAULT 10,
@@ -80,8 +80,8 @@ CREATE TABLE IF NOT EXISTS leads (
     name TEXT NOT NULL,
     phone TEXT,
     email TEXT,
-    type TEXT DEFAULT 'Alıcı', -- CHECK SİLİNDİ
-    status TEXT DEFAULT 'Aday', -- CHECK SİLİNDİ
+    type TEXT DEFAULT 'Alıcı',
+    status TEXT DEFAULT 'Aday',
     district TEXT,
     notes TEXT,
     last_contact TIMESTAMPTZ,
@@ -96,10 +96,10 @@ CREATE TABLE IF NOT EXISTS properties (
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     type TEXT NOT NULL,
-    category TEXT, -- CHECK (category IN ('Satılık', 'Kiralık')) SİLİNDİ
+    category TEXT,
     price NUMERIC(15, 2) NOT NULL,
     commission_rate NUMERIC(4, 2) DEFAULT 2.0,
-    status TEXT DEFAULT 'Yeni', -- CHECK SİLİNDİ
+    status TEXT DEFAULT 'Yeni',
     address JSONB NOT NULL,
     sale_probability NUMERIC(3, 2) DEFAULT 0.5,
     health_score NUMERIC DEFAULT 70,
@@ -173,6 +173,7 @@ CREATE TABLE IF NOT EXISTS gamified_tasks (
     points INTEGER DEFAULT 0,
     category TEXT CHECK (category IN ('main', 'smart', 'sweet')),
     is_completed BOOLEAN DEFAULT FALSE,
+    completed_at TIMESTAMPTZ,
     date DATE DEFAULT CURRENT_DATE,
     ai_reason TEXT,
     reminder_time TEXT,
@@ -257,6 +258,7 @@ CREATE TABLE IF NOT EXISTS personal_tasks (
     user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
     title TEXT NOT NULL,
     is_completed BOOLEAN DEFAULT FALSE,
+    completed_at TIMESTAMPTZ,
     due_date TIMESTAMPTZ,
     priority TEXT CHECK (priority IN ('low', 'medium', 'high')),
     reminder_time TEXT,
@@ -357,13 +359,16 @@ BEGIN
         END IF;
     END LOOP;
 
-    -- Personal Tasks is_completed fix
+    -- Personal Tasks is_completed & completed_at parity
     IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='personal_tasks' AND column_name='isCompleted') THEN
         IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='personal_tasks' AND column_name='is_completed') THEN
             ALTER TABLE personal_tasks RENAME COLUMN "isCompleted" TO is_completed;
         ELSE
             ALTER TABLE personal_tasks DROP COLUMN "isCompleted";
         END IF;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='personal_tasks' AND column_name='completed_at') THEN
+        ALTER TABLE personal_tasks ADD COLUMN completed_at TIMESTAMPTZ;
     END IF;
 
     -- Gamified Tasks parity
@@ -373,6 +378,9 @@ BEGIN
         ELSE
             ALTER TABLE gamified_tasks DROP COLUMN "isCompleted";
         END IF;
+    END IF;
+    IF NOT EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name='gamified_tasks' AND column_name='completed_at') THEN
+        ALTER TABLE gamified_tasks ADD COLUMN completed_at TIMESTAMPTZ;
     END IF;
 
     -- User Stats parity
@@ -415,3 +423,6 @@ CREATE INDEX IF NOT EXISTS idx_broker_accounts_user ON broker_accounts(user_id);
 CREATE INDEX IF NOT EXISTS idx_external_listings_user ON external_listings(user_id);
 CREATE INDEX IF NOT EXISTS idx_external_listings_ext_id ON external_listings(ext_id);
 CREATE INDEX IF NOT EXISTS idx_rescue_sessions_date ON rescue_sessions(user_id, date);
+
+-- 6. Reload Schema Cache to prevent "Could not find the column in the schema cache" errors
+NOTIFY pgrst, 'reload schema';

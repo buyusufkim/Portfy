@@ -140,11 +140,21 @@ export const propertyService = {
   },
 
   deleteProperty: async (id: string) => {
-    const { error } = await supabase
-      .from('properties')
-      .delete()
-      .eq('id', id);
-    if (error) throw error;
+    // SİLME İŞLEMİ GÜNCELLENDİ: Hata durumunda daha net bilgi fırlatılıyor
+    try {
+      const { error } = await supabase
+        .from('properties')
+        .delete()
+        .eq('id', id);
+        
+      if (error) {
+        console.error("Supabase property delete error:", error);
+        throw new Error(error.message); // Supabase hatasını direkt yukarı gönder
+      }
+    } catch (err: any) {
+      console.error("PropertyService delete exception:", err);
+      throw err; 
+    }
   },
 
   uploadPropertyImage: async (id: string, file: File) => {
@@ -191,7 +201,7 @@ export const propertyService = {
   },
 
   // ==========================================
-  // AI İÇERİK ÜRETİMİ (GÜNCELLENDİ)
+  // AI İÇERİK ÜRETİMİ
   // ==========================================
   
   generatePropertyContent: async (property: Property) => {
@@ -217,7 +227,6 @@ export const propertyService = {
 
     try {
       const response = await generateContent("gemini-2.0-flash", prompt) as PropertyAIContent;
-      // JSON.parse ve response.text çöpe gitti. Backend'den JSON'ın içindeki 'metin' anahtarını okuyoruz.
       return response.metin || "İlan metni oluşturulamadı. Lütfen tekrar deneyin.";
     } catch (error) {
       console.error("İlan metni üretim hatası:", error);
@@ -247,7 +256,6 @@ export const propertyService = {
       }
     `;
     
-    // JSON.parse çöpe gitti! Response zaten hazır obje.
     const response = await generateContent("gemini-2.0-flash", prompt) as InstagramMarketingContent;
     return response;
   },
@@ -273,13 +281,11 @@ export const propertyService = {
       }
     `;
     
-    // JSON.parse çöpe gitti!
     const response = await generateContent("gemini-2.0-flash", prompt) as WhatsAppMarketingContent;
     return response;
   },
 
   generateMarketingModule: async (property: Property) => {
-    // Buradaki promptun zaten çok iyi, JSON formatın belli. Sadece model adını ve parse işlemini düzeltiyorum.
     const prompt = `
       Sen Portfy emlak asistanısın. Aşağıdaki gayrimenkul bilgilerini kullanarak profesyonel pazarlama içerikleri üret.
       
@@ -310,7 +316,6 @@ export const propertyService = {
       }
     `;
 
-    // JSON.parse çöpe gitti!
     const response = await generateContent("gemini-2.0-flash", prompt) as MarketingModuleContent;
     return response;
   },
@@ -368,7 +373,6 @@ export const propertyService = {
     const account = await propertyService.getBrokerAccount();
     if (!account) return [];
 
-    // Simulate fetching from external API
     const simulatedListings: Omit<ExternalListing, 'id'>[] = [
       {
         user_id,
@@ -422,8 +426,6 @@ export const propertyService = {
 
   importListingFromUrl: async (url: string) => {
     if (!url.includes('sahibinden.com')) throw new Error('Sadece sahibinden.com linkleri desteklenir');
-    
-    // Gerçek URL ayrıştırma ve veri çekme işlemi burada yapılacak
     throw new Error('Bu özellik şu anda yapım aşamasındadır.');
   },
 };

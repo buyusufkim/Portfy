@@ -115,12 +115,17 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
     }
   });
 
+  // SİLME İŞLEMİ DÜZELTİLDİ: Hata yakalama (onError) eklendi
   const deletePropertyMutation = useMutation({
     mutationFn: (id: string) => api.deleteProperty(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.id] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD_STATS, profile?.id] });
       setSelectedProperty(null);
+    },
+    onError: (err: any) => {
+      alert("Silme işlemi sırasında bir hata oluştu: " + err.message);
+      console.error("Delete Property Error:", err);
     }
   });
 
@@ -176,8 +181,9 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
           setIsEditing(true);
           setShowAddProperty(true);
         }}
+        // ONDELTE İŞLEMİ DÜZELTİLDİ: Çift-doğrulama (double-confirm) spam'i kaldırıldı
         onDelete={() => {
-          if (selectedProperty && window.confirm('Bu ilanı silmek istediğinize emin misiniz?')) {
+          if (selectedProperty) {
             deletePropertyMutation.mutate(selectedProperty.id);
           }
         }}
@@ -193,7 +199,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
           setShowAddProperty(false);
           setIsEditing(false);
         }} 
-        onSubmit={(data) => addPropertyMutation.mutate(data)}
+        onSubmit={(data) => addPropertyMutation.mutateAsync(data)}
         isPending={addPropertyMutation.isPending}
         initialData={isEditing ? selectedProperty : null}
         leads={leads}

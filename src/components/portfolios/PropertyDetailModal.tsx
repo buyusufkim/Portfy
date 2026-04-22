@@ -75,9 +75,19 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
   isUploading,
   magicLinkSlot
 }) => {
-  if (!selectedProperty) return null;
-
+  // DÜZELTME 1: Tüm Hook'lar (useRef, useQuery) erken return (if) bloğundan ÖNCE çağrılmalı.
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // --- CANLI PİYASA VERİSİ ENTEGRASYONU ---
+  const { data: liveMarketAnalysis, isLoading: isMarketLoading } = useQuery({
+    queryKey: ['liveMarketAnalysis', selectedProperty?.id], // optional chaining eklendi
+    queryFn: () => selectedProperty ? api.getLiveMarketAnalysis(selectedProperty) : Promise.resolve(null),
+    enabled: !!selectedProperty, // Yalnızca selectedProperty varsa çalışır
+    staleTime: 1000 * 60 * 15,
+  });
+
+  // DÜZELTME 2: Erken return bloğu artık Hook'lardan sonra burada yer alıyor.
+  if (!selectedProperty) return null;
 
   const matchedLeads = (leads || []).filter(l => 
     l.status !== 'Pasif' && 
@@ -85,14 +95,6 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
   );
   
   const staticRegionScore = (regionScores || []).find((r: any) => r.district === selectedProperty.address?.district);
-
-  // --- CANLI PİYASA VERİSİ ENTEGRASYONU ---
-  const { data: liveMarketAnalysis, isLoading: isMarketLoading } = useQuery({
-    queryKey: ['liveMarketAnalysis', selectedProperty.id],
-    queryFn: () => api.getLiveMarketAnalysis(selectedProperty),
-    enabled: !!selectedProperty,
-    staleTime: 1000 * 60 * 15, // 15 dakika boyunca tekrar istek atmaz (Performans için)
-  });
 
   const marketData = liveMarketAnalysis?.data;
 

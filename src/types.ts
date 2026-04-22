@@ -247,6 +247,7 @@ export interface GamifiedTask {
   points: number;
   category: GamifiedTaskCategory;
   is_completed: boolean;
+  completed_at?: string;
   date: string;
   ai_reason?: string;
   reminder_time?: string;
@@ -385,7 +386,6 @@ export interface WhatsAppAnalysis {
   confidence_score: number;
 }
 
-// DÜZELTME: MutationResult için isSuccess ve mutate parametresi
 export interface MutationResult<TData = any, TVariables = void> {
   mutate: TVariables extends void ? () => void : (variables: TVariables) => void;
   isPending: boolean;
@@ -412,6 +412,7 @@ export interface PersonalTask {
   user_id: string;
   title: string;
   is_completed: boolean;
+  completed_at?: string;
   created_at: string;
   priority: 'low' | 'medium' | 'high';
   reminder_time?: string;
