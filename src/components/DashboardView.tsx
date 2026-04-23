@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { TokenUsageAlert } from './TokenUsageAlert.tsx';
+import { TokenUsageAlert } from './TokenUsageAlert';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   Building2, Sparkles, Trophy, Zap, CheckCircle2, 
@@ -205,8 +205,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <button 
                         onClick={() => {
                           const notes = window.prompt("Bugünkü odağın (3 öncelikli kişi/iş):");
-                          if (notes) {
-                            completeMorningRitualMutation.mutate({ morning_notes: notes });
+                          if (notes !== null) {
+                            completeMorningRitualMutation.mutate({ morning_notes: notes.trim() || 'Planlama yapıldı' });
                           }
                         }}
                         className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-orange-600/20 active:scale-95 transition-all"
@@ -241,11 +241,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         <button 
                           onClick={() => {
                             const aim = window.prompt("Bugünkü mikro hedefin nedir?");
-                            if (aim) {
+                            if (aim !== null && aim.trim() !== "") {
                               toast.success(`Harika! Mikro hedefin devrede: ${aim}`);
                             }
                           }}
-                          className="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-400/20 px-5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex-1text-center"
+                          className="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-400/20 px-5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex-1 text-center"
                         >
                           Bugünkü Mikro Hedefimi Belirle
                         </button>

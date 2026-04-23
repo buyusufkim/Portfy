@@ -18,7 +18,7 @@ export const RegionStats: React.FC<RegionStatsProps> = ({ profile, pins = [] }) 
         address: { city: profile.region?.city, district: profile.region?.district, neighborhood: profile.region?.neighborhoods?.[0] },
         type: 'Konut',
         details: { brut_m2: 100 }
-    }),
+    } as any),
     enabled: !!profile?.region?.city && !!profile?.region?.district,
     staleTime: 5 * 60 * 1000
   });

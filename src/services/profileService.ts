@@ -5,6 +5,7 @@ import { leadService } from './leadService';
 import { propertyService } from './propertyService';
 import { taskService } from './taskService';
 import { gamificationService } from './gamificationService';
+import { momentumOsService } from './momentumOsService';
 
 export const profileService = {
   getProfile: async (): Promise<UserProfile | null> => {
@@ -36,18 +37,28 @@ export const profileService = {
     }
   },
 
-  completeMorningRitual: async () => {
+  completeMorningRitual: async (variables?: { morning_notes: string }) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
     
+    // Save morning plan if notes are provided
+    if (variables?.morning_notes) {
+      await momentumOsService.saveMorningPlan(variables.morning_notes);
+    }
+
     // Use server-side MORNING_RITUAL action to update timestamps and award XP securely
     await gamificationService.earnXP('MORNING_RITUAL');
   },
 
-  completeEveningRitual: async (stats: { tasksCompleted?: number, tasks_completed?: number, revenue: number, calls: number, visits: number }) => {
+  completeEveningRitual: async (stats: { tasksCompleted?: number, tasks_completed?: number, revenue: number, calls: number, visits: number, evening_notes?: string }) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
     
+    // Save evening notes if provided
+    if (stats.evening_notes) {
+      await momentumOsService.saveEveningClosing(stats.evening_notes);
+    }
+
     // Use server-side EVENING_RITUAL action to handle streaks, timestamps, and XP securely
     await gamificationService.earnXP('EVENING_RITUAL', null, {
       tasks_completed: stats.tasksCompleted !== undefined ? stats.tasksCompleted : (stats.tasks_completed || 0),

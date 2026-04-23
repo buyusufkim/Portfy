@@ -67,14 +67,17 @@ export const CRMView: React.FC<CRMViewProps> = ({
   }, [searchTerm]);
 
   const leadTypes = React.useMemo(() => {
-    return Array.from(new Set(leads.map(l => l.type))).sort((a, b) => a.localeCompare(b, 'tr')) as Lead['type'][];
+    if (!leads) return [];
+    return Array.from(new Set(leads.map(l => l.type || 'Bilinmiyor'))).sort((a, b) => a.localeCompare(b, 'tr')) as Lead['type'][];
   }, [leads]);
 
   const filteredLeads = React.useMemo(() => {
+    if (!leads) return [];
     const normalizedQuery = debouncedSearchTerm.trim().toLocaleLowerCase('tr');
     const result = leads.filter((lead) => {
+      if (!lead) return false;
       const matchesSearch = !normalizedQuery || [lead.name, lead.phone, lead.district].some((value) =>
-        value?.toLocaleLowerCase('tr').includes(normalizedQuery)
+        (value || '').toLocaleLowerCase('tr').includes(normalizedQuery)
       );
       const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
       const matchesType = typeFilter === 'all' || lead.type === typeFilter;
@@ -83,9 +86,12 @@ export const CRMView: React.FC<CRMViewProps> = ({
 
     return result.sort((a, b) => {
       if (sortBy === 'name') {
-        return a.name.localeCompare(b.name, 'tr');
+        return (a.name || '').localeCompare(b.name || '', 'tr');
       }
-      return parseContactDate(b.last_contact) - parseContactDate(a.last_contact);
+      // Hem last_contact hem last_contacted_at'e bakıyoruz
+      const dateB = b.last_contacted_at || b.last_contact || b.created_at;
+      const dateA = a.last_contacted_at || a.last_contact || a.created_at;
+      return parseContactDate(dateB) - parseContactDate(dateA);
     });
   }, [leads, debouncedSearchTerm, statusFilter, typeFilter, sortBy]);
 
@@ -95,14 +101,16 @@ export const CRMView: React.FC<CRMViewProps> = ({
   const hasActiveFilters = searchTerm.length > 0 || statusFilter !== 'all' || typeFilter !== 'all' || sortBy !== 'recent';
 
   const silentLeads = React.useMemo(() => {
+    if (!leads || !Array.isArray(leads)) return [];
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
     return leads.filter(lead => {
+      if (!lead) return false;
       if (lead.status === 'Kapalı' || lead.status === 'Pasif') return false;
       const dateStr = lead.last_contacted_at || lead.last_contact || lead.created_at;
-      if (!dateStr) return true; // Eğer hiçbir tarih yoksa
+      if (!dateStr) return true; // Eğer hiçbir tarih yoksa sessiz kabul edelim
       const contactDate = new Date(dateStr);
-      if (isNaN(contactDate.getTime())) return false;
+      if (isNaN(contactDate.getTime())) return false; // Parse edilemiyorsa false dönelim
       return contactDate.getTime() < sevenDaysAgo.getTime();
     });
   }, [leads]);

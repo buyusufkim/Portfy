@@ -74,7 +74,7 @@ export const HabitEnginePage: React.FC = () => {
             tasks={["Dünkü görüşmeleri takip et", "Yeni portföy fotoğraflarını yükle", "Aday listeni gözden geçir"]}
             insight="Bugün harika bir gün olacak, odaklan ve başar!"
             onComplete={() => {
-              startDay();
+              (startDay as any)();
               setShowRadar(false);
             }}
           />

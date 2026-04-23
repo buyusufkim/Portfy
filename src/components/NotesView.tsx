@@ -86,14 +86,18 @@ export const NotesView = () => {
 
   const filteredNotes = useMemo(() => {
     return notes.filter(note => {
-      const matchesSearch = (note.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                           note.content.toLowerCase().includes(searchQuery.toLowerCase()));
+      const title = (note.title || '').toLowerCase();
+      const content = (note.content || '').toLowerCase();
+      const matchesSearch = (title.includes(searchQuery.toLowerCase()) || 
+                           content.includes(searchQuery.toLowerCase()));
       const matchesTag = selectedTag === 'all' || (note.tags && note.tags.includes(selectedTag));
       return matchesSearch && matchesTag;
     }).sort((a, b) => {
       if (a.is_pinned && !b.is_pinned) return -1;
       if (!a.is_pinned && b.is_pinned) return 1;
-      return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+      const dateA = a.updated_at ? new Date(a.updated_at).getTime() : 0;
+      const dateB = b.updated_at ? new Date(b.updated_at).getTime() : 0;
+      return dateB - dateA;
     });
   }, [notes, searchQuery, selectedTag]);
 
@@ -407,9 +411,11 @@ export const NotesView = () => {
                         )}
                         
                         <div className="pt-3 border-t border-black/5 flex items-center justify-between text-xs text-slate-400 font-medium">
-                          <span className="flex items-center gap-1" title={new Date(note.updated_at).toLocaleString()}>
+                          <span className="flex items-center gap-1" title={note.updated_at ? new Date(note.updated_at).toLocaleString() : ''}>
                             <Clock size={12} />
-                            {formatDistanceToNow(new Date(note.updated_at), { addSuffix: true, locale: tr })}
+                            {note.updated_at 
+                              ? formatDistanceToNow(new Date(note.updated_at), { addSuffix: true, locale: tr })
+                              : 'Tarih belirsiz'}
                           </span>
                           <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button onClick={() => handleEdit(note)} className="p-1.5 hover:bg-white rounded-lg text-slate-500 transition-colors" title="Düzenle">

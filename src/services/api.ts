@@ -27,7 +27,7 @@ export const api = {
   // Momentum OS
   momentumOs: momentumOsService,
 
-  getLiveMarketAnalysis: async (property: any) => {
+  getLiveMarketAnalysis: async (property: Partial<Property>) => {
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const response = await fetch(`${API_URL}/api/market/analyze`, {

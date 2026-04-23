@@ -47,22 +47,25 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
       toast.success("Görüşme kaydedildi!");
+    },
+    onError: () => {
+      toast.error("İşlem başarısız oldu.");
     }
   });
 
   const handleLogCall = () => {
     const note = window.prompt("Aradın mı? Takip Disiplini:\nNe konuştunuz? Kısaca not alın:");
-    if (note) {
+    if (note !== null) { // Cancel handling
       updateLeadMutation.mutate({ 
         last_contacted_at: new Date().toISOString(),
-        notes: lead!.notes ? `${lead!.notes}\n${new Date().toLocaleDateString('tr-TR')}: ${note}` : `${new Date().toLocaleDateString('tr-TR')}: ${note}`
+        notes: lead?.notes ? `${lead.notes}\n${new Date().toLocaleDateString('tr-TR')}: ${note || 'Görüşme yapıldı'}` : `${new Date().toLocaleDateString('tr-TR')}: ${note || 'Görüşme yapıldı'}`
       });
     }
   };
 
   if (!lead) return null;
 
-  const associatedProperties = properties.filter(p => p.owner.phone === lead.phone);
+  const associatedProperties = properties.filter(p => p.owner && p.owner.phone === lead.phone);
   const canDelete = associatedProperties.length === 0;
 
   return (
@@ -77,9 +80,9 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
           <div className="p-8 space-y-8 overflow-y-auto">
             <div className="flex justify-between items-start">
               <div>
-                <h2 className="text-2xl font-bold text-slate-900">{lead.name}</h2>
+                <h2 className="text-2xl font-bold text-slate-900">{lead.name || 'İsimsiz Müşteri'}</h2>
                 <div className="flex items-center gap-2 mt-2">
-                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${lead.status === 'Sıcak' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600'}`}>{lead.status}</span>
+                  <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${lead.status === 'Sıcak' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600'}`}>{lead.status || 'Aday'}</span>
                 </div>
               </div>
               <div className="flex gap-2">
@@ -102,11 +105,11 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <a href={`tel:${lead.phone}`} className="flex items-center gap-4 p-4 bg-slate-50 rounded-3xl hover:bg-slate-100 transition-colors group">
+              <a href={`tel:${lead.phone || ''}`} className="flex items-center gap-4 p-4 bg-slate-50 rounded-3xl hover:bg-slate-100 transition-colors group">
                 <div className="w-10 h-10 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform"><Phone size={20} /></div>
-                <div><div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Telefon</div><div className="text-sm font-bold text-slate-900">{lead.phone}</div></div>
+                <div><div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Telefon</div><div className="text-sm font-bold text-slate-900">{lead.phone || 'Girilmemiş'}</div></div>
               </a>
-              <a href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="flex items-center gap-4 p-4 bg-slate-50 rounded-3xl group">
+              <a href={`https://wa.me/${(lead.phone || '').replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="flex items-center gap-4 p-4 bg-slate-50 rounded-3xl group">
                 <div className="w-10 h-10 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform"><MessageSquare size={20} /></div>
                 <div><div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">WhatsApp</div><div className="text-sm font-bold text-slate-900">Mesaj Gönder</div></div>
               </a>

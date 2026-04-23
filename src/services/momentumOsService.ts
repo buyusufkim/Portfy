@@ -1,9 +1,19 @@
 import { supabase } from '../lib/supabase';
 import { getUserId, getTodayStr } from './core/utils';
+import { 
+  ContentCalendar, 
+  MicroGoal, 
+  TerritoryPlan, 
+  Referral, 
+  UserActivation, 
+  PortalTrafficLog, 
+  DailyRitual, 
+  WeeklyReport 
+} from '../types';
 
 export const momentumOsService = {
   // 1. Akıllı İçerik Takvimi
-  getContentCalendar: async () => {
+  getContentCalendar: async (): Promise<ContentCalendar[]> => {
     const userId = await getUserId();
     const { data, error } = await supabase
       .from('content_calendar')
@@ -11,10 +21,10 @@ export const momentumOsService = {
       .eq('user_id', userId)
       .order('scheduled_for', { ascending: true });
     if (error) throw error;
-    return data;
+    return (data || []) as ContentCalendar[];
   },
 
-  addContentCalendar: async (calendar: any) => {
+  addContentCalendar: async (calendar: Partial<ContentCalendar>): Promise<ContentCalendar> => {
     const userId = await getUserId();
     const { data, error } = await supabase
       .from('content_calendar')
@@ -22,10 +32,10 @@ export const momentumOsService = {
       .select()
       .single();
     if (error) throw error;
-    return data;
+    return data as ContentCalendar;
   },
 
-  updateContentCalendar: async (id: string, updates: any) => {
+  updateContentCalendar: async (id: string, updates: Partial<ContentCalendar>): Promise<ContentCalendar> => {
     const userId = await getUserId();
     const { data, error } = await supabase
       .from('content_calendar')
@@ -35,11 +45,11 @@ export const momentumOsService = {
       .select()
       .single();
     if (error) throw error;
-    return data;
+    return data as ContentCalendar;
   },
 
   // 2. Mikro Hedef Sistemi
-  getMicroGoals: async () => {
+  getMicroGoals: async (): Promise<MicroGoal[]> => {
     const userId = await getUserId();
     const { data, error } = await supabase
       .from('micro_goals')
@@ -47,10 +57,10 @@ export const momentumOsService = {
       .eq('user_id', userId)
       .order('deadline', { ascending: true });
     if (error) throw error;
-    return data;
+    return (data || []) as MicroGoal[];
   },
 
-  addMicroGoal: async (goal: any) => {
+  addMicroGoal: async (goal: Partial<MicroGoal>): Promise<MicroGoal> => {
     const userId = await getUserId();
     const { data, error } = await supabase
       .from('micro_goals')
@@ -58,10 +68,10 @@ export const momentumOsService = {
       .select()
       .single();
     if (error) throw error;
-    return data;
+    return data as MicroGoal;
   },
 
-  updateMicroGoal: async (id: string, updates: any) => {
+  updateMicroGoal: async (id: string, updates: Partial<MicroGoal>): Promise<MicroGoal> => {
     const userId = await getUserId();
     const { data, error } = await supabase
       .from('micro_goals')
@@ -71,11 +81,11 @@ export const momentumOsService = {
       .select()
       .single();
     if (error) throw error;
-    return data;
+    return data as MicroGoal;
   },
 
   // 3. Territory Planning
-  getTerritoryPlans: async () => {
+  getTerritoryPlans: async (): Promise<TerritoryPlan[]> => {
     const userId = await getUserId();
     const { data, error } = await supabase
       .from('territory_plans')
@@ -83,10 +93,10 @@ export const momentumOsService = {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return data;
+    return (data || []) as TerritoryPlan[];
   },
 
-  addTerritoryPlan: async (plan: any) => {
+  addTerritoryPlan: async (plan: Partial<TerritoryPlan>): Promise<TerritoryPlan> => {
     const userId = await getUserId();
     const { data, error } = await supabase
       .from('territory_plans')
@@ -94,10 +104,10 @@ export const momentumOsService = {
       .select()
       .single();
     if (error) throw error;
-    return data;
+    return data as TerritoryPlan;
   },
 
-  updateTerritoryPlan: async (id: string, updates: any) => {
+  updateTerritoryPlan: async (id: string, updates: Partial<TerritoryPlan>): Promise<TerritoryPlan> => {
     const userId = await getUserId();
     const { data, error } = await supabase
       .from('territory_plans')
@@ -107,11 +117,11 @@ export const momentumOsService = {
       .select()
       .single();
     if (error) throw error;
-    return data;
+    return data as TerritoryPlan;
   },
 
   // 4. Referral Engine
-  getReferrals: async () => {
+  getReferrals: async (): Promise<Referral[]> => {
     const userId = await getUserId();
     const { data, error } = await supabase
       .from('referrals')
@@ -119,10 +129,10 @@ export const momentumOsService = {
       .eq('user_id', userId)
       .order('created_at', { ascending: false });
     if (error) throw error;
-    return data;
+    return (data || []) as Referral[];
   },
 
-  addReferral: async (referral: any) => {
+  addReferral: async (referral: Partial<Referral>): Promise<Referral> => {
     const userId = await getUserId();
     const { data, error } = await supabase
       .from('referrals')
@@ -130,10 +140,10 @@ export const momentumOsService = {
       .select()
       .single();
     if (error) throw error;
-    return data;
+    return data as Referral;
   },
 
-  updateReferral: async (id: string, updates: any) => {
+  updateReferral: async (id: string, updates: Partial<Referral>): Promise<Referral> => {
     const userId = await getUserId();
     const { data, error } = await supabase
       .from('referrals')
@@ -143,11 +153,11 @@ export const momentumOsService = {
       .select()
       .single();
     if (error) throw error;
-    return data;
+    return data as Referral;
   },
 
   // 5. İlk 7 Gün Aktivasyon Programı
-  getUserActivation: async () => {
+  getUserActivation: async (): Promise<UserActivation> => {
     const userId = await getUserId();
     const { data, error } = await supabase
       .from('user_activations')
@@ -165,12 +175,12 @@ export const momentumOsService = {
         .select()
         .single();
       if (newError) throw newError;
-      return newData;
+      return newData as UserActivation;
     }
-    return data;
+    return data as UserActivation;
   },
 
-  updateUserActivation: async (updates: any) => {
+  updateUserActivation: async (updates: Partial<UserActivation>): Promise<UserActivation> => {
     const userId = await getUserId();
     const { data, error } = await supabase
       .from('user_activations')
@@ -179,11 +189,11 @@ export const momentumOsService = {
       .select()
       .single();
     if (error) throw error;
-    return data;
+    return data as UserActivation;
   },
 
   // 6. Sahip Portalı Trafik Motoru
-  getPortalTrafficLogs: async (propertyId?: string) => {
+  getPortalTrafficLogs: async (propertyId?: string): Promise<PortalTrafficLog[]> => {
     const userId = await getUserId();
     let query = supabase
       .from('portal_traffic_logs')
@@ -197,11 +207,11 @@ export const momentumOsService = {
       
     const { data, error } = await query;
     if (error) throw error;
-    return data;
+    return (data || []) as PortalTrafficLog[];
   },
 
   // 7 & 9. Gün Sonu Kapanış & Sabah 10 Dakika Planı
-  getDailyRitual: async (dateStr?: string) => {
+  getDailyRitual: async (dateStr?: string): Promise<DailyRitual> => {
     const userId = await getUserId();
     const targetDate = dateStr || getTodayStr(); // YYYY-MM-DD
     
@@ -221,12 +231,12 @@ export const momentumOsService = {
         .select()
         .single();
       if (newError) throw newError;
-      return newData;
+      return newData as DailyRitual;
     }
-    return data;
+    return data as DailyRitual;
   },
 
-  saveMorningPlan: async (notes: string, dateStr?: string) => {
+  saveMorningPlan: async (notes: string, dateStr?: string): Promise<DailyRitual> => {
     const userId = await getUserId();
     const targetDate = dateStr || getTodayStr();
     
@@ -242,10 +252,10 @@ export const momentumOsService = {
       .single();
       
     if (error) throw error;
-    return data;
+    return data as DailyRitual;
   },
 
-  saveEveningClosing: async (notes: string, dateStr?: string) => {
+  saveEveningClosing: async (notes: string, dateStr?: string): Promise<DailyRitual> => {
     const userId = await getUserId();
     const targetDate = dateStr || getTodayStr();
     
@@ -261,11 +271,11 @@ export const momentumOsService = {
       .single();
       
     if (error) throw error;
-    return data;
+    return data as DailyRitual;
   },
 
   // 12. Haftalık İş Sonucu Panosu
-  getWeeklyReports: async () => {
+  getWeeklyReports: async (): Promise<WeeklyReport[]> => {
     const userId = await getUserId();
     const { data, error } = await supabase
       .from('weekly_reports')
@@ -273,6 +283,7 @@ export const momentumOsService = {
       .eq('user_id', userId)
       .order('week_start_date', { ascending: false });
     if (error) throw error;
-    return data;
+    return (data || []) as WeeklyReport[];
   }
 };
+

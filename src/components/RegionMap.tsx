@@ -130,33 +130,6 @@ export const RegionMap: React.FC<RegionMapProps> = ({
 
   return (
     <div className="w-full h-full relative z-0">
-      <div className="absolute right-4 top-40 flex flex-col gap-2 z-[400]">
-        <button 
-          onClick={() => setShowAddPin(true)}
-          className="w-14 h-14 rounded-2xl bg-orange-600 text-white flex items-center justify-center shadow-2xl hover:bg-orange-700 transition-all mb-2"
-          title="Pin Ekle"
-        >
-          <Plus size={32} />
-        </button>
-        <button 
-          onClick={() => {
-            setIs3D(!is3D);
-            if (!is3D) setMapZoom(18);
-          }}
-          className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all ${is3D ? 'bg-orange-500 text-white' : 'bg-slate-900/90 backdrop-blur-md text-slate-300 hover:text-white'}`}
-          title="Uydu Görünümü"
-        >
-          <Layers size={24} />
-        </button>
-        <button 
-          onClick={handleLocateMe}
-          className="w-12 h-12 rounded-2xl bg-slate-900/90 backdrop-blur-md text-slate-300 flex items-center justify-center shadow-xl hover:text-white transition-all"
-          title="Konumumu Bul"
-        >
-          <Crosshair size={24} />
-        </button>
-      </div>
-
       <MapContainer
         center={[mapCenter.lat, mapCenter.lng]}
         zoom={mapZoom}

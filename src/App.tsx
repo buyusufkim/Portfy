@@ -18,7 +18,7 @@ import { Header } from './components/app/Header';
 import { NotificationToast, GlobalToast } from './components/app/Toasts';
 import { FloatingActionButton } from './components/app/FloatingActionButton';
 import { RegionSetupModal } from './components/RegionSetupModal';
-import { UserProfile } from './types';
+import { UserProfile, Lead, Property } from './types';
 
 import { useFeatureAccess } from './hooks/useFeatureAccess';
 import { UpgradeModal } from './components/premium/UpgradeModal';
@@ -97,18 +97,18 @@ function MainApp() {
   const { data: dailyRadarData } = useQuery({ queryKey: [QUERY_KEYS.DAILY_RADAR, profile?.id], queryFn: () => api.getDailyRadar(), enabled: !!profile?.id && showDailyRadar });
 
   const addLeadMutation = useMutation({ mutationFn: api.addLead, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.id] }); setShowAddLead(false); setShowQuickAdd(false); }});
-  const updateLeadMutation = useMutation({ mutationFn: ({ id, data }: any) => api.updateLead(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.id] }); setShowAddLead(false); setIsEditingLead(false); setSelectedLead(null); }});
+  const updateLeadMutation = useMutation({ mutationFn: ({ id, lead }: { id: string, lead: Partial<Lead> }) => api.updateLead(id, lead), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.id] }); setShowAddLead(false); setIsEditingLead(false); setSelectedLead(null); }});
   const deleteLeadMutation = useMutation({ mutationFn: api.deleteLead, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.id] }); setSelectedLead(null); }});
   const addVisitMutation = useMutation({ mutationFn: api.addVisit, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.FIELD_VISITS, profile?.id] }); setShowAddVisit(false); setShowQuickAdd(false); }});
   const addTaskMutation = useMutation({ mutationFn: api.addTask, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS, profile?.id] }); }});
-  const completeMorningRitualMutation = useMutation({ mutationFn: async () => { await api.startDay(); return api.completeMorningRitual(); }, onSuccess: () => { setShowDailyRadar(false); setToast({ message: "Güne harika bir başlangıç yaptın!", type: 'success' }); }, onError: () => { setShowDailyRadar(false); setToast({ message: "Güne zaten başlamıştın.", type: 'info' }); }});
-  const completeEveningRitualMutation = useMutation({ mutationFn: async (stats: any) => { await api.endDay(stats); return api.completeEveningRitual(stats); }, onSuccess: () => { setShowDayCloser(false); setToast({ message: "Günü başarıyla kapattın. İyi dinlenmeler!", type: 'success' }); confetti(); }});
+  const completeMorningRitualMutation = useMutation({ mutationFn: async (variables?: { morning_notes: string }) => { await api.startDay(); return api.completeMorningRitual(variables); }, onSuccess: () => { setShowDailyRadar(false); setToast({ message: "Güne harika bir başlangıç yaptın!", type: 'success' }); }, onError: () => { setShowDailyRadar(false); setToast({ message: "Güne zaten başlamıştın.", type: 'info' }); }});
+  const completeEveningRitualMutation = useMutation({ mutationFn: async (stats: { tasks_completed: number, revenue: number, calls: number, visits: number, evening_notes?: string }) => { await api.endDay(stats); return api.completeEveningRitual(stats); }, onSuccess: () => { setShowDayCloser(false); setToast({ message: "Günü başarıyla kapattın. İyi dinlenmeler!", type: 'success' }); confetti(); }});
   const cancelRescueMutation = useMutation({ mutationFn: api.cancelRescueSession, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.id] }); }});
-  const completeRescueTaskMutation = useMutation({ mutationFn: ({ sessionId, taskId }: any) => api.completeRescueTask(sessionId, taskId), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.id] }); }});
+  const completeRescueTaskMutation = useMutation({ mutationFn: ({ sessionId, taskId }: { sessionId: string, taskId: string }) => api.completeRescueTask(sessionId, taskId), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.id] }); }});
   const analyzeLeadsMutation = useMutation({ mutationFn: api.analyzeLeads, onSuccess: (data) => { setLeadAnalysis(data); setIsAnalyzingLeads(false); }});
   const updateProfileMutation = useMutation({ mutationFn: ({ id, data }: { id: string, data: Partial<UserProfile> }) => api.updateProfile(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.id] }); }});
   const syncListingsMutation = useMutation({ mutationFn: api.syncExternalListings, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.EXTERNAL_LISTINGS, profile?.id] }); }});
-  const linkPropertyMutation = useMutation({ mutationFn: ({ propertyId, externalId }: any) => api.linkPropertyToExternal(propertyId, externalId), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.id] }); }});
+  const linkPropertyMutation = useMutation({ mutationFn: ({ propertyId, externalId }: { propertyId: string, externalId: string }) => api.linkPropertyToExternal(propertyId, externalId), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.id] }); }});
   const connectIntegrationMutation = useMutation({ mutationFn: api.connectSahibinden, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BROKER_ACCOUNT, profile?.id] }); }});
 
   const checkPortfoliosLimit = () => { if (isFree && properties.length >= 5) { setShowQuickAdd(false); setShowUpgradeModal(true); return false; } return true; };

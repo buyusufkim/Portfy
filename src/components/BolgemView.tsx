@@ -176,11 +176,16 @@ export const BolgemView = ({
       if (filter === 'all') {
         matchFilter = true;
       } else if (filter === 'nearby') {
-        if (userLocation) {
-          const dist = L.latLng(userLocation.lat, userLocation.lng).distanceTo(L.latLng(pin.lat, pin.lng));
-          matchFilter = dist <= 2000;
+        if (userLocation && typeof pin.lat === 'number' && typeof pin.lng === 'number') {
+          try {
+            const dist = L.latLng(userLocation.lat, userLocation.lng).distanceTo(L.latLng(pin.lat, pin.lng));
+            matchFilter = dist <= 2000;
+          } catch (e) {
+            console.error("Distance calculation error:", e);
+            matchFilter = false;
+          }
         } else {
-          matchFilter = true; 
+          matchFilter = false; 
         }
       } else {
         matchFilter = pin.type === filter;
