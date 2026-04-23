@@ -28,5 +28,7 @@ export const QUERY_KEYS = {
   MOMENTUM_LEAD_ACTIVITY: 'momentumLeadActivity',
   MOMENTUM_PORTFOLIO_BLOCKERS: 'momentumPortfolioBlockers',
   MOMENTUM_PORTAL_EVENTS: 'momentumPortalEvents',
+  MOMENTUM_PORTAL_LOGS: 'momentumPortalLogs',
+  MOMENTUM_WEEKLY_REPORTS: 'momentumWeeklyReports',
   MICRO_GOALS: 'microGoals',
 } as const;

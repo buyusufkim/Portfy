@@ -20,10 +20,10 @@ export const handleGetPortalData = async (req: any, res: any) => {
       return res.status(400).json({ error: 'Geçersiz parametre' });
     }
 
-    // Validate token
+    // Validate token - Select 'id' (the token row GUID) and 'created_by' (the agent)
     const { data: tokenData, error: tokenError } = await supabaseAdmin
       .from('owner_portal_tokens')
-      .select('property_id, expires_at, revoked_at')
+      .select('id, property_id, expires_at, revoked_at, created_by')
       .eq('token', token)
       .single();
 
@@ -43,9 +43,9 @@ export const handleGetPortalData = async (req: any, res: any) => {
     try {
       await supabaseAdmin.from('owner_portal_events').insert({
         property_id: tokenData.property_id,
-        token_id: token, // This might need to be the actual ID if 'token' is just the string, but typically we store the token value for quick lookup
+        token_id: tokenData.id, // Use the actual UUID ID of the token row
         event_type: 'view',
-        user_id: null, // Viewer is an owner, not a logged-in system user usually
+        user_id: tokenData.created_by, // The owner/creator of the token (the agent)
         ip_address: typeof clientIp === 'string' ? clientIp.split(',')[0] : clientIp,
         user_agent: userAgent
       });

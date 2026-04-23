@@ -11,9 +11,9 @@ import { api } from '../services/api';
 import { RevenueOverview } from './revenue/RevenueOverview';
 import { PipelineFunnel } from './revenue/PipelineFunnel';
 import { QUERY_KEYS } from '../constants/queryKeys';
-import { UserProfile, GamifiedTask, Property, Task, PersonalTask, RescueSession, UserStats, CoachInsight, MutationResult, MissedOpportunity, DailyPlan, DayClosure } from '../types';
+import { UserProfile, GamifiedTask, Property, Task, PersonalTask, RescueSession, UserStats, CoachInsight, MutationResult, MissedOpportunity, DailyPlan, DayClosure, WeeklyReport } from '../types';
 import { RevenueStats } from '../types/revenue';
-import { QueryClient, useMutation } from '@tanstack/react-query';
+import { QueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { useFeatureAccess } from '../hooks/useFeatureAccess';
 import { UpgradeModal } from './premium/UpgradeModal';
 import { toast } from 'react-hot-toast';
@@ -47,6 +47,7 @@ interface DashboardViewProps {
   leadAlerts?: any[];
   dailyPlan?: DailyPlan | null;
   dayClosure?: DayClosure | null;
+  weeklyReports?: WeeklyReport[];
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -73,7 +74,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   setShowDailyRadar,
   leadAlerts = [],
   dailyPlan,
-  dayClosure
+  dayClosure,
+  weeklyReports = []
 }) => {
   const [dashboardTab, setDashboardTab] = useState<'action' | 'analysis'>('action');
   const [microGoalInput, setMicroGoalInput] = useState('');
@@ -97,6 +99,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const { hasAccess, subscribe } = useFeatureAccess();
   const canUseAiCoach = hasAccess('ai_coach');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [portalLink, setPortalLink] = useState<string | null>(null);
+
+  const handleCreatePortal = async (propertyId: string) => {
+    try {
+      const response = await api.momentumOs.createPortalToken(propertyId);
+      const link = `${window.location.origin}/portal/${response.token}`;
+      setPortalLink(link);
+      setToast?.({ message: "Portföy portal linki oluşturuldu!", type: 'success' });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_PORTAL_LOGS] });
+    } catch (error) {
+      setToast?.({ message: "Portal oluşturulamadı.", type: 'error' });
+    }
+  };
+
+  const { data: portalTraffic = [] } = useQuery({
+    queryKey: [QUERY_KEYS.MOMENTUM_PORTAL_LOGS, profile?.id],
+    queryFn: () => api.momentumOs.getPortalTrafficLogs(),
+    enabled: !!profile?.id
+  });
+
+  const getPropertyTraffic = (propertyId: string) => {
+    const logs = portalTraffic.filter(log => log.property_id === propertyId);
+    return {
+      views: logs.length,
+      lastView: logs.length > 0 ? logs[0].viewed_at : null
+    };
+  };
 
   const potentialRevenue = (properties || []).reduce((acc, p) => {
     if (['Satıldı', 'Pasif'].includes(p.status)) return acc;
@@ -329,7 +358,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             )}
 
             {/* SAHİP PORTALI TRAFİK MOTORU */}
-            <section>
+            <section className="space-y-4">
               <Card className="p-4 md:p-6 bg-gradient-to-r from-blue-600 to-indigo-700 relative overflow-hidden group">
                 <div className="absolute inset-0 opacity-10 pointer-events-none mix-blend-overlay border-[1px] border-dashed border-white" />
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
@@ -347,16 +376,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </p>
                     </div>
                   </div>
-                  <button 
-                    onClick={() => {
-                      if(setToast) setToast({ message: 'Owner Portal paylaşım linki hazırlandı.', type: 'success' });
-                    }}
-                    className="bg-white hover:bg-blue-50 text-blue-700 px-6 py-3 rounded-xl text-sm font-bold shadow-xl shadow-black/10 active:scale-95 transition-all text-center"
-                  >
-                    Portal Linki Oluştur
-                  </button>
                 </div>
               </Card>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {properties.slice(0, 4).map(prop => {
+                  const traffic = getPropertyTraffic(prop.id);
+                  return (
+                    <Card key={prop.id} className="p-4 bg-white border-slate-100 shadow-sm hover:border-blue-200 transition-all group">
+                      <div className="flex justify-between items-start mb-3">
+                        <div className="flex-1 pr-2">
+                          <h4 className="text-xs font-bold text-slate-900 line-clamp-1">{prop.title}</h4>
+                          <div className="flex items-center gap-2 mt-1">
+                            <Badge className="text-[8px] bg-slate-100 text-slate-500 border-none">{prop.status}</Badge>
+                            {traffic.views > 0 && <span className="text-[9px] font-bold text-emerald-600 flex items-center gap-1"><Zap size={8} /> {traffic.views} İzlenme</span>}
+                          </div>
+                        </div>
+                        <button 
+                          onClick={() => handleCreatePortal(prop.id)}
+                          className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm"
+                          title="Portal Linki Oluştur"
+                        >
+                          <Plus size={16} />
+                        </button>
+                      </div>
+                      {traffic.lastView && (
+                        <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
+                          Son İzlenme: {new Date(traffic.lastView).toLocaleDateString('tr-TR')}
+                        </div>
+                      )}
+                    </Card>
+                  );
+                })}
+              </div>
+
+              {portalLink && (
+                <div className="p-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl animate-in fade-in slide-in-from-top-2">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Portal Linki Hazır</span>
+                    <button onClick={() => { navigator.clipboard.writeText(portalLink); toast.success("Kopyalandı!"); }} className="p-2 bg-white text-emerald-600 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-all flex items-center gap-2 text-[10px] font-bold shadow-sm">
+                      <Copy size={12} /> Kopyala
+                    </button>
+                  </div>
+                  <div className="text-[10px] font-medium text-slate-600 break-all bg-white/50 p-2 rounded-lg border border-emerald-100/50">
+                    {portalLink}
+                  </div>
+                </div>
+              )}
             </section>
 
             <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -862,35 +928,82 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <h2 className="text-lg font-bold text-slate-900 tracking-tight">Haftalık İş Sonucu Panosu</h2>
                 <div className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">Momentum OS</div>
               </div>
-              <Card className="p-6 bg-gradient-to-br from-indigo-50 to-slate-50 border-indigo-100">
-                <div className="flex items-center gap-4 text-indigo-600 mb-4">
-                  <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
-                    <CheckCircle2 size={20} />
-                  </div>
-                  <div>
-                    <h3 className="font-bold text-sm">Bu Haftaki Performans</h3>
-                    <p className="text-xs text-indigo-500/70 font-medium">Satış ve görüşmelerinizin özeti</p>
-                  </div>
+              
+              {weeklyReports.length > 0 ? (
+                <div className="space-y-4">
+                  {weeklyReports.slice(0, 2).map((report, idx) => (
+                    <Card key={idx} className={`p-6 border-slate-100 shadow-sm ${idx === 0 ? 'bg-gradient-to-br from-indigo-50 to-slate-50 border-indigo-100' : 'bg-white'}`}>
+                      <div className="flex justify-between items-start mb-4">
+                        <div className="flex items-center gap-4 text-indigo-600">
+                          <div className={`w-10 h-10 ${idx === 0 ? 'bg-indigo-100' : 'bg-slate-100'} rounded-xl flex items-center justify-center`}>
+                            <CheckCircle2 size={20} />
+                          </div>
+                          <div>
+                            <h3 className="font-bold text-sm">{idx === 0 ? 'Bu Haftaki Performans' : 'Geçen Haftaki Performans'}</h3>
+                            <p className="text-xs text-indigo-500/70 font-medium">Momentum OS Raporu</p>
+                          </div>
+                        </div>
+                        <div className="text-[10px] font-bold text-slate-400 bg-white/50 px-2 py-1 rounded-lg border border-slate-200">
+                          {new Date(report.week_start_date).toLocaleDateString('tr-TR')}
+                        </div>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Aramalar</div>
+                          <div className="text-2xl font-black text-slate-900">{report.metrics?.calls_made || 0}</div>
+                          <div className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded mt-2 inline-block">Verimli</div>
+                        </div>
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ziyaretler</div>
+                          <div className="text-2xl font-black text-slate-900">{report.metrics?.property_visits || 0}</div>
+                          <div className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded mt-2 inline-block">Saha</div>
+                        </div>
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Yeni Lead</div>
+                          <div className="text-2xl font-black text-slate-900">{report.metrics?.leads_acquired || 0}</div>
+                          <div className="text-[9px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded mt-2 inline-block">Büyüme</div>
+                        </div>
+                        <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Gelir</div>
+                          <div className="text-2xl font-black text-slate-900">₺{((report.metrics?.closed_volume || 0) / 1000).toFixed(0)}k</div>
+                          <div className="text-[9px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded mt-2 inline-block">Nakit</div>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
                 </div>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium">Toplam Görüşme</p>
-                    <p className="text-xl font-black text-slate-900 mt-1">{tasks?.filter(t => t.completed && t.type === 'Arama').length || 0}</p>
+              ) : (
+                <Card className="p-6 bg-gradient-to-br from-indigo-50 to-slate-50 border-indigo-100">
+                  <div className="flex items-center gap-4 text-indigo-600 mb-4">
+                    <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                      <CheckCircle2 size={20} />
+                    </div>
+                    <div>
+                      <h3 className="font-bold text-sm">Bu Haftaki Performans</h3>
+                      <p className="text-xs text-indigo-500/70 font-medium">Satış ve görüşmelerinizin özeti</p>
+                    </div>
                   </div>
-                  <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium">Saha Ziyareti</p>
-                    <p className="text-xl font-black text-slate-900 mt-1">{tasks?.filter(t => t.completed && t.type === 'Saha').length || 0}</p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                      <p className="text-xs text-slate-500 font-medium">Toplam Görüşme</p>
+                      <p className="text-xl font-black text-slate-900 mt-1">{tasks?.filter(t => t.completed && t.type === 'Arama').length || 0}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                      <p className="text-xs text-slate-500 font-medium">Saha Ziyareti</p>
+                      <p className="text-xl font-black text-slate-900 mt-1">{tasks?.filter(t => t.completed && t.type === 'Saha').length || 0}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                      <p className="text-xs text-slate-500 font-medium">Yeni Portföy</p>
+                      <p className="text-xl font-black text-slate-900 mt-1">{properties?.filter(p => p.status === 'Yeni').length || 0}</p>
+                    </div>
+                    <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                      <p className="text-xs text-slate-500 font-medium">Satış & Kiralama</p>
+                      <p className="text-xl font-black text-slate-900 mt-1">{properties?.filter(p => p.status === 'Satıldı').length || 0}</p>
+                    </div>
                   </div>
-                  <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium">Yeni Portföy</p>
-                    <p className="text-xl font-black text-slate-900 mt-1">{properties?.filter(p => p.status === 'Yeni').length || 0}</p>
-                  </div>
-                  <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                    <p className="text-xs text-slate-500 font-medium">Satış & Kiralama</p>
-                    <p className="text-xl font-black text-slate-900 mt-1">{properties?.filter(p => p.status === 'Satıldı').length || 0}</p>
-                  </div>
-                </div>
-              </Card>
+                </Card>
+              )}
             </section>
           </motion.div>
         )}

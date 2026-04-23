@@ -51,7 +51,7 @@ export const RitualOverlays = ({
   }, [showDailyRadar, showDayCloser]);
 
   // Sabah Ritüeli Tamamlanma Senaryosu
-  const handleMorningComplete = () => {
+  const handleMorningComplete = (payload: any) => {
     triggerHaptic([30, 50, 30, 50, 100]); // Başarı hissi veren titreşim deseni
     setRewardContent({ title: "Güne Harika Başladın!", xp: "+50 XP" });
     setShowReward(true);
@@ -59,28 +59,25 @@ export const RitualOverlays = ({
     // Sinematik gecikme ile mutation'ı tetikle
     setTimeout(() => {
       setShowReward(false);
-      completeMorningRitualMutation.mutate();
+      completeMorningRitualMutation.mutate({
+        planned_calls: payload.planned_calls,
+        planned_followups: payload.planned_followups,
+        planned_portfolio_actions: payload.planned_portfolio_actions,
+        top3: payload.top3
+      });
     }, 2000);
   };
 
   // Akşam Ritüeli Tamamlanma Senaryosu
-  const handleEveningComplete = () => {
+  const handleEveningComplete = (payload: any) => {
     triggerHaptic([30, 50, 30, 50, 150]); // Daha güçlü başarı titreşimi
     setRewardContent({ title: "Gün Başarıyla Kapatıldı!", xp: "+100 XP" });
     setShowReward(true);
     
-    const stats = {
-      tasks_completed: gamifiedTasks.filter(t => t.is_completed).length + personalTasks.filter(t => t.is_completed).length,
-      revenue: properties.reduce((acc, p) => acc + ((p.price * p.commission_rate) / 100) * (p.sale_probability || 0.5), 0),
-      calls: tasks.filter(t => t.type === 'Arama' && t.completed).length,
-      visits: tasks.filter(t => t.type === 'Saha' && t.completed).length,
-      social: tasks.filter(t => t.type === 'Sosyal Medya' && t.completed).length
-    };
-
     // Sinematik gecikme ile mutation'ı tetikle
     setTimeout(() => {
       setShowReward(false);
-      completeEveningRitualMutation.mutate(stats);
+      completeEveningRitualMutation.mutate(payload);
     }, 2000);
   };
 

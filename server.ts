@@ -8,6 +8,7 @@ import { fetchMarketData } from "./server/marketScraper.js";
 
 // Meta Webhook İşleyicileri İçeri Aktarılıyor
 import { handleMetaWebhookGet, handleMetaWebhookPost } from "./server/meta-api.js";
+import { handleGetPortalData, handleCreatePortalToken, handleRevokePortalTokens } from "./server/portal-api.js";
 
 dotenv.config({ override: true });
 
@@ -38,6 +39,11 @@ app.get("/api/ai/admin/settings", authenticate, handleAdminGetSettings);
 app.post("/api/ai/admin/update-user", authenticate, handleAdminUpdateUser);
 app.post("/api/ai/admin/delete-user", authenticate, handleAdminDeleteUser);
 app.post("/api/ai/admin/update-settings", authenticate, handleUpdateGlobalSettings);
+
+// Owner Portal Endpoints
+app.get("/api/portal/:token", handleGetPortalData);
+app.post("/api/portal/create", authenticate, handleCreatePortalToken);
+app.post("/api/portal/revoke", authenticate, handleRevokePortalTokens);
 
 const marketLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,

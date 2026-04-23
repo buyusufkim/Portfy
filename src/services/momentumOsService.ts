@@ -410,6 +410,35 @@ export const momentumOsService = {
     return data as OwnerPortalEvent;
   },
 
+  createPortalToken: async (propertyId: string): Promise<{ token: string }> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const API_URL = import.meta.env.VITE_API_URL || '';
+    const response = await fetch(`${API_URL}/api/portal/create`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token || ''}`
+      },
+      body: JSON.stringify({ propertyId }),
+    });
+    if (!response.ok) throw new Error('Portal oluşturulamadı');
+    return await response.json();
+  },
+
+  revokePortalToken: async (token: string): Promise<void> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const API_URL = import.meta.env.VITE_API_URL || '';
+    const response = await fetch(`${API_URL}/api/portal/revoke`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token || ''}`
+      },
+      body: JSON.stringify({ token }),
+    });
+    if (!response.ok) throw new Error('Portal iptal edilemedi');
+  },
+
   // 7 & 9. Gün Sonu Kapanış & Sabah 10 Dakika Planı (Legacy support)
   getDailyRitual: async (dateStr?: string): Promise<DailyRitual> => {
     const userId = await getUserId();

@@ -198,6 +198,12 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     enabled: !!profile?.id
   });
 
+  const { data: weeklyReports = [] } = useQuery({
+    queryKey: [QUERY_KEYS.MOMENTUM_WEEKLY_REPORTS, profile?.id],
+    queryFn: () => api.momentumOs.getWeeklyReports(),
+    enabled: !!profile?.id
+  });
+
   useEffect(() => {
     if (profile?.id) {
       api.momentumOs.refreshLeadAlerts().then(() => {
@@ -235,6 +241,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       leadAlerts={leadAlerts}
       dailyPlan={dailyPlan}
       dayClosure={dayClosure}
+      weeklyReports={weeklyReports}
     />
   );
 };
