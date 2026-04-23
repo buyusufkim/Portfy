@@ -18,6 +18,7 @@ import { Header } from './components/app/Header';
 import { NotificationToast, GlobalToast } from './components/app/Toasts';
 import { FloatingActionButton } from './components/app/FloatingActionButton';
 import { RegionSetupModal } from './components/RegionSetupModal';
+import { UserProfile } from './types';
 
 import { useFeatureAccess } from './hooks/useFeatureAccess';
 import { UpgradeModal } from './components/premium/UpgradeModal';
@@ -105,7 +106,7 @@ function MainApp() {
   const cancelRescueMutation = useMutation({ mutationFn: api.cancelRescueSession, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.id] }); }});
   const completeRescueTaskMutation = useMutation({ mutationFn: ({ sessionId, taskId }: any) => api.completeRescueTask(sessionId, taskId), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.id] }); }});
   const analyzeLeadsMutation = useMutation({ mutationFn: api.analyzeLeads, onSuccess: (data) => { setLeadAnalysis(data); setIsAnalyzingLeads(false); }});
-  const updateProfileMutation = useMutation({ mutationFn: ({ id, data }: any) => api.updateProfile(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.id] }); }});
+  const updateProfileMutation = useMutation({ mutationFn: ({ id, data }: { id: string, data: Partial<UserProfile> }) => api.updateProfile(id, data), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.id] }); }});
   const syncListingsMutation = useMutation({ mutationFn: api.syncExternalListings, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.EXTERNAL_LISTINGS, profile?.id] }); }});
   const linkPropertyMutation = useMutation({ mutationFn: ({ propertyId, externalId }: any) => api.linkPropertyToExternal(propertyId, externalId), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.id] }); }});
   const connectIntegrationMutation = useMutation({ mutationFn: api.connectSahibinden, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.BROKER_ACCOUNT, profile?.id] }); }});

@@ -18,11 +18,14 @@ import { coachService } from './coachService';
 import { fieldVisitService } from './fieldVisitService';
 import { whatsappService } from './whatsappService';
 import { marketIntelligenceService } from './marketIntelligenceService';
+import { momentumOsService } from './momentumOsService';
 
 // VITE ENV üzerinden API URL alınıyor, yoksa fallback olarak boş string bırakılıyor.
 const API_URL = import.meta.env.VITE_API_URL || '';
 
 export const api = {
+  // Momentum OS
+  momentumOs: momentumOsService,
 
   getLiveMarketAnalysis: async (property: any) => {
     try {

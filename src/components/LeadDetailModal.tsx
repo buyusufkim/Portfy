@@ -5,6 +5,9 @@ import {
   Calendar, MapPin, Tag, AlertCircle, FileText, Plus, Zap 
 } from 'lucide-react';
 import { Lead, Property } from '../types';
+import { api } from '../services/api';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { QUERY_KEYS } from '../constants/queryKeys';
 import { dripService, DRIP_CAMPAIGNS, DripEventType } from '../services/dripService';
 import { toast } from 'react-hot-toast';
 
@@ -25,16 +28,12 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loadingDrip, setLoadingDrip] = useState(false);
-
-  if (!lead) return null;
-
-  const associatedProperties = properties.filter(p => p.owner.phone === lead.phone);
-  const canDelete = associatedProperties.length === 0;
+  const queryClient = useQueryClient();
 
   const handleStartDrip = async (type: DripEventType) => {
     setLoadingDrip(true);
     try {
-      await dripService.createDripCampaign(lead.id, lead.property_id, type);
+      await dripService.createDripCampaign(lead!.id, lead!.property_id, type);
       toast.success(`${DRIP_CAMPAIGNS[type].label} başlatıldı.`);
     } catch (error) {
       toast.error("Hata oluştu.");
@@ -42,6 +41,29 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
       setLoadingDrip(false);
     }
   };
+
+  const updateLeadMutation = useMutation({
+    mutationFn: (updates: Partial<Lead>) => api.updateLead(lead!.id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
+      toast.success("Görüşme kaydedildi!");
+    }
+  });
+
+  const handleLogCall = () => {
+    const note = window.prompt("Aradın mı? Takip Disiplini:\nNe konuştunuz? Kısaca not alın:");
+    if (note) {
+      updateLeadMutation.mutate({ 
+        last_contacted_at: new Date().toISOString(),
+        notes: lead!.notes ? `${lead!.notes}\n${new Date().toLocaleDateString('tr-TR')}: ${note}` : `${new Date().toLocaleDateString('tr-TR')}: ${note}`
+      });
+    }
+  };
+
+  if (!lead) return null;
+
+  const associatedProperties = properties.filter(p => p.owner.phone === lead.phone);
+  const canDelete = associatedProperties.length === 0;
 
   return (
     <AnimatePresence>
@@ -89,6 +111,19 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 <div><div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">WhatsApp</div><div className="text-sm font-bold text-slate-900">Mesaj Gönder</div></div>
               </a>
             </div>
+
+            <button onClick={handleLogCall} className="w-full p-4 bg-orange-50 border-2 border-orange-100 rounded-3xl flex items-center justify-between hover:bg-orange-100 transition-colors group">
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 bg-orange-200 text-orange-700 rounded-2xl flex items-center justify-center">
+                  <Phone size={18} />
+                </div>
+                <div className="text-left">
+                  <div className="text-sm font-bold text-orange-900">Aradın mı? Görüşmeyi Kaydet</div>
+                  <div className="text-[10px] text-orange-700 mt-0.5">Takip disiplini için not alın</div>
+                </div>
+              </div>
+              <Plus size={20} className="text-orange-500" />
+            </button>
 
             <div className="pt-6 border-t border-slate-100">
               <button onClick={() => { setDocumentAutomationLead?.(lead); setShowDocumentAutomation?.(true); }} className="w-full p-5 bg-white border-2 border-slate-100 rounded-3xl flex items-center justify-between hover:border-orange-500 transition-all group">

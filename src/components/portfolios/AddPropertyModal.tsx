@@ -11,7 +11,7 @@ import { api } from '../../services/api';
 interface AddPropertyModalProps {
   show: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => any;
+  onSubmit: (data: any) => Promise<any>;
   isPending: boolean;
   initialData?: Property | null;
   leads: Lead[];
@@ -43,6 +43,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
     category: initialData?.category || 'Satılık',
     price: initialData?.price ? new Intl.NumberFormat('tr-TR').format(initialData.price) : '',
     status: initialData?.status || 'Yeni',
+    unsold_reason: initialData?.unsold_reason || '',
     address: initialData?.address || { city: 'Kayseri', district: '', neighborhood: '', fullAddress: '', lat: undefined, lng: undefined },
     details: {
       brut_m2: initialData?.details?.brut_m2?.toString() || '',
@@ -69,6 +70,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
         category: initialData.category,
         price: new Intl.NumberFormat('tr-TR').format(initialData.price),
         status: initialData.status,
+        unsold_reason: initialData.unsold_reason || '',
         address: initialData.address,
         details: {
           brut_m2: initialData.details.brut_m2.toString(),
@@ -93,6 +95,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
         category: 'Satılık',
         price: '',
         status: 'Yeni',
+        unsold_reason: '',
         address: { city: 'Kayseri', district: '', neighborhood: '', fullAddress: '', lat: undefined, lng: undefined },
         details: { brut_m2: '', net_m2: '', rooms: '', floor: '', totalFloors: '', age: '' },
         owner: { name: '', phone: '', trust_score: 80 },
@@ -159,9 +162,14 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
       alert('Lütfen zorunlu alanları doldurunuz (Başlık, Fiyat, İlçe)');
       return;
     }
+    if (formData.status === 'Pasif' && !formData.unsold_reason?.trim()) {
+      alert('Portföy pasife alınıyorsa Satılamama Sebebi girmek zorunludur!');
+      return;
+    }
     const payload = {
       ...formData,
       price: Number(formData.price.toString().replace(/\D/g, '')),
+      unsold_reason: formData.unsold_reason,
       details: {
         ...formData.details,
         brut_m2: Number(formData.details.brut_m2),
@@ -286,21 +294,43 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Mülk Tipi</label>
                     <select 
                       className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                      value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as any})}
+                      value={formData.type} onChange={e => setFormData({...formData, type: e.target.value as Property['type']})}
                     >
-                      <option>Daire</option><option>Villa</option><option>Arsa</option><option>Ticari</option><option>Fabrika</option>
+                      <option>Daire</option><option>Villa</option><option>Arsa</option><option>Ticari</option><option>Fabrika</option><option>Fabrika Arsası</option>
                     </select>
                   </div>
                   <div className="space-y-2">
                     <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Kategori</label>
                     <select 
                       className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
-                      value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as any})}
+                      value={formData.category} onChange={e => setFormData({...formData, category: e.target.value as Property['category']})}
                     >
                       <option>Satılık</option><option>Kiralık</option>
                     </select>
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Durum</label>
+                  <select 
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
+                    value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as Property['status']})}
+                  >
+                    {['Yeni', 'Hazırlanıyor', 'Yayında', 'İlgi Var', 'Pazarlık', 'Satıldı', 'Pasif'].map(s => <option key={s} value={s}>{s}</option>)}
+                  </select>
+                </div>
+                {(formData.status === 'Pasif' || formData.status === 'Satıldı') && (
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-bold text-red-500 uppercase tracking-wider">
+                      {formData.status === 'Pasif' ? 'Portföy Neden Satılamadı? (Zorunlu)' : 'Nasıl Satıldı/Satılamadı?'}
+                    </label>
+                    <textarea 
+                      required={formData.status === 'Pasif'}
+                      placeholder="Müşteri vazgeçti, fiyat çok yüksekti, başka emlakçı sattı..."
+                      className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none h-20 resize-none"
+                      value={formData.unsold_reason || ''} onChange={e => setFormData({...formData, unsold_reason: e.target.value})}
+                    />
+                  </div>
+                )}
                 <div className="space-y-2">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Fiyat</label>
                   <div className="relative">

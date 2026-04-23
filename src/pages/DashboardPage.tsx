@@ -23,7 +23,7 @@ interface DashboardPageProps {
   setShowDayCloser: (show: boolean) => void;
   setShowMissedOpportunities: (show: boolean) => void;
   setToast: (toast: { message: string, type: 'success' | 'error' | 'info' } | null) => void;
-  completeMorningRitualMutation: MutationResult<void, void>;
+  completeMorningRitualMutation: MutationResult<void, { morning_notes: string }>;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({

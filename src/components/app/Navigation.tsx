@@ -75,7 +75,7 @@ export const DesktopSidebar = ({
       <SidebarLink icon={<MapIcon size={20} />} label="Bölgem" active={activeTab === 'bolgem' && !showAdminPanel} onClick={() => onTabChange('bolgem')} />
       <SidebarLink icon={<Briefcase size={20} />} label="Portföyler" active={activeTab === 'portfoyler' && !showAdminPanel} onClick={() => onTabChange('portfoyler')} />
       <SidebarLink icon={<Users size={20} />} label="CRM" active={activeTab === 'crm' && !showAdminPanel} onClick={() => onTabChange('crm')} />
-      <SidebarLink icon={<MessageSquare size={20} />} label="Notlar" active={activeTab === 'notes' && !showAdminPanel} onClick={() => onTabChange('notes')} />
+      <SidebarLink icon={<MessageSquare size={20} />} label="İçerik & Notlar" active={activeTab === 'notes' && !showAdminPanel} onClick={() => onTabChange('notes')} />
       <SidebarLink icon={<Brain size={20} />} label="AI Koç" active={activeTab === 'koc' && !showAdminPanel} onClick={() => onTabChange('koc')} />
     </div>
 

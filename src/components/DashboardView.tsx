@@ -4,14 +4,14 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Building2, Sparkles, Trophy, Zap, CheckCircle2, 
   RefreshCw, Circle, Moon, ArrowRight, AlertCircle, ClipboardList, Lock,
-  MessageSquare, Send, Copy, Ghost
+  MessageSquare, Send, Copy, Ghost, Sun, Target, Globe
 } from 'lucide-react';
 import { Card, Badge, Skeleton } from './UI';
 import { api } from '../services/api';
 import { RevenueOverview } from './revenue/RevenueOverview';
 import { PipelineFunnel } from './revenue/PipelineFunnel';
 import { QUERY_KEYS } from '../constants/queryKeys';
-import { UserProfile, GamifiedTask, Property, Task, PersonalTask, RescueSession, UserStats, CoachInsight, MutationResult } from '../types';
+import { UserProfile, GamifiedTask, Property, Task, PersonalTask, RescueSession, UserStats, CoachInsight, MutationResult, MissedOpportunity } from '../types';
 import { RevenueStats } from '../types/revenue';
 import { QueryClient } from '@tanstack/react-query';
 import { useFeatureAccess } from '../hooks/useFeatureAccess';
@@ -27,22 +27,23 @@ interface DashboardViewProps {
   rescueSession: RescueSession | null;
   isGamifiedTasksLoading: boolean;
   isGamifiedTasksError: boolean;
-  refreshTasksMutation: MutationResult<any, any>;
-  completeTaskMutation: MutationResult<any, any>;
-  startRescueMutation: MutationResult<any, any>;
+  refreshTasksMutation: MutationResult<GamifiedTask[], void>;
+  completeTaskMutation: MutationResult<void, { task: GamifiedTask }>;
+  startRescueMutation: MutationResult<RescueSession, void>;
   revenueStats: RevenueStats | null;
   revenueLoading: boolean;
   setActiveTab: (tab: string) => void;
   setShowDayCloser: (show: boolean) => void;
   queryClient: QueryClient;
-  startDayMutation: MutationResult<any, any>;
-  completeMorningRitualMutation: MutationResult<any, any>;
+  startDayMutation: MutationResult<boolean, void>;
+  completeMorningRitualMutation: MutationResult<void, { morning_notes: string }>;
   tasks?: Task[];
   personalTasks?: PersonalTask[];
   setShowAdminPanel?: (show: boolean) => void;
   setShowDailyRadar?: (show: boolean) => void;
   setShowMissedOpportunities?: (show: boolean) => void;
-  missedOpportunities?: any[];
+  missedOpportunities?: MissedOpportunity[];
+  setToast?: (toast: { message: string, type: 'success' | 'error' | 'info' } | null) => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -64,6 +65,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   queryClient,
   startDayMutation,
   completeMorningRitualMutation,
+  setToast,
   tasks = []
 }) => {
   const [dashboardTab, setDashboardTab] = useState<'action' | 'analysis'>('action');
@@ -184,6 +186,107 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             exit={{ opacity: 0, x: 10 }}
             className="space-y-8"
           >
+            {isDayStarted && !isDayEnded && !completeMorningRitualMutation.isSuccess && (
+              <section>
+                <Card className="p-4 md:p-6 bg-gradient-to-br from-orange-50 to-orange-100/50 border-orange-200 shadow-sm relative overflow-hidden">
+                  <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/10 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none" />
+                  <div className="flex items-start gap-4">
+                    <div className="w-12 h-12 bg-orange-100 rounded-2xl flex items-center justify-center shrink-0">
+                      <Sun size={24} className="text-orange-600" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <h3 className="text-lg font-bold text-orange-900">Sabah 10 Dakika Planı</h3>
+                        <div className="text-[10px] font-bold text-orange-600 bg-orange-100 px-2 py-0.5 rounded uppercase">Ritüel</div>
+                      </div>
+                      <p className="text-xs text-orange-800/70 font-medium mt-1 mb-4 leading-relaxed">
+                        Bugün odaklanman gereken en önemli 3 kişi/iş nedir? Güne rastgele değil, planlı başla.
+                      </p>
+                      <button 
+                        onClick={() => {
+                          const notes = window.prompt("Bugünkü odağın (3 öncelikli kişi/iş):");
+                          if (notes) {
+                            completeMorningRitualMutation.mutate({ morning_notes: notes });
+                          }
+                        }}
+                        className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-orange-600/20 active:scale-95 transition-all"
+                      >
+                        Planı Kaydet & Güne Başla
+                      </button>
+                    </div>
+                  </div>
+                </Card>
+              </section>
+            )}
+
+            {isDayStarted && !isDayEnded && completeMorningRitualMutation.isSuccess && (
+              <section>
+                <Card className="p-4 md:p-6 bg-slate-900 relative overflow-hidden group hover:ring-2 hover:ring-indigo-500/50 transition-all cursor-pointer">
+                  <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none group-hover:bg-indigo-500/30 transition-colors" />
+                  <div className="flex items-start gap-4 relative z-10">
+                    <div className="w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center shrink-0 border border-indigo-500/30">
+                      <Target size={24} className="text-indigo-400" />
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <h3 className="text-lg font-bold text-white tracking-tight">Mikro Hedef: Bugünü Kazan!</h3>
+                          <div className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded uppercase tracking-wider">Hedef</div>
+                        </div>
+                      </div>
+                      <p className="text-xs text-slate-400 font-medium mt-2 leading-relaxed">
+                        Büyük hedeflere odaklanmak yerine, bugüne özel 1 mikro hedef belirle ve tamamla. (Örn: "Daha önce hiç aramadığım 5 FSBO satıcısını ara.")
+                      </p>
+                      <div className="mt-4 flex flex-col sm:flex-row gap-3">
+                        <button 
+                          onClick={() => {
+                            const aim = window.prompt("Bugünkü mikro hedefin nedir?");
+                            if (aim) {
+                              toast.success(`Harika! Mikro hedefin devrede: ${aim}`);
+                            }
+                          }}
+                          className="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-400/20 px-5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex-1text-center"
+                        >
+                          Bugünkü Mikro Hedefimi Belirle
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </Card>
+              </section>
+            )}
+
+            {/* SAHİP PORTALI TRAFİK MOTORU */}
+            <section>
+              <Card className="p-4 md:p-6 bg-gradient-to-r from-blue-600 to-indigo-700 relative overflow-hidden group">
+                <div className="absolute inset-0 opacity-10 pointer-events-none mix-blend-overlay border-[1px] border-dashed border-white" />
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
+                  <div className="flex items-start gap-4 text-white">
+                    <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shrink-0 border border-white/20">
+                      <Globe size={24} className="text-white" />
+                    </div>
+                    <div>
+                      <h3 className="text-lg font-bold flex items-center gap-2">
+                        Sahip Portalı Trafik Motoru
+                        <div className="text-[9px] font-black bg-white/20 px-2 py-0.5 rounded tracking-widest border border-white/20 uppercase">OTOMASYON</div>
+                      </h3>
+                      <p className="text-xs text-blue-100 mt-1 font-medium max-w-sm leading-relaxed">
+                        Müşterilerinize şeffaf rapor sunun. Rapor linkini her açtıklarında onlara diğer portföylerini satmayı teklif edeceğiz.
+                      </p>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      if(setToast) setToast({ message: 'Owner Portal paylaşım linki hazırlandı.', type: 'success' });
+                    }}
+                    className="bg-white hover:bg-blue-50 text-blue-700 px-6 py-3 rounded-xl text-sm font-bold shadow-xl shadow-black/10 active:scale-95 transition-all text-center"
+                  >
+                    Portal Linki Oluştur
+                  </button>
+                </div>
+              </Card>
+            </section>
+
             <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
               
               {/* 🔥 MÜKEMMEL, SADE, YENİ AI KOÇ KART KİLİDİ 🔥 */}
@@ -297,7 +400,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
                     </div>
                     <button 
-                      onClick={() => startRescueMutation.mutate(undefined)}
+                      onClick={() => startRescueMutation.mutate()}
                       disabled={startRescueMutation.isPending}
                       className="px-4 py-2 bg-orange-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-orange-200 active:scale-95 transition-all"
                     >
@@ -419,7 +522,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <h2 className="text-lg font-bold text-slate-900 tracking-tight">Günün Görevleri</h2>
                 <div className="flex items-center gap-2">
                   <button 
-                    onClick={() => refreshTasksMutation.mutate(undefined)}
+                    onClick={() => refreshTasksMutation.mutate()}
                     disabled={refreshTasksMutation.isPending || isGamifiedTasksLoading}
                     className="p-1.5 text-slate-400 hover:text-orange-600 transition-colors disabled:opacity-50"
                     title="Görevleri Yeniden Oluştur"
@@ -435,6 +538,37 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </div>
               <div className="grid grid-cols-1 gap-3">
+                
+                {/* İLK 7 GÜN AKTİVASYON */}
+                {profile && new Date(profile.created_at) > new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) && (
+                  <Card className="p-4 md:p-6 bg-gradient-to-br from-blue-50 to-indigo-50 border-blue-100 shadow-sm relative overflow-hidden">
+                    <div className="flex items-center gap-4 mb-4 relative z-10">
+                      <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600">
+                        <Target size={20} />
+                      </div>
+                      <div>
+                        <h4 className="text-sm font-bold text-blue-900">İlk 7 Gün Aktivasyon Programı</h4>
+                        <p className="text-[10px] text-blue-700 mt-0.5">Sisteme hızlı adapte olmak için bu görevleri tamamla</p>
+                      </div>
+                    </div>
+                    <div className="space-y-2 relative z-10">
+                      {[
+                        { title: 'İlk Müşterini Kaydet', completed: true },
+                        { title: 'İlk Portföyünü Ekle', completed: (properties || []).length > 0 },
+                        { title: 'Bölgemi Keşfet', completed: profile.region && profile.region.district },
+                        { title: 'Profile Fotoğraf Ekle', completed: false }
+                      ].map((task, i) => (
+                        <div key={i} className="flex items-center gap-3 bg-white/60 p-2.5 rounded-xl border border-blue-100/50">
+                          <div className={`w-5 h-5 rounded-full flex items-center justify-center ${task.completed ? 'bg-emerald-500 text-white' : 'bg-slate-200 text-slate-400'}`}>
+                            <CheckCircle2 size={12} />
+                          </div>
+                          <span className={`text-xs font-bold ${task.completed ? 'text-slate-400 line-through' : 'text-slate-700'}`}>{task.title}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                )}
+
                 {isGamifiedTasksLoading ? (
                   <div className="space-y-3">
                     {[1, 2, 3].map(i => (
@@ -472,7 +606,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <h4 className="text-sm font-bold text-slate-900">Görevler Bulunamadı</h4>
                     <p className="text-xs text-slate-400 px-8">Bugün için henüz görevlerin oluşturulmadı.</p>
                     <button 
-                      onClick={() => refreshTasksMutation.mutate(undefined)}
+                      onClick={() => refreshTasksMutation.mutate()}
                       disabled={refreshTasksMutation.isPending}
                       className="mt-2 px-6 py-2.5 bg-slate-900 text-white rounded-xl text-xs font-bold active:scale-95 transition-all disabled:opacity-50"
                     >
@@ -605,6 +739,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             <section className="space-y-4">
               <PipelineFunnel properties={properties || []} />
+            </section>
+
+            <section className="space-y-4">
+              <div className="flex justify-between items-center mt-4">
+                <h2 className="text-lg font-bold text-slate-900 tracking-tight">Haftalık İş Sonucu Panosu</h2>
+                <div className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2 py-1 rounded-lg">Momentum OS</div>
+              </div>
+              <Card className="p-6 bg-gradient-to-br from-indigo-50 to-slate-50 border-indigo-100">
+                <div className="flex items-center gap-4 text-indigo-600 mb-4">
+                  <div className="w-10 h-10 bg-indigo-100 rounded-xl flex items-center justify-center">
+                    <CheckCircle2 size={20} />
+                  </div>
+                  <div>
+                    <h3 className="font-bold text-sm">Bu Haftaki Performans</h3>
+                    <p className="text-xs text-indigo-500/70 font-medium">Satış ve görüşmelerinizin özeti</p>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium">Toplam Görüşme</p>
+                    <p className="text-xl font-black text-slate-900 mt-1">{tasks?.filter(t => t.completed && t.type === 'Arama').length || 0}</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium">Saha Ziyareti</p>
+                    <p className="text-xl font-black text-slate-900 mt-1">{tasks?.filter(t => t.completed && t.type === 'Saha').length || 0}</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium">Yeni Portföy</p>
+                    <p className="text-xl font-black text-slate-900 mt-1">{properties?.filter(p => p.status === 'Yeni').length || 0}</p>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
+                    <p className="text-xs text-slate-500 font-medium">Satış & Kiralama</p>
+                    <p className="text-xl font-black text-slate-900 mt-1">{properties?.filter(p => p.status === 'Satıldı').length || 0}</p>
+                  </div>
+                </div>
+              </Card>
             </section>
           </motion.div>
         )}

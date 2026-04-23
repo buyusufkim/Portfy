@@ -10,7 +10,8 @@ import {
   Phone,
   Filter,
   Flame,
-  ArrowUpDown
+  ArrowUpDown,
+  AlertTriangle
 } from 'lucide-react';
 import { Lead } from '../types';
 import { Card, Badge, Skeleton } from './UI';
@@ -93,6 +94,19 @@ export const CRMView: React.FC<CRMViewProps> = ({
   const sellerCount = leads.filter((lead) => lead.type === 'Satıcı').length;
   const hasActiveFilters = searchTerm.length > 0 || statusFilter !== 'all' || typeFilter !== 'all' || sortBy !== 'recent';
 
+  const silentLeads = React.useMemo(() => {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    return leads.filter(lead => {
+      if (lead.status === 'Kapalı' || lead.status === 'Pasif') return false;
+      const dateStr = lead.last_contacted_at || lead.last_contact || lead.created_at;
+      if (!dateStr) return true; // Eğer hiçbir tarih yoksa
+      const contactDate = new Date(dateStr);
+      if (isNaN(contactDate.getTime())) return false;
+      return contactDate.getTime() < sevenDaysAgo.getTime();
+    });
+  }, [leads]);
+
   const filterPills = [
     statusFilter !== 'all' ? { key: 'status', label: `Durum: ${statusFilter}` } : null,
     typeFilter !== 'all' ? { key: 'type', label: `Tip: ${typeFilter}` } : null,
@@ -129,6 +143,26 @@ export const CRMView: React.FC<CRMViewProps> = ({
         </button>
       </div>
     </div>
+
+    {silentLeads.length > 0 && (
+      <motion.div 
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-red-50 border border-red-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 shadow-sm"
+      >
+        <div className="flex items-start gap-3">
+          <div className="bg-red-100 text-red-600 p-2 rounded-xl shrink-0 mt-0.5">
+            <AlertTriangle size={20} />
+          </div>
+          <div>
+            <h3 className="text-red-800 font-bold text-sm">Sessizleşen Müşteriler (Müşteri Unutma Koruması)</h3>
+            <p className="text-red-600 text-xs mt-1 leading-relaxed">
+              <strong>{silentLeads.length}</strong> aktif müşterinizle son 7 gündür hiçbir iletişim kurulmadı. 
+            </p>
+          </div>
+        </div>
+      </motion.div>
+    )}
 
     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
       <Card className="p-4 border-orange-100 bg-orange-50/50">

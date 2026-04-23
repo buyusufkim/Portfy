@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapIcon, LayoutDashboard, Store, User, Building2, Home, Star, Filter, Search, Plus, X, Layers, Crosshair, MessageSquare, MapPin, Navigation } from 'lucide-react';
+import { MapIcon, LayoutDashboard, Store, User, Building2, Home, Star, Filter, Search, Plus, X, Layers, Crosshair, MessageSquare, MapPin, Navigation, TrendingUp } from 'lucide-react';
 import { useCategories } from '../hooks/useCategories';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
@@ -16,7 +16,7 @@ import { CompetitorList } from './CompetitorList';
 
 const defaultCenter = { lat: 38.7205, lng: 35.4826 };
 
-const createSvgPin = (color: string, Icon: any) => {
+const createSvgPin = (color: string, Icon: React.ElementType) => {
   const iconSvg = renderToStaticMarkup(<Icon size={12} color="white" strokeWidth={2.5} />);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
     <circle cx="20" cy="20" r="18" fill="white" stroke="${color}" stroke-width="1.5" />
@@ -38,7 +38,7 @@ export const BolgemView = ({
   const [view, setView] = useState<'map' | 'list'>('map');
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
-  const [selectedPin, setSelectedPin] = useState<any>(null);
+  const [selectedPin, setSelectedPin] = useState<MapPinType | null>(null);
   
   const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
   const [isTracking, setIsTracking] = useState(false);
@@ -50,6 +50,7 @@ export const BolgemView = ({
   const [newFilterColor, setNewFilterColor] = useState('#eab308');
 
   const [is3D, setIs3D] = useState(false);
+  const [showTerritoryPlanner, setShowTerritoryPlanner] = useState(false);
 
   const [mapCenter, setMapCenter] = useState(defaultCenter);
   const [mapZoom, setMapZoom] = useState(13);
@@ -64,7 +65,7 @@ export const BolgemView = ({
     lng: defaultCenter.lng
   });
 
-  const [map, setMap] = useState<any>(null);
+  const [map, setMap] = useState<L.Map | null>(null);
 
   const hotspots = useMemo(() => {
     if (!profile?.region?.city || !mapCenter) return [];
@@ -151,7 +152,7 @@ export const BolgemView = ({
     };
   }, []);
 
-  const onMapLoad = (mapInstance: any) => {
+  const onMapLoad = (mapInstance: L.Map) => {
     setMap(mapInstance);
   };
 
@@ -237,7 +238,7 @@ export const BolgemView = ({
     setShowAddFilter(false);
   };
 
-  const handleMapClick = async (e: any) => {
+  const handleMapClick = async (e: { latLng?: { lat: () => number, lng: () => number } | { lat: number, lng: number } }) => {
     if (e.latLng) {
       const lat = typeof e.latLng.lat === 'function' ? e.latLng.lat() : e.latLng.lat;
       const lng = typeof e.latLng.lng === 'function' ? e.latLng.lng() : e.latLng.lng;
@@ -361,6 +362,25 @@ export const BolgemView = ({
 
           {/* Floating Search & Filters */}
           <div className="absolute top-6 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl z-[400] space-y-3 pointer-events-none">
+            {/* TERRITORY PLANNING */}
+            <div className="pointer-events-auto w-full bg-slate-900/90 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-4 shadow-2xl flex items-center justify-between mb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center border border-indigo-500/30">
+                  <MapPin size={20} className="text-indigo-400" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-bold text-white flex items-center gap-2">Territory Planning <div className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">AKILLI ODAK</div></h4>
+                  <p className="text-xs text-slate-400">Veriye dayalı bölge çalışma stratejisi</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowTerritoryPlanner(true)}
+                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors shadow-lg shadow-indigo-600/20"
+              >
+                Fokus Alanı Seç
+              </button>
+            </div>
+
             <div className="flex items-center gap-2 pointer-events-auto">
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
@@ -529,6 +549,59 @@ export const BolgemView = ({
                   </div>
                 </div>
                 <button onClick={handleAddFilter} className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold mt-2">Kategoriyi Oluştur</button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {showTerritoryPlanner && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowTerritoryPlanner(false)} />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: 20 }} 
+              className="bg-slate-900 w-full max-w-2xl rounded-[32px] overflow-hidden relative z-10 shadow-2xl flex flex-col border border-white/10"
+            >
+              <div className="p-6 border-b border-white/10 flex justify-between items-center bg-slate-900 sticky top-0">
+                <h3 className="text-xl font-bold text-white flex items-center gap-2"><MapPin size={20} className="text-indigo-500"/> Akıllı Bölge Planlama</h3>
+                <button onClick={() => setShowTerritoryPlanner(false)} className="p-2 text-slate-400 hover:text-white rounded-full transition-colors"><X size={20}/></button>
+              </div>
+              <div className="p-8 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="p-5 bg-white/5 rounded-2xl border border-white/10 space-y-3 hover:bg-white/10 transition-colors cursor-pointer group">
+                    <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center border border-indigo-500/30 text-indigo-400 group-hover:bg-indigo-500 group-hover:text-white transition-all">
+                      <TrendingUp size={20} />
+                    </div>
+                    <h4 className="text-sm font-bold text-white">Yüksek Talep Alanı</h4>
+                    <p className="text-[10px] text-slate-400 leading-relaxed">Son 15 günde alıcı trafiğinin en yoğun olduğu mikro bölgeleri belirle.</p>
+                  </div>
+                  <div className="p-5 bg-white/5 rounded-2xl border border-white/10 space-y-3 hover:bg-white/10 transition-colors cursor-pointer group">
+                    <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center border border-orange-500/30 text-orange-400 group-hover:bg-orange-500 group-hover:text-white transition-all">
+                      <Building2 size={20} />
+                    </div>
+                    <h4 className="text-sm font-bold text-white">Fırsat Alanı (Drop-off)</h4>
+                    <p className="text-[10px] text-slate-400 leading-relaxed">İlanı yayından kalkan ama henüz satılmamış potansiyel fırsat bölgeleri.</p>
+                  </div>
+                </div>
+                
+                <div className="p-5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-between">
+                  <div>
+                    <h4 className="text-xs font-bold text-indigo-300 uppercase tracking-widest">Önerilen Fokus Alanı</h4>
+                    <p className="text-sm font-bold text-white mt-1">{profile?.region?.district || 'Seçili Bölge'} - Yıldırım Beyazıt Mah.</p>
+                  </div>
+                  <button 
+                    onClick={() => {
+                      setShowTerritoryPlanner(false);
+                      if(setToast) setToast({ message: 'Focus alanı radarda işaretlendi!', type: 'success' });
+                    }}
+                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors"
+                  >
+                    Rotayı Çiz
+                  </button>
+                </div>
               </div>
             </motion.div>
           </div>

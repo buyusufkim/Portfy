@@ -1,5 +1,82 @@
 import React from 'react';
 
+export interface WeeklyReport {
+  id: string;
+  user_id: string;
+  week_start_date: string;
+  metrics: Record<string, any>;
+  generated_at: string;
+}
+
+export interface ContentCalendar {
+  id: string;
+  user_id: string;
+  title: string;
+  platform: string;
+  status: string;
+  scheduled_for: string;
+  content_text: string;
+  media_urls: string[];
+}
+
+export interface MicroGoal {
+  id: string;
+  user_id: string;
+  title: string;
+  target_metric: string;
+  target_value: number;
+  current_value: number;
+  deadline: string;
+  status: string;
+}
+
+export interface TerritoryPlan {
+  id: string;
+  user_id: string;
+  name: string;
+  boundaries: Record<string, any>;
+  strategy_notes: string;
+  status: string;
+}
+
+export interface Referral {
+  id: string;
+  user_id: string;
+  referrer_name: string;
+  referred_name: string;
+  contact_info: string;
+  status: string;
+  reward_status: string;
+}
+
+export interface UserActivation {
+  id: string;
+  user_id: string;
+  start_date: string;
+  completed_steps: string[];
+  is_completed: boolean;
+}
+
+export interface PortalTrafficLog {
+  id: string;
+  property_id: string;
+  user_id: string;
+  viewer_ip: string;
+  viewed_at: string;
+  action: string;
+  property?: { title: string };
+}
+
+export interface DailyRitual {
+  id: string;
+  user_id: string;
+  ritual_date: string;
+  morning_plan_completed_at?: string;
+  morning_notes?: string;
+  evening_closing_completed_at?: string;
+  evening_notes?: string;
+}
+
 // Bütün sayfaların (CRM, Saha, vs) beklediği tam statü listesi
 export type LeadStatus = 'Aday' | 'Sıcak' | 'Yetki Alındı' | 'Pasif' | 'Soğuk' | 'Takipte' | 'Kapalı';
 
@@ -100,6 +177,7 @@ export interface Lead {
   status: LeadStatus;
   district: string;
   last_contact: string;
+  last_contacted_at?: string;
   notes: string;
   property_id?: string; // TS Hatalarını çözen opsiyonel alan
   created_at?: string; // TS2345 hatasını kökten çözen opsiyonel alan
@@ -122,6 +200,7 @@ export interface Task {
   notes?: string;
   type: 'Arama' | 'Randevu' | 'Saha' | 'Takip' | 'Güncelleme' | 'Sosyal Medya';
   completed: boolean;
+  requires_call?: boolean;
   is_drip?: boolean;
   ai_suggestion?: string;
   drip_type?: string;
@@ -136,6 +215,7 @@ export interface Property {
   price: number;
   commission_rate: number;
   status: 'Yeni' | 'Hazırlanıyor' | 'Yayında' | 'İlgi Var' | 'Pazarlık' | 'Satıldı' | 'Pasif';
+  unsold_reason?: string;
   address: {
     city: string;
     district: string;

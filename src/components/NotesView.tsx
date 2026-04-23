@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Plus, Search, Tag, X, Calendar, Edit2, Trash2, 
   Check, Save, Clock, FolderPlus, MoreVertical, Notebook,
-  Archive, AlertCircle, FileText, Lock
+  Archive, AlertCircle, FileText, Lock, Sparkles
 } from 'lucide-react';
 import { Card, Badge, Skeleton } from './UI';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -37,6 +37,7 @@ export const NotesView = () => {
   // 🔥 LİMİT KONTROLLERİ 🔥
   const { isFree, subscribe } = useFeatureAccess();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [showContentPlanner, setShowContentPlanner] = useState(false);
 
   const colors = [
     { name: 'Varsayılan', class: 'bg-slate-50', border: 'border-slate-200' },
@@ -156,10 +157,10 @@ export const NotesView = () => {
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h2 className="text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
-            <Notebook size={24} className="text-orange-600" />
-            Notlarım
+            <Calendar size={24} className="text-orange-600" />
+            İçerik & Notlar
           </h2>
-          <p className="text-sm text-slate-500 mt-1">Kişisel notlarınızı ve fikirlerinizi yönetin.</p>
+          <p className="text-sm text-slate-500 mt-1">Akıllı içerik takvimi ve kişisel notların.</p>
         </div>
         
         <div className="flex items-center gap-3">
@@ -181,6 +182,34 @@ export const NotesView = () => {
           </button>
         </div>
       </div>
+
+      {/* AKILLI İÇERİK TAKVİMİ */}
+      <section className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm">
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+            <Calendar size={20} className="text-orange-500" />
+            Akıllı İçerik Takvimi
+            <Badge variant="warning" className="ml-2">BETA</Badge>
+          </h3>
+          <button onClick={() => setShowContentPlanner(true)} className="text-sm font-bold text-orange-600 hover:text-orange-700">
+            Yeni İçerik Planla
+          </button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          <Card className="p-4 bg-orange-50 border-orange-100 flex flex-col items-center text-center justify-center min-h-[120px]">
+            <p className="text-xs font-bold text-orange-600 mb-1">Bugün</p>
+            <p className="text-sm font-medium text-slate-900">Bölge piyasa analizi (Instagram Reels)</p>
+          </Card>
+          <Card className="p-4 bg-slate-50 border-slate-100 flex flex-col items-center text-center justify-center min-h-[120px]">
+            <p className="text-xs font-bold text-slate-400 mb-1">Yarın</p>
+            <p className="text-sm font-medium text-slate-600">Yeni portföy tanıtımı (Foto Galeri)</p>
+          </Card>
+          <Card className="p-4 bg-slate-50 border-slate-100 flex flex-col items-center text-center justify-center min-h-[120px]">
+            <p className="text-xs font-bold text-slate-400 mb-1">Cuma</p>
+            <p className="text-sm font-medium text-slate-600">Haftalık kapanış ve başarı hikayesi</p>
+          </Card>
+        </div>
+      </section>
 
       {/* Tags Filter */}
       {allTags.length > 0 && (
@@ -419,6 +448,57 @@ export const NotesView = () => {
           }
         }}
       />
+
+      {/* CONTENT PLANNER MODAL */}
+      <AnimatePresence>
+        {showContentPlanner && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowContentPlanner(false)} />
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.95, y: 20 }} 
+              animate={{ opacity: 1, scale: 1, y: 0 }} 
+              exit={{ opacity: 0, scale: 0.95, y: 20 }} 
+              className="bg-white w-full max-w-lg rounded-[32px] overflow-hidden relative z-10 shadow-2xl flex flex-col"
+            >
+              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white sticky top-0">
+                <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2"><Sparkles size={20} className="text-orange-500"/> Akıllı İçerik Planla</h3>
+                <button onClick={() => setShowContentPlanner(false)} className="p-2 text-slate-400 hover:text-slate-600 rounded-full transition-colors"><X size={20}/></button>
+              </div>
+              <div className="p-8 space-y-6">
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">İçerik Konusu</label>
+                  <input type="text" placeholder="Örn: Hafta Sonu Portföy Sunumu" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none transition-all" />
+                </div>
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Platform</label>
+                  <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none transition-all">
+                    <option>Instagram Reels</option>
+                    <option>Instagram Story</option>
+                    <option>YouTube Shorts</option>
+                    <option>LinkedIn Post</option>
+                    <option>WhatsApp Durum</option>
+                  </select>
+                </div>
+                <div className="space-y-3">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">AI Tavsiyesi</label>
+                  <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl text-xs text-orange-800 leading-relaxed italic">
+                    "Bölgenizdeki son 30 günlük satış verilerini kullanarak 'Neden Şimdi Satmalısınız?' temalı bir video çekmek şu an %85 daha fazla etkileşim getirebilir."
+                  </div>
+                </div>
+                <button 
+                  onClick={() => {
+                    setShowContentPlanner(false);
+                    alert("İçerik takviminize eklendi!");
+                  }} 
+                  className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all"
+                >
+                  Takvime Ekle
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };

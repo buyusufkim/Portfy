@@ -12,9 +12,11 @@ import {
   Bell, 
   MessageSquare, 
   LogOut,
-  MapPin
+  MapPin,
+  Users,
+  Share2
 } from 'lucide-react';
-import { UserProfile, BrokerAccount } from '../types';
+import { UserProfile, BrokerAccount, MutationResult } from '../types';
 import { Card, Badge } from './UI';
 
 interface ProfilViewProps {
@@ -24,8 +26,8 @@ interface ProfilViewProps {
   setShowAdminPanel: (show: boolean) => void;
   setShowExternalListings: (show: boolean) => void;
   setShowIntegrationModal: (show: boolean) => void;
-  syncListingsMutation: any;
-  updateProfileMutation: any;
+  syncListingsMutation: MutationResult<void, void>;
+  updateProfileMutation: MutationResult<void, { id: string, data: Partial<UserProfile> }>;
   setShowRegionSetup: (show: boolean) => void;
 }
 
@@ -70,6 +72,29 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
           <ArrowRight size={20} className="text-slate-400" />
         </Card>
       )}
+
+      {/* REFERRAL ENGINE CARD */}
+      <Card className="flex flex-col gap-4 border border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600">
+            <Users size={24} />
+          </div>
+          <div className="flex-1">
+            <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">Referral Engine <div className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200">BÜYÜME MOTORU</div></h4>
+            <p className="text-xs text-slate-500">Mevcut müşterilerinden yeni potansiyeller yarat</p>
+          </div>
+          <button 
+            onClick={() => alert("Kendi referral ağın için özel davet linkin: https://portfy.app/ref/TR7329")}
+            className="p-2 bg-emerald-600 text-white rounded-xl shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition"
+          >
+            <Share2 size={18} />
+          </button>
+        </div>
+        <div className="bg-white/60 p-3 rounded-xl border border-emerald-100 flex items-center justify-between">
+          <span className="text-xs font-bold text-slate-600">Kazanılan Potansiyeller:</span>
+          <span className="text-sm font-black text-emerald-600">12</span>
+        </div>
+      </Card>
 
       <Card className="flex items-center gap-4">
         <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600">
