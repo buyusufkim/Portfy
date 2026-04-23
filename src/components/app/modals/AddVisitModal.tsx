@@ -2,12 +2,12 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X } from 'lucide-react';
 
-import { Building } from '../../../types';
+import { Building, MutationResult } from '../../../types';
 
 interface AddVisitModalProps {
   showAddVisit: boolean;
   setShowAddVisit: (val: boolean) => void;
-  addVisitMutation: any;
+  addVisitMutation: MutationResult<any, { title: string; address: string; district: string; status: Building['status']; notes: string }>;
 }
 
 export const AddVisitModal: React.FC<AddVisitModalProps> = ({ 
@@ -71,7 +71,7 @@ export const AddVisitModal: React.FC<AddVisitModalProps> = ({
                 <select 
                   className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
                   value={formData.status}
-                  onChange={e => setFormData({...formData, status: e.target.value as any})}
+                  onChange={e => setFormData({...formData, status: e.target.value as Building['status']})}
                 >
                   <option>Görüşüldü</option>
                   <option>Potansiyel</option>

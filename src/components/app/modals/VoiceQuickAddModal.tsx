@@ -4,14 +4,14 @@ import { X, Mic, RefreshCw } from 'lucide-react';
 import { Badge } from '../../UI';
 import { api } from '../../../services/api';
 
-import { VoiceParseResult } from '../../../types';
+import { VoiceParseResult, MutationResult } from '../../../types';
 
 interface VoiceQuickAddModalProps {
   showVoiceQuickAdd: boolean;
   setShowVoiceQuickAdd: (val: boolean) => void;
-  addLeadMutation: any;
-  addTaskMutation: any;
-  addVisitMutation: any;
+  addLeadMutation: MutationResult<any, { name: string; phone: string; type: string; status: string; district: string; notes: string }>;
+  addTaskMutation: MutationResult<any, { title: string; time: string; type: string; completed: boolean }>;
+  addVisitMutation: MutationResult<any, { title: string; address: string; district: string; status: 'Görüşüldü'|'Potansiyel'|'Ret'|'Boş'; notes: string }>;
 }
 
 export const VoiceQuickAddModal: React.FC<VoiceQuickAddModalProps> = ({ 
@@ -31,7 +31,8 @@ export const VoiceQuickAddModal: React.FC<VoiceQuickAddModalProps> = ({
   const [isSupported, setIsSupported] = useState(true);
 
   useEffect(() => {
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const win = window as unknown as { SpeechRecognition: any; webkitSpeechRecognition: any };
+    const SpeechRecognition = win.SpeechRecognition || win.webkitSpeechRecognition;
     if (SpeechRecognition) {
       const rec = new SpeechRecognition();
       rec.lang = 'tr-TR';
@@ -128,21 +129,22 @@ export const VoiceQuickAddModal: React.FC<VoiceQuickAddModalProps> = ({
               status: 'Aday',
               district: action.payload.district || action.payload.location || '',
               notes: notes
-            } as any);
+            });
           } else if (action.type === 'task') {
             await addTaskMutation.mutateAsync({
               title: action.payload.title || 'Yeni Görev',
               time: action.payload.time || action.payload.due_date || new Date().toISOString(),
               type: action.payload.type || 'Arama',
               completed: false
-            } as any);
+            });
           } else if (action.type === 'note') {
             await addVisitMutation.mutateAsync({
+              title: '',
               address: action.payload.location || 'Bilinmeyen Adres',
               district: action.payload.location || '',
               status: 'Potansiyel',
               notes: action.payload.notes || action.payload.description || parsedResult.original_text
-            } as any);
+            });
           }
         }
       } else {
@@ -157,21 +159,22 @@ export const VoiceQuickAddModal: React.FC<VoiceQuickAddModalProps> = ({
             status: 'Aday',
             district: parsedResult.extracted_data.location || '',
             notes: notes
-          } as any);
+          });
         } else if (parsedResult.intent === 'task') {
           await addTaskMutation.mutateAsync({
             title: parsedResult.extracted_data.description || 'Yeni Görev',
             time: parsedResult.extracted_data.due_date || new Date().toISOString(),
-            type: (parsedResult.extracted_data as any).task_type || 'Arama',
+            type: parsedResult.extracted_data.task_type || 'Arama',
             completed: false
-          } as any);
+          });
         } else if (parsedResult.intent === 'note') {
           await addVisitMutation.mutateAsync({
+            title: '',
             address: parsedResult.extracted_data.location || 'Bilinmeyen Adres',
             district: parsedResult.extracted_data.location || '',
             status: 'Potansiyel',
             notes: parsedResult.extracted_data.description || parsedResult.original_text
-          } as any);
+          });
         }
       }
     } catch (e) {

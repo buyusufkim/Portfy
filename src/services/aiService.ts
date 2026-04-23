@@ -144,7 +144,7 @@ export const aiService = {
     `;
 
     try {
-      const response = await generateContent("gemini-2.0-flash", prompt, { responseMimeType: "application/json" }) as any;
+      const response = await generateContent("gemini-2.0-flash", prompt, { responseMimeType: "application/json" });
       return response;
     } catch (error) {
       console.error("Valuation AI error", error);

@@ -636,7 +636,7 @@ export const BolgemView = ({
                           });
                         }}
                         disabled={updateTerritoryPlanMutation.isPending}
-                        className="text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors bg-indigo-900 border border-indigo-700 text-indigo-300 hover:bg-indigo-800"
+                        className="text-xs font-bold px-3 py-1.5 rounded-lg transition-colors bg-indigo-900 border border-indigo-700 text-indigo-100 hover:bg-indigo-800"
                       >
                         Hedefi Artır
                       </button>

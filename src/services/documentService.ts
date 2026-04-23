@@ -16,7 +16,7 @@ export const documentService = {
     // Dynamically import heavy libraries only when needed
     const { jsPDF } = await import('jspdf');
     const html2canvasModule = await import('html2canvas');
-    const html2canvas = html2canvasModule.default ? html2canvasModule.default : html2canvasModule;
+    const html2canvas = (html2canvasModule.default || html2canvasModule) as Function;
 
     // PRE-SANITIZATION: Strip problematic colors from stylesheets to avoid html2canvas parser crash
     const styleRef = document.createElement('style');
@@ -27,7 +27,7 @@ export const documentService = {
     `;
     document.head.appendChild(styleRef);
 
-    const canvas = await (html2canvas as any)(element, {
+    const canvas = await html2canvas(element, {
       scale: 2,
       useCORS: true,
       logging: false,

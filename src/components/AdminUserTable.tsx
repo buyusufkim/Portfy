@@ -60,7 +60,7 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
             <tbody className="divide-y divide-slate-100">
               {filteredUsers.map(u => {
                 const used = u.ai_tokens_used || 0;
-                const limit = (u as any).ai_token_limit || (u.tier === 'master' ? 100000 : 5000);
+                const limit = u.ai_token_limit || (u.tier === 'master' ? 100000 : 5000);
                 const ratio = Math.min((used / limit) * 100, 100);
                 const isWarning = ratio >= 80;
                 const isDanger = ratio >= 100;

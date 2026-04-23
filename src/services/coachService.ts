@@ -1,4 +1,4 @@
-import { CoachInsight, PersonalTask, GamifiedTask } from '../types';
+import { CoachInsight, PersonalTask, GamifiedTask, Task } from '../types';
 import { AICoachResponse, AICoachAction } from "../types/ai";
 import { AI_COACH_SCHEMA, buildCoachPrompt } from "../lib/aiPromptBuilder";
 import { supabase } from '../lib/supabase';
@@ -141,7 +141,7 @@ export const coachService = {
    * Converts a recommended AI action into a real task in the system.
    */
   convertActionToTask: async (action: AICoachAction) => {
-    const typeMap: Record<string, string> = {
+    const typeMap: Record<string, Task['type']> = {
       'call': 'Arama',
       'visit': 'Saha',
       'followup': 'Takip',
@@ -151,7 +151,7 @@ export const coachService = {
 
     return taskService.addTask({
       title: action.title,
-      type: (typeMap[action.type] || 'Randevu') as any,
+      type: typeMap[action.type] || 'Randevu',
       time: new Date().toISOString(),
       completed: false
     });

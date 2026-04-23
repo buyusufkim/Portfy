@@ -1,6 +1,6 @@
 import React from 'react';
 import { MapPin, TrendingUp, Users, Activity, Loader2 } from 'lucide-react';
-import { UserProfile, MapPin as MapPinType } from '../types';
+import { UserProfile, MapPin as MapPinType, Property } from '../types';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
 
@@ -15,10 +15,14 @@ export const RegionStats: React.FC<RegionStatsProps> = ({ profile, pins = [] }) 
   const { data: marketData, isLoading } = useQuery({
     queryKey: ['region-market-analysis', profile.region.city, profile.region.district],
     queryFn: () => api.getLiveMarketAnalysis({
-        address: { city: profile.region?.city, district: profile.region?.district, neighborhood: profile.region?.neighborhoods?.[0] },
-        type: 'Konut',
-        details: { brut_m2: 100 }
-    } as any),
+        address: { 
+          city: profile.region?.city || '', 
+          district: profile.region?.district || '', 
+          neighborhood: profile.region?.neighborhoods?.[0] || '' 
+        },
+        type: 'Daire', // Fallback as a valid type
+        details: { brut_m2: 100, net_m2: 80, rooms: '3+1', age: 0, floor: 1 }
+    } as Partial<Property>),
     enabled: !!profile?.region?.city && !!profile?.region?.district,
     staleTime: 5 * 60 * 1000
   });

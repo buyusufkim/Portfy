@@ -46,7 +46,7 @@ export const fetchMarketData = async (params: {
       throw new Error(`Evomi API Error: ${response.status} ${response.statusText}`);
     }
 
-    const data = await response.json() as any;
+    const data = await response.json();
     
     // Tam doğrulama: Gerekli alanlar var mı?
     const hasData = data && 

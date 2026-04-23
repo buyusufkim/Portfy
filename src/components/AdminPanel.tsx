@@ -349,7 +349,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                       <div className="flex flex-col md:flex-row gap-2 md:gap-4 mt-2 text-sm text-slate-500 font-medium items-center md:items-start">
                         <span className="flex items-center gap-1.5"><Mail size={16} className="text-slate-400"/> {selectedUserDetail.email}</span>
                         {/* Not: Phone bilgisi UserProfile'da standart olmadığı için opsiyonel gösterilir */}
-                        <span className="flex items-center gap-1.5"><Phone size={16} className="text-slate-400"/> {(selectedUserDetail as any).phone || 'Belirtilmemiş'}</span>
+                        <span className="flex items-center gap-1.5"><Phone size={16} className="text-slate-400"/> {selectedUserDetail.phone || 'Belirtilmemiş'}</span>
                       </div>
                       <div className="mt-4 flex items-center justify-center md:justify-start gap-2">
                          {selectedUserDetail.region ? (

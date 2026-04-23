@@ -122,6 +122,7 @@ export interface UserProfile {
   updated_at: string;
   tier: 'free' | 'pro' | 'elite' | 'master' | 'trial';
   ai_tokens_used: number;
+  ai_token_limit?: number;
 }
 
 export interface GlobalSettings {

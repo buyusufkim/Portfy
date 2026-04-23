@@ -943,31 +943,31 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             <p className="text-xs text-indigo-500/70 font-medium">Momentum OS Raporu</p>
                           </div>
                         </div>
-                        <div className="text-[10px] font-bold text-slate-400 bg-white/50 px-2 py-1 rounded-lg border border-slate-200">
+                        <div className="text-xs font-bold text-slate-500 bg-white/50 px-2 py-1 rounded-lg border border-slate-200">
                           {new Date(report.week_start_date).toLocaleDateString('tr-TR')}
                         </div>
                       </div>
                       
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Aramalar</div>
+                          <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Aramalar</div>
                           <div className="text-2xl font-black text-slate-900">{report.metrics?.calls_made || 0}</div>
-                          <div className="text-[9px] font-bold text-emerald-600 bg-emerald-50 px-1.5 py-0.5 rounded mt-2 inline-block">Verimli</div>
+                          <div className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded mt-2 inline-block">Verimli</div>
                         </div>
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Ziyaretler</div>
+                          <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Ziyaretler</div>
                           <div className="text-2xl font-black text-slate-900">{report.metrics?.property_visits || 0}</div>
-                          <div className="text-[9px] font-bold text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded mt-2 inline-block">Saha</div>
+                          <div className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded mt-2 inline-block">Saha</div>
                         </div>
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Yeni Lead</div>
+                          <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Yeni Lead</div>
                           <div className="text-2xl font-black text-slate-900">{report.metrics?.leads_acquired || 0}</div>
-                          <div className="text-[9px] font-bold text-purple-600 bg-purple-50 px-1.5 py-0.5 rounded mt-2 inline-block">Büyüme</div>
+                          <div className="text-[10px] font-bold text-purple-600 bg-purple-50 px-2 py-0.5 rounded mt-2 inline-block">Büyüme</div>
                         </div>
                         <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100">
-                          <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Gelir</div>
+                          <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Gelir</div>
                           <div className="text-2xl font-black text-slate-900">₺{((report.metrics?.closed_volume || 0) / 1000).toFixed(0)}k</div>
-                          <div className="text-[9px] font-bold text-orange-600 bg-orange-50 px-1.5 py-0.5 rounded mt-2 inline-block">Nakit</div>
+                          <div className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-0.5 rounded mt-2 inline-block">Nakit</div>
                         </div>
                       </div>
                     </Card>

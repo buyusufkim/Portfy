@@ -137,7 +137,7 @@ export const CRMModals: React.FC<CRMModalsProps> = ({
                     <select 
                       className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
                       value={formData.type}
-                      onChange={e => setFormData({...formData, type: e.target.value as any})}
+                      onChange={e => setFormData({...formData, type: e.target.value})}
                     >
                       <option value="Alıcı">Alıcı</option>
                       <option value="Satıcı">Satıcı</option>
@@ -163,7 +163,7 @@ export const CRMModals: React.FC<CRMModalsProps> = ({
                   <select 
                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
                     value={formData.status}
-                    onChange={e => setFormData({...formData, status: e.target.value as any})}
+                    onChange={e => setFormData({...formData, status: e.target.value as Lead['status']})}
                   >
                     <option>Aday</option>
                     <option>Sıcak</option>
