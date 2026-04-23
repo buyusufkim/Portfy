@@ -7,6 +7,7 @@ import { GoogleMap, useLoadScript, Marker } from '@react-google-maps/api';
 import { locationService } from '../../services/locationService';
 import { Property, Lead } from '../../types';
 import { api } from '../../services/api';
+import { toast } from 'react-hot-toast';
 
 interface AddPropertyModalProps {
   show: boolean;
@@ -44,6 +45,8 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
     price: initialData?.price ? new Intl.NumberFormat('tr-TR').format(initialData.price) : '',
     status: initialData?.status || 'Yeni',
     unsold_reason: initialData?.unsold_reason || '',
+    blocker_type: '' as any,
+    blocker_note: '',
     address: initialData?.address || { city: 'Kayseri', district: '', neighborhood: '', fullAddress: '', lat: undefined, lng: undefined },
     details: {
       brut_m2: initialData?.details?.brut_m2?.toString() || '',
@@ -86,7 +89,9 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
         health_score: initialData.health_score,
         notes: initialData.notes,
         target_customer_type: initialData.target_customer_type || '',
-        investment_suitability: initialData.investment_suitability || ''
+        investment_suitability: initialData.investment_suitability || '',
+        blocker_type: '' as any,
+        blocker_note: ''
       });
     } else {
       setFormData({
@@ -104,7 +109,9 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
         health_score: 75,
         notes: '',
         target_customer_type: '',
-        investment_suitability: ''
+        investment_suitability: '',
+        blocker_type: '' as any,
+        blocker_note: ''
       });
     }
   }, [initialData, show]);
@@ -159,17 +166,23 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
 
   const handleSubmit = async () => {
     if (!formData.title || !formData.price || !formData.address.district) {
-      alert('Lütfen zorunlu alanları doldurunuz (Başlık, Fiyat, İlçe)');
+      toast.error('Lütfen zorunlu alanları doldurunuz (Başlık, Fiyat, İlçe)');
       return;
     }
-    if (formData.status === 'Pasif' && !formData.unsold_reason?.trim()) {
-      alert('Portföy pasife alınıyorsa Satılamama Sebebi girmek zorunludur!');
-      return;
+    if (formData.status === 'Pasif') {
+      if (!formData.blocker_type) {
+        toast.error('Portföy pasife alınıyorsa Engel Tipi seçmek zorunludur!');
+        return;
+      }
+      if (!formData.blocker_note?.trim()) {
+        toast.error('Portföy pasife alınıyorsa Engel Notu girmek zorunludur!');
+        return;
+      }
     }
     const payload = {
       ...formData,
       price: Number(formData.price.toString().replace(/\D/g, '')),
-      unsold_reason: formData.unsold_reason,
+      unsold_reason: formData.blocker_note, // Legacy field mapping
       details: {
         ...formData.details,
         brut_m2: Number(formData.details.brut_m2),
@@ -181,8 +194,17 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
     };
 
     try {
-      // Sadece formu gönderir. Eşleştirme artık PortfoliosPage.tsx içinde yapılacak.
-      await onSubmit(payload);
+      const savedProperty = await onSubmit(payload);
+      
+      if (formData.status === 'Pasif' && savedProperty?.id) {
+        await api.momentumOs.createOrUpdatePortfolioBlocker({
+          property_id: savedProperty.id,
+          blocker_type: formData.blocker_type,
+          note: formData.blocker_note,
+          impact_score: 80,
+          is_active: true
+        });
+      }
     } catch (error) {
       console.error("Submit işleminde hata:", error);
     }
@@ -318,14 +340,41 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                     {['Yeni', 'Hazırlanıyor', 'Yayında', 'İlgi Var', 'Pazarlık', 'Satıldı', 'Pasif'].map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
-                {(formData.status === 'Pasif' || formData.status === 'Satıldı') && (
+                {formData.status === 'Pasif' && (
+                  <div className="space-y-4 p-4 bg-red-50 rounded-2xl border border-red-100 animate-in fade-in slide-in-from-top-4">
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Engel Tipi (Zorunlu)</label>
+                      <select 
+                        className="w-full bg-white border-2 border-red-100 rounded-2xl p-4 text-sm focus:border-red-500 outline-none"
+                        value={formData.blocker_type} 
+                        onChange={e => setFormData({...formData, blocker_type: e.target.value as any})}
+                      >
+                        <option value="">Seçiniz</option>
+                        <option value="price">Fiyat Sorunu</option>
+                        <option value="presentation">Yer Gösterim/Sunum Sorunu</option>
+                        <option value="location">Konum/Lokasyon Sorunu</option>
+                        <option value="demand">Düşük Talep</option>
+                        <option value="process">Süreç/Bürokrasi</option>
+                        <option value="owner">Mal Sahibi Kaynaklı</option>
+                        <option value="content">İlan İçeriği/Pazarlama</option>
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-[10px] font-bold text-red-600 uppercase tracking-wider">Detaylı Not (Zorunlu)</label>
+                      <textarea 
+                        placeholder="Satılamama sebebini detaylandırın..."
+                        className="w-full bg-white border-2 border-red-100 rounded-2xl p-4 text-sm focus:border-red-500 outline-none h-20 resize-none"
+                        value={formData.blocker_note} 
+                        onChange={e => setFormData({...formData, blocker_note: e.target.value})}
+                      />
+                    </div>
+                  </div>
+                )}
+                {formData.status === 'Satıldı' && (
                   <div className="space-y-2">
-                    <label className="text-[10px] font-bold text-red-500 uppercase tracking-wider">
-                      {formData.status === 'Pasif' ? 'Portföy Neden Satılamadı? (Zorunlu)' : 'Nasıl Satıldı/Satılamadı?'}
-                    </label>
+                    <label className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider">Satış Notu</label>
                     <textarea 
-                      required={formData.status === 'Pasif'}
-                      placeholder="Müşteri vazgeçti, fiyat çok yüksekti, başka emlakçı sattı..."
+                      placeholder="Nasıl satıldı? Örn: Peşin ödeme, pazarlıkla kapandı..."
                       className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none h-20 resize-none"
                       value={formData.unsold_reason || ''} onChange={e => setFormData({...formData, unsold_reason: e.target.value})}
                     />
@@ -342,7 +391,18 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                     <div className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">TL</div>
                   </div>
                 </div>
-                <button onClick={() => setStep(2)} className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20">Sonraki Adım</button>
+                <button 
+                  onClick={() => {
+                    if (formData.status === 'Pasif' && !formData.unsold_reason?.trim()) {
+                      toast.error('Pasif durumdaki portföyler için neden belirtmek zorunludur.');
+                      return;
+                    }
+                    setStep(2);
+                  }} 
+                  className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20"
+                >
+                  Sonraki Adım
+                </button>
               </div>
             )}
 

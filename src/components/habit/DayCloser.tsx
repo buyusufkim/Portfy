@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Moon, Star, Trophy, ArrowRight, CheckCircle2, RefreshCw, Share2 } from 'lucide-react';
+import { Moon, Star, Trophy, ArrowRight, CheckCircle2, RefreshCw, Share2, Target, AlertTriangle } from 'lucide-react';
 
 interface DayCloserProps {
   stats: {
@@ -10,22 +10,41 @@ interface DayCloserProps {
     visits: number;
     social: number;
   };
-  onComplete: () => void;
+  onComplete: (data: any) => void;
   isPending?: boolean;
   onClose?: () => void;
 }
 
-export const DayCloser: React.FC<DayCloserProps> = ({ stats, onComplete, isPending }) => {
+export const DayCloser: React.FC<DayCloserProps> = ({ stats, onComplete, isPending, onClose }) => {
   const [step, setStep] = useState(1);
+  const [wins, setWins] = useState('');
+  const [blockers, setBlockers] = useState('');
+  const [tomorrowTop3, setTomorrowTop3] = useState(['', '', '']);
+
+  const handleNext = () => {
+    if (step === 1) setStep(2);
+    else if (step === 2) setStep(3);
+    else {
+      onComplete({
+        tasks_completed: stats.tasks_completed,
+        revenue: stats.revenue,
+        calls: stats.calls,
+        visits: stats.visits,
+        social: stats.social,
+        wins,
+        blockers,
+        top3_tomorrow: tomorrowTop3.filter(t => t.trim() !== '')
+      });
+    }
+  };
 
   return (
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="fixed inset-0 z-[200] bg-slate-900/95 backdrop-blur-2xl flex items-center justify-center p-6"
+      className="fixed inset-0 z-[200] bg-slate-900/95 backdrop-blur-2xl flex items-center justify-center p-4 sm:p-6 overflow-y-auto"
     >
-      <div className="max-w-md w-full relative">
-        {/* Decorative background elements */}
+      <div className="max-w-md w-full relative py-12">
         <div className="absolute -top-24 -left-24 w-64 h-64 bg-indigo-500/20 rounded-full blur-3xl" />
         <div className="absolute -bottom-24 -right-24 w-64 h-64 bg-orange-500/20 rounded-full blur-3xl" />
 
@@ -33,9 +52,9 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, onComplete, isPendi
           {step === 1 ? (
             <motion.div
               key="step1"
-              initial={{ y: 20, opacity: 0 }}
-              animate={{ y: 0, opacity: 1 }}
-              exit={{ y: -20, opacity: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
               className="space-y-10 relative z-10"
             >
               <div className="text-center space-y-4">
@@ -77,15 +96,78 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, onComplete, isPendi
               </div>
 
               <button
-                onClick={() => setStep(2)}
+                onClick={handleNext}
                 className="w-full py-6 bg-white text-slate-900 rounded-[32px] font-black text-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-white/10"
               >
                 Günü Değerlendir <ArrowRight size={24} />
               </button>
             </motion.div>
-          ) : (
+          ) : step === 2 ? (
             <motion.div
               key="step2"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-8 relative z-10"
+            >
+              <div className="space-y-6">
+                <div>
+                  <div className="flex items-center gap-2 text-indigo-400 text-xs font-bold uppercase tracking-widest mb-3">
+                    <Trophy size={14} /> Bugünkü Zaferlerin (Wins)
+                  </div>
+                  <textarea 
+                    value={wins}
+                    onChange={(e) => setWins(e.target.value)}
+                    placeholder="Bugün neyi başardın? En büyük kazanımın neydi?"
+                    className="w-full bg-white/5 border border-white/10 rounded-3xl p-5 text-white/90 text-sm focus:border-indigo-500 outline-none h-24 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2 text-orange-400 text-xs font-bold uppercase tracking-widest mb-3">
+                    <AlertTriangle size={14} /> Engelleyenler / Zorluklar (Blockers)
+                  </div>
+                  <textarea 
+                    value={blockers}
+                    onChange={(e) => setBlockers(e.target.value)}
+                    placeholder="Seni ne yavaşlattı? Yarın neyi çözmelisin?"
+                    className="w-full bg-white/5 border border-white/10 rounded-3xl p-5 text-white/90 text-sm focus:border-orange-500 outline-none h-24 transition-colors"
+                  />
+                </div>
+
+                <div>
+                  <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-widest mb-3">
+                    <Target size={14} /> Yarın İçin En Önemli 3 Odak
+                  </div>
+                  <div className="space-y-3">
+                    {tomorrowTop3.map((goal, i) => (
+                      <input 
+                        key={i}
+                        type="text" 
+                        value={goal}
+                        onChange={(e) => {
+                          const newTop3 = [...tomorrowTop3];
+                          newTop3[i] = e.target.value;
+                          setTomorrowTop3(newTop3);
+                        }}
+                        placeholder={`Hedef ${i + 1}`}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white/90 text-sm focus:border-amber-500 outline-none transition-colors"
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              <button
+                onClick={handleNext}
+                className="w-full py-6 bg-white text-slate-900 rounded-[32px] font-black text-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-white/10"
+              >
+                Sonuçları Kayla <ArrowRight size={24} />
+              </button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="step3"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 1.1, opacity: 0 }}
@@ -117,10 +199,7 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, onComplete, isPendi
               </div>
 
               <button
-                onClick={() => {
-                  console.log("Günü Tamamla button clicked in DayCloser");
-                  onComplete();
-                }}
+                onClick={handleNext}
                 disabled={isPending}
                 className="w-full py-6 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-[32px] font-black text-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-2xl shadow-orange-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
               >

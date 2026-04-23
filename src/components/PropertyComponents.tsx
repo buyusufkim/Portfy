@@ -19,7 +19,8 @@ import {
   ExternalLink,
   Plus,
   User as UserIcon,
-  X
+  X,
+  AlertCircle
 } from 'lucide-react';
 import { Property } from '../types';
 import { Badge, Card } from './UI';
@@ -39,10 +40,22 @@ export const PropertyCard: React.FC<{ property: Property, onClick: () => void }>
           className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" 
           alt={property.title}
         />
-        <div className="absolute top-4 left-4 flex gap-2">
-          <Badge variant="success" className="bg-white/90 backdrop-blur-md border-none shadow-sm">{property.status}</Badge>
-          {property.market_analysis?.status === 'Fırsat' && (
-            <Badge variant="info" className="bg-emerald-500 text-white border-none shadow-sm">FIRSAT</Badge>
+        <div className="absolute top-4 left-4 flex flex-col gap-2">
+          <div className="flex gap-2">
+            <Badge variant="success" className={`${property.status === 'Pasif' ? 'bg-red-500 text-white' : 'bg-white/90 text-slate-900'} backdrop-blur-md border-none shadow-sm`}>
+              {property.status}
+            </Badge>
+            {property.market_analysis?.status === 'Fırsat' && (
+              <Badge variant="info" className="bg-emerald-500 text-white border-none shadow-sm">FIRSAT</Badge>
+            )}
+          </div>
+          {property.status === 'Pasif' && property.unsold_reason && (
+            <div className="bg-red-500/90 backdrop-blur-sm px-2 py-1 rounded-lg shadow-sm border border-red-400/20 max-w-[150px]">
+              <div className="flex items-center gap-1.5">
+                <AlertCircle size={10} className="text-white shrink-0" />
+                <span className="text-[10px] font-bold text-white truncate">{property.unsold_reason}</span>
+              </div>
+            </div>
           )}
         </div>
         <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-xl shadow-sm">

@@ -36,6 +36,24 @@ export const handleGetPortalData = async (req: any, res: any) => {
       return res.status(404).json({ error: 'Geçersiz veya süresi dolmuş bağlantı.' });
     }
 
+    // --- OWNER PORTAL EVENT LOGGING ---
+    const clientIp = req.headers['x-forwarded-for'] || req.socket.remoteAddress;
+    const userAgent = req.headers['user-agent'];
+
+    try {
+      await supabaseAdmin.from('owner_portal_events').insert({
+        property_id: tokenData.property_id,
+        token_id: token, // This might need to be the actual ID if 'token' is just the string, but typically we store the token value for quick lookup
+        event_type: 'view',
+        user_id: null, // Viewer is an owner, not a logged-in system user usually
+        ip_address: typeof clientIp === 'string' ? clientIp.split(',')[0] : clientIp,
+        user_agent: userAgent
+      });
+    } catch (eventError) {
+      console.error("Portal event logging failed:", eventError);
+    }
+    // ----------------------------------
+
     // Update view count and last_viewed_at atomically
     supabaseAdmin
       .rpc('increment_portal_view', { token_val: token })

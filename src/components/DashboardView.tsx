@@ -4,16 +4,16 @@ import { motion, AnimatePresence } from 'motion/react';
 import { 
   Building2, Sparkles, Trophy, Zap, CheckCircle2, 
   RefreshCw, Circle, Moon, ArrowRight, AlertCircle, ClipboardList, Lock,
-  MessageSquare, Send, Copy, Ghost, Sun, Target, Globe
+  MessageSquare, Send, Copy, Ghost, Sun, Target, Globe, Plus
 } from 'lucide-react';
 import { Card, Badge, Skeleton } from './UI';
 import { api } from '../services/api';
 import { RevenueOverview } from './revenue/RevenueOverview';
 import { PipelineFunnel } from './revenue/PipelineFunnel';
 import { QUERY_KEYS } from '../constants/queryKeys';
-import { UserProfile, GamifiedTask, Property, Task, PersonalTask, RescueSession, UserStats, CoachInsight, MutationResult, MissedOpportunity } from '../types';
+import { UserProfile, GamifiedTask, Property, Task, PersonalTask, RescueSession, UserStats, CoachInsight, MutationResult, MissedOpportunity, DailyPlan, DayClosure } from '../types';
 import { RevenueStats } from '../types/revenue';
-import { QueryClient } from '@tanstack/react-query';
+import { QueryClient, useMutation } from '@tanstack/react-query';
 import { useFeatureAccess } from '../hooks/useFeatureAccess';
 import { UpgradeModal } from './premium/UpgradeModal';
 import { toast } from 'react-hot-toast';
@@ -44,6 +44,9 @@ interface DashboardViewProps {
   setShowMissedOpportunities?: (show: boolean) => void;
   missedOpportunities?: MissedOpportunity[];
   setToast?: (toast: { message: string, type: 'success' | 'error' | 'info' } | null) => void;
+  leadAlerts?: any[];
+  dailyPlan?: DailyPlan | null;
+  dayClosure?: DayClosure | null;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -66,9 +69,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   startDayMutation,
   completeMorningRitualMutation,
   setToast,
-  tasks = []
+  tasks = [],
+  setShowDailyRadar,
+  leadAlerts = [],
+  dailyPlan,
+  dayClosure
 }) => {
   const [dashboardTab, setDashboardTab] = useState<'action' | 'analysis'>('action');
+  const [microGoalInput, setMicroGoalInput] = useState('');
+  const [showMicroGoalForm, setShowMicroGoalForm] = useState(false);
+
+  const addMicroGoalMutation = useMutation({
+    mutationFn: (title: string) => api.momentumOs.addMicroGoal({ 
+      title, 
+      status: 'pending',
+      deadline: new Date().toISOString() 
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MICRO_GOALS, profile?.id] });
+      setMicroGoalInput('');
+      setShowMicroGoalForm(false);
+      toast.success("Mikro hedef başarıyla belirlendi!");
+    }
+  });
   
   // Premium Erişim Kontrolleri
   const { hasAccess, subscribe } = useFeatureAccess();
@@ -204,10 +227,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </p>
                       <button 
                         onClick={() => {
-                          const notes = window.prompt("Bugünkü odağın (3 öncelikli kişi/iş):");
-                          if (notes !== null) {
-                            completeMorningRitualMutation.mutate({ morning_notes: notes.trim() || 'Planlama yapıldı' });
-                          }
+                          if (setShowDailyRadar) setShowDailyRadar(true);
                         }}
                         className="bg-orange-600 hover:bg-orange-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold shadow-md shadow-orange-600/20 active:scale-95 transition-all"
                       >
@@ -219,40 +239,92 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </section>
             )}
 
-            {isDayStarted && !isDayEnded && completeMorningRitualMutation.isSuccess && (
-              <section>
-                <Card className="p-4 md:p-6 bg-slate-900 relative overflow-hidden group hover:ring-2 hover:ring-indigo-500/50 transition-all cursor-pointer">
-                  <div className="absolute top-0 right-0 w-48 h-48 bg-indigo-500/20 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none group-hover:bg-indigo-500/30 transition-colors" />
-                  <div className="flex items-start gap-4 relative z-10">
-                    <div className="w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center shrink-0 border border-indigo-500/30">
-                      <Target size={24} className="text-indigo-400" />
+            {isDayStarted && !isDayEnded && (
+              <section className="space-y-4">
+                <Card className="p-4 md:p-6 bg-slate-900 relative overflow-hidden group border border-slate-800 shadow-2xl">
+                  <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
+                  <div className="flex flex-col gap-6 relative z-10">
+                    <div className="flex items-start gap-4">
+                      <div className="w-12 h-12 bg-indigo-500/20 rounded-2xl flex items-center justify-center shrink-0 border border-indigo-500/30">
+                        <Target size={24} className="text-indigo-400" />
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-lg font-bold text-white tracking-tight">Bugünü Kazan: Mikro Hedef</h3>
+                          <Badge className="bg-indigo-500/20 text-indigo-300 border-indigo-500/30">GÜNLÜK ODAK</Badge>
+                        </div>
+                        <p className="text-xs text-slate-400 font-medium mt-1">
+                          Bugünü kazanmak için tamamlaman gereken en kritik tek iş nedir?
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-lg font-bold text-white tracking-tight">Mikro Hedef: Bugünü Kazan!</h3>
-                          <div className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 border border-indigo-500/20 px-2 py-0.5 rounded uppercase tracking-wider">Hedef</div>
+
+                    {!showMicroGoalForm ? (
+                      <button 
+                        onClick={() => setShowMicroGoalForm(true)}
+                        className="w-full py-4 bg-indigo-600 hover:bg-indigo-500 text-white rounded-2xl font-bold text-sm shadow-xl shadow-indigo-900/40 transition-all active:scale-95 flex items-center justify-center gap-2"
+                      >
+                        <Plus size={18} />
+                        Mikro Hedef Belirle
+                      </button>
+                    ) : (
+                      <div className="space-y-4 animate-in fade-in slide-in-from-top-4">
+                        <textarea
+                          placeholder="Örn: Daha önce aramadığım 5 FSBO satıcısını ara."
+                          value={microGoalInput}
+                          onChange={(e) => setMicroGoalInput(e.target.value)}
+                          className="w-full bg-slate-800/50 border-2 border-slate-700 rounded-2xl p-4 text-white text-sm focus:border-indigo-500 outline-none transition-all placeholder:text-slate-600 min-h-[100px]"
+                        />
+                        <div className="flex gap-3">
+                          <button 
+                            onClick={() => setShowMicroGoalForm(false)}
+                            className="flex-1 py-3 bg-slate-800 text-slate-300 rounded-xl font-bold text-xs"
+                          >
+                            İptal
+                          </button>
+                          <button 
+                            onClick={() => microGoalInput.trim() && addMicroGoalMutation.mutate(microGoalInput)}
+                            disabled={!microGoalInput.trim() || addMicroGoalMutation.isPending}
+                            className="flex-[2] py-3 bg-indigo-600 text-white rounded-xl font-bold text-xs shadow-lg disabled:opacity-50"
+                          >
+                            {addMicroGoalMutation.isPending ? 'Kaydediliyor...' : 'Hedefi Başlat'}
+                          </button>
                         </div>
                       </div>
-                      <p className="text-xs text-slate-400 font-medium mt-2 leading-relaxed">
-                        Büyük hedeflere odaklanmak yerine, bugüne özel 1 mikro hedef belirle ve tamamla. (Örn: "Daha önce hiç aramadığım 5 FSBO satıcısını ara.")
-                      </p>
-                      <div className="mt-4 flex flex-col sm:flex-row gap-3">
-                        <button 
-                          onClick={() => {
-                            const aim = window.prompt("Bugünkü mikro hedefin nedir?");
-                            if (aim !== null && aim.trim() !== "") {
-                              toast.success(`Harika! Mikro hedefin devrede: ${aim}`);
-                            }
-                          }}
-                          className="bg-indigo-500/20 hover:bg-indigo-500/30 text-indigo-300 border border-indigo-400/20 px-5 py-2.5 rounded-xl text-xs font-bold transition-all active:scale-95 flex-1 text-center"
-                        >
-                          Bugünkü Mikro Hedefimi Belirle
-                        </button>
-                      </div>
-                    </div>
+                    )}
                   </div>
                 </Card>
+
+                {dailyPlan && (
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-3 text-center">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Arama</div>
+                      <div className="text-lg font-black text-white">{dailyPlan.completed_calls}/{dailyPlan.planned_calls}</div>
+                    </div>
+                    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-3 text-center">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Takip</div>
+                      <div className="text-lg font-black text-white">{dailyPlan.completed_followups}/{dailyPlan.planned_followups}</div>
+                    </div>
+                    <div className="bg-white/5 backdrop-blur-sm border border-white/10 rounded-2xl p-3 text-center">
+                      <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1">Portföy</div>
+                      <div className="text-lg font-black text-white">{dailyPlan.completed_portfolio_actions}/{dailyPlan.planned_portfolio_actions}</div>
+                    </div>
+                  </div>
+                )}
+
+                {dayClosure && (
+                  <Card className="p-4 bg-emerald-500/10 border-emerald-500/20">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2 bg-emerald-500/20 rounded-xl">
+                        <Trophy size={18} className="text-emerald-400" />
+                      </div>
+                      <div>
+                        <h4 className="text-xs font-bold text-white">Günün Özeti Hazır</h4>
+                        <p className="text-[10px] text-emerald-400 font-medium">"{dayClosure.wins?.slice(0, 50)}..."</p>
+                      </div>
+                    </div>
+                  </Card>
+                )}
               </section>
             )}
 
@@ -444,7 +516,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </section>
 
             {/* Ghosting Önleyici Akıllı Hatırlatıcılar */}
-            {(tasks || []).filter(t => t.is_drip && !t.completed).length > 0 && (
+            {(leadAlerts.length > 0 || (tasks || []).filter(t => t.is_drip && !t.completed).length > 0) && (
               <section className="space-y-4">
                 <div className="flex justify-between items-center px-1">
                   <div className="flex items-center gap-2">
@@ -452,11 +524,55 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <h2 className="text-lg font-bold text-slate-900 tracking-tight">Ghosting Önleyici</h2>
                   </div>
                   <Badge variant="warning" className="bg-orange-100 text-orange-600 border-none px-2 py-0.5">
-                    {(tasks || []).filter(t => t.is_drip && !t.completed).length} Kritik Takip
+                    {leadAlerts.length + (tasks || []).filter(t => t.is_drip && !t.completed).length} Kritik Takip
                   </Badge>
                 </div>
                 
                 <div className="space-y-3">
+                  {/* Yeni Lead Alert Verileri */}
+                  {leadAlerts.map(alert => (
+                    <Card key={alert.id} className="p-4 md:p-6 bg-white border-l-4 border-l-red-500 shadow-xl shadow-red-500/5 group hover:ring-1 hover:ring-red-500/20 transition-all">
+                      <div className="flex flex-col gap-4">
+                        <div className="flex justify-between items-start">
+                          <div className="flex items-center gap-3">
+                            <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center text-red-600">
+                              <AlertCircle size={20} />
+                            </div>
+                            <div>
+                              <h4 className="text-sm font-bold text-slate-900">{alert.lead_name}</h4>
+                              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{alert.alert_type || 'Sessiz Müşteri'}</p>
+                            </div>
+                          </div>
+                          <div className="flex gap-2">
+                            <button 
+                              onClick={() => {
+                                // Navigate to lead or show detail
+                                if (profile?.id) {
+                                  // Logic to open lead detail
+                                  setToast?.({ message: 'Lead detayına yönlendiriliyorsunuz...', type: 'info' });
+                                }
+                              }}
+                              className="p-2 hover:bg-slate-50 text-slate-400 rounded-lg transition-colors"
+                            >
+                              <ArrowRight size={18} />
+                            </button>
+                          </div>
+                        </div>
+                        
+                        <div className="bg-red-50/50 rounded-2xl p-4 border border-red-100/50 relative">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Sparkles size={12} className="text-red-500" />
+                            <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest">Kritik Uyarı</span>
+                          </div>
+                          <p className="text-xs text-slate-700 leading-relaxed italic">
+                            {alert.message}
+                          </p>
+                        </div>
+                      </div>
+                    </Card>
+                  ))}
+
+                  {/* Mevcut Drip Task'lar */}
                   {(tasks || []).filter(t => t.is_drip && !t.completed).map(task => (
                     <Card key={task.id} className="p-4 md:p-6 bg-white border-l-4 border-l-orange-500 shadow-xl shadow-orange-500/5 group">
                       <div className="flex flex-col gap-4">

@@ -35,6 +35,7 @@ interface CRMViewProps {
   analyzeLeadsMutation: AnalyzeLeadsMutation;
   categories: LeadCategory[];
   onSelectLead: (lead: Lead) => void;
+  leadAlerts?: any[];
 }
 
 const parseContactDate = (value?: string) => {
@@ -52,7 +53,8 @@ export const CRMView: React.FC<CRMViewProps> = ({
   setIsAnalyzingLeads,
   analyzeLeadsMutation,
   categories,
-  onSelectLead
+  onSelectLead,
+  leadAlerts = []
 }) => {
   const [searchTerm, setSearchTerm] = React.useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = React.useState('');
@@ -100,20 +102,12 @@ export const CRMView: React.FC<CRMViewProps> = ({
   const sellerCount = leads.filter((lead) => lead.type === 'Satıcı').length;
   const hasActiveFilters = searchTerm.length > 0 || statusFilter !== 'all' || typeFilter !== 'all' || sortBy !== 'recent';
 
-  const silentLeads = React.useMemo(() => {
-    if (!leads || !Array.isArray(leads)) return [];
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    return leads.filter(lead => {
-      if (!lead) return false;
-      if (lead.status === 'Kapalı' || lead.status === 'Pasif') return false;
-      const dateStr = lead.last_contacted_at || lead.last_contact || lead.created_at;
-      if (!dateStr) return true; // Eğer hiçbir tarih yoksa sessiz kabul edelim
-      const contactDate = new Date(dateStr);
-      if (isNaN(contactDate.getTime())) return false; // Parse edilemiyorsa false dönelim
-      return contactDate.getTime() < sevenDaysAgo.getTime();
-    });
-  }, [leads]);
+  const silentLeadAlerts = React.useMemo(() => {
+    return leadAlerts.filter(a => 
+      ['stale_3d', 'stale_7d', 'stale_14d', 'hot_48h_silence', 'inactive_lead'].includes(a.alert_type) ||
+      a.alert_type === 'Sessiz Müşteri'
+    );
+  }, [leadAlerts]);
 
   const filterPills = [
     statusFilter !== 'all' ? { key: 'status', label: `Durum: ${statusFilter}` } : null,
@@ -152,7 +146,7 @@ export const CRMView: React.FC<CRMViewProps> = ({
       </div>
     </div>
 
-    {silentLeads.length > 0 && (
+    {silentLeadAlerts.length > 0 && (
       <motion.div 
         initial={{ opacity: 0, y: -10 }}
         animate={{ opacity: 1, y: 0 }}
@@ -165,7 +159,7 @@ export const CRMView: React.FC<CRMViewProps> = ({
           <div>
             <h3 className="text-red-800 font-bold text-sm">Sessizleşen Müşteriler (Müşteri Unutma Koruması)</h3>
             <p className="text-red-600 text-xs mt-1 leading-relaxed">
-              <strong>{silentLeads.length}</strong> aktif müşterinizle son 7 gündür hiçbir iletişim kurulmadı. 
+              <strong>{silentLeadAlerts.length}</strong> aktif müşterinizle son dönemde yeterli iletişim kurulmadı. Hemen aksiyon alın!
             </p>
           </div>
         </div>

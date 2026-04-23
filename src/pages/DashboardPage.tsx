@@ -180,6 +180,32 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   }, [gamifiedTasks, profile?.id, gamifiedStats?.points_today]);
 
+  const { data: leadAlerts = [] } = useQuery({
+    queryKey: [QUERY_KEYS.MOMENTUM_LEAD_ALERTS, profile?.id],
+    queryFn: () => api.momentumOs.getLeadAlerts(),
+    enabled: !!profile?.id
+  });
+
+  const { data: dailyPlan } = useQuery({
+    queryKey: [QUERY_KEYS.MOMENTUM_DAILY_PLAN, profile?.id],
+    queryFn: () => api.momentumOs.getDailyPlan(),
+    enabled: !!profile?.id
+  });
+
+  const { data: dayClosure } = useQuery({
+    queryKey: [QUERY_KEYS.MOMENTUM_DAY_CLOSURE, profile?.id],
+    queryFn: () => api.momentumOs.getDayClosure(),
+    enabled: !!profile?.id
+  });
+
+  useEffect(() => {
+    if (profile?.id) {
+      api.momentumOs.refreshLeadAlerts().then(() => {
+        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_LEAD_ALERTS, profile.id] });
+      }).catch(console.error);
+    }
+  }, [profile?.id, queryClient]);
+
   return (
     <DashboardView 
       gamifiedTasks={gamifiedTasks}
@@ -206,6 +232,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       revenueStats={revenueStats}
       revenueLoading={revenueLoading}
       queryClient={queryClient}
+      leadAlerts={leadAlerts}
+      dailyPlan={dailyPlan}
+      dayClosure={dayClosure}
     />
   );
 };

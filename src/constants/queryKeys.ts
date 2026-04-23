@@ -22,4 +22,11 @@ export const QUERY_KEYS = {
   MISSED_OPPORTUNITIES: 'missedOpportunities',
   AI_COACH_INSIGHT: 'aiCoachInsight',
   CATEGORIES: 'categories',
+  MOMENTUM_DAILY_PLAN: 'momentumDailyPlan',
+  MOMENTUM_DAY_CLOSURE: 'momentumDayClosure',
+  MOMENTUM_LEAD_ALERTS: 'momentumLeadAlerts',
+  MOMENTUM_LEAD_ACTIVITY: 'momentumLeadActivity',
+  MOMENTUM_PORTFOLIO_BLOCKERS: 'momentumPortfolioBlockers',
+  MOMENTUM_PORTAL_EVENTS: 'momentumPortalEvents',
+  MICRO_GOALS: 'microGoals',
 } as const;

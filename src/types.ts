@@ -179,14 +179,20 @@ export interface Lead {
   last_contact: string;
   last_contacted_at?: string;
   notes: string;
-  property_id?: string; // TS Hatalarını çözen opsiyonel alan
-  created_at?: string; // TS2345 hatasını kökten çözen opsiyonel alan
+  property_id?: string;
+  created_at?: string;
   behavior_metrics?: {
     total_views: number;
     avg_duration: number;
     last_active: string;
     is_hot: boolean;
   };
+  next_followup_at?: string;
+  temperature?: 'normal' | 'hot' | 'warm' | 'cold';
+  silence_risk_level?: 'none' | 'low' | 'medium' | 'high';
+  forget_protection_state?: 'safe' | 'at_risk' | 'stale';
+  last_call_result?: string;
+  last_call_result_at?: string;
 }
 
 export interface Task {
@@ -249,6 +255,87 @@ export interface Property {
   investment_suitability?: string;
   created_at: string;
   updated_at: string;
+  last_status_change_at: string;
+  last_activity_at: string;
+}
+
+export interface LeadActivityLog {
+  id: string;
+  user_id: string;
+  lead_id: string;
+  action_type: string;
+  result?: string;
+  note?: string;
+  scheduled_followup_at?: string;
+  happened_at: string;
+  created_at: string;
+}
+
+export interface LeadAlert {
+  id: string;
+  user_id: string;
+  lead_id: string;
+  alert_type: string;
+  severity: 'low' | 'medium' | 'high' | 'critical';
+  status: 'open' | 'resolved';
+  triggered_at: string;
+  resolved_at?: string;
+  last_seen_at?: string;
+  lead?: Partial<Lead>;
+}
+
+export interface DailyPlan {
+  id: string;
+  user_id: string;
+  plan_date: string;
+  planned_calls: number;
+  planned_followups: number;
+  planned_portfolio_actions: number;
+  completed_calls: number;
+  completed_followups: number;
+  completed_portfolio_actions: number;
+  top3: string[];
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DayClosure {
+  id: string;
+  user_id: string;
+  closure_date: string;
+  wins?: string;
+  blockers?: string;
+  tomorrow_top3: string[];
+  stuck_lead_ids: string[];
+  stuck_property_ids: string[];
+  completed_calls: number;
+  completed_followups: number;
+  completed_portfolio_actions: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PortfolioBlocker {
+  id: string;
+  user_id: string;
+  property_id: string;
+  blocker_type: 'price' | 'presentation' | 'location' | 'demand' | 'process' | 'owner' | 'content';
+  note?: string;
+  impact_score: number;
+  is_active: boolean;
+  created_at: string;
+  resolved_at?: string;
+}
+
+export interface OwnerPortalEvent {
+  id: string;
+  user_id: string;
+  property_id: string;
+  token_id?: string;
+  event_type: string;
+  ip_address?: string;
+  user_agent?: string;
+  created_at: string;
 }
 
 export interface MapPin {

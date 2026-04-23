@@ -101,8 +101,40 @@ function MainApp() {
   const deleteLeadMutation = useMutation({ mutationFn: api.deleteLead, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS, profile?.id] }); setSelectedLead(null); }});
   const addVisitMutation = useMutation({ mutationFn: api.addVisit, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.FIELD_VISITS, profile?.id] }); setShowAddVisit(false); setShowQuickAdd(false); }});
   const addTaskMutation = useMutation({ mutationFn: api.addTask, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS, profile?.id] }); }});
-  const completeMorningRitualMutation = useMutation({ mutationFn: async (variables?: { morning_notes: string }) => { await api.startDay(); return api.completeMorningRitual(variables); }, onSuccess: () => { setShowDailyRadar(false); setToast({ message: "Güne harika bir başlangıç yaptın!", type: 'success' }); }, onError: () => { setShowDailyRadar(false); setToast({ message: "Güne zaten başlamıştın.", type: 'info' }); }});
-  const completeEveningRitualMutation = useMutation({ mutationFn: async (stats: { tasks_completed: number, revenue: number, calls: number, visits: number, evening_notes?: string }) => { await api.endDay(stats); return api.completeEveningRitual(stats); }, onSuccess: () => { setShowDayCloser(false); setToast({ message: "Günü başarıyla kapattın. İyi dinlenmeler!", type: 'success' }); confetti(); }});
+  const completeMorningRitualMutation = useMutation({ 
+    mutationFn: async (variables: any) => { 
+      await api.startDay(); 
+      // Save new Daily Plan
+      await api.momentumOs.saveDailyPlan(variables);
+      // Legacy support
+      return api.completeMorningRitual({ morning_notes: JSON.stringify(variables.top3 || []) }); 
+    }, 
+    onSuccess: () => { 
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_DAILY_PLAN] });
+      setShowDailyRadar(false); 
+      setToast({ message: "Güne harika bir başlangıç yaptın!", type: 'success' }); 
+    }, 
+    onError: () => { 
+      setShowDailyRadar(false); 
+      setToast({ message: "Güne zaten başlamıştın.", type: 'info' }); 
+    }
+  });
+
+  const completeEveningRitualMutation = useMutation({ 
+    mutationFn: async (variables: any) => { 
+      await api.endDay(variables); 
+      // Save new Day Closure
+      await api.momentumOs.saveDayClosure(variables);
+      // Legacy support
+      return api.completeEveningRitual({ ...variables, evening_notes: variables.wins || '' }); 
+    }, 
+    onSuccess: () => { 
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_DAY_CLOSURE] });
+      setShowDayCloser(false); 
+      setToast({ message: "Günü başarıyla kapattın. İyi dinlenmeler!", type: 'success' }); 
+      confetti(); 
+    }
+  });
   const cancelRescueMutation = useMutation({ mutationFn: api.cancelRescueSession, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.id] }); }});
   const completeRescueTaskMutation = useMutation({ mutationFn: ({ sessionId, taskId }: { sessionId: string, taskId: string }) => api.completeRescueTask(sessionId, taskId), onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.id] }); }});
   const analyzeLeadsMutation = useMutation({ mutationFn: api.analyzeLeads, onSuccess: (data) => { setLeadAnalysis(data); setIsAnalyzingLeads(false); }});

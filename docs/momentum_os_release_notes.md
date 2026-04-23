@@ -12,12 +12,13 @@ Bu sürüm, Momentum OS özelliklerinin UI/UX entegrasyonlarını ve sistem stab
 - **Akıllı Takvim:** İçerik planlama akışındaki veri tutarlılığı ve UI geri bildirimleri geliştirildi.
 - **Hata Yönetimi:** Not ve içerik filtreleme süreçlerinde null-safe kontroller eklendi.
 
-### 3. Aktivasyon ve Mikro Hedefler (DashboardView)
-- **Onboarding:** "İlk 7 Gün Aktivasyon Programı" adımları ve görsel takipleri stabilize edildi.
-- **Günlük Ritüeller:** Sabah planlaması ve gün sonu kapanış süreçlerindeki kullanıcı etkileşimleri iyileştirildi.
+### 3. Aktivasyon ve CRM Geliştirmeleri (Dashboard & CRM)
+- **Yapılandırılmış Ritüeller:** Sabah planlama ve gün sonu kapanışı için `window.prompt` yerine modern, çok adımlı form yapıları eklendi.
+- **Sessiz Müşteri Alarmı:** CRM ve Dashboard ekranlarında, uzun süredir görüşülmeyen müşteriler için gerçek zamanlı uyarı sistemi (Lead Alerts) entegre edildi.
+- **Arama Kayıt Sistemi:** Lead detay ekranına, arama sonuçlarını (Ulaşıldı, Ulaşılamadı, vb.) ve sonraki takipleri kaydeden akıllı form eklendi.
 
-### 4. Veri Bütünlüğü (AddPropertyModal)
-- **Zorunlu Alanlar:** Portföy durum değişikliklerinde "Satılamama Sebebi" girişi zorunlu hale getirilerek veri kalitesi güvence altına alındı.
+### 4. Veri Bütünlüğü ve Validasyon
+- **Zorunlu Alanlar:** Portföy "Pasif" durumuna alındığında "Satılamama Sebebi" girişi zorunlu hale getirilerek veri kalitesi güvence altına alındı.
 
 ### 5. Teknik Altyapı
 - **Tip Güvenliği:** Dokunulan tüm dosyalarda `any` tipleri kaldırıldı ve TypeScript tanımları güçlendirildi.

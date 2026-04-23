@@ -2,9 +2,9 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, Phone, MessageSquare, Trash2, Edit2, User as UserIcon,
-  Calendar, MapPin, Tag, AlertCircle, FileText, Plus, Zap 
+  Calendar, MapPin, Tag, AlertCircle, FileText, Plus, Zap, Check, Clock
 } from 'lucide-react';
-import { Lead, Property } from '../types';
+import { Lead, Property, LeadActivityLog } from '../types';
 import { api } from '../services/api';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '../constants/queryKeys';
@@ -22,12 +22,26 @@ interface LeadDetailModalProps {
   setDocumentAutomationProperty?: (val: Property | null) => void;
 }
 
+const CALL_RESULTS = [
+  { id: 'reached', label: 'Ulaştım', icon: Check },
+  { id: 'not_reached', label: 'Ulaşamadım', icon: X },
+  { id: 'call_back', label: 'Sonra Ara', icon: Clock },
+  { id: 'appointment', label: 'Randevu Çıktı', icon: Calendar },
+  { id: 'not_interested', label: 'İlgilenmiyor', icon: AlertCircle },
+  { id: 'wrong_number', label: 'Yanlış Numara', icon: Tag }
+];
+
 export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
   lead, onClose, onEdit, onDelete, properties,
   setShowDocumentAutomation, setDocumentAutomationLead, setDocumentAutomationProperty
 }) => {
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [loadingDrip, setLoadingDrip] = useState(false);
+  const [showCallForm, setShowCallForm] = useState(false);
+  const [callResult, setCallResult] = useState('');
+  const [callNote, setCallNote] = useState('');
+  const [nextFollowup, setNextFollowup] = useState('');
+  
   const queryClient = useQueryClient();
 
   const handleStartDrip = async (type: DripEventType) => {
@@ -46,6 +60,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
     mutationFn: (updates: Partial<Lead>) => api.updateLead(lead!.id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.LEADS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_LEAD_ALERTS] });
       toast.success("Görüşme kaydedildi!");
     },
     onError: () => {
@@ -53,14 +68,51 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
     }
   });
 
-  const handleLogCall = () => {
-    const note = window.prompt("Aradın mı? Takip Disiplini:\nNe konuştunuz? Kısaca not alın:");
-    if (note !== null) { // Cancel handling
-      updateLeadMutation.mutate({ 
-        last_contacted_at: new Date().toISOString(),
-        notes: lead?.notes ? `${lead.notes}\n${new Date().toLocaleDateString('tr-TR')}: ${note || 'Görüşme yapıldı'}` : `${new Date().toLocaleDateString('tr-TR')}: ${note || 'Görüşme yapıldı'}`
-      });
+  const logActivityMutation = useMutation({
+    mutationFn: (payload: Partial<LeadActivityLog>) => api.momentumOs.logLeadActivity(payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_LEAD_ACTIVITY, lead?.id] });
     }
+  });
+
+  const handleSaveCall = async () => {
+    if (!callResult) {
+      toast.error("Lütfen bir sonuç seçin.");
+      return;
+    }
+
+    const needsFollowup = ['reached', 'not_reached', 'call_back'].includes(callResult);
+    if (needsFollowup && !nextFollowup) {
+      toast.error("Takip tarihi zorunludur.");
+      return;
+    }
+
+    const now = new Date().toISOString();
+    
+    // 1. Log Activity
+    await logActivityMutation.mutateAsync({
+      lead_id: lead!.id,
+      action_type: 'call',
+      result: callResult,
+      note: callNote,
+      scheduled_followup_at: nextFollowup || undefined,
+      happened_at: now
+    });
+
+    // 2. Update Lead
+    const newNote = `${new Date().toLocaleDateString('tr-TR')}: ${callResult.toUpperCase()} - ${callNote}`;
+    await updateLeadMutation.mutateAsync({ 
+      last_contacted_at: now,
+      last_call_result: callResult,
+      last_call_result_at: now,
+      next_followup_at: nextFollowup || undefined,
+      notes: lead?.notes ? `${lead.notes}\n${newNote}` : newNote
+    });
+
+    setShowCallForm(false);
+    setCallResult('');
+    setCallNote('');
+    setNextFollowup('');
   };
 
   if (!lead) return null;
@@ -72,17 +124,18 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
     <AnimatePresence>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/60 backdrop-blur-md z-[110] flex items-end sm:items-center justify-center p-0 sm:p-4">
         <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="bg-white w-full max-w-lg rounded-t-[40px] sm:rounded-[40px] overflow-hidden shadow-2xl max-h-[90vh] flex flex-col">
-          <div className="relative h-32 bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center">
+          <div className="relative h-32 bg-gradient-to-br from-orange-500 to-orange-600 flex items-center justify-center shrink-0">
             <button onClick={onClose} className="absolute top-6 right-6 p-2 bg-white/20 hover:bg-white/30 rounded-full text-white backdrop-blur-md transition-colors"><X size={20} /></button>
             <div className="w-20 h-20 bg-white rounded-3xl shadow-xl flex items-center justify-center text-orange-600"><UserIcon size={40} /></div>
           </div>
 
-          <div className="p-8 space-y-8 overflow-y-auto">
+          <div className="p-6 sm:p-8 space-y-6 overflow-y-auto">
             <div className="flex justify-between items-start">
               <div>
                 <h2 className="text-2xl font-bold text-slate-900">{lead.name || 'İsimsiz Müşteri'}</h2>
                 <div className="flex items-center gap-2 mt-2">
                   <span className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider ${lead.status === 'Sıcak' ? 'bg-orange-100 text-orange-600' : 'bg-slate-100 text-slate-600'}`}>{lead.status || 'Aday'}</span>
+                  {lead.temperature === 'hot' && <span className="px-3 py-1 bg-red-100 text-red-600 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1"><Zap size={10} className="fill-red-500" /> Sıcak Fırsat</span>}
                 </div>
               </div>
               <div className="flex gap-2">
@@ -91,7 +144,74 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
               </div>
             </div>
 
-            {/* AKILLI TAKİP SERİSİ - YENİ MODÜL */}
+            {/* CALL LOG FORM */}
+            <AnimatePresence>
+              {showCallForm ? (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="p-5 bg-orange-50 rounded-[32px] border-2 border-orange-100 space-y-4">
+                  <div className="flex justify-between items-center">
+                    <span className="text-xs font-black uppercase tracking-widest text-orange-900">Arama Sonucunu Seç</span>
+                    <button onClick={() => setShowCallForm(false)} className="text-orange-900 hover:bg-orange-100 p-1 rounded-full"><X size={16} /></button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {CALL_RESULTS.map((res) => (
+                      <button 
+                        key={res.id} 
+                        onClick={() => setCallResult(res.id)}
+                        className={`flex flex-col items-center gap-1 p-2 rounded-2xl border-2 transition-all ${callResult === res.id ? 'bg-orange-500 text-white border-orange-500 shadow-lg scale-95' : 'bg-white text-slate-600 border-white hover:border-orange-200'}`}
+                      >
+                        <res.icon size={16} />
+                        <span className="text-[9px] font-bold text-center leading-tight">{res.label}</span>
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {['reached', 'not_reached', 'call_back'].includes(callResult) && (
+                    <div className="space-y-1.5">
+                      <label className="text-[10px] font-bold text-orange-900 uppercase tracking-widest ml-1">Bir Sonraki Takip</label>
+                      <input 
+                        type="datetime-local" 
+                        value={nextFollowup}
+                        onChange={(e) => setNextFollowup(e.target.value)}
+                        className="w-full bg-white border-2 border-white rounded-2xl px-4 py-2 text-xs font-bold text-slate-900 focus:border-orange-500 outline-none"
+                      />
+                    </div>
+                  )}
+
+                  <div className="space-y-1.5">
+                    <label className="text-[10px] font-bold text-orange-900 uppercase tracking-widest ml-1">Görüşme Notu</label>
+                    <textarea 
+                      value={callNote}
+                      onChange={(e) => setCallNote(e.target.value)}
+                      placeholder="Neler konuşuldu?.."
+                      className="w-full bg-white border-2 border-white rounded-2xl px-4 py-3 text-xs font-medium text-slate-900 focus:border-orange-500 outline-none resize-none h-20"
+                    />
+                  </div>
+
+                  <button 
+                    onClick={handleSaveCall}
+                    disabled={updateLeadMutation.isPending || logActivityMutation.isPending}
+                    className="w-full py-3 bg-orange-600 text-white rounded-2xl font-black text-xs shadow-xl active:scale-95 disabled:opacity-50"
+                  >
+                    KAYDET
+                  </button>
+                </motion.div>
+              ) : (
+                <button onClick={() => setShowCallForm(true)} className="w-full p-4 bg-orange-50 border-2 border-orange-100 rounded-3xl flex items-center justify-between hover:bg-orange-100 transition-colors group">
+                  <div className="flex items-center gap-4">
+                    <div className="w-10 h-10 bg-orange-200 text-orange-700 rounded-2xl flex items-center justify-center">
+                      <Phone size={18} />
+                    </div>
+                    <div className="text-left">
+                      <div className="text-sm font-bold text-orange-900">Aradın mı? Görüşmeyi Kaydet</div>
+                      <div className="text-[10px] text-orange-700 mt-0.5">Takip disiplini için not alın</div>
+                    </div>
+                  </div>
+                  <Plus size={20} className="text-orange-500" />
+                </button>
+              )}
+            </AnimatePresence>
+
+            {/* AKILLI TAKİP SERİSİ */}
             <div className="p-5 bg-blue-50/50 rounded-[32px] border border-blue-100/50 space-y-4">
               <div className="flex items-center gap-2 text-blue-900">
                 <Zap size={18} className="fill-blue-500 text-blue-500" />
@@ -114,19 +234,6 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 <div><div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">WhatsApp</div><div className="text-sm font-bold text-slate-900">Mesaj Gönder</div></div>
               </a>
             </div>
-
-            <button onClick={handleLogCall} className="w-full p-4 bg-orange-50 border-2 border-orange-100 rounded-3xl flex items-center justify-between hover:bg-orange-100 transition-colors group">
-              <div className="flex items-center gap-4">
-                <div className="w-10 h-10 bg-orange-200 text-orange-700 rounded-2xl flex items-center justify-center">
-                  <Phone size={18} />
-                </div>
-                <div className="text-left">
-                  <div className="text-sm font-bold text-orange-900">Aradın mı? Görüşmeyi Kaydet</div>
-                  <div className="text-[10px] text-orange-700 mt-0.5">Takip disiplini için not alın</div>
-                </div>
-              </div>
-              <Plus size={20} className="text-orange-500" />
-            </button>
 
             <div className="pt-6 border-t border-slate-100">
               <button onClick={() => { setDocumentAutomationLead?.(lead); setShowDocumentAutomation?.(true); }} className="w-full p-5 bg-white border-2 border-slate-100 rounded-3xl flex items-center justify-between hover:border-orange-500 transition-all group">

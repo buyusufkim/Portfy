@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   X, 
@@ -8,6 +8,7 @@ import {
   RefreshCw 
 } from 'lucide-react';
 import { api } from '../services/api';
+import { QUERY_KEYS } from '../constants/queryKeys';
 import { CRMView } from '../components/CRMView';
 import { Lead, UserProfile, Category, MutationResult, Property } from '../types';
 
@@ -40,6 +41,12 @@ export const CRMPage: React.FC<CRMPageProps> = ({
   selectedLead,
   setSelectedLead
 }) => {
+  const { data: leadAlerts = [] } = useQuery({
+    queryKey: [QUERY_KEYS.MOMENTUM_LEAD_ALERTS, profile?.id],
+    queryFn: () => api.momentumOs.getLeadAlerts(),
+    enabled: !!profile?.id
+  });
+
   return (
     <CRMView 
       setShowWhatsAppImport={setShowWhatsAppImport}
@@ -51,6 +58,7 @@ export const CRMPage: React.FC<CRMPageProps> = ({
       categories={categories}
       isAnalyzingLeads={isAnalyzingLeads}
       onSelectLead={setSelectedLead}
+      leadAlerts={leadAlerts}
     />
   );
 };
