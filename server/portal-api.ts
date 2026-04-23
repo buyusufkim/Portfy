@@ -45,7 +45,7 @@ export const handleGetPortalData = async (req: any, res: any) => {
 
     const propertyId = tokenData.property_id;
 
-    // Fetch minimal property data
+    // Fetch minimal property data (owner eklendi)
     const { data: property, error: propError } = await supabaseAdmin
       .from('properties')
       .select(`
@@ -56,7 +56,8 @@ export const handleGetPortalData = async (req: any, res: any) => {
         sale_probability,
         address,
         user_id,
-        created_at
+        created_at,
+        owner
       `)
       .eq('id', propertyId)
       .single();
@@ -64,6 +65,27 @@ export const handleGetPortalData = async (req: any, res: any) => {
     if (propError || !property) {
       return res.status(404).json({ error: 'Geçersiz veya süresi dolmuş bağlantı.' });
     }
+
+    // --- TRAFİK MOTORU (SİNYAL) ENTEGRASYONU ---
+    // Mülk sahibi kimliği ve portföy başlığı ile spesifik görev oluşturuyoruz
+    const ownerName = property.owner?.name || 'Mülk Sahibi';
+    const propertyTitle = property.title || 'Portföyünüz';
+
+    try {
+      await supabaseAdmin.from('tasks').insert({
+        user_id: property.user_id,
+        property_id: propertyId,
+        title: `🔥 ${ownerName}, Raporu İnceledi! (${propertyTitle})`,
+        type: 'Arama',
+        time: new Date().toISOString(),
+        completed: false,
+        is_drip: true, 
+        ai_suggestion: `${ownerName}, "${propertyTitle}" için gönderdiğiniz şeffaflık raporunu tam şu an inceliyor. Müşteriyi hemen arayıp durum değerlendirmesi yapmak harika bir etki yaratacaktır!`
+      });
+    } catch (signalError) {
+      console.error("Trafik motoru sinyal görevi oluşturulamadı:", signalError);
+    }
+    // ---------------------------------------------
 
     // Fetch agent info - Display name only
     const { data: agent, error: agentError } = await supabaseAdmin

@@ -16,6 +16,7 @@ import { RevenueStats } from '../types/revenue';
 import { QueryClient } from '@tanstack/react-query';
 import { useFeatureAccess } from '../hooks/useFeatureAccess';
 import { UpgradeModal } from './premium/UpgradeModal';
+import { toast } from 'react-hot-toast';
 
 interface DashboardViewProps {
   profile: UserProfile | null;
@@ -387,6 +388,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               onClick={() => {
                                 const msg = task.ai_suggestion?.match(/"([^"]+)"/)?.[1] || task.ai_suggestion;
                                 navigator.clipboard.writeText(msg || '');
+                                toast.success("Kopyalandı!");
                               }}
                               className="flex-1 flex items-center justify-center gap-2 py-2 bg-white border border-slate-200 rounded-xl text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition-all active:scale-95"
                             >

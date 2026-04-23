@@ -1,53 +1,62 @@
 import { Task } from '../types';
 import { taskService } from './taskService';
 
-export type DripEventType = 'OFFER_MADE' | 'SHOWING_DONE' | 'PORTFOLIO_LISTED';
+export type DripEventType = 'OFFER_MADE' | 'SHOWING_DONE' | 'PORTFOLIO_LISTED' | 'POST_SALE_REF';
+
+export const DRIP_CAMPAIGNS: Record<DripEventType, { label: string, steps: { days: number, title: string, suggestion: string }[] }> = {
+  'OFFER_MADE': {
+    label: 'Teklif Takip Serisi',
+    steps: [
+      { 
+        days: 3, 
+        title: 'Teklif Takibi - 3. Gün', 
+        suggestion: 'Selamlar, teklifimizle ilgili mülk sahibiyle tekrar görüştüm, gün içinde bir değerlendirme yapabildiniz mi?' 
+      },
+      { 
+        days: 7, 
+        title: 'Teklif Sıcak Tutma - 7. Gün', 
+        suggestion: 'Mülk için başka ciddi ilgilenenler de var. Karar sürecinizi hızlandırmak adına merak ettiğiniz bir detay var mı?' 
+      }
+    ]
+  },
+  'SHOWING_DONE': {
+    label: 'Yer Gösterme Takibi',
+    steps: [
+      { 
+        days: 2, 
+        title: 'İzlenim Değerlendirme', 
+        suggestion: 'Mülkü gezdikten sonra aklınızda kalan soru işaretleri oldu mu? Değerlendirme fırsatınız oldu mu?' 
+      }
+    ]
+  },
+  'PORTFOLIO_LISTED': {
+    label: 'Mal Sahibi Güncelleme',
+    steps: [
+      { 
+        days: 4, 
+        title: 'İlk 4 Gün Raporu', 
+        suggestion: 'Yayına girişimizden bu yana gelen tepkileri mal sahibiyle paylaş. Pazarın ilk tepkisi oldukça pozitif.' 
+      }
+    ]
+  },
+  'POST_SALE_REF': {
+    label: 'Satış Sonrası Referans',
+    steps: [
+      { 
+        days: 30, 
+        title: 'Memnuniyet Kontrolü', 
+        suggestion: 'Yeni mülkünüzde bir ayınız doldu, her şey yolunda mı? Memnun kaldıysanız çevrenize de beni önerebilirsiniz.' 
+      }
+    ]
+  }
+};
 
 export const dripService = {
   createDripCampaign: async (leadId: string, propertyId: string | undefined, eventType: DripEventType) => {
-    const campaigns: Record<DripEventType, { days: number, title: string, suggestion: string }[]> = {
-      'OFFER_MADE': [
-        { 
-          days: 3, 
-          title: 'Teklif Takibi - 3. Gün', 
-          suggestion: 'Teklif vereli 3 gün oldu. Ahmet Bey\'in nabzını yoklamak için: "Selamlar Ahmet Bey, teklifimizle ilgili mülk sahibiyle tekrar görüştüm, gün içinde bir değerlendirme yapabildiniz mi?" şeklinde bir mesaj atabilirsin.' 
-        },
-        { 
-          days: 7, 
-          title: 'Teklif Sıcak Tutma - 7. Gün', 
-          suggestion: '1 hafta geçti. Müşterinin ilgisi dağılmadan: "Ahmet Bey merhaba, mülk için başka ciddi ilgilenenler de var. Karar sürecinizi hızlandırmak adına merak ettiğiniz son bir detay var mı?" diye sorabilirsin.' 
-        },
-        { 
-          days: 14, 
-          title: 'Son Hatırlatma - 14. Gün', 
-          suggestion: '2 hafta doldu. Artık netleşme zamanı: "Ahmet Bey, bu mülk hakkındaki teklifinizi hala geçerli sayalım mı? Eğer fikriniz değiştiyse size daha uygun alternatif portföylerim üzerinde çalışmaya başlayabilirim."' 
-        }
-      ],
-      'SHOWING_DONE': [
-        { 
-          days: 2, 
-          title: 'Yer Gösterme Değerlendirme', 
-          suggestion: 'Mülkü göstereli 2 gün oldu. İlk izlenimi almak için: "Mülkü birlikte gezdikten sonra aklınızda kalan soru işaretleri oldu mu? Eşinizle/ortağınızla değerlendirme fırsatınız oldu mu?" mesajı uygun olacaktır.' 
-        },
-        { 
-          days: 5, 
-          title: 'Yeni Alternatif Sunumu', 
-          suggestion: 'Müşteri hala sessizse, o mülk olmamış olabilir: "Gezdiğimiz mülke benzer özelliklerde ama [Farklı Özellik] olan yeni bir yer girdi portföyüme. Görmek ister misiniz?"' 
-        }
-      ],
-      'PORTFOLIO_LISTED': [
-        {
-          days: 4,
-          title: 'Mal Sahibi Güncellemesi',
-          suggestion: 'Mülkü yayına alalı 4 gün oldu. Gelen ilk tepkileri mal sahibiyle paylaş: "Yayına girişimizden bu yana [X] kişi tıkladı, [Y] kişiyle görüştüm. Pazarın ilk tepkisi oldukça pozitif."'
-        }
-      ]
-    };
-
-    const campaign = campaigns[eventType];
+    const campaign = DRIP_CAMPAIGNS[eventType];
     if (!campaign) return;
 
-    for (const step of campaign) {
+    for (const step of campaign.steps) {
       const scheduledDate = new Date();
       scheduledDate.setDate(scheduledDate.getDate() + step.days);
 

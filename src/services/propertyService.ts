@@ -68,7 +68,8 @@ export const propertyService = {
           type: 'Mal Sahibi',
           status: 'Yetki Alındı',
           district: property.address.district,
-          notes: `${property.title} portföyü üzerinden otomatik eklendi.`
+          notes: `${property.title} portföyü üzerinden otomatik eklendi.`,
+          created_at: new Date().toISOString() // EKLENDİ (TS2345 FIX)
         });
       }
     }
@@ -122,7 +123,8 @@ export const propertyService = {
           type: 'Mal Sahibi',
           status: 'Yetki Alındı',
           district: property.address?.district || '',
-          notes: `Portföy güncellemesi üzerinden otomatik eklendi.`
+          notes: `Portföy güncellemesi üzerinden otomatik eklendi.`,
+          created_at: new Date().toISOString() // EKLENDİ (TS2345 FIX)
         });
       }
     }

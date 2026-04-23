@@ -39,7 +39,8 @@ export const whatsappService = {
       type: analysis.customer_type,
       status: analysis.interest_level === 'Kritik' || analysis.interest_level === 'Yüksek' ? 'Sıcak' : 'Aday',
       district: analysis.extracted_details.location_preference || "Bilinmiyor",
-      notes: `WhatsApp Analizi: ${analysis.summary}\nBütçe: ${analysis.budget_signal}\nAciliyet: ${analysis.urgency}`
+      notes: `WhatsApp Analizi: ${analysis.summary}\nBütçe: ${analysis.budget_signal}\nAciliyet: ${analysis.urgency}`,
+      created_at: new Date().toISOString() // EKLENDİ (TS2345 FIX)
     });
   },
 
@@ -76,7 +77,10 @@ export const whatsappService = {
       }
     );
     
-    // JSON.parse ÇÖPE GİTTİ!
-    return api.addLead(response);
+    // Gelen yanıta da created_at ekleyerek paslıyoruz.
+    return api.addLead({
+      ...response,
+      created_at: new Date().toISOString()
+    });
   }
 };

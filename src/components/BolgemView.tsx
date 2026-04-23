@@ -1,7 +1,7 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapIcon, LayoutDashboard, Store, User, Building2, Home, Star, Filter, Search, Plus, X, Layers, Crosshair, MessageSquare, MapPin } from 'lucide-react';
+import { MapIcon, LayoutDashboard, Store, User, Building2, Home, Star, Filter, Search, Plus, X, Layers, Crosshair, MessageSquare, MapPin, Navigation } from 'lucide-react';
 import { useCategories } from '../hooks/useCategories';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
@@ -14,9 +14,8 @@ import { RegionMap } from './RegionMap';
 import { RegionStats } from './RegionStats';
 import { CompetitorList } from './CompetitorList';
 
-const defaultCenter = { lat: 38.7205, lng: 35.4826 }; // Kayseri Default
+const defaultCenter = { lat: 38.7205, lng: 35.4826 };
 
-// Helper to create SVG data URI for map pins
 const createSvgPin = (color: string, Icon: any) => {
   const iconSvg = renderToStaticMarkup(<Icon size={12} color="white" strokeWidth={2.5} />);
   const svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 40 40">
@@ -40,7 +39,10 @@ export const BolgemView = ({
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [selectedPin, setSelectedPin] = useState<any>(null);
+  
   const [userLocation, setUserLocation] = useState<{ lat: number, lng: number } | null>(null);
+  const [isTracking, setIsTracking] = useState(false);
+  const watchIdRef = useRef<number | null>(null);
 
   const [showAddFilter, setShowAddFilter] = useState(false);
   const [showFieldNotes, setShowFieldNotes] = useState(false);
@@ -66,39 +68,31 @@ export const BolgemView = ({
 
   const hotspots = useMemo(() => {
     if (!profile?.region?.city || !mapCenter) return [];
-    
-    // Rastgele oluşturmak yerine, member'ın bölgesine yakın sabit bir dağılım
-    // ya da daha sistematik bir yaklaşım kullanabiliriz.
-    // Şimdilik merkezden biraz sapmalı sabit noktalar:
     const offsets = [
         { lat: 0.005, lng: 0.005 },
         { lat: -0.005, lng: 0.005 },
         { lat: 0, lng: -0.008 }
     ];
-
     return offsets.map(offset => ({
         lat: mapCenter.lat + offset.lat,
         lng: mapCenter.lng + offset.lng,
         intensity: 0.3, 
-        color: '#f97316' // Portfy ana rengiyle uyumlu
+        color: '#f97316'
     }));
   }, [mapCenter, profile?.region]);
 
-  // 1. Manuel Eklenen Saha Pinlerini Çek
   const { data: pins = [], isLoading: isLoadingPins } = useQuery({
     queryKey: [QUERY_KEYS.MAP_PINS, profile?.id],
     queryFn: api.getMapPins,
     enabled: !!profile?.id
   });
 
-  // 2. Portföyleri Çek
   const { data: properties = [], isLoading: isLoadingProperties } = useQuery({
     queryKey: ['properties', profile?.id],
     queryFn: api.getProperties,
     enabled: !!profile?.id
   });
 
-  // 3. Portföyleri ve Saha Pinlerini Harita İçin Birleştir
   const combinedPins = useMemo(() => {
     const propPins: MapPinType[] = properties.map((p: Property) => {
       const lat = (typeof p.address?.lat === 'number' && isFinite(p.address.lat)) 
@@ -135,7 +129,6 @@ export const BolgemView = ({
         
         if (addressToGeocode) {
           const coords = await locationService.getCoordsFromOSM(addressToGeocode);
-          
           if (coords) {
             const newCenter = { lat: coords.lat, lng: coords.lng };
             setMapCenter(newCenter);
@@ -150,13 +143,23 @@ export const BolgemView = ({
     geocodeProfileRegion();
   }, [profile?.region, map, hasGeocoded, combinedPins.length]);
 
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null && navigator.geolocation) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      }
+    };
+  }, []);
+
   const onMapLoad = (mapInstance: any) => {
     setMap(mapInstance);
   };
 
-  // Dinamik Kategoriler: Portföylerim butonunu otomatik ekle
   const allPinTypes = useMemo(() => {
-    const base = [{ id: 'all', label: 'Tümü', icon: Filter, color: '#94a3b8' }];
+    const base = [
+      { id: 'all', label: 'Tümü', icon: Filter, color: '#94a3b8' },
+      { id: 'nearby', label: 'Yakındakiler (2km)', icon: Navigation, color: '#3b82f6' }
+    ];
     const hasPortfoy = categories.some(c => c.id === 'portfoy');
     
     let cats = [...categories];
@@ -166,17 +169,30 @@ export const BolgemView = ({
     return [...base, ...cats];
   }, [categories]);
 
-  // Birleştirilmiş pinler üzerinden filtreleme yap
   const filteredPins = useMemo(() => {
     return combinedPins.filter((pin: MapPinType) => {
-      const matchFilter = filter === 'all' || pin.type === filter;
+      let matchFilter = false;
+      if (filter === 'all') {
+        matchFilter = true;
+      } else if (filter === 'nearby') {
+        if (userLocation) {
+          const dist = L.latLng(userLocation.lat, userLocation.lng).distanceTo(L.latLng(pin.lat, pin.lng));
+          matchFilter = dist <= 2000;
+        } else {
+          matchFilter = true; 
+        }
+      } else {
+        matchFilter = pin.type === filter;
+      }
+
       const matchSearch = (pin.title || '').toLowerCase().includes(search.toLowerCase()) || (pin.address || '').toLowerCase().includes(search.toLowerCase());
       return matchFilter && matchSearch;
     });
-  }, [filter, search, combinedPins]);
+  }, [filter, search, combinedPins, userLocation]);
 
+  // ORİJİNAL ODAKLAMA SİSTEMİ: GPS ile çatışmaz.
   useEffect(() => {
-    if (map && (filteredPins || []).length > 0) {
+    if (map && (filteredPins || []).length > 0 && filter !== 'nearby') {
       let hasValidPins = false;
       const latlngs: L.LatLngTuple[] = [];
 
@@ -196,7 +212,7 @@ export const BolgemView = ({
         }
       }
     }
-  }, [filteredPins, map, search]);
+  }, [filteredPins, map, search, filter]);
 
   const addPinMutation = useMutation({
     mutationFn: api.addMapPin,
@@ -256,23 +272,46 @@ export const BolgemView = ({
     addPinMutation.mutate(newPinData);
   };
 
-  const handleLocateMe = () => {
-    if (navigator.geolocation) {
-      if (setToast) setToast({ message: "Konumunuz alınıyor...", type: 'info' });
+  const handleToggleTracking = () => {
+    if (!navigator.geolocation) {
+      if (setToast) setToast({ message: "Cihazınız konum servisini desteklemiyor.", type: 'error' });
+      return;
+    }
+
+    if (isTracking) {
+      if (watchIdRef.current !== null) {
+        navigator.geolocation.clearWatch(watchIdRef.current);
+        watchIdRef.current = null;
+      }
+      setIsTracking(false);
+      if (setToast) setToast({ message: "Canlı takip durduruldu.", type: 'info' });
+    } else {
+      if (setToast) setToast({ message: "Canlı saha takibi başlatılıyor...", type: 'info' });
+      setIsTracking(true);
 
       navigator.geolocation.getCurrentPosition(
         (position) => {
           const newCenter = { lat: position.coords.latitude, lng: position.coords.longitude };
           setMapCenter(newCenter);
           setUserLocation(newCenter);
-          setMapZoom(18);
+          setMapZoom(17);
           if (map) map.panTo(newCenter);
-          if (setToast) setToast({ message: "Konumunuz bulundu.", type: 'success' });
+          if (setToast) setToast({ message: "Konum bulundu, takip ediliyorsunuz.", type: 'success' });
         },
         () => {
-          if (setToast) setToast({ message: "Konum alınamadı.", type: 'error' });
+          if (setToast) setToast({ message: "Konum alınamadı, lütfen izinleri kontrol edin.", type: 'error' });
+          setIsTracking(false);
         },
-        { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        { enableHighAccuracy: true }
+      );
+
+      watchIdRef.current = navigator.geolocation.watchPosition(
+        (position) => {
+          const newLocation = { lat: position.coords.latitude, lng: position.coords.longitude };
+          setUserLocation(newLocation);
+        },
+        (error) => console.warn("GPS Tracking Hatası:", error),
+        { enableHighAccuracy: true, maximumAge: 10000, timeout: 5000 }
       );
     }
   };
@@ -282,9 +321,6 @@ export const BolgemView = ({
     return createSvgPin(typeObj?.color || '#eab308', typeObj?.icon || Building2);
   };
 
-  // Loading state removed
-
-
   return (
     <motion.div 
       initial={{ opacity: 0 }}
@@ -293,8 +329,38 @@ export const BolgemView = ({
     >
       {view === 'map' ? (
         <div className="relative flex-1 w-full overflow-hidden bg-[#020617]">
+          
+          {/* HARİTA BUTONLARI: React-Leaflet yapısını kırmadan, z-index 400 ile en üste güvenli bir şekilde sabitlendi */}
+          <div className="absolute right-4 top-40 flex flex-col gap-2 z-[400] pointer-events-auto">
+            <button 
+              onClick={(e) => { e.stopPropagation(); setShowAddPin(true); }}
+              className="w-14 h-14 rounded-2xl bg-orange-600 text-white flex items-center justify-center shadow-2xl hover:bg-orange-700 transition-all mb-2"
+              title="Pin Ekle"
+            >
+              <Plus size={32} />
+            </button>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setIs3D(!is3D);
+                if (!is3D) setMapZoom(18);
+              }}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all ${is3D ? 'bg-orange-500 text-white' : 'bg-slate-900/90 backdrop-blur-md text-slate-300 hover:text-white'}`}
+              title="Uydu Görünümü"
+            >
+              <Layers size={24} />
+            </button>
+            <button 
+              onClick={(e) => { e.stopPropagation(); handleToggleTracking(); }}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all ${isTracking ? 'bg-emerald-500 text-white' : 'bg-slate-900/90 backdrop-blur-md text-slate-300 hover:text-white'}`}
+              title="Konumumu Bul"
+            >
+              <Crosshair size={24} className={isTracking ? 'animate-pulse' : ''} />
+            </button>
+          </div>
+
           {/* Floating Search & Filters */}
-          <div className="absolute top-6 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl z-20 space-y-3 pointer-events-none">
+          <div className="absolute top-6 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl z-[400] space-y-3 pointer-events-none">
             <div className="flex items-center gap-2 pointer-events-auto">
               <div className="relative flex-1">
                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
@@ -319,16 +385,25 @@ export const BolgemView = ({
               {(allPinTypes || []).map(type => {
                 const Icon = type.icon;
                 const isActive = filter === type.id;
+                
+                const handleFilterClick = () => {
+                  if (type.id === 'nearby' && !userLocation) {
+                    if (setToast) setToast({ message: "Önce konumunuzu (hedef ikonu) bulmalısınız.", type: 'info' });
+                    return;
+                  }
+                  setFilter(type.id);
+                };
+
                 return (
                   <button
                     key={type.id}
-                    onClick={() => setFilter(type.id)}
+                    onClick={handleFilterClick}
                     className={`flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-bold whitespace-nowrap transition-all shadow-lg border border-white/5 ${
                       isActive ? 'text-white' : 'bg-slate-900/80 backdrop-blur-md text-slate-400 hover:text-white'
                     }`}
                     style={isActive ? { backgroundColor: type.color, borderColor: type.color } : {}}
                   >
-                    <Icon size={14} style={{ color: isActive ? '#fff' : type.color }} />
+                    <Icon size={14} style={{ color: isActive ? '#fff' : type.color }} className={type.id === 'nearby' && isTracking ? 'animate-pulse' : ''} />
                     {type.label}
                   </button>
                 );
@@ -342,7 +417,6 @@ export const BolgemView = ({
             </div>
           </div>
 
-          {/* View Toggle removed from here */}
           <RegionMap 
             isLoaded={true}
             mapZoom={mapZoom}
@@ -352,11 +426,11 @@ export const BolgemView = ({
             is3D={is3D}
             setIs3D={setIs3D}
             setMapZoom={setMapZoom}
-            handleLocateMe={handleLocateMe}
+            handleLocateMe={() => {}} // Artık butonları yukarı taşıdığımız için buna gerek yok
             setShowAddPin={setShowAddPin}
             userLocation={userLocation}
             filteredPins={filteredPins}
-            getPinIcon={getPinIcon} // DOĞRU PROPS
+            getPinIcon={getPinIcon}
             setSelectedPin={setSelectedPin}
             selectedPin={selectedPin}
             showAddPin={showAddPin}
@@ -368,6 +442,13 @@ export const BolgemView = ({
             search={search}
             hotspots={hotspots}
           />
+
+          {isTracking && (
+            <div className="absolute top-36 left-1/2 -translate-x-1/2 z-[400] bg-emerald-500 text-white px-4 py-2 rounded-full text-xs font-bold shadow-lg flex items-center gap-2 pointer-events-none">
+              <div className="w-2 h-2 bg-white rounded-full animate-ping" />
+              Saha Canlı Takibi Aktif
+            </div>
+          )}
         </div>
       ) : (
         <>
@@ -428,7 +509,6 @@ export const BolgemView = ({
         </>
       )}
 
-      {/* Filter Add Modal */}
       <AnimatePresence>
         {showAddFilter && (
           <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
@@ -455,7 +535,6 @@ export const BolgemView = ({
         )}
       </AnimatePresence>
 
-      {/* View Toggle - Global */}
       <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-40 bg-slate-900/90 backdrop-blur-xl p-2 rounded-2xl flex shadow-2xl border border-white/10 pointer-events-auto">
         <button 
           onClick={() => setView('map')}
@@ -471,7 +550,6 @@ export const BolgemView = ({
         </button>
       </div>
 
-      {/* Field Notes Drawer */}
       <AnimatePresence>
         {showFieldNotes && (
           <div className="fixed inset-0 z-[60] flex justify-end">

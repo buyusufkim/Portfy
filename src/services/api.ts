@@ -200,7 +200,8 @@ export const api = {
         type: pin.type === 'esnaf' ? 'Esnaf' : 'Bölge Kaydı',
         status: 'Aday',
         district: '', 
-        notes: `Harita üzerinden otomatik eklendi. Adres: ${pin.address}. Not: ${pin.notes}`
+        notes: `Harita üzerinden otomatik eklendi. Adres: ${pin.address}. Not: ${pin.notes}`,
+        created_at: new Date().toISOString() // EKLENDİ (TS2345 FIX)
       });
     } catch (e) {
       console.warn("CRM registration failed for addMapPin:", e);

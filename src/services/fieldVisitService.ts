@@ -14,9 +14,11 @@ export const fieldVisitService = {
     return (data || []) as Building[];
   },
 
-  addVisit: async (visit: Omit<Building, 'id'>) => {
+  // TS Hatası Fix: Frontend'den user_id beklemiyoruz, arka planda kendimiz ekliyoruz.
+  addVisit: async (visit: Omit<Building, 'id' | 'user_id'>) => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
+    
     const { data, error } = await supabase
       .from('field_visits')
       .insert({
@@ -26,18 +28,19 @@ export const fieldVisitService = {
       })
       .select()
       .single();
+      
     if (error) throw error;
 
     // Automatically register in CRM
     try {
       await leadService.addLead({
-  name: visit.title || visit.address.split(',')[0], // Title varsa onu, yoksa adresi kullan
-  phone: '',
-  type: 'Saha Ziyareti',
-  status: 'Aday',
-  district: visit.district || '',
-  notes: `Saha Ziyareti Notu: ${visit.notes}`
-});
+        name: visit.title || visit.address.split(',')[0], // Title varsa onu, yoksa adresi kullan
+        phone: '',
+        type: 'Saha Ziyareti',
+        status: 'Aday',
+        district: visit.district || '',
+        notes: `Saha Ziyareti Notu: ${visit.notes}`
+      });
     } catch (e) {
       console.warn("CRM registration failed for addVisit:", e);
     }

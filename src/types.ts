@@ -1,6 +1,7 @@
 import React from 'react';
 
-export type LeadStatus = 'Aday' | 'Sıcak' | 'Yetki Alındı' | 'Pasif';
+// Bütün sayfaların (CRM, Saha, vs) beklediği tam statü listesi
+export type LeadStatus = 'Aday' | 'Sıcak' | 'Yetki Alındı' | 'Pasif' | 'Soğuk' | 'Takipte' | 'Kapalı';
 
 export interface UserProfile {
   id: string;
@@ -100,6 +101,8 @@ export interface Lead {
   district: string;
   last_contact: string;
   notes: string;
+  property_id?: string; // TS Hatalarını çözen opsiyonel alan
+  created_at?: string; // TS2345 hatasını kökten çözen opsiyonel alan
   behavior_metrics?: {
     total_views: number;
     avg_duration: number;

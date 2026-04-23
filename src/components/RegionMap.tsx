@@ -1,9 +1,11 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Circle } from 'react-leaflet';
 import L from 'leaflet';
-import { Plus, Layers, Crosshair, X } from 'lucide-react';
+import { Plus, Layers, Crosshair, X, CheckCircle2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { MapPin as MapPinType } from '../types';
+import { api } from '../services/api';
+import { toast } from 'react-hot-toast';
 
 interface RegionMapProps {
   isLoaded: boolean;
@@ -29,7 +31,7 @@ interface RegionMapProps {
   categories: any[];
   mapStyles?: any[];
   search: string;
-  hotspots?: {lat: number, lng: number, intensity: number, color: string}[]; // New prop!
+  hotspots?: {lat: number, lng: number, intensity: number, color: string}[];
 }
 
 // Component to handle map center/zoom updates and clicks
@@ -77,6 +79,8 @@ export const RegionMap: React.FC<RegionMapProps> = ({
   search,
   hotspots = []
 }) => {
+  const [isCheckingIn, setIsCheckingIn] = useState(false);
+
   const isValidCoords = (lat: any, lng: any) => {
     return typeof lat === 'number' && typeof lng === 'number' && isFinite(lat) && isFinite(lng);
   };
@@ -87,6 +91,26 @@ export const RegionMap: React.FC<RegionMapProps> = ({
       iconSize: [size, size],
       iconAnchor: [size / 2, size]
     });
+  };
+
+  const handleCheckIn = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!selectedPin) return;
+    
+    setIsCheckingIn(true);
+    try {
+      await api.addVisit({
+        title: selectedPin.title,
+        address: selectedPin.address || 'Bilinmeyen Adres',
+        notes: `Radar modundan onaylanmış ziyaret kaydı eklendi. (Tip: ${selectedPin.type})`
+      });
+      toast.success("Ziyaret kaydı CRM'e eklendi!");
+      setTimeout(() => setSelectedPin(null), 1000); // Başarılı olunca popup'ı kapat
+    } catch (error) {
+      toast.error("Ziyaret kaydedilirken bir hata oluştu.");
+    } finally {
+      setIsCheckingIn(false);
+    }
   };
 
   const tileLayerUrl = is3D 
@@ -195,6 +219,59 @@ export const RegionMap: React.FC<RegionMapProps> = ({
               <h3 className="font-bold text-slate-900 text-sm mb-1 m-0">{selectedPin.title}</h3>
               <p className="text-xs text-slate-500 mb-2 m-0">{selectedPin.address}</p>
               <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded-lg m-0">{selectedPin.notes}</p>
+              
+              {/* SAHA MODU - DİNAMİK ONAYLI CHECK-İN */}
+              {(() => {
+                let distance = null;
+                if (userLocation && isValidCoords(userLocation.lat, userLocation.lng)) {
+                  distance = L.latLng(userLocation.lat, userLocation.lng).distanceTo(L.latLng(selectedPin.lat, selectedPin.lng));
+                }
+                const isNear = distance !== null && distance <= 100; // 100 Metre yarıçapı
+
+                return (
+                  <div className="mt-3 pt-3 border-t border-slate-100">
+                    {userLocation ? (
+                      isNear ? (
+                        <div className="flex flex-col gap-2">
+                          <p className="text-[10px] font-bold text-slate-600 text-center leading-tight">
+                            Bu konuma çok yakınsınız.<br/>Ziyaret kaydı oluşturulsun mu?
+                          </p>
+                          <div className="flex gap-2">
+                            <button
+                              onClick={handleCheckIn}
+                              disabled={isCheckingIn}
+                              className="flex-1 flex items-center justify-center gap-1 bg-emerald-500 text-white px-2 py-2 rounded-lg text-xs font-bold hover:bg-emerald-600 transition-all disabled:opacity-50"
+                            >
+                              {isCheckingIn ? (
+                                <div className="w-3 h-3 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                              ) : (
+                                "Evet"
+                              )}
+                            </button>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setSelectedPin(null);
+                              }}
+                              className="flex-1 flex items-center justify-center bg-slate-100 text-slate-600 px-2 py-2 rounded-lg text-xs font-bold hover:bg-slate-200 transition-all"
+                            >
+                              Hayır
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="text-[10px] font-bold text-slate-400 text-center bg-slate-50 p-2 rounded-lg border border-slate-100">
+                          Ziyaret kaydı oluşturmak için {Math.round(distance || 0)}m daha yaklaşmalısın.
+                        </div>
+                      )
+                    ) : (
+                      <div className="text-[10px] font-bold text-slate-400 text-center bg-slate-50 p-2 rounded-lg border border-slate-100">
+                        Ziyaret kaydı için sağdaki ikon ile konumunu bulmalısın.
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
             </div>
           </Popup>
         )}
