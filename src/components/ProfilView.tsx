@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'motion/react';
 import { 
   Clock,
@@ -18,6 +18,8 @@ import {
 } from 'lucide-react';
 import { UserProfile, BrokerAccount, MutationResult } from '../types';
 import { Card, Badge } from './UI';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { api } from '../services/api';
 
 interface ProfilViewProps {
   profile: UserProfile | null;
@@ -41,7 +43,34 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
   syncListingsMutation,
   updateProfileMutation,
   setShowRegionSetup
-}) => (
+}) => {
+  const queryClient = useQueryClient();
+  const { data: referrals = [] } = useQuery({
+    queryKey: ['referrals', profile?.id],
+    queryFn: () => api.momentumOs.getReferrals(),
+    enabled: !!profile?.id
+  });
+
+  const [showReferralInput, setShowReferralInput] = useState(false);
+  const [newReferralName, setNewReferralName] = useState('');
+  
+  const addReferralMutation = useMutation({
+    mutationFn: (name: string) => api.momentumOs.addReferral({ referred_name: name, referrer_name: 'Davet Linki', status: 'Aday' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['referrals', profile?.id] });
+      setNewReferralName('');
+      setShowReferralInput(false);
+    }
+  });
+
+  const updateReferralMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string, status: string }) => api.momentumOs.updateReferral(id, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['referrals', profile?.id] });
+    }
+  });
+
+  return (
   <motion.div 
     initial={{ opacity: 0 }}
     animate={{ opacity: 1 }}
@@ -84,16 +113,56 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
             <p className="text-xs text-slate-500">Mevcut müşterilerinden yeni potansiyeller yarat</p>
           </div>
           <button 
-            onClick={() => alert("Kendi referral ağın için özel davet linkin: https://portfy.app/ref/TR7329")}
+            onClick={() => setShowReferralInput(!showReferralInput)}
             className="p-2 bg-emerald-600 text-white rounded-xl shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition"
           >
-            <Share2 size={18} />
+            <Plus size={18} />
           </button>
         </div>
+        
+        {showReferralInput && (
+          <div className="flex items-center gap-2">
+            <input 
+              type="text" 
+              placeholder="Yeni Kişi Adı" 
+              value={newReferralName}
+              onChange={(e) => setNewReferralName(e.target.value)}
+              className="flex-1 p-2 text-sm rounded-lg border border-emerald-200 outline-none focus:border-emerald-500"
+            />
+            <button 
+              onClick={() => newReferralName.trim() && addReferralMutation.mutate(newReferralName)}
+              disabled={addReferralMutation.isPending}
+              className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold"
+            >
+              Ekle
+            </button>
+          </div>
+        )}
+
         <div className="bg-white/60 p-3 rounded-xl border border-emerald-100 flex items-center justify-between">
           <span className="text-xs font-bold text-slate-600">Kazanılan Potansiyeller:</span>
-          <span className="text-sm font-black text-emerald-600">12</span>
+          <span className="text-sm font-black text-emerald-600">{referrals.filter((r: any) => r.status === 'Kazanıldı').length} / {referrals.length}</span>
         </div>
+
+        {referrals.length > 0 && (
+          <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
+            {referrals.map((ref: any) => (
+              <div key={ref.id} className="bg-white p-2 rounded-lg border border-emerald-50 flex justify-between items-center text-sm">
+                <span className="font-medium text-slate-700">{ref.referred_name}</span>
+                <select 
+                  className="text-xs p-1 rounded bg-emerald-50 border-none outline-none text-emerald-700 font-bold"
+                  value={ref.status}
+                  onChange={(e) => updateReferralMutation.mutate({ id: ref.id, status: e.target.value })}
+                  disabled={updateReferralMutation.isPending}
+                >
+                  <option value="Aday">Aday</option>
+                  <option value="Görüşülüyor">Görüşülüyor</option>
+                  <option value="Kazanıldı">Kazanıldı</option>
+                </select>
+              </div>
+            ))}
+          </div>
+        )}
       </Card>
 
       <Card className="flex items-center gap-4">
@@ -215,4 +284,5 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
       </button>
     </div>
   </motion.div>
-);
+  );
+};

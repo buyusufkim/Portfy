@@ -45,7 +45,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
     price: initialData?.price ? new Intl.NumberFormat('tr-TR').format(initialData.price) : '',
     status: initialData?.status || 'Yeni',
     unsold_reason: initialData?.unsold_reason || '',
-    blocker_type: '' as any,
+    blocker_type: '' as 'price' | 'presentation' | 'location' | 'demand' | 'process' | 'owner' | 'content' | '',
     blocker_note: '',
     address: initialData?.address || { city: 'Kayseri', district: '', neighborhood: '', fullAddress: '', lat: undefined, lng: undefined },
     details: {
@@ -90,7 +90,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
         notes: initialData.notes,
         target_customer_type: initialData.target_customer_type || '',
         investment_suitability: initialData.investment_suitability || '',
-        blocker_type: '' as any,
+        blocker_type: '' as 'price' | 'presentation' | 'location' | 'demand' | 'process' | 'owner' | 'content' | '',
         blocker_note: ''
       });
     } else {
@@ -110,7 +110,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
         notes: '',
         target_customer_type: '',
         investment_suitability: '',
-        blocker_type: '' as any,
+        blocker_type: '' as 'price' | 'presentation' | 'location' | 'demand' | 'process' | 'owner' | 'content' | '',
         blocker_note: ''
       });
     }
@@ -199,7 +199,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
       if (formData.status === 'Pasif' && savedProperty?.id) {
         await api.momentumOs.createOrUpdatePortfolioBlocker({
           property_id: savedProperty.id,
-          blocker_type: formData.blocker_type,
+          blocker_type: formData.blocker_type as 'price' | 'presentation' | 'location' | 'demand' | 'process' | 'owner' | 'content',
           note: formData.blocker_note,
           impact_score: 80,
           is_active: true
@@ -347,7 +347,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                       <select 
                         className="w-full bg-white border-2 border-red-100 rounded-2xl p-4 text-sm focus:border-red-500 outline-none"
                         value={formData.blocker_type} 
-                        onChange={e => setFormData({...formData, blocker_type: e.target.value as any})}
+                        onChange={e => setFormData({...formData, blocker_type: e.target.value as 'price' | 'presentation' | 'location' | 'demand' | 'process' | 'owner' | 'content' | ''})}
                       >
                         <option value="">Seçiniz</option>
                         <option value="price">Fiyat Sorunu</option>
@@ -393,9 +393,15 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                 </div>
                 <button 
                   onClick={() => {
-                    if (formData.status === 'Pasif' && !formData.unsold_reason?.trim()) {
-                      toast.error('Pasif durumdaki portföyler için neden belirtmek zorunludur.');
-                      return;
+                    if (formData.status === 'Pasif') {
+                      if (!formData.blocker_type) {
+                        toast.error('Engel Tipi seçmek zorunludur.');
+                        return;
+                      }
+                      if (!formData.blocker_note?.trim()) {
+                        toast.error('Pasif durumdaki portföyler için neden belirtmek zorunludur.');
+                        return;
+                      }
                     }
                     setStep(2);
                   }} 

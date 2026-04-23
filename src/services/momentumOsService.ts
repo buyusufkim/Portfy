@@ -200,6 +200,34 @@ export const momentumOsService = {
   },
 
   // 6. Sahip Portalı Trafik Motoru
+  getOwnerPortalEventsSummary: async (propertyId?: string): Promise<{ property_id: string; views: number; last_seen: string }[]> => {
+    const userId = await getUserId();
+    let query = supabase
+      .from('owner_portal_events')
+      .select('property_id, created_at')
+      .eq('user_id', userId)
+      .eq('event_type', 'view')
+      .order('created_at', { ascending: false });
+    
+    if (propertyId) {
+      query = query.eq('property_id', propertyId);
+    }
+      
+    const { data, error } = await query;
+    if (error) throw error;
+    
+    const summaryMap: Record<string, { property_id: string; views: number; last_seen: string }> = {};
+    (data || []).forEach(event => {
+      const pid = event.property_id;
+      if (!summaryMap[pid]) {
+        summaryMap[pid] = { property_id: pid, views: 0, last_seen: event.created_at };
+      }
+      summaryMap[pid].views += 1;
+    });
+
+    return Object.values(summaryMap);
+  },
+
   getPortalTrafficLogs: async (propertyId?: string): Promise<PortalTrafficLog[]> => {
     const userId = await getUserId();
     let query = supabase

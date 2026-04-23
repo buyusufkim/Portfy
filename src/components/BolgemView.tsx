@@ -6,7 +6,7 @@ import { useCategories } from '../hooks/useCategories';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { QUERY_KEYS } from '../constants/queryKeys';
-import { MapPin as MapPinType, UserProfile, Property } from '../types';
+import { MapPin as MapPinType, UserProfile, Property, TerritoryPlan } from '../types';
 import { locationService } from '../services/locationService';
 import L from 'leaflet';
 
@@ -51,6 +51,32 @@ export const BolgemView = ({
 
   const [is3D, setIs3D] = useState(false);
   const [showTerritoryPlanner, setShowTerritoryPlanner] = useState(false);
+
+  // Territory Plan Data
+  const { data: territoryPlans = [] } = useQuery({
+    queryKey: ['territoryPlans', profile?.id],
+    queryFn: () => api.momentumOs.getTerritoryPlans(),
+    enabled: !!profile?.id
+  });
+
+  const activePlan = territoryPlans.find(plan => plan.status === 'Aktif');
+
+  const addTerritoryPlanMutation = useMutation({
+    mutationFn: (plan: Partial<TerritoryPlan>) => api.momentumOs.addTerritoryPlan(plan),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['territoryPlans', profile?.id] });
+      setToast?.({ message: 'Focus alanı radarda işaretlendi!', type: 'success' });
+      setShowTerritoryPlanner(false);
+    }
+  });
+
+  const updateTerritoryPlanMutation = useMutation({
+    mutationFn: ({ id, data }: { id: string, data: Partial<TerritoryPlan> }) => api.momentumOs.updateTerritoryPlan(id, data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['territoryPlans', profile?.id] });
+      setToast?.({ message: 'Plan güncellendi!', type: 'success' });
+    }
+  });
 
   const [mapCenter, setMapCenter] = useState(defaultCenter);
   const [mapZoom, setMapZoom] = useState(13);
@@ -592,20 +618,62 @@ export const BolgemView = ({
                   </div>
                 </div>
                 
-                <div className="p-5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex items-center justify-between">
-                  <div>
-                    <h4 className="text-xs font-bold text-indigo-300 uppercase tracking-widest">Önerilen Fokus Alanı</h4>
-                    <p className="text-sm font-bold text-white mt-1">{profile?.region?.district || 'Seçili Bölge'} - Yıldırım Beyazıt Mah.</p>
+                <div className="p-5 bg-indigo-500/10 border border-indigo-500/20 rounded-2xl flex flex-col gap-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h4 className="text-xs font-bold text-indigo-300 uppercase tracking-widest">Önerilen Fokus Alanı</h4>
+                      <p className="text-sm font-bold text-white mt-1">{profile?.region?.district || 'Seçili Bölge'} - Yıldırım Beyazıt Mah.</p>
+                    </div>
+                    {activePlan ? (
+                      <button 
+                        onClick={() => {
+                          updateTerritoryPlanMutation.mutate({
+                            id: activePlan.id,
+                            data: {
+                              visit_target: (activePlan.visit_target || 10) + 5,
+                              priority_score: Math.min(100, (activePlan.priority_score || 90) + 5),
+                            }
+                          });
+                        }}
+                        disabled={updateTerritoryPlanMutation.isPending}
+                        className="text-[10px] font-bold px-3 py-1.5 rounded-lg transition-colors bg-indigo-900 border border-indigo-700 text-indigo-300 hover:bg-indigo-800"
+                      >
+                        Hedefi Artır
+                      </button>
+                    ) : (
+                      <button 
+                        onClick={() => {
+                          addTerritoryPlanMutation.mutate({
+                            name: 'Akıllı Tavsiye: Drop-off',
+                            district: profile?.region?.district || 'Seçili Bölge',
+                            priority_score: 95,
+                            visit_target: 10,
+                            week_start_date: new Date().toISOString(),
+                            boundaries: { method: 'ai_suggested' },
+                            strategy_notes: 'Son 15 günde alıcı trafiğinin en yoğun olduğu alan',
+                            status: 'Aktif'
+                          });
+                        }}
+                        disabled={addTerritoryPlanMutation.isPending}
+                        className="text-xs font-bold px-4 py-2 rounded-xl transition-colors bg-indigo-600 hover:bg-indigo-700 text-white"
+                      >
+                        Rotayı Çiz
+                      </button>
+                    )}
                   </div>
-                  <button 
-                    onClick={() => {
-                      setShowTerritoryPlanner(false);
-                      if(setToast) setToast({ message: 'Focus alanı radarda işaretlendi!', type: 'success' });
-                    }}
-                    className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors"
-                  >
-                    Rotayı Çiz
-                  </button>
+                  
+                  {activePlan && (
+                    <div className="flex gap-4 pt-3 border-t border-indigo-500/20">
+                      <div>
+                        <div className="text-[10px] text-indigo-300">Ziyaret Hedefi</div>
+                        <div className="text-sm font-bold text-white">{activePlan.visit_target || 0}</div>
+                      </div>
+                      <div>
+                        <div className="text-[10px] text-indigo-300">Öncelik Skoru</div>
+                        <div className="text-sm font-bold text-white">{activePlan.priority_score || 0}/100</div>
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             </motion.div>

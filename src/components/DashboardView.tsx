@@ -107,23 +107,23 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       const link = `${window.location.origin}/portal/${response.token}`;
       setPortalLink(link);
       setToast?.({ message: "Portföy portal linki oluşturuldu!", type: 'success' });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_PORTAL_LOGS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_PORTAL_EVENTS] });
     } catch (error) {
       setToast?.({ message: "Portal oluşturulamadı.", type: 'error' });
     }
   };
 
-  const { data: portalTraffic = [] } = useQuery({
-    queryKey: [QUERY_KEYS.MOMENTUM_PORTAL_LOGS, profile?.id],
-    queryFn: () => api.momentumOs.getPortalTrafficLogs(),
+  const { data: portalEvents = [] } = useQuery({
+    queryKey: [QUERY_KEYS.MOMENTUM_PORTAL_EVENTS, profile?.id],
+    queryFn: () => api.momentumOs.getOwnerPortalEventsSummary(),
     enabled: !!profile?.id
   });
 
   const getPropertyTraffic = (propertyId: string) => {
-    const logs = portalTraffic.filter(log => log.property_id === propertyId);
+    const stat = portalEvents.find(e => e.property_id === propertyId);
     return {
-      views: logs.length,
-      lastView: logs.length > 0 ? logs[0].viewed_at : null
+      views: stat ? stat.views : 0,
+      lastView: stat ? stat.last_seen : null
     };
   };
 

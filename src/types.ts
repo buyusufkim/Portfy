@@ -34,6 +34,10 @@ export interface TerritoryPlan {
   id: string;
   user_id: string;
   name: string;
+  district?: string;
+  priority_score?: number;
+  visit_target?: number;
+  week_start_date?: string;
   boundaries: Record<string, any>;
   strategy_notes: string;
   status: string;

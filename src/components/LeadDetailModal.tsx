@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { Lead, Property, LeadActivityLog } from '../types';
 import { api } from '../services/api';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { dripService, DRIP_CAMPAIGNS, DripEventType } from '../services/dripService';
 import { toast } from 'react-hot-toast';
@@ -43,6 +43,12 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
   const [nextFollowup, setNextFollowup] = useState('');
   
   const queryClient = useQueryClient();
+
+  const { data: activities = [] } = useQuery({
+    queryKey: [QUERY_KEYS.MOMENTUM_LEAD_ACTIVITY, lead?.id],
+    queryFn: () => api.momentumOs.getLeadActivity(lead!.id),
+    enabled: !!lead?.id
+  });
 
   const handleStartDrip = async (type: DripEventType) => {
     setLoadingDrip(true);
@@ -210,6 +216,28 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 </button>
               )}
             </AnimatePresence>
+
+            {/* LEAD ACTIVITY HISTORY */}
+            {activities.length > 0 && (
+              <div className="p-5 bg-slate-50 border border-slate-100 rounded-[32px] space-y-4">
+                <div className="flex items-center gap-2 text-slate-500">
+                  <Clock size={16} />
+                  <span className="text-xs font-bold uppercase tracking-widest">Geçmiş Aktiviteler</span>
+                </div>
+                <div className="space-y-3">
+                  {activities.slice(0, 3).map(activity => (
+                    <div key={activity.id} className="flex gap-3 text-sm">
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 shrink-0" />
+                      <div className="flex-1">
+                        <div className="font-bold text-slate-800">{activity.action_type === 'call' ? 'Arama' : activity.action_type} - {activity.result}</div>
+                        {activity.note && <div className="text-slate-500 text-xs italic mt-0.5">"{activity.note}"</div>}
+                        <div className="text-[10px] text-slate-400 mt-1">{new Date(activity.happened_at).toLocaleString('tr-TR')}</div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
 
             {/* AKILLI TAKİP SERİSİ */}
             <div className="p-5 bg-blue-50/50 rounded-[32px] border border-blue-100/50 space-y-4">

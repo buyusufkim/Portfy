@@ -22,15 +22,22 @@ import {
   X,
   AlertCircle
 } from 'lucide-react';
-import { Property } from '../types';
+import { Property, PortfolioBlocker } from '../types';
 import { Badge, Card } from './UI';
 
-export const PropertyCard: React.FC<{ property: Property, onClick: () => void }> = ({ property, onClick }) => {
+export const PropertyCard: React.FC<{ 
+  property: Property, 
+  onClick: () => void,
+  activeBlockers?: PortfolioBlocker[],
+  onResolveBlocker?: (id: string) => void
+}> = ({ property, onClick, activeBlockers, onResolveBlocker }) => {
   const getHealthColor = (score: number) => {
     if (score >= 80) return 'text-emerald-500';
     if (score >= 50) return 'text-orange-500';
     return 'text-red-500';
   };
+
+  const blocker = activeBlockers?.[0]; // Show the first active blocker if any
 
   return (
     <Card onClick={onClick} className="group">
@@ -49,13 +56,30 @@ export const PropertyCard: React.FC<{ property: Property, onClick: () => void }>
               <Badge variant="info" className="bg-emerald-500 text-white border-none shadow-sm">FIRSAT</Badge>
             )}
           </div>
-          {property.status === 'Pasif' && property.unsold_reason && (
-            <div className="bg-red-500/90 backdrop-blur-sm px-2 py-1 rounded-lg shadow-sm border border-red-400/20 max-w-[150px]">
-              <div className="flex items-center gap-1.5">
-                <AlertCircle size={10} className="text-white shrink-0" />
-                <span className="text-[10px] font-bold text-white truncate">{property.unsold_reason}</span>
+          {property.status === 'Pasif' && (
+            blocker ? (
+              <div className="bg-red-600/90 backdrop-blur-sm px-2 py-1.5 rounded-lg shadow-sm border border-red-500 max-w-[180px]">
+                <div className="flex items-center gap-1.5">
+                  <AlertCircle size={10} className="text-white shrink-0" />
+                  <span className="text-[10px] font-bold text-white truncate">{blocker.blocker_type}: {blocker.note}</span>
+                </div>
+                {onResolveBlocker && (
+                  <button 
+                    onClick={(e) => { e.stopPropagation(); onResolveBlocker(blocker.id); }}
+                    className="mt-1 w-full text-[9px] bg-white text-red-600 py-0.5 rounded font-bold hover:bg-red-50"
+                  >
+                    Çözüldü İşaretle
+                  </button>
+                )}
               </div>
-            </div>
+            ) : property.unsold_reason && (
+              <div className="bg-red-500/90 backdrop-blur-sm px-2 py-1 rounded-lg shadow-sm border border-red-400/20 max-w-[150px]">
+                <div className="flex items-center gap-1.5">
+                  <AlertCircle size={10} className="text-white shrink-0" />
+                  <span className="text-[10px] font-bold text-white truncate">{property.unsold_reason}</span>
+                </div>
+              </div>
+            )
           )}
         </div>
         <div className="absolute bottom-4 right-4 bg-white/90 backdrop-blur-md px-3 py-1 rounded-xl shadow-sm">
@@ -116,7 +140,14 @@ export const PropertyCard: React.FC<{ property: Property, onClick: () => void }>
   );
 };
 
-export const PipelineColumn: React.FC<{ title: string, properties: Property[], status: string, onPropertyClick: (p: Property) => void }> = ({ title, properties, status, onPropertyClick }) => {
+export const PipelineColumn: React.FC<{ 
+  title: string, 
+  properties: Property[], 
+  status: string, 
+  onPropertyClick: (p: Property) => void,
+  blockers?: PortfolioBlocker[],
+  onResolveBlocker?: (id: string) => void
+}> = ({ title, properties, status, onPropertyClick, blockers, onResolveBlocker }) => {
   const totalRevenue = properties.reduce((acc, p) => acc + (p.price * p.commission_rate / 100), 0);
   
   return (
@@ -130,15 +161,26 @@ export const PipelineColumn: React.FC<{ title: string, properties: Property[], s
       </div>
       
       <div className="flex-1 space-y-4 overflow-y-auto pr-2 no-scrollbar min-h-[500px]">
-        {properties.map(property => (
-          <motion.div
-            key={property.id}
-            layoutId={property.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <Card onClick={() => onPropertyClick(property)} className="p-4 space-y-3 hover:shadow-md transition-shadow border-l-4 border-l-orange-500">
-              <div className="flex justify-between items-start gap-2">
+        {properties.map(property => {
+          const activeBlocker = blockers?.find(b => b.property_id === property.id && b.is_active);
+          
+          return (
+            <motion.div
+              key={property.id}
+              layoutId={property.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <Card onClick={() => onPropertyClick(property)} className="p-4 space-y-3 hover:shadow-md transition-shadow border-l-4 border-l-orange-500 relative">
+                {activeBlocker && (
+                  <div className="bg-red-50 text-red-600 p-2 rounded-xl text-[10px] font-bold border border-red-100 flex justify-between items-center mb-2">
+                    <span className="flex items-center gap-1"><AlertCircle size={10}/> {activeBlocker.blocker_type} engeli</span>
+                    {onResolveBlocker && (
+                      <button onClick={e => { e.stopPropagation(); onResolveBlocker(activeBlocker.id); }} className="px-2 py-0.5 bg-white border border-red-200 rounded text-red-600 hover:bg-red-600 hover:text-white transition-colors">Çöz</button>
+                    )}
+                  </div>
+                )}
+                <div className="flex justify-between items-start gap-2">
                 <h4 className="text-xs font-bold text-slate-900 line-clamp-2">{property.title}</h4>
                 <div className="text-[10px] font-bold text-orange-600 shrink-0">₺{property.price.toLocaleString()}</div>
               </div>
@@ -159,7 +201,8 @@ export const PipelineColumn: React.FC<{ title: string, properties: Property[], s
               </div>
             </Card>
           </motion.div>
-        ))}
+          );
+        })}
         {properties.length === 0 && (
           <div className="h-32 border-2 border-dashed border-slate-100 rounded-[32px] flex items-center justify-center text-slate-300 text-xs font-medium">
             Mülk yok

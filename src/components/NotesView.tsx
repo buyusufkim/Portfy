@@ -10,7 +10,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { useAuth } from '../AuthContext';
-import { UserNote } from '../types';
+import { UserNote, ContentCalendar } from '../types';
 import { formatDistanceToNow } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
@@ -37,7 +37,33 @@ export const NotesView = () => {
   // 🔥 LİMİT KONTROLLERİ 🔥
   const { isFree, subscribe } = useFeatureAccess();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  
+  // Content Calendar State
   const [showContentPlanner, setShowContentPlanner] = useState(false);
+  const [contentTitle, setContentTitle] = useState('');
+  const [contentPlatform, setContentPlatform] = useState('Instagram Reels');
+
+  const { data: contentCalendars = [] } = useQuery({
+    queryKey: ['contentCalendars', profile?.id],
+    queryFn: api.momentumOs.getContentCalendar,
+    enabled: !!profile?.id
+  });
+
+  const addContentCalendarMutation = useMutation({
+    mutationFn: (data: Partial<ContentCalendar>) => api.momentumOs.addContentCalendar(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contentCalendars', profile?.id] });
+      setShowContentPlanner(false);
+      setContentTitle('');
+    }
+  });
+
+  const updateContentStatusMutation = useMutation({
+    mutationFn: ({ id, status }: { id: string, status: string }) => api.momentumOs.updateContentCalendar(id, { status }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['contentCalendars', profile?.id] });
+    }
+  });
 
   const colors = [
     { name: 'Varsayılan', class: 'bg-slate-50', border: 'border-slate-200' },
@@ -200,18 +226,22 @@ export const NotesView = () => {
           </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="p-4 bg-orange-50 border-orange-100 flex flex-col items-center text-center justify-center min-h-[120px]">
-            <p className="text-xs font-bold text-orange-600 mb-1">Bugün</p>
-            <p className="text-sm font-medium text-slate-900">Bölge piyasa analizi (Instagram Reels)</p>
-          </Card>
-          <Card className="p-4 bg-slate-50 border-slate-100 flex flex-col items-center text-center justify-center min-h-[120px]">
-            <p className="text-xs font-bold text-slate-400 mb-1">Yarın</p>
-            <p className="text-sm font-medium text-slate-600">Yeni portföy tanıtımı (Foto Galeri)</p>
-          </Card>
-          <Card className="p-4 bg-slate-50 border-slate-100 flex flex-col items-center text-center justify-center min-h-[120px]">
-            <p className="text-xs font-bold text-slate-400 mb-1">Cuma</p>
-            <p className="text-sm font-medium text-slate-600">Haftalık kapanış ve başarı hikayesi</p>
-          </Card>
+          {contentCalendars.length > 0 ? contentCalendars.slice(0,3).map(cal => (
+            <Card key={cal.id} className="p-4 bg-slate-50 border-slate-100 flex flex-col items-center text-center justify-center min-h-[120px] relative">
+              <p className="text-xs font-bold text-slate-400 mb-1">{new Date(cal.scheduled_for).toLocaleDateString('tr-TR')} - {cal.status}</p>
+              <p className="text-sm font-medium text-slate-600">{cal.title} ({cal.platform})</p>
+              {cal.status !== 'Yayınlandı' && (
+                <button 
+                  onClick={() => updateContentStatusMutation.mutate({ id: cal.id, status: 'Yayınlandı' })}
+                  className="mt-2 text-[10px] bg-orange-100 text-orange-600 px-2 py-1 rounded"
+                >
+                  Yayınlandı İşaretle
+                </button>
+              )}
+            </Card>
+          )) : (
+            <div className="col-span-1 sm:col-span-3 text-center text-slate-400 py-4 text-sm">Takvimde içerik bulunmuyor.</div>
+          )}
         </div>
       </section>
 
@@ -473,11 +503,21 @@ export const NotesView = () => {
               <div className="p-8 space-y-6">
                 <div className="space-y-3">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">İçerik Konusu</label>
-                  <input type="text" placeholder="Örn: Hafta Sonu Portföy Sunumu" className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none transition-all" />
+                  <input 
+                    type="text" 
+                    placeholder="Örn: Hafta Sonu Portföy Sunumu"
+                    value={contentTitle}
+                    onChange={(e) => setContentTitle(e.target.value)}
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none transition-all" 
+                  />
                 </div>
                 <div className="space-y-3">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">Platform</label>
-                  <select className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none transition-all">
+                  <select 
+                    value={contentPlatform}
+                    onChange={(e) => setContentPlatform(e.target.value)}
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none transition-all"
+                  >
                     <option>Instagram Reels</option>
                     <option>Instagram Story</option>
                     <option>YouTube Shorts</option>
@@ -493,10 +533,18 @@ export const NotesView = () => {
                 </div>
                 <button 
                   onClick={() => {
-                    setShowContentPlanner(false);
-                    alert("İçerik takviminize eklendi!");
+                    if (contentTitle.trim()) {
+                      addContentCalendarMutation.mutate({
+                        title: contentTitle,
+                        platform: contentPlatform,
+                        status: 'Taslak',
+                        scheduled_for: new Date(Date.now() + 86400000).toISOString(), // yarın
+                        content_text: ''
+                      });
+                    }
                   }} 
-                  className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all"
+                  disabled={addContentCalendarMutation.isPending || !contentTitle.trim()}
+                  className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all disabled:opacity-50"
                 >
                   Takvime Ekle
                 </button>

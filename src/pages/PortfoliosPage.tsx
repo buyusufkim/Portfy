@@ -318,12 +318,26 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
   const [showSmartMatch, setShowSmartMatch] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const { profile } = useAuth();
+  const queryClient = useQueryClient();
   
   // Eksik olan useQuery buraya eklendi
   const { data: leads = [] } = useQuery({ 
     queryKey: [QUERY_KEYS.LEADS, profile?.id], 
     queryFn: api.getLeads, 
     enabled: !!profile?.id 
+  });
+
+  const { data: blockers = [] } = useQuery({
+    queryKey: ['portfolioBlockers', profile?.id],
+    queryFn: () => api.momentumOs.getPortfolioBlockers(),
+    enabled: !!profile?.id
+  });
+
+  const resolveBlockerMutation = useMutation({
+    mutationFn: (id: string) => api.momentumOs.resolvePortfolioBlocker(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portfolioBlockers', profile?.id] });
+    }
   });
 
   const filteredProperties = useMemo(() => { 
@@ -367,6 +381,8 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
         renderMagicLink={(id: string) => <MagicLinkButton propertyId={id} />}
         hasActiveFilters={searchQuery !== '' || selectedDistrict !== 'all'}
         onClearFilters={() => { setSearchQuery(''); setSelectedDistrict('all'); }}
+        blockers={blockers}
+        onResolveBlocker={(id: string) => resolveBlockerMutation.mutate(id)}
       />
 
       <SmartMatchModal 

@@ -1,6 +1,6 @@
 import React from 'react';
 import { Home } from 'lucide-react';
-import { Property } from '../../types';
+import { Property, PortfolioBlocker } from '../../types';
 import { PropertyCard, PipelineColumn } from '../PropertyComponents';
 import { Skeleton } from '../UI';
 
@@ -14,6 +14,8 @@ interface PropertyGridProps {
   renderMagicLink?: (id: string) => React.ReactNode;
   hasActiveFilters?: boolean;
   onClearFilters?: () => void;
+  blockers?: PortfolioBlocker[];
+  onResolveBlocker?: (id: string) => void;
 }
 
 export const PropertyGrid: React.FC<PropertyGridProps> = ({
@@ -22,7 +24,9 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
   filteredProperties,
   setSelectedProperty,
   hasActiveFilters,
-  onClearFilters
+  onClearFilters,
+  blockers = [],
+  onResolveBlocker
 }) => {
   const statuses = ['Yeni', 'Hazırlanıyor', 'Yayında', 'İlgi Var', 'Pazarlık', 'Satıldı'];
 
@@ -66,7 +70,12 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
             </div>
           ) : filteredProperties.map(p => (
             <div key={p.id} className="relative group">
-              <PropertyCard property={p} onClick={() => setSelectedProperty(p)} />
+              <PropertyCard 
+                property={p} 
+                onClick={() => setSelectedProperty(p)} 
+                activeBlockers={blockers?.filter(b => b.property_id === p.id && b.is_active)}
+                onResolveBlocker={onResolveBlocker}
+              />
             </div>
           ))}
         </div>
@@ -97,6 +106,8 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
               status={status}
               properties={filteredProperties.filter(p => p.status === status)} 
               onPropertyClick={(p) => setSelectedProperty(p)}
+              blockers={blockers}
+              onResolveBlocker={onResolveBlocker}
             />
           ))}
         </div>
