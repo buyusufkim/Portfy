@@ -6,7 +6,7 @@ import { authenticate, aiLimiter, tokenTrackerMiddleware, handleUpdateProfile, h
 import { rateLimit } from 'express-rate-limit';
 import { fetchMarketData } from "./server/marketScraper.js";
 
-// YENİ: Meta Webhook işleyicileri
+// Meta Webhook İşleyicileri İçeri Aktarılıyor
 import { handleMetaWebhookGet, handleMetaWebhookPost } from "./server/meta-api.js";
 
 dotenv.config({ override: true });
@@ -22,7 +22,7 @@ app.use((req, res, next) => {
   next();
 });
 
-// Meta (Instagram) Webhook Endpoints
+// YENİ: Meta Webhook Rotaları
 app.get("/api/webhooks/meta", handleMetaWebhookGet);
 app.post("/api/webhooks/meta", handleMetaWebhookPost);
 
@@ -39,7 +39,6 @@ app.post("/api/ai/admin/update-user", authenticate, handleAdminUpdateUser);
 app.post("/api/ai/admin/delete-user", authenticate, handleAdminDeleteUser);
 app.post("/api/ai/admin/update-settings", authenticate, handleUpdateGlobalSettings);
 
-// Market Analiz Limitleyici
 const marketLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 15,
