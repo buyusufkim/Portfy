@@ -39,6 +39,12 @@ export const NotesView = () => {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // Content Calendar State
+  const { data: properties = [] } = useQuery({
+    queryKey: ['properties', profile?.id],
+    queryFn: api.getProperties,
+    enabled: !!profile?.id
+  });
+
   const [showContentPlanner, setShowContentPlanner] = useState(false);
   const [contentTitle, setContentTitle] = useState('');
   const [contentPlatform, setContentPlatform] = useState('Instagram Reels');
@@ -226,20 +232,26 @@ export const NotesView = () => {
           </button>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {contentCalendars.length > 0 ? contentCalendars.slice(0,3).map(cal => (
+          {contentCalendars.length > 0 ? contentCalendars.map(cal => {
+            const prop = properties.find(p => p.id === cal.property_id);
+            return (
             <Card key={cal.id} className="p-4 bg-slate-50 border-slate-100 flex flex-col items-center text-center justify-center min-h-[120px] relative">
               <p className="text-xs font-bold text-slate-400 mb-1">{new Date(cal.scheduled_for).toLocaleDateString('tr-TR')} - {cal.status}</p>
               <p className="text-sm font-medium text-slate-600">{cal.title} ({cal.platform})</p>
+              {prop && (
+                <p className="text-[10px] text-orange-600 font-bold mt-1 max-w-full truncate px-2">📍 {prop.title}</p>
+              )}
               {cal.status !== 'Yayınlandı' && (
                 <button 
                   onClick={() => updateContentStatusMutation.mutate({ id: cal.id, status: 'Yayınlandı' })}
-                  className="mt-2 text-[10px] bg-orange-100 text-orange-600 px-2 py-1 rounded"
+                  disabled={updateContentStatusMutation.isPending}
+                  className="mt-2 text-[10px] bg-orange-100 text-orange-600 px-2 py-1 rounded disabled:opacity-50"
                 >
                   Yayınlandı İşaretle
                 </button>
               )}
             </Card>
-          )) : (
+          )}) : (
             <div className="col-span-1 sm:col-span-3 text-center text-slate-400 py-4 text-sm">Takvimde içerik bulunmuyor.</div>
           )}
         </div>

@@ -270,7 +270,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             {isDayStarted && !isDayEnded && (
               <section className="space-y-4">
-                <Card className="p-4 md:p-6 bg-slate-900 relative overflow-hidden group border border-slate-800 shadow-2xl">
+                <div className="rounded-[32px] p-4 md:p-6 bg-slate-900 relative overflow-hidden group border border-slate-800 shadow-2xl">
                   <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl -mr-32 -mt-32 pointer-events-none" />
                   <div className="flex flex-col gap-6 relative z-10">
                     <div className="flex items-start gap-4">
@@ -322,7 +322,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
                     )}
                   </div>
-                </Card>
+                </div>
 
                 {dailyPlan && (
                   <div className="grid grid-cols-3 gap-3">

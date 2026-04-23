@@ -218,24 +218,33 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
             </AnimatePresence>
 
             {/* LEAD ACTIVITY HISTORY */}
-            {activities.length > 0 && (
+            {activities.length > 0 ? (
               <div className="p-5 bg-slate-50 border border-slate-100 rounded-[32px] space-y-4">
                 <div className="flex items-center gap-2 text-slate-500">
                   <Clock size={16} />
                   <span className="text-xs font-bold uppercase tracking-widest">Geçmiş Aktiviteler</span>
                 </div>
                 <div className="space-y-3">
-                  {activities.slice(0, 3).map(activity => (
+                  {activities.map(activity => (
                     <div key={activity.id} className="flex gap-3 text-sm">
                       <div className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 shrink-0" />
                       <div className="flex-1">
-                        <div className="font-bold text-slate-800">{activity.action_type === 'call' ? 'Arama' : activity.action_type} - {activity.result}</div>
+                        <div className="font-bold text-slate-800">
+                          {activity.action_type === 'call' ? 'Arama' : activity.action_type}
+                          {activity.result && ` - ${activity.result}`}
+                        </div>
                         {activity.note && <div className="text-slate-500 text-xs italic mt-0.5">"{activity.note}"</div>}
-                        <div className="text-[10px] text-slate-400 mt-1">{new Date(activity.happened_at).toLocaleString('tr-TR')}</div>
+                        <div className="text-[10px] text-slate-400 mt-1">{new Date(activity.happened_at || new Date()).toLocaleString('tr-TR')}</div>
                       </div>
                     </div>
                   ))}
                 </div>
+              </div>
+            ) : (
+              <div className="p-5 border-2 border-dashed border-slate-100 rounded-[32px] text-center space-y-2">
+                <Clock size={24} className="mx-auto text-slate-300" />
+                <p className="text-xs font-bold text-slate-400">Henüz geçmiş aktivite yok</p>
+                <p className="text-[10px] text-slate-400">Yapılan aramalar ve notlar burada kronolojik olarak listelenir.</p>
               </div>
             )}
 

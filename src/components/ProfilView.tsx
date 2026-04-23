@@ -55,7 +55,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
   const [newReferralName, setNewReferralName] = useState('');
   
   const addReferralMutation = useMutation({
-    mutationFn: (name: string) => api.momentumOs.addReferral({ referred_name: name, referrer_name: 'Davet Linki', status: 'Aday' }),
+    mutationFn: (name: string) => api.momentumOs.addReferral({ referred_name: name, referrer_name: 'Davet Linki', status: 'asked' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['referrals', profile?.id] });
       setNewReferralName('');
@@ -141,23 +141,27 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
 
         <div className="bg-white/60 p-3 rounded-xl border border-emerald-100 flex items-center justify-between">
           <span className="text-xs font-bold text-slate-600">Kazanılan Potansiyeller:</span>
-          <span className="text-sm font-black text-emerald-600">{referrals.filter((r: any) => r.status === 'Kazanıldı').length} / {referrals.length}</span>
+          <span className="text-sm font-black text-emerald-600">{referrals.filter((r: any) => r.status === 'converted' || r.status === 'Kazanıldı').length} / {referrals.length}</span>
         </div>
 
         {referrals.length > 0 && (
           <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
             {referrals.map((ref: any) => (
               <div key={ref.id} className="bg-white p-2 rounded-lg border border-emerald-50 flex justify-between items-center text-sm">
-                <span className="font-medium text-slate-700">{ref.referred_name}</span>
+                <span className="font-medium text-slate-700">{ref.referred_name || ref.referred_email || 'İsimsiz'}</span>
                 <select 
                   className="text-xs p-1 rounded bg-emerald-50 border-none outline-none text-emerald-700 font-bold"
-                  value={ref.status}
+                  value={ref.status === 'Kazanıldı' ? 'converted' : ref.status === 'İstendi' ? 'asked' : ref.status === 'Alındı' ? 'received' : ref.status}
                   onChange={(e) => updateReferralMutation.mutate({ id: ref.id, status: e.target.value })}
                   disabled={updateReferralMutation.isPending}
                 >
-                  <option value="Aday">Aday</option>
-                  <option value="Görüşülüyor">Görüşülüyor</option>
-                  <option value="Kazanıldı">Kazanıldı</option>
+                  <option value="asked">İstendi</option>
+                  <option value="received">Alındı</option>
+                  <option value="converted">Kazanıldı</option>
+                  {/* Geri dönük uyumluluk */}
+                  {['Aday', 'Görüşülüyor'].includes(ref.status) && (
+                    <option value={ref.status} disabled>{ref.status}</option>
+                  )}
                 </select>
               </div>
             ))}

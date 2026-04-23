@@ -12,7 +12,7 @@ import { toast } from 'react-hot-toast';
 interface AddPropertyModalProps {
   show: boolean;
   onClose: () => void;
-  onSubmit: (data: any) => Promise<any>;
+  onSubmit: (data: Omit<Property, 'id' | 'user_id'>) => Promise<any>;
   isPending: boolean;
   initialData?: Property | null;
   leads: Lead[];

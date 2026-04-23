@@ -394,22 +394,63 @@ export const BolgemView = ({
           {/* Floating Search & Filters */}
           <div className="absolute top-6 left-1/2 -translate-x-1/2 w-[90%] max-w-2xl z-[400] space-y-3 pointer-events-none">
             {/* TERRITORY PLANNING */}
-            <div className="pointer-events-auto w-full bg-slate-900/90 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-4 shadow-2xl flex items-center justify-between mb-4">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center border border-indigo-500/30">
-                  <MapPin size={20} className="text-indigo-400" />
+            <div className="pointer-events-auto w-full bg-slate-900/90 backdrop-blur-xl border border-indigo-500/30 rounded-2xl p-4 shadow-2xl mb-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-indigo-500/20 rounded-xl flex items-center justify-center border border-indigo-500/30">
+                    <MapPin size={20} className="text-indigo-400" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-bold text-white flex items-center gap-2">Territory Planning <div className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">AKILLI ODAK</div></h4>
+                    <p className="text-xs text-slate-400">Veriye dayalı bölge çalışma stratejisi</p>
+                  </div>
                 </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white flex items-center gap-2">Territory Planning <div className="text-[10px] font-bold text-indigo-400 bg-indigo-500/10 px-1.5 py-0.5 rounded border border-indigo-500/20">AKILLI ODAK</div></h4>
-                  <p className="text-xs text-slate-400">Veriye dayalı bölge çalışma stratejisi</p>
-                </div>
+                <button 
+                  onClick={() => setShowTerritoryPlanner(true)}
+                  className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors shadow-lg shadow-indigo-600/20"
+                >
+                  Fokus Alanı Seç
+                </button>
               </div>
-              <button 
-                onClick={() => setShowTerritoryPlanner(true)}
-                className="bg-indigo-600 hover:bg-indigo-700 text-white text-xs font-bold px-4 py-2 rounded-xl transition-colors shadow-lg shadow-indigo-600/20"
-              >
-                Fokus Alanı Seç
-              </button>
+
+              {activePlan && (
+                <div className="mt-4 p-3 bg-white/5 rounded-xl border border-white/10 flex flex-col gap-3">
+                  <div className="flex items-start justify-between">
+                    <div>
+                      <h5 className="text-sm font-bold text-indigo-300">Aktif Plan: {activePlan.name}</h5>
+                      <input 
+                        className="bg-transparent border-b border-indigo-500/30 text-white text-xs mt-1 w-full outline-none focus:border-indigo-500 transition-colors"
+                        placeholder="Stratejinizi veya notunuzu girin..." 
+                        defaultValue={activePlan.strategy_notes || ''}
+                        onBlur={(e) => updateTerritoryPlanMutation.mutate({ id: activePlan.id, data: { strategy_notes: e.target.value } })}
+                      />
+                    </div>
+                  </div>
+                  <div className="flex gap-4 items-center mt-1">
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Öncelik Puanı</span>
+                      <div className="flex flex-row gap-2 items-center">
+                        <span className="text-sm font-bold text-emerald-400">{activePlan.priority_score}</span>
+                        <div className="flex flex-col gap-0.5">
+                          <button onClick={() => updateTerritoryPlanMutation.mutate({ id: activePlan.id, data: { priority_score: Math.min(100, activePlan.priority_score + 5) } })} className="p-0.5 bg-white/10 hover:bg-white/20 rounded"><Plus size={10} className="text-white"/></button>
+                          <button onClick={() => updateTerritoryPlanMutation.mutate({ id: activePlan.id, data: { priority_score: Math.max(0, activePlan.priority_score - 5) } })} className="p-0.5 bg-white/10 hover:bg-white/20 rounded"><span className="text-white text-[10px] leading-none">-</span></button>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="w-px h-6 bg-white/10"></div>
+                    <div className="flex flex-col">
+                      <span className="text-[10px] text-slate-400 uppercase tracking-wider font-bold">Ziyaret Hedefi</span>
+                      <div className="flex flex-row gap-2 items-center">
+                        <span className="text-sm font-bold text-orange-400">{activePlan.visit_target}</span>
+                        <div className="flex flex-col gap-0.5">
+                          <button onClick={() => updateTerritoryPlanMutation.mutate({ id: activePlan.id, data: { visit_target: (activePlan.visit_target || 0) + 1 } })} className="p-0.5 bg-white/10 hover:bg-white/20 rounded"><Plus size={10} className="text-white"/></button>
+                          <button onClick={() => updateTerritoryPlanMutation.mutate({ id: activePlan.id, data: { visit_target: Math.max(0, (activePlan.visit_target || 0) - 1) } })} className="p-0.5 bg-white/10 hover:bg-white/20 rounded"><span className="text-white text-[10px] leading-none">-</span></button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center gap-2 pointer-events-auto">

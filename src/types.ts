@@ -14,6 +14,7 @@ export interface ContentCalendar {
   title: string;
   platform: string;
   status: string;
+  property_id?: string;
   scheduled_for: string;
   content_text: string;
   media_urls: string[];
@@ -248,7 +249,7 @@ export interface Property {
     trust_score: number;
   };
   health_score: number;
-  sale_probability: number;
+  sale_probability?: number;
   market_analysis?: {
     avg_price_m2: number;
     price_index: number;
@@ -258,10 +259,10 @@ export interface Property {
   notes: string;
   target_customer_type?: string;
   investment_suitability?: string;
-  created_at: string;
-  updated_at: string;
-  last_status_change_at: string;
-  last_activity_at: string;
+  created_at?: string;
+  updated_at?: string;
+  last_status_change_at?: string;
+  last_activity_at?: string;
 }
 
 export interface LeadActivityLog {

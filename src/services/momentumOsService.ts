@@ -228,23 +228,6 @@ export const momentumOsService = {
     return Object.values(summaryMap);
   },
 
-  getPortalTrafficLogs: async (propertyId?: string): Promise<PortalTrafficLog[]> => {
-    const userId = await getUserId();
-    let query = supabase
-      .from('portal_traffic_logs')
-      .select('*, property:properties(title)')
-      .eq('user_id', userId)
-      .order('viewed_at', { ascending: false });
-    
-    if (propertyId) {
-      query = query.eq('property_id', propertyId);
-    }
-      
-    const { data, error } = await query;
-    if (error) throw error;
-    return (data || []) as PortalTrafficLog[];
-  },
-
   // Momentum OS Core Methods
   getDailyPlan: async (dateStr?: string): Promise<DailyPlan | null> => {
     const userId = await getUserId();
@@ -268,10 +251,6 @@ export const momentumOsService = {
       .select()
       .single();
     if (error) throw error;
-    // Legacy support sync
-    try {
-      await momentumOsService.saveMorningPlan(JSON.stringify(payload.top3 || []), targetDate);
-    } catch (e) {}
     return data as DailyPlan;
   },
 
@@ -297,10 +276,6 @@ export const momentumOsService = {
       .select()
       .single();
     if (error) throw error;
-    // Legacy support sync
-    try {
-      await momentumOsService.saveEveningClosing(payload.wins || '', targetDate);
-    } catch (e) {}
     return data as DayClosure;
   },
 
