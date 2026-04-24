@@ -28,7 +28,7 @@ import {
   FileText,
   Radar as RadarIcon
 } from 'lucide-react';
-import { Property, Lead } from '../../types';
+import { Property, Lead, PortfolioBlocker } from '../../types';
 import { Badge, Card } from '../UI';
 import { MagicLinkButton } from '../premium/MagicLinkButton';
 import { OwnerPortalButton } from '../premium/OwnerPortalButton';
@@ -42,6 +42,8 @@ interface PropertyDetailModalProps {
   leads: any[];
   regionScores: any[];
   brokerAccount: any;
+  blockers?: PortfolioBlocker[];
+  onResolveBlocker?: (id: string) => void;
   onShowExternalListings: () => void;
   onGenerateMarketingHub: () => void;
   onEdit: () => void;
@@ -63,6 +65,8 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
   leads,
   regionScores,
   brokerAccount,
+  blockers = [],
+  onResolveBlocker,
   onShowExternalListings,
   onGenerateMarketingHub,
   onEdit,
@@ -297,6 +301,73 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
               </div>
               <Plus size={24} className="text-slate-300 group-hover:text-orange-500 transition-all" />
             </button>
+
+            {/* AÇIK BLOCKER LİSTESİ */}
+            {blockers.filter(b => b.property_id === selectedProperty.id && b.is_active).length > 0 && (
+              <div className="space-y-4">
+                <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                  <Activity size={18} className="text-red-500" />
+                  Açık Blocker Listesi
+                </h3>
+                <div className="grid gap-3">
+                  {blockers
+                    .filter(b => b.property_id === selectedProperty.id && b.is_active)
+                    .map(blocker => {
+                      const typeLabels: Record<string, string> = {
+                        price: 'Fiyat Sorunu',
+                        presentation: 'Sunum Sorunu',
+                        location: 'Lokasyon',
+                        demand: 'Düşük Talep',
+                        process: 'Süreç Sorunu',
+                        owner: 'Mal Sahibi',
+                        content: 'Pazarlama'
+                      };
+                      
+                      const renderAction = () => {
+                        switch (blocker.blocker_type) {
+                          case 'price':
+                            return <button onClick={onEdit} className="px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-[10px] font-bold hover:bg-red-200">Fiyat Güncelle</button>;
+                          case 'content':
+                          case 'presentation':
+                            return <button onClick={onGenerateMarketingHub} className="px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-[10px] font-bold hover:bg-red-200">İçerik Üret</button>;
+                          default:
+                            return <button onClick={() => setShowAddTask?.(true)} className="px-3 py-1.5 bg-red-100 text-red-700 rounded-lg text-[10px] font-bold hover:bg-red-200">Aktivite Ekle</button>;
+                        }
+                      };
+
+                      return (
+                        <div key={blocker.id} className="bg-red-50 border border-red-100 rounded-2xl p-4 flex flex-col md:flex-row gap-4 items-start md:items-center justify-between">
+                          <div className="space-y-1">
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] bg-red-100 text-red-600 px-2 py-0.5 rounded-full font-bold">
+                                {typeLabels[blocker.blocker_type] || blocker.blocker_type}
+                              </span>
+                              <span className="text-[10px] text-red-400 font-medium">
+                                {new Date(blocker.created_at).toLocaleDateString('tr-TR')}
+                              </span>
+                            </div>
+                            <p className="text-sm font-medium text-red-900 line-clamp-2">
+                              {blocker.note || 'Belirtilmemiş engel durumu.'}
+                            </p>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 shrink-0">
+                            {renderAction()}
+                            {onResolveBlocker && (
+                              <button 
+                                onClick={() => onResolveBlocker(blocker.id)}
+                                className="px-3 py-1.5 bg-emerald-50 text-emerald-600 border border-emerald-100 rounded-lg text-[10px] font-bold hover:bg-emerald-100 transition-colors"
+                              >
+                                Çözüldü İşaretle
+                              </button>
+                            )}
+                          </div>
+                        </div>
+                      );
+                  })}
+                </div>
+              </div>
+            )}
 
             {/* Veri Kaynakları Göstergesi */}
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">

@@ -16,7 +16,7 @@ import {
   Users,
   Share2
 } from 'lucide-react';
-import { UserProfile, BrokerAccount, MutationResult } from '../types';
+import { UserProfile, BrokerAccount, MutationResult, Referral } from '../types';
 import { Card, Badge } from './UI';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
@@ -44,32 +44,6 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
   updateProfileMutation,
   setShowRegionSetup
 }) => {
-  const queryClient = useQueryClient();
-  const { data: referrals = [] } = useQuery({
-    queryKey: ['referrals', profile?.id],
-    queryFn: () => api.momentumOs.getReferrals(),
-    enabled: !!profile?.id
-  });
-
-  const [showReferralInput, setShowReferralInput] = useState(false);
-  const [newReferralName, setNewReferralName] = useState('');
-  
-  const addReferralMutation = useMutation({
-    mutationFn: (name: string) => api.momentumOs.addReferral({ referred_name: name, referrer_name: 'Davet Linki', status: 'asked' }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['referrals', profile?.id] });
-      setNewReferralName('');
-      setShowReferralInput(false);
-    }
-  });
-
-  const updateReferralMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string, status: string }) => api.momentumOs.updateReferral(id, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['referrals', profile?.id] });
-    }
-  });
-
   return (
   <motion.div 
     initial={{ opacity: 0 }}
@@ -101,78 +75,6 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
           <ArrowRight size={20} className="text-slate-400" />
         </Card>
       )}
-
-      {/* REFERRAL ENGINE CARD */}
-      <Card className="flex flex-col gap-4 border border-emerald-100 bg-gradient-to-br from-emerald-50 to-teal-50">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600">
-            <Users size={24} />
-          </div>
-          <div className="flex-1">
-            <h4 className="text-sm font-bold text-slate-900 flex items-center gap-2">Referral Engine <div className="text-[10px] font-bold text-emerald-600 bg-emerald-100 px-1.5 py-0.5 rounded border border-emerald-200">BÜYÜME MOTORU</div></h4>
-            <p className="text-xs text-slate-500">Mevcut müşterilerinden yeni potansiyeller yarat</p>
-          </div>
-          <button 
-            onClick={() => setShowReferralInput(!showReferralInput)}
-            className="p-2 bg-emerald-600 text-white rounded-xl shadow-lg shadow-emerald-200 hover:bg-emerald-700 transition"
-          >
-            <Plus size={18} />
-          </button>
-        </div>
-        
-        {showReferralInput && (
-          <div className="flex items-center gap-2">
-            <input 
-              type="text" 
-              placeholder="Yeni Kişi Adı" 
-              value={newReferralName}
-              onChange={(e) => setNewReferralName(e.target.value)}
-              className="flex-1 p-2 text-sm rounded-lg border border-emerald-200 outline-none focus:border-emerald-500"
-            />
-            <button 
-              onClick={() => newReferralName.trim() && addReferralMutation.mutate(newReferralName)}
-              disabled={addReferralMutation.isPending}
-              className="px-4 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold"
-            >
-              Ekle
-            </button>
-          </div>
-        )}
-
-        <div className="bg-white/60 p-3 rounded-xl border border-emerald-100 flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-600">Kazanılan Potansiyeller:</span>
-          <span className="text-sm font-black text-emerald-600">{referrals.filter((r: any) => ['converted', 'Kazanıldı', 'İşleme Döndü'].includes(r.status)).length} / {referrals.length}</span>
-        </div>
-
-        {referrals.length > 0 && (
-          <div className="space-y-2 max-h-32 overflow-y-auto pr-1">
-            {referrals.map((ref: any) => (
-              <div key={ref.id} className="bg-white p-2 rounded-lg border border-emerald-50 flex justify-between items-center text-sm">
-                <span className="font-medium text-slate-700">{ref.referred_name || ref.referred_email || 'İsimsiz'}</span>
-                <select 
-                  className="text-xs p-1 rounded bg-emerald-50 border-none outline-none text-emerald-700 font-bold"
-                  value={
-                    (['Kazanıldı', 'İşleme Döndü'].includes(ref.status)) ? 'converted' : 
-                    (['İstendi', 'Bekliyor'].includes(ref.status)) ? 'asked' : 
-                    (['Alındı', 'Görüşüldü'].includes(ref.status)) ? 'received' : 
-                    ref.status
-                  }
-                  onChange={(e) => updateReferralMutation.mutate({ id: ref.id, status: e.target.value })}
-                  disabled={updateReferralMutation.isPending}
-                >
-                  <option value="asked">İstendi (Bekliyor)</option>
-                  <option value="received">Alındı (Görüşüldü)</option>
-                  <option value="converted">Kazanıldı (İşleme Döndü)</option>
-                  {/* Eski kalıntılar varsa */}
-                  {['Aday', 'Görüşülüyor'].includes(ref.status) && (
-                    <option value={ref.status} disabled>{ref.status}</option>
-                  )}
-                </select>
-              </div>
-            ))}
-          </div>
-        )}
-      </Card>
 
       <Card className="flex items-center gap-4">
         <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600">
@@ -251,38 +153,6 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
             </button>
           </div>
         )}
-      </Card>
-
-      <Card className="space-y-4">
-        <div className="flex items-center gap-4">
-          <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600">
-            <Bell size={24} />
-          </div>
-          <div className="flex-1">
-            <h4 className="text-sm font-bold text-slate-900">Günlük Bildirim</h4>
-            <p className="text-xs text-slate-500">Hatırlatma saati ayarla</p>
-          </div>
-        </div>
-        <div className="flex gap-2">
-          <input 
-            type="time" 
-            className="flex-1 bg-slate-50 border border-slate-100 rounded-xl p-3 text-sm outline-none focus:ring-2 focus:ring-orange-500"
-            defaultValue={profile?.notification_settings?.time || "09:00"}
-            onChange={(e) => {
-              if (profile) {
-                updateProfileMutation.mutate({ 
-                  id: profile.id, 
-                  data: { 
-                    notification_settings: { 
-                      ...(profile.notification_settings || { push: true, email: false, time: "09:00" }), 
-                      time: e.target.value 
-                    } 
-                  } 
-                });
-              }
-            }}
-          />
-        </div>
       </Card>
 
       <button 

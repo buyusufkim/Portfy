@@ -59,6 +59,8 @@ export const CRMPage: React.FC<CRMPageProps> = ({
       isAnalyzingLeads={isAnalyzingLeads}
       onSelectLead={setSelectedLead}
       leadAlerts={leadAlerts}
+      profile={profile}
+      properties={properties}
     />
   );
 };

@@ -121,6 +121,19 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
     }
   });
 
+  const { data: blockers = [] } = useQuery({
+    queryKey: ['portfolioBlockers', profile?.id],
+    queryFn: () => api.momentumOs.getPortfolioBlockers(),
+    enabled: !!profile?.id
+  });
+
+  const resolveBlockerMutation = useMutation({
+    mutationFn: (id: string) => api.momentumOs.resolvePortfolioBlocker(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['portfolioBlockers', profile?.id] });
+    }
+  });
+
   const addPropertyMutation = useMutation({
     mutationFn: (data: Omit<Property, 'id' | 'user_id'>) => isEditing && selectedProperty 
       ? api.updateProperty(selectedProperty.id, data)
@@ -204,6 +217,8 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         regionScores={regionScores}
         leads={leads}
         brokerAccount={brokerAccount}
+        blockers={blockers}
+        onResolveBlocker={(id: string) => resolveBlockerMutation.mutate(id)}
         setShowAddTask={setShowAddTask}
         tasks={tasks}
         setShowDocumentAutomation={setShowDocumentAutomation}

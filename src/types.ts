@@ -13,11 +13,14 @@ export interface ContentCalendar {
   user_id: string;
   title: string;
   platform: string;
-  status: string;
+  status: string; // 'planned' | 'completed' | 'impact_entered'
   property_id?: string;
+  target_type?: 'property' | 'lead' | 'region';
+  target_id?: string;
   scheduled_for: string;
   content_text: string;
   media_urls: string[];
+  impact_score?: number;
 }
 
 export interface MicroGoal {

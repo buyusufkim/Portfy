@@ -34,6 +34,12 @@ export const NotesView = () => {
   const [newTagInput, setNewTagInput] = useState('');
   const [noteColor, setNoteColor] = useState('bg-slate-50');
 
+  useEffect(() => {
+    const handleOpenNote = () => setIsAdding(true);
+    window.addEventListener('open-add-note', handleOpenNote);
+    return () => window.removeEventListener('open-add-note', handleOpenNote);
+  }, []);
+
   // 🔥 LİMİT KONTROLLERİ 🔥
   const { isFree, subscribe } = useFeatureAccess();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -45,10 +51,23 @@ export const NotesView = () => {
     enabled: !!profile?.id
   });
 
+  const { data: leads = [] } = useQuery({
+    queryKey: [QUERY_KEYS.LEADS, profile?.id],
+    queryFn: api.getLeads,
+    enabled: !!profile?.id
+  });
+
+  const { data: territoryPlans = [] } = useQuery({
+    queryKey: ['territoryPlans', profile?.id],
+    queryFn: api.momentumOs.getTerritoryPlans,
+    enabled: !!profile?.id
+  });
+
   const [showContentPlanner, setShowContentPlanner] = useState(false);
   const [contentTitle, setContentTitle] = useState('');
   const [contentPlatform, setContentPlatform] = useState('Instagram Reels');
-  const [contentPropertyId, setContentPropertyId] = useState('');
+  const [contentTargetType, setContentTargetType] = useState<'property' | 'lead' | 'region'>('property');
+  const [contentTargetId, setContentTargetId] = useState('');
 
   const { data: contentCalendars = [] } = useQuery({
     queryKey: ['contentCalendars', profile?.id],
@@ -234,23 +253,65 @@ export const NotesView = () => {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {contentCalendars.length > 0 ? contentCalendars.map(cal => {
-            const prop = properties.find(p => p.id === cal.property_id);
+            let extraData: any = {};
+            try { extraData = JSON.parse(cal.content_text || '{}'); } catch { }
+            
+            let targetName = '';
+            if (extraData.target_type === 'property') {
+               targetName = properties.find(p => p.id === extraData.target_id)?.title || '';
+            } else if (extraData.target_type === 'lead') {
+               targetName = leads.find(l => l.id === extraData.target_id)?.name || '';
+            } else if (extraData.target_type === 'region') {
+               targetName = territoryPlans.find(t => t.id === extraData.target_id)?.name || '';
+            }
+            // Fallback for old records
+            if (!targetName && cal.property_id) {
+               targetName = properties.find(p => p.id === cal.property_id)?.title || '';
+            }
+
             return (
             <Card key={cal.id} className="p-4 bg-slate-50 border-slate-100 flex flex-col items-center text-center justify-center min-h-[120px] relative">
-              <p className="text-xs font-bold text-slate-400 mb-1">{new Date(cal.scheduled_for).toLocaleDateString('tr-TR')} - {cal.status}</p>
-              <p className="text-sm font-medium text-slate-600">{cal.title} ({cal.platform})</p>
-              {prop && (
-                <p className="text-[10px] text-orange-600 font-bold mt-1 max-w-full truncate px-2">📍 {prop.title}</p>
+              <div className="flex gap-1 mb-2">
+                 <Badge variant={cal.status === 'Etkisi Girildi' ? 'success' : cal.status === 'Yayınlandı' ? 'default' : 'warning'}>{cal.status}</Badge>
+              </div>
+              <p className="text-xs font-bold text-slate-400 mb-1">{new Date(cal.scheduled_for).toLocaleDateString('tr-TR')}</p>
+              <p className="text-sm font-medium text-slate-600">{cal.title} <span className="text-[10px] text-slate-400">({cal.platform})</span></p>
+              
+              {targetName && (
+                <p className="text-[10px] text-orange-600 font-bold mt-1 max-w-full truncate px-2">📍 {targetName}</p>
               )}
-              {cal.status !== 'Yayınlandı' && (
+              
+              {cal.status === 'Taslak' || cal.status === 'Planlandı' ? (
                 <button 
                   onClick={() => updateContentStatusMutation.mutate({ id: cal.id, status: 'Yayınlandı' })}
                   disabled={updateContentStatusMutation.isPending}
-                  className="mt-2 text-[10px] bg-orange-100 text-orange-600 px-2 py-1 rounded disabled:opacity-50"
+                  className="mt-3 text-[10px] bg-orange-100 text-orange-600 px-3 py-1.5 rounded-lg font-bold hover:bg-orange-200 transition-colors disabled:opacity-50"
                 >
                   Yayınlandı İşaretle
                 </button>
-              )}
+              ) : cal.status === 'Yayınlandı' ? (
+                <form 
+                  className="mt-3 flex gap-2 w-full max-w-[200px]"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    const form = e.target as HTMLFormElement;
+                    const input = form.elements.namedItem('impact') as HTMLInputElement;
+                    if (input.value.trim()) {
+                       const updatedExtra = { ...extraData, impact_score: input.value.trim() };
+                       updateContentStatusMutation.mutate({ id: cal.id, status: 'Etkisi Girildi' }, {
+                          onSuccess: () => {
+                             api.momentumOs.updateContentCalendar(cal.id, { content_text: JSON.stringify(updatedExtra) });
+                          }
+                       });
+                    }
+                  }}
+                >
+                  <input name="impact" placeholder="Dönüş Sayısı vs" className="flex-1 min-w-0 text-[10px] px-2 py-1.5 border border-slate-200 rounded-lg outline-none focus:border-emerald-500" />
+                  <button type="submit" className="text-[10px] bg-emerald-100 text-emerald-600 font-bold px-2 py-1.5 rounded-lg hover:bg-emerald-200 disabled:opacity-50">Kaydet</button>
+                </form>
+              ) : cal.status === 'Etkisi Girildi' && extraData.impact_score ? (
+                <p className="mt-2 text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">Etki: {extraData.impact_score}</p>
+              ) : null}
             </Card>
           )}) : (
             <div className="col-span-1 sm:col-span-3 text-center text-slate-400 py-4 text-sm">Takvimde içerik bulunmuyor.</div>
@@ -539,15 +600,26 @@ export const NotesView = () => {
                   </select>
                 </div>
                 <div className="space-y-3">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">İlişkili Portföy (İsteğe Bağlı)</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">İlişkili Hedef (Zorunlu)</label>
+                  <div className="flex gap-2 mb-2">
+                    <button onClick={() => { setContentTargetType('property'); setContentTargetId(''); }} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${contentTargetType === 'property' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Portföy</button>
+                    <button onClick={() => { setContentTargetType('lead'); setContentTargetId(''); }} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${contentTargetType === 'lead' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Müşteri (Lead)</button>
+                    <button onClick={() => { setContentTargetType('region'); setContentTargetId(''); }} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${contentTargetType === 'region' ? 'bg-orange-100 text-orange-700' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>Bölge</button>
+                  </div>
                   <select 
-                    value={contentPropertyId}
-                    onChange={(e) => setContentPropertyId(e.target.value)}
+                    value={contentTargetId}
+                    onChange={(e) => setContentTargetId(e.target.value)}
                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none transition-all"
                   >
                     <option value="">Seçiniz...</option>
-                    {properties.map(p => (
+                    {contentTargetType === 'property' && properties.map(p => (
                       <option key={p.id} value={p.id}>{p.title}</option>
+                    ))}
+                    {contentTargetType === 'lead' && leads.map(l => (
+                      <option key={l.id} value={l.id}>{l.name}</option>
+                    ))}
+                    {contentTargetType === 'region' && territoryPlans.map(t => (
+                      <option key={t.id} value={t.id}>{t.name}</option>
                     ))}
                   </select>
                 </div>
@@ -559,18 +631,17 @@ export const NotesView = () => {
                 </div>
                 <button 
                   onClick={() => {
-                    if (contentTitle.trim()) {
+                    if (contentTitle.trim() && contentTargetId) {
                       addContentCalendarMutation.mutate({
                         title: contentTitle,
                         platform: contentPlatform,
                         status: 'Taslak',
                         scheduled_for: new Date(Date.now() + 86400000).toISOString(), // yarın
-                        content_text: '',
-                        property_id: contentPropertyId || undefined
+                        content_text: JSON.stringify({ target_type: contentTargetType, target_id: contentTargetId }),
                       });
                     }
                   }} 
-                  disabled={addContentCalendarMutation.isPending || !contentTitle.trim()}
+                  disabled={addContentCalendarMutation.isPending || !contentTitle.trim() || !contentTargetId}
                   className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20 hover:bg-slate-800 transition-all disabled:opacity-50"
                 >
                   Takvime Ekle

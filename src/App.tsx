@@ -144,6 +144,22 @@ function MainApp() {
   const checkPortfoliosLimit = () => { if (isFree && properties.length >= 5) { setShowQuickAdd(false); setShowUpgradeModal(true); return false; } return true; };
   const checkLeadsLimit = () => { if (isFree && leads.length >= 10) { setShowQuickAdd(false); setShowUpgradeModal(true); return false; } return true; };
 
+  React.useEffect(() => {
+    const handleOpenTask = () => setShowAddTask(true);
+    const handleOpenLead = () => { if (checkLeadsLimit()) setShowAddLead(true); };
+    const handleOpenQuickAdd = () => setShowQuickAdd(true);
+    
+    window.addEventListener('open-add-task', handleOpenTask);
+    window.addEventListener('open-add-lead', handleOpenLead);
+    window.addEventListener('open-quick-add', handleOpenQuickAdd);
+    
+    return () => {
+      window.removeEventListener('open-add-task', handleOpenTask);
+      window.removeEventListener('open-add-lead', handleOpenLead);
+      window.removeEventListener('open-quick-add', handleOpenQuickAdd);
+    };
+  }, [isFree, leads.length]);
+
   const navigationProps: NavigationProps = { activeTab, setActiveTab, showAdminPanel, setShowAdminPanel, logout, profile, updateProfileMutation };
   const leadProps: LeadProps = { 
     leads, 

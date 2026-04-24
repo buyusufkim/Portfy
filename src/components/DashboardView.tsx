@@ -80,6 +80,74 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [dashboardTab, setDashboardTab] = useState<'action' | 'analysis'>('action');
   const [microGoalInput, setMicroGoalInput] = useState('');
   const [showMicroGoalForm, setShowMicroGoalForm] = useState(false);
+  const [showSecondaryMenu, setShowSecondaryMenu] = useState(false);
+
+  // --- Top 3 Kritik İş Logic ---
+  const topActionItems: Array<any> = [];
+  
+  leadAlerts.forEach(alert => {
+    if (topActionItems.length < 3) {
+      topActionItems.push({
+        type: 'alert',
+        originalItem: alert,
+        id: `alert-${alert.id}`,
+        title: alert.lead?.name || 'İsimsiz Lead',
+        subtitle: 'Sessiz Müşteri / Takip',
+        desc: alert.alert_type,
+        icon: AlertCircle,
+        colorClass: 'text-red-600 bg-red-100',
+        ringClass: 'hover:ring-red-200'
+      });
+    }
+  });
+
+  (tasks || []).filter(t => t.is_drip && !t.completed).forEach(task => {
+    if (topActionItems.length < 3) {
+      topActionItems.push({
+        type: 'drip',
+        originalItem: task,
+        id: `drip-${task.id}`,
+        title: task.title,
+        subtitle: 'Akıllı Hatırlatıcı',
+        desc: task.ai_suggestion,
+        icon: MessageSquare,
+        colorClass: 'text-orange-600 bg-orange-100',
+        ringClass: 'hover:ring-orange-200'
+      });
+    }
+  });
+
+  (properties || []).filter(p => p.market_analysis?.status === 'Pahalı' && p.status === 'Yayında').forEach(p => {
+    if (topActionItems.length < 3) {
+      topActionItems.push({
+        type: 'smart_rec',
+        originalItem: p,
+        id: `prop-${p.id}`,
+        title: 'Fiyat Revizesi Önerisi',
+        subtitle: p.title,
+        desc: "Piyasa ortalamasının üzerinde. Fiyat aksiyonu almalısın.",
+        icon: Sparkles,
+        colorClass: 'text-amber-600 bg-amber-100',
+        ringClass: 'hover:ring-amber-200'
+      });
+    }
+  });
+
+  (gamifiedTasks || []).filter(t => !t.is_completed).forEach(task => {
+    if (topActionItems.length < 3) {
+      topActionItems.push({
+        type: 'gamified',
+        originalItem: task,
+        id: `task-${task.id}`,
+        title: task.title,
+        subtitle: task.category === 'main' ? 'Kritik Görev' : 'Gelişim',
+        desc: task.ai_reason,
+        icon: Circle,
+        colorClass: 'text-indigo-600 bg-indigo-100',
+        ringClass: 'hover:ring-indigo-200'
+      });
+    }
+  });
 
   const addMicroGoalMutation = useMutation({
     mutationFn: (title: string) => api.momentumOs.addMicroGoal({ 
@@ -102,33 +170,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const { hasAccess, subscribe } = useFeatureAccess();
   const canUseAiCoach = hasAccess('ai_coach');
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [portalLink, setPortalLink] = useState<string | null>(null);
-
-  const handleCreatePortal = async (propertyId: string) => {
-    try {
-      const response = await api.momentumOs.createPortalToken(propertyId);
-      const link = `${window.location.origin}/portal/${response.token}`;
-      setPortalLink(link);
-      setToast?.({ message: "Portföy portal linki oluşturuldu!", type: 'success' });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_PORTAL_EVENTS] });
-    } catch (error) {
-      setToast?.({ message: "Portal oluşturulamadı.", type: 'error' });
-    }
-  };
-
-  const { data: portalEvents = [] } = useQuery({
-    queryKey: [QUERY_KEYS.MOMENTUM_PORTAL_EVENTS, profile?.id],
-    queryFn: () => api.momentumOs.getOwnerPortalEventsSummary(),
-    enabled: !!profile?.id
-  });
-
-  const getPropertyTraffic = (propertyId: string) => {
-    const stat = portalEvents.find(e => e.property_id === propertyId);
-    return {
-      views: stat ? stat.views : 0,
-      lastView: stat ? stat.last_seen : null
-    };
-  };
 
   const potentialRevenue = (properties || []).reduce((acc, p) => {
     if (['Satıldı', 'Pasif'].includes(p.status)) return acc;
@@ -241,6 +282,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             exit={{ opacity: 0, x: 10 }}
             className="space-y-8"
           >
+            {/* GÜNLÜK İLERLEME (PROGRESS) */}
+            <div className="flex items-center justify-between bg-white p-4 rounded-[24px] border border-slate-200 shadow-sm">
+              <div className="flex items-center gap-3 w-[120px]">
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-colors ${isDayStarted ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' : 'bg-slate-100 text-slate-400'}`}>
+                  <Sun size={20} />
+                </div>
+                <div>
+                  <div className="text-[11px] font-black text-slate-900 leading-tight">Sabah Planı</div>
+                  <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">{isDayStarted ? 'Tamam' : 'Bekliyor'}</div>
+                </div>
+              </div>
+              
+              <div className="flex-1 h-3 bg-slate-100 mx-2 md:mx-6 rounded-full overflow-hidden shadow-inner relative">
+                <div className={`absolute top-0 left-0 bottom-0 ${isDayEnded ? 'bg-emerald-500 w-full' : (isDayStarted ? 'bg-[length:200%_100%] bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-500 w-1/2 animate-gradient' : 'w-0')} transition-all duration-1000`} />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 w-[120px] text-right">
+                <div>
+                  <div className="text-[11px] font-black text-slate-900 leading-tight">Gün Sonu</div>
+                  <div className="text-[9px] text-slate-500 font-bold uppercase tracking-wider">{isDayEnded ? 'Tamam' : 'Bekliyor'}</div>
+                </div>
+                <div className={`w-10 h-10 rounded-2xl flex items-center justify-center transition-colors ${isDayEnded ? 'bg-emerald-500 text-white shadow-md shadow-emerald-500/20' : 'bg-slate-100 text-slate-400'}`}>
+                  <Moon size={20} />
+                </div>
+              </div>
+            </div>
+
             {isDayStarted && !isDayEnded && !completeMorningRitualMutation.isSuccess && (
               <section>
                 <Card className="p-4 md:p-6 bg-gradient-to-br from-orange-50 to-orange-100/50 border-orange-200 shadow-sm relative overflow-hidden">
@@ -360,73 +428,95 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </section>
             )}
 
-            {/* SAHİP PORTALI TRAFİK MOTORU */}
+            {/* TOP 3 KRİTİK İŞ BÖLÜMÜ */}
             <section className="space-y-4">
-              <Card className="p-4 md:p-6 bg-gradient-to-r from-blue-600 to-indigo-700 relative overflow-hidden group">
-                <div className="absolute inset-0 opacity-10 pointer-events-none mix-blend-overlay border-[1px] border-dashed border-white" />
-                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-                  <div className="flex items-start gap-4 text-white">
-                    <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shrink-0 border border-white/20">
-                      <Globe size={24} className="text-white" />
-                    </div>
-                    <div>
-                      <h3 className="text-lg font-bold flex items-center gap-2">
-                        Sahip Portalı Trafik Motoru
-                        <div className="text-[9px] font-black bg-white/20 px-2 py-0.5 rounded tracking-widest border border-white/20 uppercase">OTOMASYON</div>
-                      </h3>
-                      <p className="text-xs text-blue-100 mt-1 font-medium max-w-sm leading-relaxed">
-                        Müşterilerinize şeffaf rapor sunun. Rapor linkini her açtıklarında onlara diğer portföylerini satmayı teklif edeceğiz.
-                      </p>
-                    </div>
-                  </div>
+              <div className="flex items-center justify-between px-1">
+                <div>
+                  <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center gap-2">
+                    Top 3 Kritik İş <Zap size={20} className="text-orange-500 fill-orange-500/20" />
+                  </h2>
+                  <p className="text-xs text-slate-500 font-medium">Satış hızını artıracak en önemli aksiyonların</p>
                 </div>
-              </Card>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {properties.slice(0, 4).map(prop => {
-                  const traffic = getPropertyTraffic(prop.id);
-                  return (
-                    <Card key={prop.id} className="p-4 bg-white border-slate-100 shadow-sm hover:border-blue-200 transition-all group">
-                      <div className="flex justify-between items-start mb-3">
-                        <div className="flex-1 pr-2">
-                          <h4 className="text-xs font-bold text-slate-900 line-clamp-1">{prop.title}</h4>
-                          <div className="flex items-center gap-2 mt-1">
-                            <Badge className="text-[8px] bg-slate-100 text-slate-500 border-none">{prop.status}</Badge>
-                            {traffic.views > 0 && <span className="text-[9px] font-bold text-emerald-600 flex items-center gap-1"><Zap size={8} /> {traffic.views} İzlenme</span>}
+              </div>
+              
+              {topActionItems.length > 0 ? (
+                <div className="grid grid-cols-1 gap-3">
+                  {topActionItems.map(item => (
+                    <Card key={item.id} className={`p-4 bg-white border border-slate-100 shadow-sm transition-all flex flex-col gap-3 group hover:ring-1 hover:shadow-md ${item.ringClass}`}>
+                      <div className="flex justify-between items-start gap-4">
+                        <div className="flex flex-1 items-start gap-4">
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.colorClass}`}>
+                            <item.icon size={20} />
+                          </div>
+                          <div>
+                            <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.subtitle}</div>
+                            <h4 className="text-sm font-bold text-slate-900 mt-0.5">{item.title}</h4>
                           </div>
                         </div>
-                        <button 
-                          onClick={() => handleCreatePortal(prop.id)}
-                          className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm"
-                          title="Portal Linki Oluştur"
-                        >
-                          <Plus size={16} />
-                        </button>
+
+                        {/* AKSİYON BUTONLARI */}
+                        {item.type === 'gamified' && (
+                          <button 
+                            onClick={() => !completeTaskMutation.isPending && completeTaskMutation.mutate({ task: item.originalItem })}
+                            className="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors shadow-sm"
+                          >
+                            Yap (+{item.originalItem.points}XP)
+                          </button>
+                        )}
+                        {item.type === 'drip' && (
+                          <button 
+                            onClick={() => api.updateTaskStatus(item.originalItem.id, true).then(() => queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS, profile?.id] }))}
+                            className="bg-orange-50 hover:bg-orange-100 text-orange-600 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors shadow-sm"
+                          >
+                            İletildi
+                          </button>
+                        )}
+                        {item.type === 'alert' && (
+                          <button onClick={() => setToast?.({ message: 'Lead aksiyonu panelden düzenlenebilir.', type: 'info'})} className="bg-red-50 hover:bg-red-100 text-red-600 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors shadow-sm">
+                            İncele
+                          </button>
+                        )}
+                        {item.type === 'smart_rec' && (
+                          <button onClick={() => setToast?.({ message: 'Portföy detaylarına gidiniz.', type: 'info'})} className="bg-amber-50 hover:bg-amber-100 text-amber-600 px-3 py-1.5 rounded-lg text-[11px] font-bold transition-colors shadow-sm">
+                            Düzenle
+                          </button>
+                        )}
                       </div>
-                      {traffic.lastView && (
-                        <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
-                          Son İzlenme: {new Date(traffic.lastView).toLocaleDateString('tr-TR')}
-                        </div>
+                      {item.desc && (
+                         <div className="text-xs text-slate-600 bg-slate-50 border border-slate-100 p-2.5 rounded-xl italic font-medium leading-relaxed">
+                           {item.desc}
+                         </div>
                       )}
                     </Card>
-                  );
-                })}
-              </div>
-
-              {portalLink && (
-                <div className="p-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl animate-in fade-in slide-in-from-top-2">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Portal Linki Hazır</span>
-                    <button onClick={() => { navigator.clipboard.writeText(portalLink); toast.success("Kopyalandı!"); }} className="p-2 bg-white text-emerald-600 rounded-lg border border-emerald-200 hover:bg-emerald-100 transition-all flex items-center gap-2 text-[10px] font-bold shadow-sm">
-                      <Copy size={12} /> Kopyala
-                    </button>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-6 bg-emerald-50/50 border border-emerald-100 rounded-3xl text-center">
+                  <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-3">
+                    <CheckCircle2 size={24} />
                   </div>
-                  <div className="text-[10px] font-medium text-slate-600 break-all bg-white/50 p-2 rounded-lg border border-emerald-100/50">
-                    {portalLink}
-                  </div>
+                  <h4 className="text-sm font-bold text-emerald-900">Mükemmel Gidiyorsun!</h4>
+                  <p className="text-xs text-emerald-700 mt-1">Öncelikli bir kritik iş kalmadı.</p>
                 </div>
               )}
             </section>
+
+            {/* DİĞER ARAÇLAR VE ÖZETLER - COLLAPSIBLE ALAN */}
+            <div className="pt-2">
+              <button 
+                onClick={() => setShowSecondaryMenu(!showSecondaryMenu)}
+                className="w-full flex items-center justify-center gap-2 py-4 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded-2xl font-bold text-xs transition-colors"
+              >
+                {showSecondaryMenu ? 'Daha Az Göster' : 'Tüm Analiz ve Araçları Göster'}
+              </button>
+            </div>
+
+            {showSecondaryMenu && (
+              <motion.div 
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                className="space-y-8 pt-4 overflow-hidden"
+              >
 
             <section className="grid grid-cols-1 md:grid-cols-2 gap-4">
               
@@ -877,6 +967,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 )}
               </div>
             </section>
+
+              </motion.div>
+            )}
 
             {isDayStarted && !isDayEnded && (
               <section className="pt-4">

@@ -51,6 +51,21 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
     enabled: !!lead?.id
   });
 
+  // Check for auto-trigger
+  React.useEffect(() => {
+    if (lead) {
+      if (sessionStorage.getItem('trigger_call_form') === 'true') {
+        setShowCallForm(true);
+        sessionStorage.removeItem('trigger_call_form');
+      } else {
+        setShowCallForm(false);
+      }
+      setCallResult('');
+      setCallNote('');
+      setNextFollowup('');
+    }
+  }, [lead]);
+
   const handleStartDrip = async (type: DripEventType) => {
     setLoadingDrip(true);
     try {
@@ -92,7 +107,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
       return;
     }
 
-    const needsFollowup = ['reached', 'not_reached', 'call_back'].includes(callResult);
+    const needsFollowup = ['reached', 'not_reached', 'call_back', 'appointment'].includes(callResult);
     if (needsFollowup && !nextFollowup) {
       toast.error("Takip tarihi zorunludur.");
       return;
@@ -190,9 +205,38 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                     ))}
                   </div>
                   
-                  {['reached', 'not_reached', 'call_back'].includes(callResult) && (
-                    <div className="space-y-1.5">
+                  {['reached', 'not_reached', 'call_back', 'appointment'].includes(callResult) && (
+                    <div className="space-y-2">
                       <label className="text-[10px] font-bold text-orange-900 uppercase tracking-widest ml-1">Bir Sonraki Takip</label>
+                      <div className="flex gap-2 mb-2">
+                        <button 
+                          onClick={() => {
+                            const d = new Date(); d.setHours(d.getHours() + 1);
+                            setNextFollowup(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+                          }}
+                          className="px-3 py-1.5 bg-orange-100 text-orange-800 rounded-xl text-[10px] font-bold hover:bg-orange-200 transition-colors"
+                        >
+                          1 Saat Sonra
+                        </button>
+                        <button 
+                          onClick={() => {
+                            const d = new Date(); d.setDate(d.getDate() + 1); d.setHours(10,0,0,0);
+                            setNextFollowup(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+                          }}
+                          className="px-3 py-1.5 bg-orange-100 text-orange-800 rounded-xl text-[10px] font-bold hover:bg-orange-200 transition-colors"
+                        >
+                          Yarın
+                        </button>
+                        <button 
+                          onClick={() => {
+                            const d = new Date(); d.setDate(d.getDate() + 7); d.setHours(10,0,0,0);
+                            setNextFollowup(new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16));
+                          }}
+                          className="px-3 py-1.5 bg-orange-100 text-orange-800 rounded-xl text-[10px] font-bold hover:bg-orange-200 transition-colors"
+                        >
+                          Haftaya
+                        </button>
+                      </div>
                       <input 
                         type="datetime-local" 
                         value={nextFollowup}
@@ -289,9 +333,13 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
             </div>
 
             <div className="grid grid-cols-2 gap-4">
-              <a href={`tel:${lead.phone || ''}`} className="flex items-center gap-4 p-4 bg-slate-50 rounded-3xl hover:bg-slate-100 transition-colors group">
+              <a 
+                href={`tel:${lead.phone || ''}`} 
+                onClick={() => setShowCallForm(true)}
+                className="flex items-center gap-4 p-4 bg-orange-50/50 hover:bg-orange-50 border border-orange-100 rounded-3xl transition-colors group"
+              >
                 <div className="w-10 h-10 bg-orange-100 rounded-2xl flex items-center justify-center text-orange-600 group-hover:scale-110 transition-transform"><Phone size={20} /></div>
-                <div><div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Telefon</div><div className="text-sm font-bold text-slate-900">{lead.phone || 'Girilmemiş'}</div></div>
+                <div><div className="text-[10px] font-bold text-orange-400 uppercase tracking-wider">Telefon</div><div className="text-sm font-bold text-orange-900">{lead.phone || 'Girilmemiş'}</div></div>
               </a>
               <a href={`https://wa.me/${(lead.phone || '').replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="flex items-center gap-4 p-4 bg-slate-50 rounded-3xl group">
                 <div className="w-10 h-10 bg-emerald-100 rounded-2xl flex items-center justify-center text-emerald-600 group-hover:scale-110 transition-transform"><MessageSquare size={20} /></div>
