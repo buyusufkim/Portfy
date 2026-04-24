@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { Globe, LayoutDashboard, BarChart3, Search, Filter, Zap, X } from 'lucide-react';
+import { Globe, LayoutDashboard, BarChart3, Search, Filter, Zap, X, ChevronDown, Activity } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../../services/api';
 import { QUERY_KEYS } from '../../constants/queryKeys';
@@ -11,6 +11,8 @@ interface PortfoliosToolbarProps {
   setViewMode: (mode: 'list' | 'pipeline') => void;
   selectedDistrict: string;
   setSelectedDistrict: (district: string) => void;
+  selectedStatus?: string;
+  setSelectedStatus?: (status: string) => void;
   regionScores: RegionEfficiencyScore[];
   setShowImportUrlModal: (show: boolean) => void;
   onOpenSmartMatch: () => void;
@@ -23,6 +25,8 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
   setViewMode,
   selectedDistrict,
   setSelectedDistrict,
+  selectedStatus = 'all',
+  setSelectedStatus,
   regionScores,
   setShowImportUrlModal,
   onOpenSmartMatch,
@@ -50,13 +54,14 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
     return matches.length;
   }, [properties, leads]);
 
-  const hasActiveFilters = searchQuery !== '' || selectedDistrict !== 'all';
+  const hasActiveFilters = searchQuery !== '' || selectedDistrict !== 'all' || (viewMode === 'list' && selectedStatus !== 'all');
+  const statuses = ['Yeni', 'Hazırlanıyor', 'Yayında', 'İlgi Var', 'Pazarlık', 'Satıldı'];
 
   return (
     <div className="p-6 pb-2 space-y-4 bg-white border-b border-slate-100">
-      <div className="flex justify-between items-center">
+      <div className="flex flex-col gap-4">
         <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Portföylerim</h1>
-        <div className="flex gap-2">
+        <div className="flex flex-wrap gap-2">
           
           {/* YENİ: Akıllı Eşleşmeler Butonu */}
           <button 
@@ -79,7 +84,7 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
             <Globe size={18} /> <span className="hidden sm:inline">İçe Aktar</span>
           </button>
           
-          <div className="w-px h-8 bg-slate-200 mx-1"></div>
+          <div className="w-px h-8 bg-slate-200 mx-1 hidden sm:block"></div>
 
           <button 
             onClick={() => setViewMode('list')}
@@ -97,7 +102,8 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
       </div>
       
       <div className="space-y-4">
-        <div className="flex gap-3">
+        {/* Arama ve Filtre - Responsive Layout */}
+        <div className="flex flex-col md:flex-row gap-3">
           <div className="flex-1 relative">
             <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
             <input 
@@ -105,12 +111,30 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
               placeholder="Portföy ara..." 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-slate-100 border-none rounded-2xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-orange-500"
+              className="w-full bg-slate-100 border-none rounded-2xl py-3 pl-10 pr-4 text-sm focus:ring-2 focus:ring-orange-500 transition-shadow"
             />
           </div>
-          <button className="p-3 bg-slate-100 rounded-2xl text-slate-600 hover:bg-slate-200 transition-colors">
-            <Filter size={20} />
-          </button>
+          
+          {viewMode === 'list' && (
+            <div className="relative md:w-1/3">
+              <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                <Activity size={18} />
+              </div>
+              <select 
+                value={selectedStatus}
+                onChange={(e) => setSelectedStatus?.(e.target.value)}
+                className="w-full appearance-none bg-slate-100 border-none rounded-2xl py-3 pl-10 pr-10 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer transition-shadow"
+              >
+                <option value="all">Tüm Durumlar</option>
+                {statuses.map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">
+                <ChevronDown size={18} />
+              </div>
+            </div>
+          )}
         </div>
 
         <div className="flex gap-2 overflow-x-auto pb-2 -mx-6 px-6 no-scrollbar">
@@ -153,8 +177,16 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
                 </button>
               </span>
             )}
+            {viewMode === 'list' && selectedStatus !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-100">
+                {selectedStatus}
+                <button onClick={() => setSelectedStatus?.('all')} className="hover:text-orange-900 transition-colors">
+                  <X size={12} />
+                </button>
+              </span>
+            )}
             <button 
-              onClick={() => { setSearchQuery(''); setSelectedDistrict('all'); }}
+              onClick={() => { setSearchQuery(''); setSelectedDistrict('all'); setSelectedStatus?.('all'); }}
               className="text-[10px] font-bold text-slate-500 hover:text-slate-700 underline underline-offset-2 ml-2 transition-colors"
             >
               Filtreleri Sıfırla

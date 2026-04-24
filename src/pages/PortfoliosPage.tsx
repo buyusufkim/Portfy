@@ -331,6 +331,7 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
   setShowAddProperty
 }) => {
   const [showSmartMatch, setShowSmartMatch] = useState(false);
+  const [selectedStatus, setSelectedStatus] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const { profile } = useAuth();
   const queryClient = useQueryClient();
@@ -358,15 +359,16 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
   const filteredProperties = useMemo(() => { 
     return properties.filter(p => {
       const matchesDistrict = selectedDistrict === 'all' || p.address.district === selectedDistrict;
+      const matchesStatus = viewMode === 'pipeline' || selectedStatus === 'all' || p.status === selectedStatus;
       const lowerQuery = searchQuery.toLocaleLowerCase('tr-TR');
       const matchesSearch = !searchQuery || 
         p.title.toLocaleLowerCase('tr-TR').includes(lowerQuery) ||
         p.address.district.toLocaleLowerCase('tr-TR').includes(lowerQuery) ||
         p.address.neighborhood.toLocaleLowerCase('tr-TR').includes(lowerQuery);
 
-      return matchesDistrict && matchesSearch;
+      return matchesDistrict && matchesStatus && matchesSearch;
     });
-  }, [properties, selectedDistrict, searchQuery]);
+  }, [properties, selectedDistrict, selectedStatus, searchQuery, viewMode]);
 
   return (
     <motion.div 
@@ -379,6 +381,8 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
         setViewMode={setViewMode}
         selectedDistrict={selectedDistrict}
         setSelectedDistrict={setSelectedDistrict}
+        selectedStatus={selectedStatus}
+        setSelectedStatus={setSelectedStatus}
         regionScores={regionScores}
         setShowImportUrlModal={setShowImportUrlModal}
         onOpenSmartMatch={() => setShowSmartMatch(true)}
