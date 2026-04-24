@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Moon, Star, Trophy, ArrowRight, CheckCircle2, RefreshCw, Share2, Target, AlertTriangle } from 'lucide-react';
+import { DayClosure } from '../../types';
 
 interface DayCloserProps {
   stats: {
@@ -10,7 +11,7 @@ interface DayCloserProps {
     visits: number;
     social: number;
   };
-  onComplete: (data: any) => void;
+  onComplete: (data: Partial<DayClosure>) => void;
   isPending?: boolean;
   onClose?: () => void;
 }
@@ -26,14 +27,11 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, onComplete, isPendi
     else if (step === 2) setStep(3);
     else {
       onComplete({
-        tasks_completed: stats.tasks_completed,
-        revenue: stats.revenue,
-        calls: stats.calls,
-        visits: stats.visits,
-        social: stats.social,
+        completed_calls: stats.calls,
+        completed_portfolio_actions: stats.visits,
         wins,
         blockers,
-        top3_tomorrow: tomorrowTop3.filter(t => t.trim() !== '')
+        tomorrow_top3: tomorrowTop3.filter(t => t.trim() !== '')
       });
     }
   };

@@ -14,7 +14,7 @@ export const whatsappService = {
     try {
       // generateContent artık doğrudan backend'den parse edilmiş JSON objesi dönüyor!
       const response = await generateContent(
-        "gemini-2.5-flash", // Backend'deki modele uyumlu
+        "gemini-2.0-flash", // Backend'deki modele uyumlu
         prompt,
         {
           // @ts-ignore
@@ -55,7 +55,7 @@ export const whatsappService = {
 
   importLeadFromText: async (text: string) => {
     const response = await generateContent(
-      "gemini-2.5-flash", // Backend'deki modele uyumlu
+      "gemini-2.0-flash", // Backend'deki modele uyumlu
       `Aşağıdaki WhatsApp mesajından emlak müşterisi bilgilerini çıkar. 
       JSON formatında şu alanları döndür: name (isim), phone (telefon), type (Alıcı/Satıcı/Kiracı/Kiralayan), status (Aday/Sıcak/Pasif), notes (notlar).
       

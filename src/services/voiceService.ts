@@ -44,7 +44,7 @@ export const voiceService = {
       }`;
 
       const result: any = await generateContent(
-        'gemini-2.5-flash',
+        'gemini-2.0-flash',
         prompt,
         {
           responseMimeType: 'application/json',

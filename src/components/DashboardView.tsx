@@ -11,7 +11,7 @@ import { api } from '../services/api';
 import { RevenueOverview } from './revenue/RevenueOverview';
 import { PipelineFunnel } from './revenue/PipelineFunnel';
 import { QUERY_KEYS } from '../constants/queryKeys';
-import { UserProfile, GamifiedTask, Property, Task, PersonalTask, RescueSession, UserStats, CoachInsight, MutationResult, MissedOpportunity, DailyPlan, DayClosure, WeeklyReport } from '../types';
+import { UserProfile, GamifiedTask, Property, Task, PersonalTask, RescueSession, UserStats, CoachInsight, MutationResult, MissedOpportunity, DailyPlan, DayClosure, WeeklyReport, LeadAlert } from '../types';
 import { RevenueStats } from '../types/revenue';
 import { QueryClient, useMutation, useQuery } from '@tanstack/react-query';
 import { useFeatureAccess } from '../hooks/useFeatureAccess';
@@ -44,7 +44,7 @@ interface DashboardViewProps {
   setShowMissedOpportunities?: (show: boolean) => void;
   missedOpportunities?: MissedOpportunity[];
   setToast?: (toast: { message: string, type: 'success' | 'error' | 'info' } | null) => void;
-  leadAlerts?: any[];
+  leadAlerts?: LeadAlert[];
   dailyPlan?: DailyPlan | null;
   dayClosure?: DayClosure | null;
   weeklyReports?: WeeklyReport[];
@@ -85,7 +85,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     mutationFn: (title: string) => api.momentumOs.addMicroGoal({ 
       title, 
       status: 'pending',
-      deadline: new Date().toISOString() 
+      deadline: new Date().toISOString(),
+      target_metric: 'daily_focus',
+      target_value: 1,
+      current_value: 0
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MICRO_GOALS, profile?.id] });
@@ -605,7 +608,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               <AlertCircle size={20} />
                             </div>
                             <div>
-                              <h4 className="text-sm font-bold text-slate-900">{alert.lead_name}</h4>
+                              <h4 className="text-sm font-bold text-slate-900">{alert.lead?.name || 'İsimsiz Lead'}</h4>
                               <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">{alert.alert_type || 'Sessiz Müşteri'}</p>
                             </div>
                           </div>
@@ -631,7 +634,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             <span className="text-[10px] font-bold text-red-600 uppercase tracking-widest">Kritik Uyarı</span>
                           </div>
                           <p className="text-xs text-slate-700 leading-relaxed italic">
-                            {alert.message}
+                            {alert.alert_type}
                           </p>
                         </div>
                       </div>

@@ -1,5 +1,11 @@
 import { GoogleGenAI } from "@google/genai";
 import { rateLimit } from "express-rate-limit";
+import { User } from "@supabase/supabase-js";
+import { Request, Response, NextFunction } from "express";
+
+export interface AuthRequest extends Request {
+  user?: User;
+}
 import { createClient } from "@supabase/supabase-js";
 import { addMonths } from "date-fns";
 import * as dotenv from "dotenv";
@@ -51,14 +57,14 @@ const ALLOWED_MODELS = [
 export const aiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP/User to 100 requests per window
-  keyGenerator: (req: any) => req.user?.id || req.ip,
+  keyGenerator: (req: AuthRequest) => req.user?.id || req.ip || 'unknown',
   message: { error: "Rate limit exceeded. Please try again later." },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
 // Authentication Middleware
-export const authenticate = async (req: any, res: any, next: any) => {
+export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
@@ -81,11 +87,12 @@ export const authenticate = async (req: any, res: any, next: any) => {
 
 // --- YENİ: TOKEN MUHASEBE MIDDLEWARE'İ ---
 // Yanıtı keser (intercept) ve token kullanımını arka planda asenkron olarak kaydeder.
-export const tokenTrackerMiddleware = (req: any, res: any, next: any) => {
-  const originalJson = res.json;
+export const tokenTrackerMiddleware = (req: AuthRequest, res: Response, next: NextFunction) => {
+  const originalJson = res.json.bind(res);
   
-  res.json = function (body: any) {
-    const totalTokens = body?.usage?.totalTokenCount || body?.usage?.totalTokens;
+  res.json = function (body: Record<string, unknown> | null) {
+    const bodyData = body as { usage?: { totalTokenCount?: number, totalTokens?: number } } | null;
+    const totalTokens = bodyData?.usage?.totalTokenCount || bodyData?.usage?.totalTokens;
     const userId = req.user?.id; // authenticate'den geliyor
 
     // Sadece başarılı dönen ve içinde usage barındıran AI yanıtlarını yakala
@@ -114,8 +121,9 @@ export const tokenTrackerMiddleware = (req: any, res: any, next: any) => {
           if (updateError) throw updateError;
             
           console.log(`[Token Muhasebe] Danışman ID: ${userId} | Harcanan: ${totalTokens} | Toplam: ${newTotal}`);
-        } catch (err: any) {
-          console.error("[Token Muhasebe Hatası]:", err.message);
+        } catch (err: unknown) {
+          const msg = err instanceof Error ? err.message : String(err);
+          console.error("[Token Muhasebe Hatası]:", msg);
         }
       })();
     }
@@ -126,7 +134,7 @@ export const tokenTrackerMiddleware = (req: any, res: any, next: any) => {
   next();
 };
 
-export const handleAIGeneration = async (req: any, res: any) => {
+export const handleAIGeneration = async (req: AuthRequest, res: Response) => {
   try {
     const { model, contents, systemInstruction, responseSchema } = req.body;
     const userId = req.user?.id;
@@ -162,7 +170,7 @@ export const handleAIGeneration = async (req: any, res: any) => {
       return res.status(400).json({ error: "İşlenecek içerik (contents) gönderilmedi." });
     }
 
-    const config: any = {
+    const config: Record<string, unknown> = {
       responseMimeType: "application/json",
     };
 
@@ -197,13 +205,14 @@ export const handleAIGeneration = async (req: any, res: any) => {
       usage: usageMetadata 
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("AI Generation Backend Error:", error);
-    res.status(500).json({ error: "Yapay zeka işlemi başarısız oldu", details: error.message });
+    const msg = error instanceof Error ? error.message : "Yapay zeka işlemi başarısız oldu";
+    res.status(500).json({ error: "Yapay zeka işlemi başarısız oldu", details: msg });
   }
 };
 
-export const handleUpdateProfile = async (req: any, res: any) => {
+export const handleUpdateProfile = async (req: AuthRequest, res: Response) => {
   try {
     const { data } = req.body;
     const userId = req.user.id;
@@ -222,7 +231,7 @@ export const handleUpdateProfile = async (req: any, res: any) => {
       'notification_settings'
     ];
 
-    const filteredData: any = {};
+    const filteredData: Record<string, unknown> = {};
     Object.keys(data).forEach(key => {
       if (SAFE_FIELDS.includes(key)) {
         filteredData[key] = data[key];
@@ -241,13 +250,14 @@ export const handleUpdateProfile = async (req: any, res: any) => {
     if (error) throw error;
 
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Profile Update Error:", error);
-    res.status(500).json({ error: error.message });
+    const msg = error instanceof Error ? error.message : "Profile update failed.";
+    res.status(500).json({ error: msg });
   }
 };
 
-export const handleSubscribe = async (req: any, res: any) => {
+export const handleSubscribe = async (req: AuthRequest, res: Response) => {
   console.log(`[handleSubscribe] START - Body:`, req.body);
   try {
     const { type } = req.body;
@@ -309,13 +319,14 @@ export const handleSubscribe = async (req: any, res: any) => {
 
     console.log(`[handleSubscribe] SUCCESS for ${userId}`);
     res.json({ success: true, tier: 'pro', endDate });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Subscription Error:", error);
-    res.status(500).json({ error: error.message });
+    const msg = error instanceof Error ? error.message : "Abonelik hatası";
+    res.status(500).json({ error: msg });
   }
 };
 
-export const handleAdminUpdateUser = async (req: any, res: any) => {
+export const handleAdminUpdateUser = async (req: AuthRequest, res: Response) => {
   try {
     const { id, data } = req.body;
     const adminId = req.user.id;
@@ -342,13 +353,14 @@ export const handleAdminUpdateUser = async (req: any, res: any) => {
     if (error) throw error;
 
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Admin Update Error:", error);
-    res.status(500).json({ error: error.message });
+    const msg = error instanceof Error ? error.message : "Güncelleme hatası";
+    res.status(500).json({ error: msg });
   }
 };
 
-export const handleAdminDeleteUser = async (req: any, res: any) => {
+export const handleAdminDeleteUser = async (req: AuthRequest, res: Response) => {
   try {
     const { id } = req.body;
     const adminId = req.user.id;
@@ -372,13 +384,14 @@ export const handleAdminDeleteUser = async (req: any, res: any) => {
     if (error) throw error;
 
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Admin Delete User Error:", error);
-    res.status(500).json({ error: error.message });
+    const msg = error instanceof Error ? error.message : "Silme hatası";
+    res.status(500).json({ error: msg });
   }
 };
 
-export const handleAdminGetUsers = async (req: any, res: any) => {
+export const handleAdminGetUsers = async (req: AuthRequest, res: Response) => {
   try {
     const adminId = req.user.id;
 
@@ -400,13 +413,14 @@ export const handleAdminGetUsers = async (req: any, res: any) => {
     if (error) throw error;
 
     res.json(data);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Admin Get Users Error:", error);
-    res.status(500).json({ error: error.message });
+    const msg = error instanceof Error ? error.message : "Get users hatası";
+    res.status(500).json({ error: msg });
   }
 };
 
-export const handleAdminGetSettings = async (req: any, res: any) => {
+export const handleAdminGetSettings = async (req: AuthRequest, res: Response) => {
   try {
     const adminId = req.user.id;
 
@@ -429,13 +443,14 @@ export const handleAdminGetSettings = async (req: any, res: any) => {
     if (error) throw error;
 
     res.json(data || {});
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Admin Get Settings Error:", error);
-    res.status(500).json({ error: error.message });
+    const msg = error instanceof Error ? error.message : "Get settings hatası";
+    res.status(500).json({ error: msg });
   }
 };
 
-export const handleEarnXP = async (req: any, res: any) => {
+export const handleEarnXP = async (req: AuthRequest, res: Response) => {
   try {
     const { actionType, taskId, leadId, propertyId, sessionId, stats } = req.body;
     const userId = req.user.id;
@@ -464,13 +479,14 @@ export const handleEarnXP = async (req: any, res: any) => {
     }
 
     res.json(rpcResult);
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Earn XP Error:", error);
-    res.status(500).json({ error: error.message });
+    const msg = error instanceof Error ? error.message : "Earn XP hatası";
+    res.status(500).json({ error: msg });
   }
 };
 
-export const handleUpdateGlobalSettings = async (req: any, res: any) => {
+export const handleUpdateGlobalSettings = async (req: AuthRequest, res: Response) => {
   try {
     const { settings } = req.body;
     const adminId = req.user.id;
@@ -500,8 +516,9 @@ export const handleUpdateGlobalSettings = async (req: any, res: any) => {
     if (error) throw error;
 
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Global Settings Update Error:", error);
-    res.status(500).json({ error: error.message });
+    const msg = error instanceof Error ? error.message : "Global ayarlar güncelleme hatası";
+    res.status(500).json({ error: msg });
   }
 };

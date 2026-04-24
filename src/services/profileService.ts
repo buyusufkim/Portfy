@@ -1,11 +1,10 @@
-import { UserProfile, DashboardStats, Property, Task, Lead, DailyStats, GamifiedTask, UserStats, RescueSession, RescueTask, MissedOpportunity, VoiceParseResult, CoachInsight, MapPin, UserNote, PersonalTask } from '../types';
+import { UserProfile, DashboardStats, Property, Task, Lead, DailyStats, GamifiedTask, UserStats, RescueSession, RescueTask, MissedOpportunity, VoiceParseResult, CoachInsight, MapPin, UserNote, PersonalTask, DayClosure } from '../types';
 import { supabase } from '../lib/supabase';
 import { getUserId, getTodayStr } from './core/utils';
 import { leadService } from './leadService';
 import { propertyService } from './propertyService';
 import { taskService } from './taskService';
 import { gamificationService } from './gamificationService';
-import { momentumOsService } from './momentumOsService';
 
 export const profileService = {
   getProfile: async (): Promise<UserProfile | null> => {
@@ -37,39 +36,6 @@ export const profileService = {
     }
   },
 
-  completeMorningRitual: async (variables?: { morning_notes: string }) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-    
-    // Save morning plan if notes are provided
-    if (variables?.morning_notes) {
-      await momentumOsService.saveMorningPlan(variables.morning_notes);
-    }
-
-    // Use server-side MORNING_RITUAL action to update timestamps and award XP securely
-    await gamificationService.earnXP('MORNING_RITUAL');
-  },
-
-  completeEveningRitual: async (stats: { tasksCompleted?: number, tasks_completed?: number, revenue: number, calls: number, visits: number, evening_notes?: string }) => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-    
-    // Save evening notes if provided
-    if (stats.evening_notes) {
-      await momentumOsService.saveEveningClosing(stats.evening_notes);
-    }
-
-    // Use server-side EVENING_RITUAL action to handle streaks, timestamps, and XP securely
-    await gamificationService.earnXP('EVENING_RITUAL', null, {
-      tasks_completed: stats.tasksCompleted !== undefined ? stats.tasksCompleted : (stats.tasks_completed || 0),
-      potential_revenue_handled: stats.revenue,
-      calls_made: stats.calls,
-      visits_made: stats.visits
-    });
-
-    return { success: true };
-  },
-
   getDailyStats: async (days: number = 7): Promise<DailyStats[]> => {
     const userId = await getUserId();
     if (!userId) return [];
@@ -99,16 +65,16 @@ export const profileService = {
     return { success: true };
   },
 
-  endDay: async (stats: any) => {
+  endDay: async (stats: Partial<DayClosure>) => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
 
     // Use server-side END_DAY action to update timestamps, stats, and award XP securely
     await gamificationService.earnXP('END_DAY', null, {
-      tasks_completed: stats.tasks_completed,
-      calls_made: stats.calls,
-      visits_made: stats.visits,
-      potential_revenue_handled: stats.revenue
+      tasks_completed: stats.completed_calls || 0,
+      calls_made: stats.completed_calls || 0,
+      visits_made: stats.completed_portfolio_actions || 0,
+      potential_revenue_handled: 0
     });
 
     return { success: true };

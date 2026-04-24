@@ -141,7 +141,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
 
         <div className="bg-white/60 p-3 rounded-xl border border-emerald-100 flex items-center justify-between">
           <span className="text-xs font-bold text-slate-600">Kazanılan Potansiyeller:</span>
-          <span className="text-sm font-black text-emerald-600">{referrals.filter((r: any) => r.status === 'converted' || r.status === 'Kazanıldı').length} / {referrals.length}</span>
+          <span className="text-sm font-black text-emerald-600">{referrals.filter((r: any) => ['converted', 'Kazanıldı', 'İşleme Döndü'].includes(r.status)).length} / {referrals.length}</span>
         </div>
 
         {referrals.length > 0 && (
@@ -151,14 +151,19 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                 <span className="font-medium text-slate-700">{ref.referred_name || ref.referred_email || 'İsimsiz'}</span>
                 <select 
                   className="text-xs p-1 rounded bg-emerald-50 border-none outline-none text-emerald-700 font-bold"
-                  value={ref.status === 'Kazanıldı' ? 'converted' : ref.status === 'İstendi' ? 'asked' : ref.status === 'Alındı' ? 'received' : ref.status}
+                  value={
+                    (['Kazanıldı', 'İşleme Döndü'].includes(ref.status)) ? 'converted' : 
+                    (['İstendi', 'Bekliyor'].includes(ref.status)) ? 'asked' : 
+                    (['Alındı', 'Görüşüldü'].includes(ref.status)) ? 'received' : 
+                    ref.status
+                  }
                   onChange={(e) => updateReferralMutation.mutate({ id: ref.id, status: e.target.value })}
                   disabled={updateReferralMutation.isPending}
                 >
-                  <option value="asked">İstendi</option>
-                  <option value="received">Alındı</option>
-                  <option value="converted">Kazanıldı</option>
-                  {/* Geri dönük uyumluluk */}
+                  <option value="asked">İstendi (Bekliyor)</option>
+                  <option value="received">Alındı (Görüşüldü)</option>
+                  <option value="converted">Kazanıldı (İşleme Döndü)</option>
+                  {/* Eski kalıntılar varsa */}
                   {['Aday', 'Görüşülüyor'].includes(ref.status) && (
                     <option value={ref.status} disabled>{ref.status}</option>
                   )}

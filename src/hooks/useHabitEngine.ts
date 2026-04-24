@@ -4,6 +4,7 @@ import { QUERY_KEYS } from '../constants/queryKeys';
 import { useAuth } from '../AuthContext';
 import { calculateLevel, calculateProgressToNextLevel, getLevelName } from '../lib/habitUtils';
 import confetti from 'canvas-confetti';
+import { DayClosure } from '../types';
 
 export const useHabitEngine = () => {
   const { profile } = useAuth();
@@ -38,15 +39,15 @@ export const useHabitEngine = () => {
   });
 
   const startDayMutation = useMutation({
-    mutationFn: api.completeMorningRitual,
+    mutationFn: api.startDay,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.id] });
     }
   });
 
   const endDayMutation = useMutation({
-    mutationFn: (stats: { tasks_completed: number, revenue: number, calls: number, visits: number, social: number }) => 
-      api.completeEveningRitual(stats),
+    mutationFn: (stats: Partial<DayClosure>) => 
+      api.endDay(stats),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.id] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DAILY_STATS, profile?.id] });

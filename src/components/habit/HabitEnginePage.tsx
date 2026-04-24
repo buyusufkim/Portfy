@@ -4,6 +4,7 @@ import { Sun, Moon, ArrowRight, CheckCircle2, Sparkles, Trophy, Zap, Shield, Sta
 import { useHabitEngine } from '../../hooks/useHabitEngine';
 import { DailyRadar } from './DailyRadar';
 import { DayCloser } from './DayCloser';
+import { DayClosure } from '../../types';
 
 export const HabitEnginePage: React.FC = () => {
   const { 
@@ -89,14 +90,8 @@ export const HabitEnginePage: React.FC = () => {
               visits: 3,
               social: 0
             }}
-            onComplete={() => {
-              endDay({
-                tasks_completed: gamifiedTasks.filter(t => t.is_completed).length,
-                revenue: 150000,
-                calls: 12,
-                visits: 3,
-                social: 0
-              });
+            onComplete={(data: Partial<DayClosure>) => {
+              endDay(data);
               setShowCloser(false);
             }}
           />

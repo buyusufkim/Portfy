@@ -269,10 +269,10 @@ export const BolgemView = ({
     setShowAddFilter(false);
   };
 
-  const handleMapClick = async (e: { latLng?: { lat: () => number, lng: () => number } | { lat: number, lng: number } }) => {
-    if (e.latLng) {
-      const lat = typeof e.latLng.lat === 'function' ? e.latLng.lat() : e.latLng.lat;
-      const lng = typeof e.latLng.lng === 'function' ? e.latLng.lng() : e.latLng.lng;
+  const handleMapClick = async (e: L.LeafletMouseEvent) => {
+    if (e.latlng) {
+      const lat = e.latlng.lat;
+      const lng = e.latlng.lng;
 
       setNewPinData(prev => ({
         ...prev,

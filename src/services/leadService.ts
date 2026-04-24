@@ -86,7 +86,7 @@ export const leadService = {
     try {
       // 3. AI ÇAĞRISI (Backend'deki model adıyla uyumlu olmalı)
       const response: any = await generateContent(
-        "gemini-2.5-flash", 
+        "gemini-2.0-flash", 
         prompt
       );
 

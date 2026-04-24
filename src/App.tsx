@@ -18,7 +18,7 @@ import { Header } from './components/app/Header';
 import { NotificationToast, GlobalToast } from './components/app/Toasts';
 import { FloatingActionButton } from './components/app/FloatingActionButton';
 import { RegionSetupModal } from './components/RegionSetupModal';
-import { UserProfile, Lead, Property } from './types';
+import { UserProfile, Lead, Property, DailyPlan, DayClosure, GamifiedTask, PersonalTask } from './types';
 
 import { useFeatureAccess } from './hooks/useFeatureAccess';
 import { UpgradeModal } from './components/premium/UpgradeModal';
@@ -45,7 +45,7 @@ function MainApp() {
   const [showAdminPanel, setShowAdminPanel] = useState(false);
   const [viewMode, setViewMode] = useState<'list' | 'pipeline'>('list');
   const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'info' } | null>(null);
-  const [notification, setNotification] = useState<any>(null);
+  const [notification, setNotification] = useState<{ task: GamifiedTask | PersonalTask, type: 'personal' | 'gamified' } | null>(null);
 
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showVoiceQuickAdd, setShowVoiceQuickAdd] = useState(false);
@@ -63,8 +63,8 @@ function MainApp() {
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [showAddTask, setShowAddTask] = useState(false);
   const [showDocumentAutomation, setShowDocumentAutomation] = useState(false);
-  const [documentAutomationProperty, setDocumentAutomationProperty] = useState<any | null>(null);
-  const [documentAutomationLead, setDocumentAutomationLead] = useState<any | null>(null);
+  const [documentAutomationProperty, setDocumentAutomationProperty] = useState<Property | null>(null);
+  const [documentAutomationLead, setDocumentAutomationLead] = useState<Lead | null>(null);
 
   const closeAllModals = () => {
     setShowQuickAdd(false); setShowVoiceQuickAdd(false); setShowAddProperty(false);
@@ -75,8 +75,8 @@ function MainApp() {
     setShowRegionSetup(false); setShowLeadMethodModal(false); setShowScanner(false);
   };
 
-  const [selectedProperty, setSelectedProperty] = useState<any | null>(null);
-  const [selectedLead, setSelectedLead] = useState<any | null>(null);
+  const [selectedProperty, setSelectedProperty] = useState<Property | null>(null);
+  const [selectedLead, setSelectedLead] = useState<Lead | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingLead, setIsEditingLead] = useState(false);
   const [selectedDistrict, setSelectedDistrict] = useState<string | 'all'>('all');
@@ -102,12 +102,11 @@ function MainApp() {
   const addVisitMutation = useMutation({ mutationFn: api.addVisit, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.FIELD_VISITS, profile?.id] }); setShowAddVisit(false); setShowQuickAdd(false); }});
   const addTaskMutation = useMutation({ mutationFn: api.addTask, onSuccess: () => { queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS, profile?.id] }); }});
   const completeMorningRitualMutation = useMutation({ 
-    mutationFn: async (variables: any) => { 
-      await api.startDay(); 
-      // Save new Daily Plan
+    mutationFn: async (variables: Partial<DailyPlan>) => { 
+      // 1. Save new Daily Plan
       await api.momentumOs.saveDailyPlan(variables);
-      // Legacy support
-      return api.completeMorningRitual({ morning_notes: JSON.stringify(variables.top3 || []) }); 
+      // 2. Start day
+      return api.startDay(); 
     }, 
     onSuccess: () => { 
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_DAILY_PLAN] });
@@ -121,12 +120,11 @@ function MainApp() {
   });
 
   const completeEveningRitualMutation = useMutation({ 
-    mutationFn: async (variables: any) => { 
-      await api.endDay(variables); 
-      // Save new Day Closure
+    mutationFn: async (variables: Partial<DayClosure>) => { 
+      // 1. Save new Day Closure
       await api.momentumOs.saveDayClosure(variables);
-      // Legacy support
-      return api.completeEveningRitual({ ...variables, evening_notes: variables.wins || '' }); 
+      // 2. End day
+      return api.endDay(variables); 
     }, 
     onSuccess: () => { 
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_DAY_CLOSURE] });
@@ -260,7 +258,7 @@ function MainApp() {
         </div>
       </div>
 
-      <NotificationCenter personalTasks={personalTasks} gamifiedTasks={gamifiedTasks} onNotify={(task) => setNotification(task)} />
+      <NotificationCenter personalTasks={personalTasks} gamifiedTasks={gamifiedTasks} onNotify={(task, type) => setNotification({ task, type })} />
       <NotificationToast notification={notification} onClose={() => setNotification(null)} />
       <GlobalToast 
   toast={toast} 

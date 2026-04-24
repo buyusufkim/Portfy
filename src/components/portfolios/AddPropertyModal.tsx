@@ -195,10 +195,11 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
 
     try {
       const savedProperty = await onSubmit(payload);
+      const propertyId = typeof savedProperty === 'string' ? savedProperty : (savedProperty?.id || initialData?.id);
       
-      if (formData.status === 'Pasif' && savedProperty?.id) {
+      if (formData.status === 'Pasif' && propertyId && formData.blocker_type) {
         await api.momentumOs.createOrUpdatePortfolioBlocker({
-          property_id: savedProperty.id,
+          property_id: propertyId,
           blocker_type: formData.blocker_type as 'price' | 'presentation' | 'location' | 'demand' | 'process' | 'owner' | 'content',
           note: formData.blocker_note,
           impact_score: 80,

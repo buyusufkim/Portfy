@@ -1,4 +1,5 @@
 -- Momentum OS Core Rebuild Migration
+CREATE EXTENSION IF NOT EXISTS "pgcrypto";
 
 -- A) Leads table expansion
 ALTER TABLE IF EXISTS leads 

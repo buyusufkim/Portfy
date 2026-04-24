@@ -267,12 +267,26 @@ export const momentumOsService = {
     return data as DayClosure | null;
   },
 
-  saveDayClosure: async (payload: Partial<DayClosure>, dateStr?: string): Promise<DayClosure> => {
+  saveDayClosure: async (payload: Partial<DayClosure> & { tasks_completed?: number, revenue?: number, calls?: number, visits?: number, social?: number, top3_tomorrow?: string[], blockers?: string, wins?: string }, dateStr?: string): Promise<DayClosure> => {
     const userId = await getUserId();
     const targetDate = dateStr || getTodayStr();
+    
+    // Normalize payload to match DB schema
+    const normalizedPayload: Partial<DayClosure> = {
+      user_id: userId,
+      closure_date: targetDate,
+      updated_at: new Date().toISOString(),
+      wins: payload.wins,
+      blockers: payload.blockers,
+      tomorrow_top3: payload.top3_tomorrow || payload.tomorrow_top3,
+      completed_calls: payload.calls || payload.completed_calls || 0,
+      completed_portfolio_actions: payload.visits || payload.completed_portfolio_actions || 0,
+      completed_followups: payload.completed_followups || 0
+    };
+
     const { data, error } = await supabase
       .from('day_closure')
-      .upsert({ ...payload, user_id: userId, closure_date: targetDate, updated_at: new Date().toISOString() }, { onConflict: 'user_id, closure_date' })
+      .upsert(normalizedPayload, { onConflict: 'user_id, closure_date' })
       .select()
       .single();
     if (error) throw error;
@@ -287,6 +301,20 @@ export const momentumOsService = {
       .select()
       .single();
     if (error) throw error;
+    
+    try {
+      if (payload.action_type === 'call') {
+        const todayPlan = await momentumOsService.getDailyPlan();
+        if (todayPlan && todayPlan.id) {
+          await momentumOsService.saveDailyPlan({
+            completed_calls: (todayPlan.completed_calls || 0) + 1
+          });
+        }
+      }
+    } catch (e) {
+      console.error('Failed to increment daily plan metric', e);
+    }
+    
     return data as LeadActivityLog;
   },
 
@@ -320,8 +348,7 @@ export const momentumOsService = {
       .from('leads')
       .select('*')
       .eq('user_id', userId)
-      .eq('status', 'Aday') // Only for active candidate leads
-      .not('status', 'in', '("Kapalı", "Pasif")');
+      .in('status', ['Aday', 'Sıcak', 'Takipte']);
     
     if (leadError || !leads) return;
 
@@ -332,11 +359,12 @@ export const momentumOsService = {
       const lastContact = new Date(lead.last_contacted_at || lead.created_at || now);
       const hoursDiff = (now.getTime() - lastContact.getTime()) / (1000 * 60 * 60);
       const daysDiff = hoursDiff / 24;
+      const isHot = lead.temperature === 'hot' || lead.status === 'Sıcak';
 
       let alertType = '';
       let severity: 'low' | 'medium' | 'high' | 'critical' = 'low';
 
-      if (lead.temperature === 'hot' && hoursDiff >= 48) {
+      if (isHot && hoursDiff >= 48) {
         alertType = 'hot_48h_silence';
         severity = 'critical';
       } else if (daysDiff >= 14) {
@@ -369,13 +397,46 @@ export const momentumOsService = {
 
   createOrUpdatePortfolioBlocker: async (payload: Partial<PortfolioBlocker>): Promise<PortfolioBlocker> => {
     const userId = await getUserId();
-    const { data, error } = await supabase
+    
+    // Check for existing active blocker for this property
+    const { data: existingData } = await supabase
       .from('portfolio_blockers')
-      .upsert({ ...payload, user_id: userId, created_at: new Date().toISOString(), is_active: true })
-      .select()
-      .single();
-    if (error) throw error;
-    return data as PortfolioBlocker;
+      .select('id')
+      .eq('user_id', userId)
+      .eq('property_id', payload.property_id)
+      .eq('is_active', true)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingData?.id) {
+      // Update existing
+      const { data, error } = await supabase
+        .from('portfolio_blockers')
+        .update({
+          blocker_type: payload.blocker_type,
+          note: payload.note,
+          impact_score: payload.impact_score
+        })
+        .eq('id', existingData.id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as PortfolioBlocker;
+    } else {
+      // Insert new
+      const { data, error } = await supabase
+        .from('portfolio_blockers')
+        .insert({ 
+          ...payload, 
+          user_id: userId, 
+          created_at: new Date().toISOString(), 
+          is_active: true 
+        })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as PortfolioBlocker;
+    }
   },
 
   getPortfolioBlockers: async (propertyId?: string): Promise<PortfolioBlocker[]> => {
@@ -442,71 +503,131 @@ export const momentumOsService = {
     if (!response.ok) throw new Error('Portal iptal edilemedi');
   },
 
-  // 7 & 9. Gün Sonu Kapanış & Sabah 10 Dakika Planı (Legacy support)
-  getDailyRitual: async (dateStr?: string): Promise<DailyRitual> => {
-    const userId = await getUserId();
-    const targetDate = dateStr || getTodayStr(); // YYYY-MM-DD
-    
-    const { data, error } = await supabase
-      .from('daily_rituals')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('ritual_date', targetDate)
-      .maybeSingle();
+  // 12. Haftalık İş Sonucu Panosu
+  generateWeeklyReport: async (): Promise<WeeklyReport | null> => {
+    try {
+      const userId = await getUserId();
+      if (!userId) return null;
+      
+      const now = new Date();
+      // Haftanın başlangıcı (Pazartesi)
+      const day = now.getDay() || 7; 
+      const startOfWeek = new Date(now);
+      startOfWeek.setDate(now.getDate() - day + 1);
+      startOfWeek.setHours(0,0,0,0);
+      const weekDateStr = startOfWeek.toISOString().split('T')[0];
 
-    if (error && error.code !== 'PGRST116') throw error;
-    
-    if (!data) {
-      const { data: newData, error: newError } = await supabase
-        .from('daily_rituals')
-        .insert([{ user_id: userId, ritual_date: targetDate }])
+      // daily_plan fallback
+      const { data: plans } = await supabase
+        .from('daily_plan')
+        .select('completed_calls, completed_portfolio_actions')
+        .eq('user_id', userId)
+        .gte('plan_date', weekDateStr);
+
+      let dp_calls = 0;
+      let property_visits = 0;
+      if (plans) {
+        plans.forEach(p => {
+          dp_calls += (p.completed_calls || 0);
+          property_visits += (p.completed_portfolio_actions || 0);
+        });
+      }
+
+      // lead_activity_log for calls
+      const { count: activity_calls } = await supabase
+        .from('lead_activity_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('action_type', 'call')
+        .gte('happened_at', startOfWeek.toISOString());
+
+      let calls_made = activity_calls || dp_calls;
+
+      // lead_activity_log for meetings
+      const { count: meetings } = await supabase
+        .from('lead_activity_log')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .in('result', ['meeting_set', 'appointment'])
+        .gte('happened_at', startOfWeek.toISOString());
+
+      // referrals_received
+      const { count: referrals_received } = await supabase
+        .from('referrals')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('created_at', startOfWeek.toISOString());
+
+      // leads_acquired
+      const { count: leads_acquired } = await supabase
+        .from('leads')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .gte('created_at', startOfWeek.toISOString());
+
+      // silent_leads
+      const { count: silent_leads } = await supabase
+        .from('lead_alerts')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('status', 'open');
+
+      // active_blockers
+      const { count: active_blockers } = await supabase
+        .from('portfolio_blockers')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId)
+        .eq('is_active', true);
+
+      // closes & closed_volume
+      const { data: propertiesData } = await supabase
+        .from('properties')
+        .select('price')
+        .eq('user_id', userId)
+        .in('status', ['Satıldı', 'Kapandı'])
+        .gte('updated_at', startOfWeek.toISOString());
+        
+      let closes = 0;
+      let closed_volume = 0;
+      if (propertiesData) {
+        closes = propertiesData.length;
+        propertiesData.forEach(p => {
+          closed_volume += (Number(p.price) || 0);
+        });
+      }
+
+      const metrics = {
+        calls_made,
+        property_visits,
+        meetings: meetings || 0,
+        authorities: 0,
+        closes,
+        leads_acquired: leads_acquired || 0,
+        referrals_received: referrals_received || 0,
+        silent_leads: silent_leads || 0,
+        active_blockers: active_blockers || 0,
+        closed_volume
+      };
+      
+      const { data, error } = await supabase
+        .from('weekly_reports')
+        .upsert({
+          user_id: userId,
+          week_start_date: weekDateStr,
+          metrics,
+          generated_at: new Date().toISOString()
+        }, { onConflict: 'user_id, week_start_date' })
         .select()
         .single();
-      if (newError) throw newError;
-      return newData as DailyRitual;
+        
+      if (error) throw error;
+      return data as WeeklyReport;
+    } catch (e) {
+      console.error("Weekly report generation failed", e);
+      return null;
     }
-    return data as DailyRitual;
   },
 
-  saveMorningPlan: async (notes: string, dateStr?: string): Promise<DailyRitual> => {
-    const userId = await getUserId();
-    const targetDate = dateStr || getTodayStr();
-    
-    const { data, error } = await supabase
-      .from('daily_rituals')
-      .upsert({ 
-        user_id: userId, 
-        ritual_date: targetDate, 
-        morning_notes: notes,
-        morning_plan_completed_at: new Date().toISOString()
-      }, { onConflict: 'user_id, ritual_date' })
-      .select()
-      .single();
-      
-    if (error) throw error;
-    return data as DailyRitual;
-  },
-
-  saveEveningClosing: async (notes: string, dateStr?: string): Promise<DailyRitual> => {
-    const userId = await getUserId();
-    const targetDate = dateStr || getTodayStr();
-    
-    const { data, error } = await supabase
-      .from('daily_rituals')
-      .upsert({ 
-        user_id: userId, 
-        ritual_date: targetDate, 
-        evening_notes: notes,
-        evening_closing_completed_at: new Date().toISOString()
-      }, { onConflict: 'user_id, ritual_date' })
-      .select()
-      .single();
-      
-    if (error) throw error;
-    return data as DailyRitual;
-  },
-
-  // 12. Haftalık İş Sonucu Panosu
   getWeeklyReports: async (): Promise<WeeklyReport[]> => {
     const userId = await getUserId();
     const { data, error } = await supabase

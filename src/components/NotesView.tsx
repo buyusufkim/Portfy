@@ -48,6 +48,7 @@ export const NotesView = () => {
   const [showContentPlanner, setShowContentPlanner] = useState(false);
   const [contentTitle, setContentTitle] = useState('');
   const [contentPlatform, setContentPlatform] = useState('Instagram Reels');
+  const [contentPropertyId, setContentPropertyId] = useState('');
 
   const { data: contentCalendars = [] } = useQuery({
     queryKey: ['contentCalendars', profile?.id],
@@ -538,6 +539,19 @@ export const NotesView = () => {
                   </select>
                 </div>
                 <div className="space-y-3">
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">İlişkili Portföy (İsteğe Bağlı)</label>
+                  <select 
+                    value={contentPropertyId}
+                    onChange={(e) => setContentPropertyId(e.target.value)}
+                    className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none transition-all"
+                  >
+                    <option value="">Seçiniz...</option>
+                    {properties.map(p => (
+                      <option key={p.id} value={p.id}>{p.title}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="space-y-3">
                   <label className="text-xs font-bold text-slate-500 uppercase tracking-widest">AI Tavsiyesi</label>
                   <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl text-xs text-orange-800 leading-relaxed italic">
                     "Bölgenizdeki son 30 günlük satış verilerini kullanarak 'Neden Şimdi Satmalısınız?' temalı bir video çekmek şu an %85 daha fazla etkileşim getirebilir."
@@ -551,7 +565,8 @@ export const NotesView = () => {
                         platform: contentPlatform,
                         status: 'Taslak',
                         scheduled_for: new Date(Date.now() + 86400000).toISOString(), // yarın
-                        content_text: ''
+                        content_text: '',
+                        property_id: contentPropertyId || undefined
                       });
                     }
                   }} 

@@ -88,6 +88,7 @@ export const api = {
   // Görev Yönetimi
   getTasks: taskService.getTasks,
   addTask: taskService.addTask,
+  createFollowupTaskIfMissing: taskService.createFollowupTaskIfMissing,
   updateTaskStatus: taskService.updateTaskStatus,
 
   // Gamification
@@ -107,8 +108,6 @@ export const api = {
   getProfile: profileService.getProfile,
   updateProfile: profileService.updateProfile,
   earnXP: gamificationService.earnXP,
-  completeMorningRitual: profileService.completeMorningRitual,
-  completeEveningRitual: profileService.completeEveningRitual,
   getDailyStats: profileService.getDailyStats,
   startDay: profileService.startDay,
   endDay: profileService.endDay,

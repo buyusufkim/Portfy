@@ -13,7 +13,7 @@ import {
   ArrowUpDown,
   AlertTriangle
 } from 'lucide-react';
-import { Lead } from '../types';
+import { Lead, LeadAlert } from '../types';
 import { Card, Badge, Skeleton } from './UI';
 
 interface LeadCategory {
@@ -35,7 +35,7 @@ interface CRMViewProps {
   analyzeLeadsMutation: AnalyzeLeadsMutation;
   categories: LeadCategory[];
   onSelectLead: (lead: Lead) => void;
-  leadAlerts?: any[];
+  leadAlerts?: LeadAlert[];
 }
 
 const parseContactDate = (value?: string) => {

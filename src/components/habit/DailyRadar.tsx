@@ -1,11 +1,12 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, CheckCircle2, ArrowRight, Sun, Phone, Calendar, Briefcase, Plus, X } from 'lucide-react';
+import { DailyPlan } from '../../types';
 
 interface DailyRadarProps {
   tasks: string[];
   insight: string;
-  onComplete: (data: any) => void;
+  onComplete: (data: Partial<DailyPlan>) => void;
   isPending?: boolean;
 }
 

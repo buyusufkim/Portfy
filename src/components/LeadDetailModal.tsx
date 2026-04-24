@@ -4,12 +4,13 @@ import {
   X, Phone, MessageSquare, Trash2, Edit2, User as UserIcon,
   Calendar, MapPin, Tag, AlertCircle, FileText, Plus, Zap, Check, Clock
 } from 'lucide-react';
-import { Lead, Property, LeadActivityLog } from '../types';
+import { Lead, Property, LeadActivityLog, Task } from '../types';
 import { api } from '../services/api';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { dripService, DRIP_CAMPAIGNS, DripEventType } from '../services/dripService';
 import { toast } from 'react-hot-toast';
+import { supabase } from '../lib/supabase';
 
 interface LeadDetailModalProps {
   lead: Lead | null;
@@ -74,6 +75,10 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
     }
   });
 
+  const createFollowupTaskMutation = useMutation({
+    mutationFn: (data: Omit<Task, 'id' | 'user_id'>) => api.createFollowupTaskIfMissing(data)
+  });
+
   const logActivityMutation = useMutation({
     mutationFn: (payload: Partial<LeadActivityLog>) => api.momentumOs.logLeadActivity(payload),
     onSuccess: () => {
@@ -114,6 +119,20 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
       next_followup_at: nextFollowup || undefined,
       notes: lead?.notes ? `${lead.notes}\n${newNote}` : newNote
     });
+
+    // 3. Create follow-up task
+    if (nextFollowup) {
+      await createFollowupTaskMutation.mutateAsync({
+        title: `Lead Takibi: ${lead!.name}`,
+        due_date: nextFollowup,
+        time: new Date().toISOString(),
+        completed: false,
+        type: 'Arama',
+        notes: `Görüşme sonucu: ${callResult}. Ek not: ${callNote}`,
+        lead_id: lead!.id
+      });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS] });
+    }
 
     setShowCallForm(false);
     setCallResult('');
@@ -231,7 +250,15 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                       <div className="flex-1">
                         <div className="font-bold text-slate-800">
                           {activity.action_type === 'call' ? 'Arama' : activity.action_type}
-                          {activity.result && ` - ${activity.result}`}
+                          {activity.result && ` - ${{
+                            reached: 'Ulaşıldı',
+                            not_reached: 'Ulaşılamadı',
+                            call_back: 'Sonra Ara',
+                            meeting_set: 'Randevu Çıktı',
+                            appointment: 'Randevu Çıktı',
+                            not_interested: 'İlgilenmiyor',
+                            wrong_number: 'Yanlış Numara'
+                          }[activity.result] || activity.result}`}
                         </div>
                         {activity.note && <div className="text-slate-500 text-xs italic mt-0.5">"{activity.note}"</div>}
                         <div className="text-[10px] text-slate-400 mt-1">{new Date(activity.happened_at || new Date()).toLocaleString('tr-TR')}</div>

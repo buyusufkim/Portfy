@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DailyRadar } from '../habit/DailyRadar';
 import { DayCloser } from '../habit/DayCloser';
-import { GamifiedTask, PersonalTask, Property, Task } from '../../types';
+import { GamifiedTask, PersonalTask, Property, Task, DailyPlan, DayClosure } from '../../types';
+import { UseMutationResult } from '@tanstack/react-query';
 
 interface RitualOverlaysProps {
   showDailyRadar: boolean;
@@ -10,8 +11,8 @@ interface RitualOverlaysProps {
   setShowDailyRadar: (val: boolean) => void;
   showDayCloser: boolean;
   setShowDayCloser: (val: boolean) => void;
-  completeMorningRitualMutation: any;
-  completeEveningRitualMutation: any;
+  completeMorningRitualMutation: UseMutationResult<unknown, Error, Partial<DailyPlan>, unknown>;
+  completeEveningRitualMutation: UseMutationResult<unknown, Error, Partial<DayClosure>, unknown>;
   gamifiedTasks: GamifiedTask[];
   personalTasks: PersonalTask[];
   properties: Property[];
@@ -51,7 +52,7 @@ export const RitualOverlays = ({
   }, [showDailyRadar, showDayCloser]);
 
   // Sabah Ritüeli Tamamlanma Senaryosu
-  const handleMorningComplete = (payload: any) => {
+  const handleMorningComplete = (payload: Partial<DailyPlan>) => {
     triggerHaptic([30, 50, 30, 50, 100]); // Başarı hissi veren titreşim deseni
     setRewardContent({ title: "Güne Harika Başladın!", xp: "+50 XP" });
     setShowReward(true);
@@ -69,7 +70,7 @@ export const RitualOverlays = ({
   };
 
   // Akşam Ritüeli Tamamlanma Senaryosu
-  const handleEveningComplete = (payload: any) => {
+  const handleEveningComplete = (payload: Partial<DayClosure>) => {
     triggerHaptic([30, 50, 30, 50, 150]); // Daha güçlü başarı titreşimi
     setRewardContent({ title: "Gün Başarıyla Kapatıldı!", xp: "+100 XP" });
     setShowReward(true);

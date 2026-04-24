@@ -4,6 +4,7 @@ import L from 'leaflet';
 import { Plus, Layers, Crosshair, X, CheckCircle2 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { MapPin as MapPinType } from '../types';
+import { UseMutationResult } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { toast } from 'react-hot-toast';
 
@@ -11,8 +12,8 @@ interface RegionMapProps {
   isLoaded: boolean;
   mapZoom: number;
   mapCenter: { lat: number; lng: number };
-  onMapLoad: (mapInstance: any) => void;
-  handleMapClick: (e: any) => void;
+  onMapLoad: (mapInstance: L.Map) => void;
+  handleMapClick: (e: L.LeafletMouseEvent) => void;
   is3D: boolean;
   setIs3D: (val: boolean) => void;
   setMapZoom: (val: number) => void;
@@ -24,18 +25,18 @@ interface RegionMapProps {
   setSelectedPin: (pin: MapPinType | null) => void;
   selectedPin: MapPinType | null;
   showAddPin: boolean;
-  newPinData: any;
-  setNewPinData: (data: any) => void;
+  newPinData: Partial<MapPinType>;
+  setNewPinData: (data: Partial<MapPinType> | ((prev: Partial<MapPinType>) => Partial<MapPinType>)) => void;
   handleAddPin: () => void;
-  addPinMutation: any;
-  categories: any[];
-  mapStyles?: any[];
+  addPinMutation: UseMutationResult<unknown, Error, Partial<MapPinType>, unknown>;
+  categories: { id: string; label: string; icon: string; color: string }[];
+  mapStyles?: { id: string; name: string; url: string; attribution: string }[];
   search: string;
   hotspots?: {lat: number, lng: number, intensity: number, color: string}[];
 }
 
 // Component to handle map center/zoom updates and clicks
-const MapController = ({ center, zoom, onClick, onMapLoad }: any) => {
+const MapController = ({ center, zoom, onClick, onMapLoad }: { center: { lat: number, lng: number }, zoom: number, onClick: (e: L.LeafletMouseEvent) => void, onMapLoad: (mapInstance: L.Map) => void }) => {
   const map = useMap();
   useEffect(() => {
     if (center && typeof center.lat === 'number' && typeof center.lng === 'number') {
@@ -49,7 +50,7 @@ const MapController = ({ center, zoom, onClick, onMapLoad }: any) => {
 
   useMapEvents({
     click(e) {
-      onClick({ latLng: { lat: () => e.latlng.lat, lng: () => e.latlng.lng } });
+      onClick(e);
     }
   });
   return null;
@@ -81,7 +82,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
 }) => {
   const [isCheckingIn, setIsCheckingIn] = useState(false);
 
-  const isValidCoords = (lat: any, lng: any) => {
+  const isValidCoords = (lat: number | undefined | null, lng: number | undefined | null) => {
     return typeof lat === 'number' && typeof lng === 'number' && isFinite(lat) && isFinite(lng);
   };
 

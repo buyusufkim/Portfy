@@ -1,8 +1,8 @@
-import express from "express";
+import express, { Request, Response, NextFunction } from "express";
 import path from "path";
 import dotenv from "dotenv";
 
-import { authenticate, aiLimiter, tokenTrackerMiddleware, handleUpdateProfile, handleSubscribe, handleAdminUpdateUser, handleAdminDeleteUser, handleAdminGetUsers, handleAdminGetSettings, handleUpdateGlobalSettings, handleEarnXP, handleAIGeneration } from "./server/ai-api.js";
+import { authenticate, aiLimiter, tokenTrackerMiddleware, handleUpdateProfile, handleSubscribe, handleAdminUpdateUser, handleAdminDeleteUser, handleAdminGetUsers, handleAdminGetSettings, handleUpdateGlobalSettings, handleEarnXP, handleAIGeneration, AuthRequest } from "./server/ai-api.js";
 import { rateLimit } from 'express-rate-limit';
 import { fetchMarketData } from "./server/marketScraper.js";
 
@@ -48,13 +48,13 @@ app.post("/api/portal/revoke", authenticate, handleRevokePortalTokens);
 const marketLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 15,
-  keyGenerator: (req: any) => req.user?.id || req.ip,
+  keyGenerator: (req: AuthRequest) => req.user?.id || req.ip || 'unknown',
   message: { error: "Piyasa analizi için kullanım limitine ulaştınız. Lütfen daha sonra tekrar deneyin." },
   standardHeaders: true,
   legacyHeaders: false,
 });
 
-app.post('/api/market/analyze', authenticate, marketLimiter, async (req: any, res: any) => {
+app.post('/api/market/analyze', authenticate, marketLimiter, async (req: AuthRequest, res: Response) => {
   try {
     const { city, district, neighborhood, propertyType, m2 } = req.body;
     
@@ -81,10 +81,10 @@ app.use("/api/*", (req, res) => {
   res.status(404).json({ error: `API route not found: ${req.originalUrl}` });
 });
 
-app.use((err: any, req: any, res: any, next: any) => {
+app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
   if (req.url.startsWith('/api')) {
     console.error('[API Error]', err);
-    return res.status(500).json({ error: err.message || "Internal Server Error" });
+    return res.status(500).json({ error: err instanceof Error ? err.message : "Internal Server Error" });
   }
   next(err);
 });

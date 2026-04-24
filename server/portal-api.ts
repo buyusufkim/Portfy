@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import dotenv from 'dotenv';
 import crypto from 'crypto';
+import { Request, Response } from 'express';
+import { AuthRequest } from './ai-api.js';
 dotenv.config({ override: true });
 
 const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
@@ -12,7 +14,7 @@ if (!supabaseUrl || !supabaseServiceKey) {
 
 const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
 
-export const handleGetPortalData = async (req: any, res: any) => {
+export const handleGetPortalData = async (req: Request, res: Response) => {
   try {
     const { token } = req.params;
 
@@ -90,16 +92,29 @@ export const handleGetPortalData = async (req: any, res: any) => {
     const propertyTitle = property.title || 'Portföyünüz';
 
     try {
-      await supabaseAdmin.from('tasks').insert({
-        user_id: property.user_id,
-        property_id: propertyId,
-        title: `🔥 ${ownerName}, Raporu İnceledi! (${propertyTitle})`,
-        type: 'Arama',
-        time: new Date().toISOString(),
-        completed: false,
-        is_drip: true, 
-        ai_suggestion: `${ownerName}, "${propertyTitle}" için gönderdiğiniz şeffaflık raporunu tam şu an inceliyor. Müşteriyi hemen arayıp durum değerlendirmesi yapmak harika bir etki yaratacaktır!`
-      });
+      const yesterday = new Date();
+      yesterday.setHours(yesterday.getHours() - 24);
+      
+      const { count } = await supabaseAdmin
+        .from('tasks')
+        .select('*', { count: 'exact', head: true })
+        .eq('property_id', propertyId)
+        .eq('is_drip', true)
+        .gte('time', yesterday.toISOString())
+        .like('title', `%Raporu İnceledi%`);
+
+      if (count === 0) {
+        await supabaseAdmin.from('tasks').insert({
+          user_id: property.user_id,
+          property_id: propertyId,
+          title: `🔥 ${ownerName}, Raporu İnceledi! (${propertyTitle})`,
+          type: 'Arama',
+          time: new Date().toISOString(),
+          completed: false,
+          is_drip: true, 
+          ai_suggestion: `${ownerName}, "${propertyTitle}" için gönderdiğiniz şeffaflık raporunu tam şu an inceliyor. Müşteriyi hemen arayıp durum değerlendirmesi yapmak harika bir etki yaratacaktır!`
+        });
+      }
     } catch (signalError) {
       console.error("Trafik motoru sinyal görevi oluşturulamadı:", signalError);
     }
@@ -164,13 +179,13 @@ export const handleGetPortalData = async (req: any, res: any) => {
       recentActivities
     });
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Portal API Error:", error);
     res.status(404).json({ error: 'Geçersiz veya süresi dolmuş bağlantı.' });
   }
 };
 
-export const handleCreatePortalToken = async (req: any, res: any) => {
+export const handleCreatePortalToken = async (req: AuthRequest, res: Response) => {
   try {
     const { propertyId, expiresInDays = 30 } = req.body;
     const userId = req.user?.id;
@@ -212,13 +227,13 @@ export const handleCreatePortalToken = async (req: any, res: any) => {
     }
 
     res.json({ token: tokenData.token, expires_at: tokenData.expires_at });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Create Portal Token Error:", error);
     res.status(500).json({ error: 'Sunucu hatası' });
   }
 };
 
-export const handleRevokePortalTokens = async (req: any, res: any) => {
+export const handleRevokePortalTokens = async (req: AuthRequest, res: Response) => {
   try {
     const { propertyId } = req.body;
     const userId = req.user?.id;
@@ -239,7 +254,7 @@ export const handleRevokePortalTokens = async (req: any, res: any) => {
     }
 
     res.json({ success: true });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Revoke Portal Token Error:", error);
     res.status(500).json({ error: 'Sunucu hatası' });
   }
