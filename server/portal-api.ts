@@ -9,13 +9,20 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  console.error("Missing Supabase configuration. VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("CRITICAL: SUPABASE_SERVICE_ROLE_KEY and VITE_SUPABASE_URL are required in production");
+  } else {
+    console.error("Missing Supabase configuration. VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
+  }
 }
 
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey);
+const supabaseAdmin = supabaseServiceKey 
+  ? createClient(supabaseUrl, supabaseServiceKey) 
+  : null;
 
 export const handleGetPortalData = async (req: Request, res: Response) => {
   try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
     const { token } = req.params;
 
     if (!token) {
@@ -187,6 +194,7 @@ export const handleGetPortalData = async (req: Request, res: Response) => {
 
 export const handleCreatePortalToken = async (req: AuthRequest, res: Response) => {
   try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
     const { propertyId, expiresInDays = 30 } = req.body;
     const userId = req.user?.id;
 
@@ -235,6 +243,7 @@ export const handleCreatePortalToken = async (req: AuthRequest, res: Response) =
 
 export const handleRevokePortalTokens = async (req: AuthRequest, res: Response) => {
   try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
     const { propertyId } = req.body;
     const userId = req.user?.id;
 

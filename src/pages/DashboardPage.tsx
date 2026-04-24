@@ -206,12 +206,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   useEffect(() => {
     if (profile?.id) {
-      api.momentumOs.refreshLeadAlerts().then(() => {
+      // Sesi veya güne özgü heavy hesaplamaları backend'e devrettik
+      api.momentumOs.runMaintenance().then(() => {
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_LEAD_ALERTS, profile.id] });
-      }).catch(console.error);
-      
-      // Weekly report'u otomatik oluştur (yoksa)
-      api.momentumOs.generateWeeklyReport().then(() => {
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_WEEKLY_REPORTS, profile.id] });
       }).catch(console.error);
     }

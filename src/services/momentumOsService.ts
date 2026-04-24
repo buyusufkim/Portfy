@@ -342,57 +342,17 @@ export const momentumOsService = {
     return (data || []) as LeadAlert[];
   },
 
-  refreshLeadAlerts: async (): Promise<void> => {
-    const userId = await getUserId();
-    const { data: leads, error: leadError } = await supabase
-      .from('leads')
-      .select('*')
-      .eq('user_id', userId)
-      .in('status', ['Aday', 'Sıcak', 'Takipte']);
-    
-    if (leadError || !leads) return;
-
-    const now = new Date();
-    const alertsToUpsert = [];
-
-    for (const lead of (leads as Lead[])) {
-      const lastContact = new Date(lead.last_contacted_at || lead.created_at || now);
-      const hoursDiff = (now.getTime() - lastContact.getTime()) / (1000 * 60 * 60);
-      const daysDiff = hoursDiff / 24;
-      const isHot = lead.temperature === 'hot' || lead.status === 'Sıcak';
-
-      let alertType = '';
-      let severity: 'low' | 'medium' | 'high' | 'critical' = 'low';
-
-      if (isHot && hoursDiff >= 48) {
-        alertType = 'hot_48h_silence';
-        severity = 'critical';
-      } else if (daysDiff >= 14) {
-        alertType = 'stale_14d';
-        severity = 'high';
-      } else if (daysDiff >= 7) {
-        alertType = 'stale_7d';
-        severity = 'medium';
-      } else if (daysDiff >= 3) {
-        alertType = 'stale_3d';
-        severity = 'low';
+  runMaintenance: async (): Promise<void> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const API_URL = import.meta.env.VITE_API_URL || '';
+    const response = await fetch(`${API_URL}/api/momentum/maintenance/run`, {
+      method: 'POST',
+      headers: { 
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session?.access_token || ''}`
       }
-
-      if (alertType) {
-        alertsToUpsert.push({
-          user_id: userId,
-          lead_id: lead.id,
-          alert_type: alertType,
-          severity,
-          status: 'open',
-          triggered_at: now.toISOString()
-        });
-      }
-    }
-
-    if (alertsToUpsert.length > 0) {
-      await supabase.from('lead_alerts').upsert(alertsToUpsert, { onConflict: 'user_id, lead_id, alert_type, status' });
-    }
+    });
+    if (!response.ok) throw new Error('Bakım görevleri çalıştırılamadı');
   },
 
   createOrUpdatePortfolioBlocker: async (payload: Partial<PortfolioBlocker>): Promise<PortfolioBlocker> => {
@@ -489,7 +449,7 @@ export const momentumOsService = {
     return await response.json();
   },
 
-  revokePortalToken: async (token: string): Promise<void> => {
+  revokePortalToken: async (propertyId: string): Promise<void> => {
     const { data: { session } } = await supabase.auth.getSession();
     const API_URL = import.meta.env.VITE_API_URL || '';
     const response = await fetch(`${API_URL}/api/portal/revoke`, {
@@ -498,134 +458,9 @@ export const momentumOsService = {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${session?.access_token || ''}`
       },
-      body: JSON.stringify({ token }),
+      body: JSON.stringify({ propertyId }),
     });
     if (!response.ok) throw new Error('Portal iptal edilemedi');
-  },
-
-  // 12. Haftalık İş Sonucu Panosu
-  generateWeeklyReport: async (): Promise<WeeklyReport | null> => {
-    try {
-      const userId = await getUserId();
-      if (!userId) return null;
-      
-      const now = new Date();
-      // Haftanın başlangıcı (Pazartesi)
-      const day = now.getDay() || 7; 
-      const startOfWeek = new Date(now);
-      startOfWeek.setDate(now.getDate() - day + 1);
-      startOfWeek.setHours(0,0,0,0);
-      const weekDateStr = startOfWeek.toISOString().split('T')[0];
-
-      // daily_plan fallback
-      const { data: plans } = await supabase
-        .from('daily_plan')
-        .select('completed_calls, completed_portfolio_actions')
-        .eq('user_id', userId)
-        .gte('plan_date', weekDateStr);
-
-      let dp_calls = 0;
-      let property_visits = 0;
-      if (plans) {
-        plans.forEach(p => {
-          dp_calls += (p.completed_calls || 0);
-          property_visits += (p.completed_portfolio_actions || 0);
-        });
-      }
-
-      // lead_activity_log for calls
-      const { count: activity_calls } = await supabase
-        .from('lead_activity_log')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('action_type', 'call')
-        .gte('happened_at', startOfWeek.toISOString());
-
-      let calls_made = activity_calls || dp_calls;
-
-      // lead_activity_log for meetings
-      const { count: meetings } = await supabase
-        .from('lead_activity_log')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .in('result', ['meeting_set', 'appointment'])
-        .gte('happened_at', startOfWeek.toISOString());
-
-      // referrals_received
-      const { count: referrals_received } = await supabase
-        .from('referrals')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .gte('created_at', startOfWeek.toISOString());
-
-      // leads_acquired
-      const { count: leads_acquired } = await supabase
-        .from('leads')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .gte('created_at', startOfWeek.toISOString());
-
-      // silent_leads
-      const { count: silent_leads } = await supabase
-        .from('lead_alerts')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('status', 'open');
-
-      // active_blockers
-      const { count: active_blockers } = await supabase
-        .from('portfolio_blockers')
-        .select('id', { count: 'exact', head: true })
-        .eq('user_id', userId)
-        .eq('is_active', true);
-
-      // closes & closed_volume
-      const { data: propertiesData } = await supabase
-        .from('properties')
-        .select('price')
-        .eq('user_id', userId)
-        .in('status', ['Satıldı', 'Kapandı'])
-        .gte('updated_at', startOfWeek.toISOString());
-        
-      let closes = 0;
-      let closed_volume = 0;
-      if (propertiesData) {
-        closes = propertiesData.length;
-        propertiesData.forEach(p => {
-          closed_volume += (Number(p.price) || 0);
-        });
-      }
-
-      const metrics = {
-        calls_made,
-        property_visits,
-        meetings: meetings || 0,
-        authorities: 0,
-        closes,
-        leads_acquired: leads_acquired || 0,
-        referrals_received: referrals_received || 0,
-        silent_leads: silent_leads || 0,
-        active_blockers: active_blockers || 0,
-        closed_volume
-      };
-      
-      const { data, error } = await supabase
-        .from('weekly_reports')
-        .upsert({
-          user_id: userId,
-          week_start_date: weekDateStr,
-          metrics,
-          generated_at: new Date().toISOString()
-        }, { onConflict: 'user_id, week_start_date' })
-        .select()
-        .single();
-        
-      if (error) throw error;
-      return data as WeeklyReport;
-    } catch (e) {
-      console.error("Weekly report generation failed", e);
-      return null;
-    }
   },
 
   getWeeklyReports: async (): Promise<WeeklyReport[]> => {

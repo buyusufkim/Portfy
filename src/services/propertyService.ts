@@ -427,7 +427,6 @@ export const propertyService = {
   },
 
   importListingFromUrl: async (url: string) => {
-    if (!url.includes('sahibinden.com')) throw new Error('Sadece sahibinden.com linkleri desteklenir');
-    throw new Error('Bu özellik şu anda yapım aşamasındadır.');
+    throw new Error('İlan linkinden içe aktarma yakında aktif olacak.');
   },
 };

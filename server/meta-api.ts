@@ -1,13 +1,15 @@
-// server/meta-api.ts
 import { createClient } from "@supabase/supabase-js";
 import { GoogleGenAI } from "@google/genai";
+import crypto from "crypto";
+import { CustomRequest } from "../server.js";
+import { Request, Response } from "express";
 
 const getSupabaseAdmin = () => {
   const url = process.env.VITE_SUPABASE_URL || process.env.SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.VITE_SUPABASE_ANON_KEY;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
   
   if (!url || !key) {
-    console.warn("[Meta API] Uyarı: Supabase URL veya Key eksik!");
+    console.warn("[Meta API] Uyarı: Supabase Service Role Key eksik, yetkili islem yapilamayacak!");
     return null;
   }
   return createClient(url, key);
@@ -50,12 +52,17 @@ const sendPrivateDM = async (commentId: string, message: string) => {
   }
 };
 
-export const handleMetaWebhookGet = (req: any, res: any) => {
+export const handleMetaWebhookGet = (req: Request, res: Response) => {
   try {
-    const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN || "portfy_secure_token_2026";
-    const mode = req.query['hub.mode'];
-    const token = req.query['hub.verify_token'];
-    const challenge = req.query['hub.challenge'];
+    const VERIFY_TOKEN = process.env.META_VERIFY_TOKEN;
+    if (!VERIFY_TOKEN) {
+      console.warn("[Meta API] META_VERIFY_TOKEN eksik");
+      return res.status(500).send('Misconfigured');
+    }
+
+    const mode = typeof req.query['hub.mode'] === 'string' ? req.query['hub.mode'] : undefined;
+    const token = typeof req.query['hub.verify_token'] === 'string' ? req.query['hub.verify_token'] : undefined;
+    const challenge = typeof req.query['hub.challenge'] === 'string' ? req.query['hub.challenge'] : undefined;
 
     if (mode && token) {
       if (mode === 'subscribe' && token === VERIFY_TOKEN) {
@@ -71,7 +78,34 @@ export const handleMetaWebhookGet = (req: any, res: any) => {
   }
 };
 
-export const handleMetaWebhookPost = async (req: any, res: any) => {
+export const handleMetaWebhookPost = async (req: CustomRequest, res: Response) => {
+  const signature = req.headers['x-hub-signature-256'] as string;
+  const appSecret = process.env.META_APP_SECRET;
+
+  if (process.env.NODE_ENV === "production" && (!appSecret || !signature || !req.rawBody)) {
+    console.warn("[Meta API] Missing signature or app secret in production");
+    return res.sendStatus(403);
+  }
+
+  if (appSecret && signature && req.rawBody) {
+    if (!signature.startsWith('sha256=')) {
+      console.warn("[Meta API] Invalid signature format");
+      return res.sendStatus(403);
+    }
+
+    const hmac = crypto.createHmac('sha256', appSecret);
+    hmac.update(req.rawBody);
+    const expectedSignature = `sha256=${hmac.digest('hex')}`;
+    
+    const signatureBuffer = Buffer.from(signature);
+    const expectedBuffer = Buffer.from(expectedSignature);
+
+    if (signatureBuffer.length !== expectedBuffer.length || !crypto.timingSafeEqual(signatureBuffer, expectedBuffer)) {
+      console.warn("[Meta API] Signature mismatch");
+      return res.sendStatus(403);
+    }
+  }
+
   const body = req.body;
 
   if (body.object === 'instagram') {
@@ -114,10 +148,12 @@ export const handleMetaWebhookPost = async (req: any, res: any) => {
 
               if (result.isLead) {
                 // 1. LEAD EKLEME (Sıfır Temaslı CRM)
-                const { data: firstUser } = await supabaseAdmin.from('profiles').select('id').limit(1).single();
-                if (firstUser) {
+                const defaultUserId = process.env.META_DEFAULT_USER_ID;
+                if (!defaultUserId) {
+                  console.log("[Meta API] META_DEFAULT_USER_ID missing, lead skipped");
+                } else {
                   await supabaseAdmin.from('leads').insert({
-                    user_id: firstUser.id,
+                    user_id: defaultUserId,
                     name: `@${username} (Instagram)`,
                     status: 'Sıcak',
                     type: 'Alıcı',

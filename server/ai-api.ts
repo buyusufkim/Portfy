@@ -5,6 +5,7 @@ import { Request, Response, NextFunction } from "express";
 
 export interface AuthRequest extends Request {
   user?: User;
+  accessToken?: string;
 }
 import { createClient } from "@supabase/supabase-js";
 import { addMonths } from "date-fns";
@@ -32,15 +33,20 @@ if (!SUPABASE_ANON_KEY) {
   throw new Error("CRITICAL: VITE_SUPABASE_ANON_KEY is not defined in environment variables.");
 }
 if (!SUPABASE_SERVICE_ROLE_KEY) {
-  console.warn("WARNING: SUPABASE_SERVICE_ROLE_KEY is not defined. Privileged backend operations will fail.");
-} else {
-  console.log("SUPABASE_SERVICE_ROLE_KEY is present.");
+  if (process.env.NODE_ENV === "production") {
+    throw new Error("CRITICAL: SUPABASE_SERVICE_ROLE_KEY is required in production");
+  } else {
+    console.warn("WARNING: SUPABASE_SERVICE_ROLE_KEY is not defined. Privileged backend operations will fail.");
+  }
 }
 
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Admin client for privileged operations - NO FALLBACK
-const supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY);
+const supabaseAdmin = SUPABASE_SERVICE_ROLE_KEY 
+  ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+  : null;
+
 
 const ALLOWED_MODELS = [
   "gemini-flash-latest",
@@ -63,6 +69,15 @@ export const aiLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+export const xpLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 5,
+  keyGenerator: (req: AuthRequest) => req.user?.id || req.ip || 'unknown',
+  message: { error: "XP kazanım limitine ulaşıldı." },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // Authentication Middleware
 export const authenticate = async (req: AuthRequest, res: Response, next: NextFunction) => {
   try {
@@ -79,11 +94,37 @@ export const authenticate = async (req: AuthRequest, res: Response, next: NextFu
     }
 
     req.user = user;
+    req.accessToken = token;
     next();
   } catch (err) {
     res.status(401).json({ error: "Authentication failed" });
   }
 };
+
+export const requireAdmin = async (req: AuthRequest, res: Response, next: NextFunction) => {
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
+    const adminId = req.user?.id;
+    if (!adminId) return res.status(401).json({ error: "Unauthorized" });
+
+    const { data: adminProfile, error: adminError } = await supabaseAdmin
+      .from('profiles')
+      .select('role')
+      .eq('id', adminId)
+      .single();
+
+    if (adminError || adminProfile?.role !== 'admin') {
+      return res.status(403).json({ error: "Unauthorized: Admin access required" });
+    }
+    next();
+  } catch (error) {
+    console.error("Require Admin Error:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+};
+
+const safeErrorMessage = (error: unknown, fallback: string) =>
+    process.env.NODE_ENV === "development" && error instanceof Error ? error.message : fallback;
 
 // --- YENİ: TOKEN MUHASEBE MIDDLEWARE'İ ---
 // Yanıtı keser (intercept) ve token kullanımını arka planda asenkron olarak kaydeder.
@@ -99,6 +140,7 @@ export const tokenTrackerMiddleware = (req: AuthRequest, res: Response, next: Ne
     if (res.statusCode >= 200 && res.statusCode < 300 && userId && totalTokens && totalTokens > 0) {
       // Yanıtın gecikmemesi için fire-and-forget asenkron çalıştırıyoruz
       (async () => {
+        if (!supabaseAdmin) return;
         try {
           const { data: profile, error: fetchError } = await supabaseAdmin
             .from('profiles')
@@ -144,6 +186,8 @@ export const handleAIGeneration = async (req: AuthRequest, res: Response) => {
     if (!ALLOWED_MODELS.includes(targetModel)) {
       return res.status(400).json({ error: `Geçersiz model seçimi: ${targetModel}. Sadece izin verilen modeller kullanılabilir.` });
     }
+
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
 
     // 2. Token Limit Check (Server-side Enforcement)
     const { data: profile, error: fetchError } = await supabaseAdmin
@@ -207,8 +251,7 @@ export const handleAIGeneration = async (req: AuthRequest, res: Response) => {
 
   } catch (error: unknown) {
     console.error("AI Generation Backend Error:", error);
-    const msg = error instanceof Error ? error.message : "Yapay zeka işlemi başarısız oldu";
-    res.status(500).json({ error: "Yapay zeka işlemi başarısız oldu", details: msg });
+    res.status(500).json({ error: "Yapay zeka işlemi başarısız oldu", details: safeErrorMessage(error, "İşlem sırasında bir hata oluştu") });
   }
 };
 
@@ -242,7 +285,14 @@ export const handleUpdateProfile = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "No valid fields to update" });
     }
 
-    const { error } = await supabaseAdmin
+    const SUPABASE_URL = process.env.VITE_SUPABASE_URL || '';
+    const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || '';
+    
+    const userSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      global: { headers: { Authorization: `Bearer ${req.accessToken}` } }
+    });
+
+    const { error } = await userSupabase
       .from('profiles')
       .update(filteredData)
       .eq('id', userId);
@@ -252,8 +302,7 @@ export const handleUpdateProfile = async (req: AuthRequest, res: Response) => {
     res.json({ success: true });
   } catch (error: unknown) {
     console.error("Profile Update Error:", error);
-    const msg = error instanceof Error ? error.message : "Profile update failed.";
-    res.status(500).json({ error: msg });
+    res.status(500).json({ error: safeErrorMessage(error, "Profile update failed.") });
   }
 };
 
@@ -269,6 +318,8 @@ export const handleSubscribe = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "Invalid subscription type" });
     }
 
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
+
     const { data: profile, error: fetchError } = await supabaseAdmin
       .from('profiles')
       .select('subscription_type, role')
@@ -277,7 +328,10 @@ export const handleSubscribe = async (req: AuthRequest, res: Response) => {
 
     if (fetchError) {
       console.error(`[handleSubscribe] Error fetching profile:`, fetchError);
-      return res.status(404).json({ error: "User profile not found", details: fetchError });
+      return res.status(404).json({ 
+        error: "User profile not found", 
+        ...(process.env.NODE_ENV === "development" ? { details: fetchError } : {})
+      });
     }
     if (!profile) {
       console.error(`[handleSubscribe] No profile found for id: ${userId}`);
@@ -303,9 +357,8 @@ export const handleSubscribe = async (req: AuthRequest, res: Response) => {
     if (rpcError) {
       console.error("RPC Error (activate_trial_v2) - System Error:", rpcError);
       return res.status(500).json({ 
-        error: "Database RPC error", 
-        details: rpcError.message,
-        code: rpcError.code 
+        error: process.env.NODE_ENV === "development" ? "Database RPC error" : "İşlem sırasında beklenmeyen bir hata oluştu.", 
+        ...(process.env.NODE_ENV === "development" ? { details: rpcError.message, code: rpcError.code } : {})
       });
     }
 
@@ -313,7 +366,7 @@ export const handleSubscribe = async (req: AuthRequest, res: Response) => {
       console.warn("Trial Activation Failed (Business Logic):", rpcResult.error, rpcResult.detail);
       return res.status(400).json({ 
         error: rpcResult.error,
-        detail: rpcResult.detail 
+        ...(process.env.NODE_ENV === "development" && rpcResult.detail ? { detail: rpcResult.detail } : {})
       });
     }
 
@@ -321,33 +374,34 @@ export const handleSubscribe = async (req: AuthRequest, res: Response) => {
     res.json({ success: true, tier: 'pro', endDate });
   } catch (error: unknown) {
     console.error("Subscription Error:", error);
-    const msg = error instanceof Error ? error.message : "Abonelik hatası";
-    res.status(500).json({ error: msg });
+    res.status(500).json({ error: safeErrorMessage(error, "Abonelik hatası") });
   }
 };
 
 export const handleAdminUpdateUser = async (req: AuthRequest, res: Response) => {
   try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
     const { id, data } = req.body;
-    const adminId = req.user.id;
-
-    const { data: adminProfile, error: adminError } = await supabaseAdmin
-      .from('profiles')
-      .select('role')
-      .eq('id', adminId)
-      .single();
-
-    if (adminError || adminProfile?.role !== 'admin') {
-      return res.status(403).json({ error: "Unauthorized: Admin access required" });
-    }
 
     if (!id || !data) {
       return res.status(400).json({ error: "Missing id or data" });
     }
 
+    const ADMIN_UPDATE_ALLOWLIST = ['display_name', 'phone', 'role', 'subscription_type', 'subscription_end_date', 'tier', 'broker_level', 'avatar_url', 'city', 'district', 'region', 'is_active'];
+    const filteredData: Record<string, unknown> = {};
+    Object.keys(data).forEach(key => {
+      if (ADMIN_UPDATE_ALLOWLIST.includes(key)) {
+        filteredData[key] = data[key];
+      }
+    });
+
+    if (Object.keys(filteredData).length === 0) {
+      return res.status(400).json({ error: "No valid fields to update" });
+    }
+
     const { error } = await supabaseAdmin
       .from('profiles')
-      .update(data)
+      .update(filteredData)
       .eq('id', id);
 
     if (error) throw error;
@@ -355,25 +409,14 @@ export const handleAdminUpdateUser = async (req: AuthRequest, res: Response) => 
     res.json({ success: true });
   } catch (error: unknown) {
     console.error("Admin Update Error:", error);
-    const msg = error instanceof Error ? error.message : "Güncelleme hatası";
-    res.status(500).json({ error: msg });
+    res.status(500).json({ error: safeErrorMessage(error, "Güncelleme hatası") });
   }
 };
 
 export const handleAdminDeleteUser = async (req: AuthRequest, res: Response) => {
   try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
     const { id } = req.body;
-    const adminId = req.user.id;
-
-    const { data: adminProfile, error: adminError } = await supabaseAdmin
-      .from('profiles')
-      .select('role')
-      .eq('id', adminId)
-      .single();
-
-    if (adminError || adminProfile?.role !== 'admin') {
-      return res.status(403).json({ error: "Unauthorized: Admin access required" });
-    }
 
     if (!id) {
       return res.status(400).json({ error: "Missing id" });
@@ -386,25 +429,13 @@ export const handleAdminDeleteUser = async (req: AuthRequest, res: Response) => 
     res.json({ success: true });
   } catch (error: unknown) {
     console.error("Admin Delete User Error:", error);
-    const msg = error instanceof Error ? error.message : "Silme hatası";
-    res.status(500).json({ error: msg });
+    res.status(500).json({ error: safeErrorMessage(error, "Silme hatası") });
   }
 };
 
 export const handleAdminGetUsers = async (req: AuthRequest, res: Response) => {
   try {
-    const adminId = req.user.id;
-
-    const { data: adminProfile, error: adminError } = await supabaseAdmin
-      .from('profiles')
-      .select('role')
-      .eq('id', adminId)
-      .single();
-
-    if (adminError || adminProfile?.role !== 'admin') {
-      return res.status(403).json({ error: "Unauthorized: Admin access required" });
-    }
-
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
     const { data, error } = await supabaseAdmin
       .from('profiles')
       .select('*')
@@ -415,25 +446,13 @@ export const handleAdminGetUsers = async (req: AuthRequest, res: Response) => {
     res.json(data);
   } catch (error: unknown) {
     console.error("Admin Get Users Error:", error);
-    const msg = error instanceof Error ? error.message : "Get users hatası";
-    res.status(500).json({ error: msg });
+    res.status(500).json({ error: safeErrorMessage(error, "Get users hatası") });
   }
 };
 
 export const handleAdminGetSettings = async (req: AuthRequest, res: Response) => {
   try {
-    const adminId = req.user.id;
-
-    const { data: adminProfile, error: adminError } = await supabaseAdmin
-      .from('profiles')
-      .select('role')
-      .eq('id', adminId)
-      .single();
-
-    if (adminError || adminProfile?.role !== 'admin') {
-      return res.status(403).json({ error: "Unauthorized: Admin access required" });
-    }
-
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
     const { data, error } = await supabaseAdmin
       .from('global_settings')
       .select('*')
@@ -445,13 +464,13 @@ export const handleAdminGetSettings = async (req: AuthRequest, res: Response) =>
     res.json(data || {});
   } catch (error: unknown) {
     console.error("Admin Get Settings Error:", error);
-    const msg = error instanceof Error ? error.message : "Get settings hatası";
-    res.status(500).json({ error: msg });
+    res.status(500).json({ error: safeErrorMessage(error, "Get settings hatası") });
   }
 };
 
 export const handleEarnXP = async (req: AuthRequest, res: Response) => {
   try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
     const { actionType, taskId, leadId, propertyId, sessionId, stats } = req.body;
     const userId = req.user.id;
     const today = new Date().toISOString().split('T')[0];
@@ -475,31 +494,20 @@ export const handleEarnXP = async (req: AuthRequest, res: Response) => {
     if (rpcError) throw rpcError;
 
     if (!rpcResult.success) {
-      return res.status(400).json({ error: rpcResult.error });
+      return res.status(400).json({ error: rpcResult.error || "XP kazanılamadı" });
     }
 
     res.json(rpcResult);
   } catch (error: unknown) {
     console.error("Earn XP Error:", error);
-    const msg = error instanceof Error ? error.message : "Earn XP hatası";
-    res.status(500).json({ error: msg });
+    res.status(500).json({ error: safeErrorMessage(error, "Earn XP hatası") });
   }
 };
 
 export const handleUpdateGlobalSettings = async (req: AuthRequest, res: Response) => {
   try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
     const { settings } = req.body;
-    const adminId = req.user.id;
-
-    const { data: adminProfile, error: adminError } = await supabaseAdmin
-      .from('profiles')
-      .select('role')
-      .eq('id', adminId)
-      .single();
-
-    if (adminError || adminProfile?.role !== 'admin') {
-      return res.status(403).json({ error: "Unauthorized: Admin access required" });
-    }
 
     if (!settings) {
       return res.status(400).json({ error: "Missing settings" });
@@ -518,7 +526,6 @@ export const handleUpdateGlobalSettings = async (req: AuthRequest, res: Response
     res.json({ success: true });
   } catch (error: unknown) {
     console.error("Global Settings Update Error:", error);
-    const msg = error instanceof Error ? error.message : "Global ayarlar güncelleme hatası";
-    res.status(500).json({ error: msg });
+    res.status(500).json({ error: safeErrorMessage(error, "Global ayarlar güncelleme hatası") });
   }
 };
