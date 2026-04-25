@@ -5,7 +5,7 @@ import { api } from '../services/api';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { DashboardView } from '../components/DashboardView';
 import { useRevenueStats } from '../hooks/useRevenueStats';
-import { UserProfile, Property, GamifiedTask, Task, PersonalTask, RescueSession, MissedOpportunity, MutationResult } from '../types';
+import { UserProfile, Property, GamifiedTask, Task, PersonalTask, RescueSession, MissedOpportunity, MutationResult, Lead } from '../types';
 
 interface DashboardPageProps {
   profile: UserProfile | null;
@@ -24,6 +24,8 @@ interface DashboardPageProps {
   setShowMissedOpportunities: (show: boolean) => void;
   setToast: (toast: { message: string, type: 'success' | 'error' | 'info' } | null) => void;
   completeMorningRitualMutation: MutationResult<void, { morning_notes: string }>;
+  setSelectedLead: (val: Lead | null) => void;
+  setSelectedProperty: (val: Property | null) => void;
 }
 
 export const DashboardPage: React.FC<DashboardPageProps> = ({
@@ -42,7 +44,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   setShowDayCloser,
   setShowMissedOpportunities,
   setToast,
-  completeMorningRitualMutation
+  completeMorningRitualMutation,
+  setSelectedLead,
+  setSelectedProperty
 }) => {
   const queryClient = useQueryClient();
 
@@ -244,6 +248,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       dailyPlan={dailyPlan}
       dayClosure={dayClosure}
       weeklyReports={weeklyReports}
+      setSelectedLead={setSelectedLead}
+      setSelectedProperty={setSelectedProperty}
     />
   );
 };

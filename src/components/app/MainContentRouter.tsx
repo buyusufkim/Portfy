@@ -175,6 +175,8 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
           setShowMissedOpportunities={utilities.setShowMissedOpportunities}
           setToast={utilities.setToast}
           completeMorningRitualMutation={utilities.completeMorningRitualMutation}
+          setSelectedLead={leads.setSelectedLead}
+          setSelectedProperty={portfolios.setSelectedProperty}
         />
       )}
       {navigation.activeTab === 'bolgem' && (
