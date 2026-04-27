@@ -5,7 +5,8 @@ import { api } from '../services/api';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { DashboardView } from '../components/DashboardView';
 import { useRevenueStats } from '../hooks/useRevenueStats';
-import { UserProfile, Property, GamifiedTask, Task, PersonalTask, RescueSession, MissedOpportunity, MutationResult, Lead } from '../types';
+import { getTodayStr } from '../services/core/utils';
+import { UserProfile, Property, GamifiedTask, Task, PersonalTask, RescueSession, MissedOpportunity, MutationResult, Lead, DailyPlan } from '../types';
 
 interface DashboardPageProps {
   profile: UserProfile | null;
@@ -23,7 +24,7 @@ interface DashboardPageProps {
   setShowDayCloser: (show: boolean) => void;
   setShowMissedOpportunities: (show: boolean) => void;
   setToast: (toast: { message: string, type: 'success' | 'error' | 'info' } | null) => void;
-  completeMorningRitualMutation: MutationResult<void, { morning_notes: string }>;
+  completeMorningRitualMutation: MutationResult<{ success: boolean; }, Partial<DailyPlan>>;
   setSelectedLead: (val: Lead | null) => void;
   setSelectedProperty: (val: Property | null) => void;
 }
@@ -129,7 +130,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     },
     onSuccess: () => {
       if (profile?.id) {
-        const todayISO = new Date().toISOString().split('T')[0];
+        const todayISO = getTodayStr();
         localStorage.setItem(`day_started_${profile.id}_${todayISO}`, new Date().toISOString());
       }
       // Invalidate all relevant queries to sync UI
@@ -144,7 +145,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       // If the error indicates it was already started, we should sync local state
       if (error.message?.includes("already awarded") || error.message?.includes("already started")) {
         if (profile?.id) {
-          const todayISO = new Date().toISOString().split('T')[0];
+          const todayISO = getTodayStr();
           localStorage.setItem(`day_started_${profile.id}_${todayISO}`, new Date().toISOString());
         }
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.id] });

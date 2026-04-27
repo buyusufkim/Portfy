@@ -85,10 +85,16 @@ export const leadService = {
 
     try {
       // 3. AI ÇAĞRISI (Backend'deki model adıyla uyumlu olmalı)
-      const response: any = await generateContent(
+      interface AILeadAnalysis {
+        ozet?: string;
+        sicak_musteriler?: string[];
+        aksiyon_plani?: string[];
+      }
+
+      const response = await generateContent(
         "gemini-2.0-flash", 
         prompt
-      );
+      ) as AILeadAnalysis;
 
       // 4. JSON OBJESİNİ EKRANDA GÖSTERİLECEK METNE ÇEVİR
       // (response.text kullanmıyoruz çünkü artık direkt obje geliyor)

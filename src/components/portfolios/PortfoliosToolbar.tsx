@@ -13,6 +13,10 @@ interface PortfoliosToolbarProps {
   setSelectedDistrict: (district: string) => void;
   selectedStatus?: string;
   setSelectedStatus?: (status: string) => void;
+  categoryFilter?: 'all' | 'Satılık' | 'Kiralık';
+  setCategoryFilter?: (filter: 'all' | 'Satılık' | 'Kiralık') => void;
+  lifecycleFilter?: 'all' | 'active' | 'completed' | 'archived';
+  setLifecycleFilter?: (filter: 'all' | 'active' | 'completed' | 'archived') => void;
   regionScores: RegionEfficiencyScore[];
   setShowImportUrlModal: (show: boolean) => void;
   onOpenSmartMatch: () => void;
@@ -27,6 +31,10 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
   setSelectedDistrict,
   selectedStatus = 'all',
   setSelectedStatus,
+  categoryFilter = 'all',
+  setCategoryFilter,
+  lifecycleFilter = 'active',
+  setLifecycleFilter,
   regionScores,
   setShowImportUrlModal,
   onOpenSmartMatch,
@@ -41,7 +49,7 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
 
   // Eşleşen portföy sayısını hesapla
   const matchCount = useMemo(() => {
-    const activeProperties = properties.filter(p => !['Satıldı', 'Pasif'].includes(p.status));
+    const activeProperties = properties.filter(p => !['Satıldı', 'Kiralandı', 'Pasif'].includes(p.status));
     const activeLeads = leads.filter(l => !['Pasif'].includes(l.status) && ['Alıcı', 'Yatırımcı', 'Aday'].includes(l.type));
 
     const matches = activeProperties.filter(property => {
@@ -54,8 +62,21 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
     return matches.length;
   }, [properties, leads]);
 
-  const hasActiveFilters = searchQuery !== '' || selectedDistrict !== 'all' || (viewMode === 'list' && selectedStatus !== 'all');
-  const statuses = ['Yeni', 'Hazırlanıyor', 'Yayında', 'İlgi Var', 'Pazarlık', 'Satıldı'];
+  const hasActiveFilters = searchQuery !== '' || selectedDistrict !== 'all' || (viewMode === 'list' && selectedStatus !== 'all') || categoryFilter !== 'all' || lifecycleFilter !== 'active';
+  const statuses = ['Yeni', 'Hazırlanıyor', 'Yayında', 'İlgi Var', 'Pazarlık', 'Satıldı', 'Kiralandı', 'Pasif'];
+
+  const handleStatusChange = (status: string) => {
+    setSelectedStatus?.(status);
+
+    if (status === 'all') return;
+    if (['Yeni', 'Hazırlanıyor', 'Yayında', 'İlgi Var', 'Pazarlık'].includes(status)) {
+      setLifecycleFilter?.('active');
+    } else if (['Satıldı', 'Kiralandı'].includes(status)) {
+      setLifecycleFilter?.('completed');
+    } else if (status === 'Pasif') {
+      setLifecycleFilter?.('archived');
+    }
+  };
 
   return (
     <div className="p-6 pb-2 space-y-4 bg-white border-b border-slate-100">
@@ -102,6 +123,49 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
       </div>
       
       <div className="space-y-4">
+        {/* İşlem Tipi ve Yaşam Durumu Filtreleri */}
+        <div className="flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center">
+          <div className="flex bg-slate-100 p-1 rounded-2xl w-full sm:w-auto">
+            {(['all', 'Satılık', 'Kiralık'] as const).map(cat => (
+              <button
+                key={cat}
+                onClick={() => setCategoryFilter?.(cat)}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold transition-all ${
+                  categoryFilter === cat 
+                    ? 'bg-white text-slate-900 shadow-sm' 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {cat === 'all' ? 'Tümü' : cat}
+              </button>
+            ))}
+          </div>
+
+          <div className="flex bg-slate-100 p-1 rounded-2xl w-full sm:w-auto overflow-x-auto no-scrollbar">
+            {[
+              { id: 'active', label: 'Aktif' },
+              { id: 'completed', label: 'Tamamlanan' },
+              { id: 'archived', label: 'Pasif/Arşiv' },
+              { id: 'all', label: 'Tümü' }
+            ].map(life => (
+              <button
+                key={life.id}
+                onClick={() => {
+                  setLifecycleFilter?.(life.id as 'all' | 'active' | 'completed' | 'archived');
+                  setSelectedStatus?.('all');
+                }}
+                className={`flex-1 sm:flex-none px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
+                  lifecycleFilter === life.id 
+                    ? 'bg-orange-600 text-white shadow-md shadow-orange-500/20' 
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                {life.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         {/* Arama ve Filtre - Responsive Layout */}
         <div className="flex flex-col md:flex-row gap-3">
           <div className="flex-1 relative">
@@ -122,7 +186,7 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
               </div>
               <select 
                 value={selectedStatus}
-                onChange={(e) => setSelectedStatus?.(e.target.value)}
+                onChange={(e) => handleStatusChange(e.target.value)}
                 className="w-full appearance-none bg-slate-100 border-none rounded-2xl py-3 pl-10 pr-10 text-sm font-medium text-slate-700 outline-none focus:ring-2 focus:ring-orange-500 cursor-pointer transition-shadow"
               >
                 <option value="all">Tüm Durumlar</option>
@@ -177,6 +241,22 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
                 </button>
               </span>
             )}
+            {categoryFilter !== 'all' && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-indigo-50 text-indigo-700 border border-indigo-100">
+                {categoryFilter}
+                <button onClick={() => setCategoryFilter?.('all')} className="hover:text-indigo-900 transition-colors">
+                  <X size={12} />
+                </button>
+              </span>
+            )}
+            {lifecycleFilter !== 'active' && (
+              <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-100">
+                {lifecycleFilter === 'completed' ? 'Tamamlanan' : lifecycleFilter === 'archived' ? 'Pasif/Arşiv' : 'Tümü'}
+                <button onClick={() => { setLifecycleFilter?.('active'); setSelectedStatus?.('all'); }} className="hover:text-emerald-900 transition-colors">
+                  <X size={12} />
+                </button>
+              </span>
+            )}
             {viewMode === 'list' && selectedStatus !== 'all' && (
               <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-semibold bg-orange-50 text-orange-700 border border-orange-100">
                 {selectedStatus}
@@ -186,7 +266,13 @@ export const PortfoliosToolbar: React.FC<PortfoliosToolbarProps> = ({
               </span>
             )}
             <button 
-              onClick={() => { setSearchQuery(''); setSelectedDistrict('all'); setSelectedStatus?.('all'); }}
+              onClick={() => { 
+                setSearchQuery(''); 
+                setSelectedDistrict('all'); 
+                setSelectedStatus?.('all'); 
+                setCategoryFilter?.('all');
+                setLifecycleFilter?.('active');
+              }}
               className="text-[10px] font-bold text-slate-500 hover:text-slate-700 underline underline-offset-2 ml-2 transition-colors"
             >
               Filtreleri Sıfırla

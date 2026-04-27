@@ -1,4 +1,4 @@
-import { supabase } from '../../lib/supabase';
+import { supabase } from "../../lib/supabase";
 
 // Cache user ID to avoid concurrent getUser() calls which cause "lock stolen" errors
 let _cachedUserId: string | null = null;
@@ -14,17 +14,24 @@ supabase.auth.onAuthStateChange((event, session) => {
 
 export const getUserId = async () => {
   if (_cachedUserId) return _cachedUserId;
-  const { data: { session } } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   if (session?.user) {
     _cachedUserId = session.user.id;
     return _cachedUserId;
   }
   // Fallback to getUser if session is not available but might be valid
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
   _cachedUserId = user?.id || null;
   return _cachedUserId;
 };
 
-export const getTodayStr = () => {
-  return new Date().toISOString().split('T')[0];
+export const getTodayStr = (d = new Date()) => {
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
 };

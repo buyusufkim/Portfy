@@ -1,9 +1,9 @@
 import React from 'react';
 import { AnimatePresence } from 'motion/react';
 import { DashboardPage } from '../../pages/DashboardPage';
+import { TasksPage } from '../../pages/TasksPage';
 import { PortfoliosPage } from '../../pages/PortfoliosPage';
 import { CRMPage } from '../../pages/CRMPage';
-import { NotesView } from '../NotesView';
 import { ProfilView } from '../ProfilView';
 import { CoachView } from './CoachView';
 import { LoadingFallback } from './LoadingFallback';
@@ -27,7 +27,8 @@ import {
   Building,
   MutationResult,
   RegionEfficiencyScore,
-  Category
+  Category,
+  DailyPlan
 } from '../../types';
 
 export interface NavigationProps {
@@ -80,9 +81,9 @@ export interface PortfolioProps {
   selectedProperty: Property | null;
   brokerAccount: BrokerAccount | null;
   externalListings: ExternalListing[];
-  syncListingsMutation: MutationResult<any, any>;
-  linkPropertyMutation: MutationResult<any, any>;
-  connectIntegrationMutation: MutationResult<any, any>;
+  syncListingsMutation: MutationResult<ExternalListing[], void>;
+  linkPropertyMutation: MutationResult<unknown, unknown>;
+  connectIntegrationMutation: MutationResult<unknown, unknown>;
   showAddProperty: boolean;
   setShowAddProperty: (val: boolean) => void;
   showImportUrlModal: boolean;
@@ -101,12 +102,12 @@ export interface PortfolioProps {
 export interface UtilityProps {
   showAddVisit: boolean;
   setShowAddVisit: (val: boolean) => void;
-  addVisitMutation: MutationResult<any, any>;
+  addVisitMutation: MutationResult<unknown, Omit<Building, "id" | "user_id">>;
   tasks: Task[];
   fieldVisits: Building[];
   rescueSession: RescueSession | null;
-  cancelRescueMutation: MutationResult<any, any>;
-  completeRescueTaskMutation: MutationResult<any, any>;
+  cancelRescueMutation: MutationResult<unknown, unknown>;
+  completeRescueTaskMutation: MutationResult<unknown, unknown>;
   showMissedOpportunities: boolean;
   setShowMissedOpportunities: (val: boolean) => void;
   missedOpportunities: MissedOpportunity[];
@@ -115,7 +116,7 @@ export interface UtilityProps {
   setShowDailyRadar: (val: boolean) => void;
   setShowDayCloser: (val: boolean) => void;
   setToast: (toast: { message: string, type: 'success' | 'error' | 'info' } | null) => void;
-  completeMorningRitualMutation: MutationResult<any, any>;
+  completeMorningRitualMutation: MutationResult<{ success: boolean; }, Partial<DailyPlan>>;
   tasksLoading: boolean;
   tasksError: boolean;
   showVoiceQuickAdd: boolean;
@@ -123,6 +124,7 @@ export interface UtilityProps {
   showAddTask: boolean;
   setShowAddTask: (val: boolean) => void;
   addTaskMutation: MutationResult<string, Omit<Task, 'id' | 'user_id'>>;
+  addPersonalTaskMutation: MutationResult<string, Omit<PersonalTask, 'id' | 'user_id' | 'created_at'>>;
   setActiveTab: (tab: string) => void;
   leads: Lead[];
   properties: Property[];
@@ -179,6 +181,14 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
           setSelectedProperty={portfolios.setSelectedProperty}
         />
       )}
+      {navigation.activeTab === 'tasks' && (
+        <TasksPage 
+          profile={navigation.profile}
+          tasks={utilities.tasks || []}
+          personalTasks={utilities.personalTasks || []}
+          setShowAddTask={utilities.setShowAddTask}
+        />
+      )}
       {navigation.activeTab === 'bolgem' && (
         <React.Suspense fallback={<LoadingFallback />}>
           <BolgemView 
@@ -216,7 +226,6 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
           setSelectedLead={leads.setSelectedLead}
         />
       )}
-      {navigation.activeTab === 'notes' && <NotesView />}
       {navigation.activeTab === 'profil' && (
         <ProfilView 
           profile={navigation.profile}

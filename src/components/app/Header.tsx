@@ -14,10 +14,10 @@ export const Header = ({
     <div className="flex flex-col">
       <h1 className="text-xl font-bold text-slate-900">
         {activeTab === 'dashboard' && 'Hoş Geldin, ' + (profile?.display_name?.split(' ')[0] || 'Danışman')}
+        {activeTab === 'tasks' && 'Günlük Akış'}
         {activeTab === 'bolgem' && 'Bölge Analizi'}
         {activeTab === 'portfoyler' && 'Portföylerim'}
         {activeTab === 'crm' && 'Müşteri Yönetimi'}
-        {activeTab === 'notes' && 'Notlarım'}
         {activeTab === 'profil' && 'Profilim'}
         {activeTab === 'koc' && 'Yapay Zeka Koçu'}
       </h1>

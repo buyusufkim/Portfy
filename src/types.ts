@@ -4,7 +4,7 @@ export interface WeeklyReport {
   id: string;
   user_id: string;
   week_start_date: string;
-  metrics: Record<string, any>;
+  metrics: Record<string, unknown>;
   generated_at: string;
 }
 
@@ -42,7 +42,7 @@ export interface TerritoryPlan {
   priority_score?: number;
   visit_target?: number;
   week_start_date?: string;
-  boundaries: Record<string, any>;
+  boundaries: Record<string, unknown>;
   strategy_notes: string;
   status: string;
 }
@@ -52,9 +52,11 @@ export interface Referral {
   user_id: string;
   referrer_name: string;
   referred_name: string;
+  referred_email?: string;
   contact_info: string;
   status: string;
   reward_status: string;
+  created_at?: string;
 }
 
 export interface UserActivation {
@@ -127,6 +129,16 @@ export interface UserProfile {
   tier: 'free' | 'pro' | 'elite' | 'master' | 'trial';
   ai_tokens_used: number;
   ai_token_limit?: number;
+  title?: string;
+  company_name?: string;
+  whatsapp?: string;
+  instagram?: string;
+  website?: string;
+  expertise_areas?: string[];
+  working_style?: string[];
+  preferred_start_time?: string;
+  ai_coach_tone?: string;
+  notification_preference?: string;
 }
 
 export interface GlobalSettings {
@@ -172,7 +184,7 @@ export interface TaskTemplate {
 export interface SystemSettings {
   id?: number | string;
   key: string;
-  value: any;
+  value: unknown;
   description?: string;
   whatsapp_number?: string;
 }
@@ -190,6 +202,13 @@ export interface Lead {
   notes: string;
   property_id?: string;
   created_at?: string;
+  relationship_level?: string;
+  potential?: string;
+  source?: string;
+  metadata?: Record<string, unknown>;
+  region_pin_id?: string;
+  next_follow_up_date?: string;
+  last_contact_date?: string;
   behavior_metrics?: {
     total_views: number;
     avg_duration: number;
@@ -213,12 +232,14 @@ export interface Task {
   time: string;
   due_date?: string;
   notes?: string;
-  type: 'Arama' | 'Randevu' | 'Saha' | 'Takip' | 'Güncelleme' | 'Sosyal Medya';
+  type: 'Arama' | 'Randevu' | 'Saha' | 'Saha/Bölge' | 'Takip' | 'Güncelleme' | 'Sosyal Medya' | string;
   completed: boolean;
   requires_call?: boolean;
   is_drip?: boolean;
   ai_suggestion?: string;
   drip_type?: string;
+  source?: string;
+  metadata?: Record<string, unknown>;
 }
 
 export interface Property {
@@ -229,7 +250,7 @@ export interface Property {
   category: 'Satılık' | 'Kiralık';
   price: number;
   commission_rate: number;
-  status: 'Yeni' | 'Hazırlanıyor' | 'Yayında' | 'İlgi Var' | 'Pazarlık' | 'Satıldı' | 'Pasif';
+  status: 'Yeni' | 'Hazırlanıyor' | 'Yayında' | 'İlgi Var' | 'Pazarlık' | 'Satıldı' | 'Kiralandı' | 'Pasif';
   unsold_reason?: string;
   address: {
     city: string;
@@ -239,11 +260,11 @@ export interface Property {
     lng?: number;
   };
   details: {
-    brut_m2: number;
-    net_m2: number;
+    brut_m2?: number;
+    net_m2?: number;
     rooms: string;
-    age: number;
-    floor: number;
+    age?: number;
+    floor?: number;
     totalFloors?: number;
   };
   owner: {
@@ -357,6 +378,16 @@ export interface MapPin {
   address: string;
   notes: string;
   created_at: string;
+  kind?: RegionRecordKind;
+  contact_name?: string;
+  phone?: string;
+  relationship_level?: 'Soğuk Temas' | 'Tanışıldı' | 'Güven Oluşuyor' | 'Aktif Referans Kaynağı' | 'VIP Network';
+  last_contact_date?: string;
+  next_contact_date?: string;
+  followup_date?: string;
+  potential?: 'Düşük' | 'Orta' | 'Yüksek' | 'Sıcak';
+  add_to_crm?: boolean;
+  crm_lead_id?: string;
 }
 
 export interface DashboardStats {
@@ -409,6 +440,7 @@ export interface ExternalListing {
   url: string;
   district: string;
   last_sync: string;
+  imageUrl?: string;
 }
 
 export interface PropertySyncLink {
@@ -512,7 +544,7 @@ export interface MissedOpportunity {
 
 export interface VoiceParseAction {
   type: 'lead' | 'task' | 'note';
-  payload: any;
+  payload: Record<string, unknown>;
   explanation: string;
 }
 
@@ -553,6 +585,20 @@ export interface RegionEfficiencyScore {
   sales?: number;
 }
 
+export type RegionRecordKind = 'network_contact' | 'region_point';
+
+export interface RegionCategory {
+  id: string;
+  user_id?: string;
+  name: string;
+  label?: string; // For backward compatibility with existing Category
+  kind: RegionRecordKind;
+  icon: string | React.ElementType;
+  color: string;
+  is_default?: boolean;
+  auto_add_to_crm?: boolean;
+}
+
 export interface Category {
   id: string;
   label: string;
@@ -572,12 +618,12 @@ export interface WhatsAppAnalysis {
   confidence_score: number;
 }
 
-export interface MutationResult<TData = any, TVariables = void> {
+export interface MutationResult<TData = unknown, TVariables = void> {
   mutate: TVariables extends void ? () => void : (variables: TVariables) => void;
   mutateAsync: TVariables extends void ? () => Promise<TData> : (variables: TVariables) => Promise<TData>;
   isPending: boolean;
   isSuccess: boolean;
-  error: any;
+  error: unknown;
   variables?: TVariables;
   data?: TData;
 }
@@ -602,6 +648,8 @@ export interface PersonalTask {
   completed_at?: string;
   created_at: string;
   priority: 'low' | 'medium' | 'high';
+  notes?: string;
+  due_date?: string;
   reminder_time?: string;
   notified?: boolean;
 }

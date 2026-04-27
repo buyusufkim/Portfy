@@ -3,13 +3,14 @@ import { supabase } from '../lib/supabase';
 import { leadService } from './leadService';
 import { propertyService } from './propertyService';
 import { gamificationService } from './gamificationService';
+import { getTodayStr } from './core/utils';
 
 export const rescueService = {
   getRescueSession: async (): Promise<RescueSession | null> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
     const agentId = user.id;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayStr();
 
     const { data } = await supabase
       .from('rescue_sessions')
@@ -25,7 +26,7 @@ export const rescueService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
     const agentId = user.id;
-    const today = new Date().toISOString().split('T')[0];
+    const today = getTodayStr();
 
     // Fetch some candidates for tasks
     const leads = await leadService.getLeads();

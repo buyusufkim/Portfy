@@ -1,14 +1,15 @@
-import { CoachInsight, PersonalTask, GamifiedTask, Task } from '../types';
+import { CoachInsight, PersonalTask, GamifiedTask, Task } from "../types";
 import { AICoachResponse, AICoachAction } from "../types/ai";
 import { AI_COACH_SCHEMA, buildCoachPrompt } from "../lib/aiPromptBuilder";
-import { supabase } from '../lib/supabase';
-import { leadService } from './leadService';
-import { taskService } from './taskService';
-import { missedOpportunityService } from './missedOpportunityService';
-import { propertyService } from './propertyService';
-import { profileService } from './profileService';
-import { gamificationService } from './gamificationService';
-import { generateContent } from '../lib/aiClient';
+import { supabase } from "../lib/supabase";
+import { leadService } from "./leadService";
+import { taskService } from "./taskService";
+import { missedOpportunityService } from "./missedOpportunityService";
+import { propertyService } from "./propertyService";
+import { profileService } from "./profileService";
+import { gamificationService } from "./gamificationService";
+import { generateContent } from "../lib/aiClient";
+import { getTodayStr } from "./core/utils";
 
 export const coachService = {
   /**
@@ -16,40 +17,41 @@ export const coachService = {
    * Used in the dedicated AI Coach Panel (Premium feature).
    */
   getDetailedInsight: async (): Promise<AICoachResponse> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
 
-    const [profile, leads, properties, tasks, missedOpportunities] = await Promise.all([
-      profileService.getProfile(),
-      leadService.getLeads(),
-      propertyService.getProperties(),
-      taskService.getTasks(),
-      missedOpportunityService.getMissedOpportunities()
-    ]);
+    const [profile, leads, properties, tasks, missedOpportunities] =
+      await Promise.all([
+        profileService.getProfile(),
+        leadService.getLeads(),
+        propertyService.getProperties(),
+        taskService.getTasks(),
+        missedOpportunityService.getMissedOpportunities(),
+      ]);
 
     const prompt = buildCoachPrompt({
       profile,
       leads,
       properties,
       tasks,
-      missedOpportunities
+      missedOpportunities,
     });
 
     try {
-      const response: any = await generateContent(
-        "gemini-2.0-flash",
-        prompt,
-        {
-          // @ts-ignore
-          responseSchema: AI_COACH_SCHEMA,
-          responseMimeType: "application/json"
-        }
-      );
+      const response: any = await generateContent("gemini-2.0-flash", prompt, {
+        // @ts-ignore
+        responseSchema: AI_COACH_SCHEMA,
+        responseMimeType: "application/json",
+      });
 
       return response as AICoachResponse;
     } catch (error) {
       console.error("AI Coach Service Error:", error);
-      throw new Error("AI Koç şu an ulaşılamıyor. Lütfen daha sonra tekrar deneyin.");
+      throw new Error(
+        "AI Koç şu an ulaşılamıyor. Lütfen daha sonra tekrar deneyin.",
+      );
     }
   },
 
@@ -58,20 +60,23 @@ export const coachService = {
    * Used in the main Dashboard view.
    */
   getSimpleInsight: async (): Promise<CoachInsight> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('Not authenticated');
-    
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    if (!user) throw new Error("Not authenticated");
+
     const [leads, tasks, missedOpps] = await Promise.all([
       leadService.getLeads(),
       taskService.getTasks(),
-      missedOpportunityService.getMissedOpportunities()
+      missedOpportunityService.getMissedOpportunities(),
     ]);
 
-    const completedTasks = tasks.filter(t => t.completed).length;
+    const completedTasks = tasks.filter((t) => t.completed).length;
     const totalTasks = tasks.length;
-    const taskCompletionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
-    
-    const activeLeads = leads.filter(l => l.status !== 'Pasif').length;
+    const taskCompletionRate =
+      totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+
+    const activeLeads = leads.filter((l) => l.status !== "Pasif").length;
     const missedCount = missedOpps.length;
 
     const prompt = `Sen Türkiye'de çalışan bireysel gayrimenkul danışmanları için uzman bir "Davranışsal Koç" (Behavioral Coach) yapay zekasısın.
@@ -99,28 +104,25 @@ export const coachService = {
     }`;
 
     try {
-      const response: any = await generateContent(
-        'gemini-2.0-flash',
-        prompt,
-        {
-          responseMimeType: 'application/json',
-        }
-      );
+      const response: any = await generateContent("gemini-2.0-flash", prompt, {
+        responseMimeType: "application/json",
+      });
 
       return response as CoachInsight;
     } catch (error) {
-      console.error('Coach insight error:', error);
+      console.error("Coach insight error:", error);
       return {
         score: 75,
         daily_tip: "Bugün en az 2 eski müşterinizi arayarak durumlarını sorun.",
         strength: {
           title: "Veri Toplayıcı",
-          description: "Sisteme düzenli olarak müşteri ekliyorsunuz."
+          description: "Sisteme düzenli olarak müşteri ekliyorsunuz.",
         },
         weakness: {
           title: "Takip Eksikliği",
-          description: "Eklediğiniz müşterileri arama konusunda gecikmeler yaşıyorsunuz."
-        }
+          description:
+            "Eklediğiniz müşterileri arama konusunda gecikmeler yaşıyorsunuz.",
+        },
       };
     }
   },
@@ -131,9 +133,12 @@ export const coachService = {
    */
   getQuickTip: async (): Promise<string> => {
     const stats = await gamificationService.getGamifiedStats();
-    if (stats.momentum < 40) return "Momentumun düştü, günü kurtarmak için 1 saha ve 1 arama görevi tamamla.";
-    if (stats.tasks_completed_today === 0) return "Bugün en kritik işin 2 sıcak müşteriye dönüş yapmak.";
-    if (stats.daily_progress < 100) return "Harika gidiyorsun! Günü %100 tamamlamak için sadece birkaç görevin kaldı.";
+    if (stats.momentum < 40)
+      return "Momentumun düştü, günü kurtarmak için 1 saha ve 1 arama görevi tamamla.";
+    if (stats.tasks_completed_today === 0)
+      return "Bugün en kritik işin 2 sıcak müşteriye dönüş yapmak.";
+    if (stats.daily_progress < 100)
+      return "Harika gidiyorsun! Günü %100 tamamlamak için sadece birkaç görevin kaldı.";
     return "Mükemmel bir gün! Tüm görevlerini tamamladın, yarın için dinlenmeyi unutma.";
   },
 
@@ -141,19 +146,30 @@ export const coachService = {
    * Converts a recommended AI action into a real task in the system.
    */
   convertActionToTask: async (action: AICoachAction) => {
-    const typeMap: Record<string, Task['type']> = {
-      'call': 'Arama',
-      'visit': 'Saha',
-      'followup': 'Takip',
-      'update': 'Güncelleme',
-      'social': 'Sosyal Medya'
+    const typeMap: Record<string, Task["type"]> = {
+      call: "Arama",
+      visit: "Saha",
+      followup: "Takip",
+      update: "Güncelleme",
+      social: "İçerik",
+      rescue: "Takip",
     };
 
     return taskService.addTask({
       title: action.title,
-      type: typeMap[action.type] || 'Randevu',
+      type: typeMap[action.type] || "Takip",
+      due_date: getTodayStr(),
       time: new Date().toISOString(),
-      completed: false
+      notes: action.description,
+      source: "ai_coach",
+      metadata: {
+        origin: "ai_coach",
+        action_type: action.type,
+        target_id: action.target_id || null,
+        target_name: action.target_name || null,
+        points: action.points,
+      },
+      completed: false,
     });
-  }
+  },
 };

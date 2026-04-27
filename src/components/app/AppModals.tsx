@@ -76,6 +76,7 @@ export const AppModals: React.FC<AppModalsProps> = ({
         showAddTask={utilities.showAddTask}
         setShowAddTask={utilities.setShowAddTask}
         addTaskMutation={utilities.addTaskMutation}
+        addPersonalTaskMutation={utilities.addPersonalTaskMutation}
         leads={utilities.leads || []}
         properties={utilities.properties || []}
         tasks={utilities.tasks || []}

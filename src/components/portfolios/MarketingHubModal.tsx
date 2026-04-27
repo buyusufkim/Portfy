@@ -22,10 +22,21 @@ const Users = ({ size, className }: { size: number, className?: string }) => (
   </svg>
 );
 
+export interface MarketingHubData {
+  summary?: string;
+  targetAudience?: { type: string, reason: string }[];
+  valuePropositions?: string[];
+  channelStrategies?: { channel: string, priority: string, action: string }[];
+  instagram_posts?: unknown[];
+  whatsapp_messages?: unknown[];
+  summaries?: string[];
+  cta_options?: string[];
+}
+
 interface MarketingHubModalProps {
   show: boolean;
   onClose: () => void;
-  marketingHubData: any;
+  marketingHubData: MarketingHubData | null;
   onGenerateListing?: () => void;
   onGenerateInstagram?: () => void;
   onGenerateWhatsApp?: () => void;
@@ -121,7 +132,7 @@ export const MarketingHubModal: React.FC<MarketingHubModalProps> = ({
                   <Users size={18} className="text-blue-600" /> Hedef Kitle Analizi
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {marketingHubData.targetAudience.map((audience: any, i: number) => (
+                  {(marketingHubData.targetAudience || []).map((audience: {type: string; reason: string}, i: number) => (
                     <div key={i} className="p-4 bg-blue-50 rounded-2xl border border-blue-100">
                       <div className="font-bold text-blue-900 text-sm mb-1">{audience.type}</div>
                       <p className="text-[10px] text-blue-700 leading-relaxed">{audience.reason}</p>
@@ -136,7 +147,7 @@ export const MarketingHubModal: React.FC<MarketingHubModalProps> = ({
                   <CheckCircle2 size={18} className="text-emerald-600" /> Öne Çıkan Değerler
                 </h3>
                 <div className="flex flex-wrap gap-2">
-                  {marketingHubData.valuePropositions.map((prop: string, i: number) => (
+                  {(marketingHubData.valuePropositions || []).map((prop: string, i: number) => (
                     <span key={i} className="px-4 py-2 bg-emerald-50 text-emerald-700 rounded-xl text-xs font-medium border border-emerald-100">
                       {prop}
                     </span>
@@ -150,7 +161,7 @@ export const MarketingHubModal: React.FC<MarketingHubModalProps> = ({
                   <Globe size={18} className="text-purple-600" /> Kanal Stratejileri
                 </h3>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {marketingHubData.channelStrategies.map((strategy: any, i: number) => (
+                  {(marketingHubData.channelStrategies || []).map((strategy: {channel: string; priority: string; action: string}, i: number) => (
                     <div key={i} className="p-6 bg-slate-50 rounded-3xl border border-slate-100 space-y-3">
                       <div className="flex items-center justify-between">
                         <div className="font-bold text-slate-900">{strategy.channel}</div>

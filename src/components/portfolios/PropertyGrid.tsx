@@ -28,7 +28,7 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
   blockers = [],
   onResolveBlocker
 }) => {
-  const statuses = ['Yeni', 'Hazırlanıyor', 'Yayında', 'İlgi Var', 'Pazarlık', 'Satıldı'];
+  const statuses = ['Yeni', 'Hazırlanıyor', 'Yayında', 'İlgi Var', 'Pazarlık', 'Satıldı', 'Kiralandı', 'Pasif'];
 
   return (
     <div className="flex-1 overflow-auto bg-slate-50">

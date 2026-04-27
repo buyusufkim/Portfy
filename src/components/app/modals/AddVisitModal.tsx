@@ -7,7 +7,7 @@ import { Building, MutationResult } from '../../../types';
 interface AddVisitModalProps {
   showAddVisit: boolean;
   setShowAddVisit: (val: boolean) => void;
-  addVisitMutation: MutationResult<any, { title: string; address: string; district: string; status: Building['status']; notes: string }>;
+  addVisitMutation: MutationResult<any, Omit<Building, 'id' | 'user_id'>>;
 }
 
 export const AddVisitModal: React.FC<AddVisitModalProps> = ({ 

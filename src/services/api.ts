@@ -195,21 +195,100 @@ export const api = {
       .single();
     if (error) throw error;
 
-    try {
-      await leadService.addLead({
-        name: pin.title,
-        phone: '', 
-        type: pin.type === 'esnaf' ? 'Esnaf' : 'Bölge Kaydı',
-        status: 'Aday',
-        district: '', 
-        notes: `Harita üzerinden otomatik eklendi. Adres: ${pin.address}. Not: ${pin.notes}`,
-        created_at: new Date().toISOString() // EKLENDİ (TS2345 FIX)
-      });
-    } catch (e) {
-      console.warn("CRM registration failed for addMapPin:", e);
+    let crmSuccess = false;
+    let crmError: string | undefined = undefined;
+
+    if (pin.add_to_crm) {
+      try {
+        let status: 'Aday' | 'Sıcak' | 'Yetki Alındı' | 'Pasif' | 'Soğuk' | 'Takipte' | 'Kapalı' = 'Takipte';
+        if (pin.potential === 'Sıcak' || pin.potential === 'Yüksek') status = 'Sıcak';
+        else if (pin.potential === 'Düşük') status = 'Soğuk';
+        
+        const newLead = await leadService.addLead({
+          name: pin.contact_name || pin.title,
+          phone: pin.phone || '', 
+          type: 'Bölge Network',
+          status,
+          district: '', 
+          notes: `[Sistem: Bölgem Radar üzerinden eklendi]\nBağlantı ID: ${data.id}\nPotansiyel: ${pin.potential || 'Belirtilmedi'}\nİlişki: ${pin.relationship_level || 'Atanmadı'}\nAdres: ${pin.address || ''}\n\n${pin.notes || ''}`,
+          next_followup_at: pin.next_contact_date || pin.followup_date || undefined
+        });
+        await api.updateMapPin(data.id, { crm_lead_id: newLead.id });
+        crmSuccess = true;
+      } catch (e) {
+        console.warn("CRM registration failed for addMapPin:", e);
+        crmError = e instanceof Error ? e.message : 'Bilinmeyen hata';
+      }
     }
 
-    return data.id;
+    return { id: data.id, crmSuccess, crmError };
+  },
+
+  convertPinToLead: async (pin: MapPin) => {
+    let status: 'Aday' | 'Sıcak' | 'Yetki Alındı' | 'Pasif' | 'Soğuk' | 'Takipte' | 'Kapalı' = 'Takipte';
+    if (pin.potential === 'Sıcak' || pin.potential === 'Yüksek') status = 'Sıcak';
+    else if (pin.potential === 'Düşük') status = 'Soğuk';
+    
+    const newLead = await leadService.addLead({
+      name: pin.contact_name || pin.title,
+      phone: pin.phone || '', 
+      type: 'Bölge Network',
+      status,
+      district: '', 
+      notes: `[Sistem: Bölgem Radar üzerinden dönüştürüldü]\nBağlantı ID: ${pin.id}\nPotansiyel: ${pin.potential || 'Belirtilmedi'}\nİlişki: ${pin.relationship_level || 'Atanmadı'}\nAdres: ${pin.address || ''}\n\n${pin.notes || ''}`,
+      next_followup_at: pin.next_contact_date || pin.followup_date || undefined
+    });
+    await api.updateMapPin(pin.id, { crm_lead_id: newLead.id });
+  },
+
+  updateMapPin: async (pinId: string, updates: Partial<Omit<MapPin, 'id' | 'user_id' | 'created_at'>>) => {
+    const userId = await getUserId();
+    if (!userId) throw new Error('Not authenticated');
+    const { data, error } = await supabase
+      .from('map_pins')
+      .update(updates)
+      .eq('id', pinId)
+      .eq('user_id', userId)
+      .select()
+      .single();
+    if (error) throw error;
+    return data;
+  },
+
+  addRegionTask: async (pin: MapPin, title: string, dueDate: string) => {
+    const userId = await getUserId();
+    if (!userId) throw new Error('Not authenticated');
+    
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert({
+        user_id: userId,
+        title: title,
+        type: 'Saha/Bölge',
+        priority: pin.potential === 'Sıcak' || pin.potential === 'Yüksek' ? 'high' : 'medium',
+        due_date: dueDate,
+        notes: `Bağlantı: ${pin.title}\nAdres: ${pin.address}\nNot: ${pin.notes || ''}`,
+        source: 'bolgem',
+        metadata: { 
+          region_pin_id: pin.id,
+          contact_name: pin.contact_name || pin.title,
+          category: pin.type,
+          potential: pin.potential,
+          relationship_level: pin.relationship_level
+        }
+      })
+      .select()
+      .single();
+    
+    if (error) throw error;
+
+    if (pin.kind === 'network_contact') {
+      await api.updateMapPin(pin.id, { next_contact_date: dueDate });
+    } else {
+      await api.updateMapPin(pin.id, { followup_date: dueDate });
+    }
+
+    return data;
   },
 
   // Saha Ziyaretleri
@@ -304,5 +383,115 @@ export const api = {
 
   getCoachInsights: coachService.getSimpleInsight,
   getDetailedCoachInsight: coachService.getDetailedInsight,
-  getCompetitorPulse: marketIntelligenceService.getCompetitorPulse
+  getCompetitorPulse: marketIntelligenceService.getCompetitorPulse,
+
+  // Admin V3 Features
+  getAdminUserNotes: async (userId: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/api/ai/admin/user-notes/${userId}`, {
+      headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
+    });
+    if (!response.ok) throw new Error('Notlar çekilemedi');
+    return await response.json();
+  },
+  createAdminUserNote: async (userId: string, note: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/api/ai/admin/user-notes`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+      body: JSON.stringify({ userId, note })
+    });
+    if (!response.ok) throw new Error('Not eklenemedi');
+    return await response.json();
+  },
+  deleteAdminUserNote: async (id: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/api/ai/admin/user-notes/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
+    });
+    if (!response.ok) throw new Error('Not silinemedi');
+    return await response.json();
+  },
+  getAdminAnnouncements: async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/api/ai/admin/announcements`, {
+      headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
+    });
+    if (!response.ok) throw new Error('Duyurular çekilemedi');
+    return await response.json();
+  },
+  createAdminAnnouncement: async (data: any) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/api/ai/admin/announcements`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Duyuru oluşturulamadı');
+    return await response.json();
+  },
+  updateAdminAnnouncement: async (id: string, data: any) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/api/ai/admin/announcements/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Duyuru güncellenemedi');
+    return await response.json();
+  },
+  deleteAdminAnnouncement: async (id: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/api/ai/admin/announcements/${id}`, {
+      method: 'DELETE',
+      headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
+    });
+    if (!response.ok) throw new Error('Duyuru silinemedi');
+    return await response.json();
+  },
+  getAdminSupportTickets: async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/api/ai/admin/support-tickets`, {
+      headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
+    });
+    if (!response.ok) throw new Error('Talepler çekilemedi');
+    return await response.json();
+  },
+  updateAdminSupportTicket: async (id: string, data: any) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/api/ai/admin/support-tickets/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+      body: JSON.stringify(data)
+    });
+    if (!response.ok) throw new Error('Talep güncellenemedi');
+    return await response.json();
+  },
+  getAdminAuditLogs: async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/api/ai/admin/audit-logs`, {
+      headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
+    });
+    if (!response.ok) throw new Error('Loglar çekilemedi');
+    return await response.json();
+  },
+  getAdminSettings: async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/api/ai/admin/settings`, {
+      headers: { 'Authorization': `Bearer ${session?.access_token || ''}` }
+    });
+    if (!response.ok) throw new Error('Ayarlar çekilemedi');
+    return await response.json();
+  },
+  updateAdminSettings: async (settings: any) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/api/ai/admin/update-settings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session?.access_token || ''}` },
+      body: JSON.stringify({ settings })
+    });
+    if (!response.ok) throw new Error('Ayarlar güncellenemedi');
+    return await response.json();
+  }
 };

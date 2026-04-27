@@ -1,8 +1,9 @@
 import React, { useState, useMemo, useEffect, useRef } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { motion, AnimatePresence } from 'motion/react';
-import { MapIcon, LayoutDashboard, Store, User, Building2, Home, Star, Filter, Search, Plus, X, Layers, Crosshair, MessageSquare, MapPin, Navigation, TrendingUp, CheckCircle2 } from 'lucide-react';
+import { MapIcon, LayoutDashboard, Store, User, Building2, Home, Star, Filter, Search, Plus, X, Layers, Crosshair, MessageSquare, MapPin, Navigation, TrendingUp, CheckCircle2, Phone, Calendar, FileText } from 'lucide-react';
 import { useCategories } from '../hooks/useCategories';
+import { getTodayStr } from '../services/core/utils';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { QUERY_KEYS } from '../constants/queryKeys';
@@ -34,7 +35,7 @@ export const BolgemView = ({
   setToast?: (toast: { message: string, type: 'success' | 'error' | 'info' } | null) => void
 }) => {
   const queryClient = useQueryClient();
-  const { categories, addCategory } = useCategories();
+  const { regionCategories, addCategory } = useCategories();
   const [view, setView] = useState<'map' | 'list'>('map');
   const [filter, setFilter] = useState('all');
   const [search, setSearch] = useState('');
@@ -48,13 +49,78 @@ export const BolgemView = ({
   const [showFieldNotes, setShowFieldNotes] = useState(false);
   const [newFilterName, setNewFilterName] = useState('');
   const [newFilterColor, setNewFilterColor] = useState('#eab308');
+  const [newFilterKind, setNewFilterKind] = useState<'network_contact' | 'region_point'>('network_contact');
 
   const [is3D, setIs3D] = useState(false);
   const [showTerritoryPlanner, setShowTerritoryPlanner] = useState(false);
   
   const [todayFocusPlanId, setTodayFocusPlanId] = useState<string | null>(null);
-  const [checkInModalData, setCheckInModalData] = useState<any | null>(null);
+  const [checkInModalData, setCheckInModalData] = useState<{ name: string } | null>(null);
   const [crmNote, setCrmNote] = useState('');
+  
+  const [pinActionModal, setPinActionModal] = useState<{ type: 'call' | 'visit' | 'task' | 'note', pin: MapPinType } | null>(null);
+  const [actionNote, setActionNote] = useState('');
+  const [actionDate, setActionDate] = useState('');
+  const [actionContactStatus, setActionContactStatus] = useState<string>('Takipte');
+
+  const updatePinMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string, updates: Partial<MapPinType> }) => api.updateMapPin(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MAP_PINS, profile?.id] });
+      setPinActionModal(null);
+      setActionNote('');
+      setActionDate('');
+      if (setToast) setToast({ message: 'Aksiyon başarıyla kaydedildi!', type: 'success' });
+      setSelectedPin(null);
+    },
+    onError: (error) => {
+      if (setToast) setToast({ message: `Hata oluştu: ${(error as Error).message}`, type: 'error' });
+    }
+  });
+
+  const addTaskMutation = useMutation({
+    mutationFn: ({ pin, title, dueDate }: { pin: MapPinType, title: string, dueDate: string }) => api.addRegionTask(pin, title, dueDate),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS] });
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MAP_PINS, profile?.id] });
+      setPinActionModal(null);
+      setActionNote('');
+      setActionDate('');
+      if (setToast) setToast({ message: 'Takip görevi oluşturuldu!', type: 'success' });
+      setSelectedPin(null);
+    },
+    onError: (error) => {
+      if (setToast) setToast({ message: `Hata oluştu: ${(error as Error).message}`, type: 'error' });
+    }
+  });
+
+  const handlePinActionModalSubmit = () => {
+    if (!pinActionModal) return;
+    const { type, pin } = pinActionModal;
+    
+    if (type === 'task') {
+      if (!actionDate) {
+        if (setToast) setToast({ message: 'Lütfen görev tarihini seçiniz.', type: 'error' });
+        return;
+      }
+      addTaskMutation.mutate({ pin, title: `${pin.title} - ${actionNote || 'Bölge Takibi'}`, dueDate: actionDate });
+    } else {
+      let actionLabel = 'Not';
+      if (type === 'call') actionLabel = 'Arandı';
+      if (type === 'visit') actionLabel = 'Ziyaret';
+      
+      const noteAppend = `[${new Date().toLocaleDateString('tr-TR')} - ${actionLabel}] ${actionNote}`;
+      const newNotes = pin.notes ? `${pin.notes}\n\n${noteAppend}` : noteAppend;
+      
+      const updates: Partial<MapPinType> = { notes: newNotes };
+      if (type === 'call' || type === 'visit') {
+        updates.last_contact_date = new Date().toISOString();
+        if (actionContactStatus) updates.relationship_level = actionContactStatus as MapPinType['relationship_level'];
+      }
+      
+      updatePinMutation.mutate({ id: pin.id, updates });
+    }
+  };
 
   // Territory Plan Data
   const { data: territoryPlans = [] } = useQuery({
@@ -86,13 +152,15 @@ export const BolgemView = ({
   const [mapZoom, setMapZoom] = useState(13);
   const [hasGeocoded, setHasGeocoded] = useState(false);
   const [showAddPin, setShowAddPin] = useState(false);
-  const [newPinData, setNewPinData] = useState({
+  const [newPinData, setNewPinData] = useState<Partial<MapPinType>>({
     title: '',
-    type: categories[0]?.id || 'esnaf',
+    type: regionCategories[0]?.id || 'esnaf',
     address: '',
     notes: '',
     lat: defaultCenter.lat,
-    lng: defaultCenter.lng
+    lng: defaultCenter.lng,
+    kind: 'network_contact',
+    add_to_crm: true
   });
 
   const [map, setMap] = useState<L.Map | null>(null);
@@ -125,13 +193,12 @@ export const BolgemView = ({
   });
 
   const combinedPins = useMemo(() => {
-    const propPins: MapPinType[] = properties.map((p: Property) => {
-      const lat = (typeof p.address?.lat === 'number' && isFinite(p.address.lat)) 
-        ? p.address.lat 
-        : (mapCenter.lat + (Math.random() - 0.5) * 0.015);
-      const lng = (typeof p.address?.lng === 'number' && isFinite(p.address.lng)) 
-        ? p.address.lng 
-        : (mapCenter.lng + (Math.random() - 0.5) * 0.015);
+    const propPins: MapPinType[] = properties
+      .filter((p: Property) => typeof p.address?.lat === 'number' && isFinite(p.address.lat) && typeof p.address?.lng === 'number' && isFinite(p.address.lng))
+      .map((p: Property) => {
+      /* Koordinatı olmayan portföyler ileride ayrı listede gösterilecek. */
+      const lat = p.address!.lat!;
+      const lng = p.address!.lng!;
 
       return {
         id: `prop-${p.id}`,
@@ -191,14 +258,14 @@ export const BolgemView = ({
       { id: 'all', label: 'Tümü', icon: Filter, color: '#94a3b8' },
       { id: 'nearby', label: 'Yakındakiler (2km)', icon: Navigation, color: '#3b82f6' }
     ];
-    const hasPortfoy = categories.some(c => c.id === 'portfoy');
+    const hasPortfoy = regionCategories.some(c => c.id === 'portfoy');
     
-    let cats = [...categories];
+    let cats = [...regionCategories];
     if (!hasPortfoy) {
-      cats = [{ id: 'portfoy', label: 'Portföylerim', icon: Home, color: '#f97316' }, ...cats];
+      cats = [{ id: 'portfoy', label: 'Portföylerim', name: 'Portföylerim', kind: 'region_point', icon: Home, color: '#f97316' }, ...cats];
     }
     return [...base, ...cats];
-  }, [categories]);
+  }, [regionCategories]);
 
   const filteredPins = useMemo(() => {
     return combinedPins.filter((pin: MapPinType) => {
@@ -252,24 +319,37 @@ export const BolgemView = ({
 
   const addPinMutation = useMutation({
     mutationFn: api.addMapPin,
-    onSuccess: () => {
+    onSuccess: (result: { id: string; crmSuccess?: boolean; crmError?: string }) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MAP_PINS, profile?.id] });
       setShowAddPin(false);
+
+      if (result && result.crmSuccess) {
+        if (setToast) setToast({ message: 'Haritaya eklendi ve CRM’e kaydedildi!', type: 'success' });
+      } else if (result && result.crmError) {
+        if (setToast) setToast({ message: `Haritaya eklendi ancak CRM'e eklenirken bir hata oluştu: ${result.crmError}`, type: 'error' });
+      } else {
+        if (setToast) setToast({ message: 'Haritaya eklendi.', type: 'success' });
+      }
+
       setNewPinData({
         title: '',
-        type: categories[0]?.id || 'esnaf',
+        type: regionCategories[0]?.id || 'esnaf',
         address: '',
         notes: '',
         lat: defaultCenter.lat,
-        lng: defaultCenter.lng
+        lng: defaultCenter.lng,
+        kind: 'network_contact',
+        add_to_crm: true
       });
+      setSelectedPin(null);
     }
   });
 
   const handleAddFilter = () => {
     if (!newFilterName.trim()) return;
-    addCategory(newFilterName, newFilterColor);
+    addCategory(newFilterName, newFilterColor, newFilterKind);
     setNewFilterName('');
+    setNewFilterKind('network_contact');
     setShowAddFilter(false);
   };
 
@@ -303,9 +383,20 @@ export const BolgemView = ({
     }
   };
 
+  const convertToCrmMutation = useMutation({
+    mutationFn: api.convertPinToLead,
+    onSuccess: () => {
+      if (setToast) setToast({ message: 'Nokta CRM kaydına dönüştürüldü!', type: 'success' });
+      setSelectedPin(null);
+    },
+    onError: (error) => {
+      if (setToast) setToast({ message: `CRM'e dönüştürülürken hata oluştu: ${(error as Error).message}`, type: 'error' });
+    }
+  });
+
   const handleAddPin = () => {
-    if (!newPinData.title.trim()) return;
-    addPinMutation.mutate(newPinData);
+    if (!newPinData.title?.trim() || !newPinData.type) return;
+    addPinMutation.mutate(newPinData as typeof addPinMutation.variables);
   };
 
   const handleToggleTracking = () => {
@@ -354,7 +445,8 @@ export const BolgemView = ({
 
   const getPinIcon = (type: string) => {
     const typeObj = (allPinTypes || []).find(t => t.id === type);
-    return createSvgPin(typeObj?.color || '#eab308', typeObj?.icon || Building2);
+    const IconComponent = (typeObj?.icon as React.ElementType) || Building2;
+    return createSvgPin(typeObj?.color || '#eab308', IconComponent);
   };
 
   return (
@@ -474,7 +566,10 @@ export const BolgemView = ({
             setNewPinData={setNewPinData}
             handleAddPin={handleAddPin}
             addPinMutation={addPinMutation}
-            categories={categories}
+            categories={regionCategories.map(c => ({ id: c.id, label: c.label || c.name, icon: 'MapIcon', color: c.color, kind: c.kind }))}
+            addCategory={addCategory}
+            handleConvertToCrm={(pin) => convertToCrmMutation.mutate(pin)}
+            handlePinAction={(action, pin) => setPinActionModal({ type: action, pin })}
             search={search}
             hotspots={hotspots}
           />
@@ -507,6 +602,201 @@ export const BolgemView = ({
           </div>
 
           <RegionStats profile={profile} pins={combinedPins} />
+
+          {(() => {
+            const networkPins = combinedPins.filter(p => !p.kind || p.kind === 'network_contact');
+            const pointPins = combinedPins.filter(p => p.kind === 'region_point');
+
+            const activeReferrals = networkPins.filter(p => p.relationship_level === 'Aktif Referans Kaynağı');
+            const hotPotentials = networkPins.filter(p => p.potential === 'Sıcak' || p.potential === 'Yüksek');
+            
+            const now = new Date();
+            const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+            const recentContacts = networkPins.filter(p => p.last_contact_date && new Date(p.last_contact_date) >= sevenDaysAgo);
+
+            const overdueFollowups = networkPins.filter(p => {
+              if (!p.next_contact_date && !p.followup_date) return false;
+              const d = new Date(p.next_contact_date || p.followup_date || '');
+              return d < new Date(now.getTime() - 24 * 60 * 60 * 1000); // Past due by more than a day
+            });
+
+            const pendingVisitsToday = networkPins.filter(p => {
+              if (!p.next_contact_date && !p.followup_date) return false;
+              const date = new Date(p.next_contact_date || p.followup_date || '');
+              const isTodayOrPast = date <= now;
+              const isHot = p.potential === 'Sıcak' || p.potential === 'Yüksek';
+              const isStrongRel = p.relationship_level === 'Güven Oluşuyor' || p.relationship_level === 'Aktif Referans Kaynağı' || p.relationship_level === 'VIP Network';
+              return isTodayOrPast && isHot && isStrongRel;
+            });
+
+            const weakNetwork = networkPins.filter(p => {
+              if (!p.relationship_level || p.relationship_level === 'Soğuk Temas' || p.relationship_level === 'Tanışıldı') return true;
+              if (!p.last_contact_date) return true;
+              if (new Date(p.last_contact_date) < new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000)) return true;
+              return false;
+            }).slice(0, 5);
+
+            const rawScore = (networkPins.length * 2) 
+              + (activeReferrals.length * 8) 
+              + (hotPotentials.length * 6) 
+              + (recentContacts.length * 4) 
+              - (overdueFollowups.length * 3);
+            const masteryScore = Math.max(0, Math.min(100, Math.round(rawScore)));
+
+            const categoryDistribution = allPinTypes.map(c => ({
+              ...c,
+              count: combinedPins.filter(p => p.type === c.id).length
+            })).filter(c => c.count > 0).sort((a, b) => b.count - a.count);
+
+            const ActionButtons = ({ pin }: { pin: MapPinType }) => (
+              <div className="flex items-center gap-1 mt-3">
+                <button 
+                  onClick={() => {
+                    setView('map');
+                    setMapZoom(18);
+                    setMapCenter({ lat: pin.lat, lng: pin.lng });
+                    setSelectedPin(pin);
+                  }}
+                  className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded text-[10px] font-bold"
+                >
+                  Detaya Git
+                </button>
+                <button 
+                  onClick={() => setPinActionModal({ type: 'task', pin })}
+                  className="px-2 py-1 bg-blue-50 border border-blue-200 hover:bg-blue-100 text-blue-700 rounded text-[10px] font-bold"
+                >
+                  Takip Oluştur
+                </button>
+                {(pin.kind === 'region_point') && (
+                  <button 
+                    onClick={() => convertToCrmMutation.mutate(pin)}
+                    className="px-2 py-1 bg-emerald-50 border border-emerald-200 hover:bg-emerald-100 text-emerald-700 rounded text-[10px] font-bold"
+                  >
+                    CRM'e Dönüştür
+                  </button>
+                )}
+              </div>
+            );
+
+            return (
+              <div className="space-y-6 mb-6">
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  {/* Score Card */}
+                  <div className="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col justify-between">
+                    <div>
+                      <h3 className="text-xl font-bold mb-1">Bölge Hakimiyeti</h3>
+                      <p className="text-indigo-200 text-xs">Network gücü ve saha aktivitenize göre hesaplanan güncel skorunuz.</p>
+                    </div>
+                    
+                    <div className="flex items-end items-center gap-4 mt-6">
+                      <div className="text-6xl font-black">{masteryScore}</div>
+                      <div className="text-sm font-medium text-emerald-400">
+                        / 100
+                      </div>
+                    </div>
+
+                    <div className="mt-6 grid grid-cols-2 gap-3 text-sm">
+                      <div className="bg-white/10 rounded-xl p-3">
+                        <div className="text-indigo-200 text-[10px] uppercase font-bold">Network Teması</div>
+                        <div className="text-xl font-bold">{networkPins.length}</div>
+                      </div>
+                      <div className="bg-white/10 rounded-xl p-3">
+                        <div className="text-indigo-200 text-[10px] uppercase font-bold">Bölge Noktası</div>
+                        <div className="text-xl font-bold">{pointPins.length}</div>
+                      </div>
+                      <div className="bg-white/10 rounded-xl p-3">
+                        <div className="text-indigo-200 text-[10px] uppercase font-bold">Sıcak / Referans</div>
+                        <div className="text-xl font-bold">{hotPotentials.length + activeReferrals.length}</div>
+                      </div>
+                      <div className="bg-white/10 rounded-xl p-3">
+                        <div className="text-indigo-200 text-[10px] uppercase font-bold">Son 7 Gün Temas</div>
+                        <div className="text-xl font-bold">{recentContacts.length}</div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
+                    {/* Today's Follow-ups */}
+                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                          <CheckCircle2 size={16} className="text-emerald-500" />
+                          Bugün Uğranacaklar
+                        </h3>
+                        <span className="bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full text-[10px] font-bold">{pendingVisitsToday.length} Temas</span>
+                      </div>
+                      <div className="flex-1 overflow-y-auto max-h-[300px] pr-2 space-y-3">
+                        {pendingVisitsToday.length > 0 ? pendingVisitsToday.map(pin => (
+                          <div key={pin.id} className="p-3 border border-slate-100 rounded-xl bg-slate-50">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h4 className="text-xs font-bold text-slate-900">{pin.title}</h4>
+                                <p className="text-[10px] text-slate-500">{pin.contact_name || pin.type}</p>
+                              </div>
+                              <span className="text-[10px] font-bold bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded">{pin.potential}</span>
+                            </div>
+                            <ActionButtons pin={pin} />
+                          </div>
+                        )) : (
+                          <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
+                            <CheckCircle2 size={24} className="mb-2 text-slate-300" />
+                            Bugün için kritik ziyaret bulunmuyor.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Weak Network */}
+                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col">
+                      <div className="flex items-center justify-between mb-4">
+                        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                          <TrendingUp size={16} className="text-red-500" />
+                          Zayıf Kalan Ağ
+                        </h3>
+                        <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-bold">{weakNetwork.length} Riskli</span>
+                      </div>
+                      <div className="flex-1 overflow-y-auto max-h-[300px] pr-2 space-y-3">
+                        {weakNetwork.length > 0 ? weakNetwork.map(pin => (
+                          <div key={pin.id} className="p-3 border border-red-50 rounded-xl bg-red-50/30">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <h4 className="text-xs font-bold text-slate-900">{pin.title}</h4>
+                                <p className="text-[10px] text-slate-500">Son Tema: {pin.last_contact_date ? new Date(pin.last_contact_date).toLocaleDateString('tr-TR') : 'Hiç'}</p>
+                              </div>
+                            </div>
+                            <ActionButtons pin={pin} />
+                          </div>
+                        )) : (
+                          <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
+                            Zayıf bağınız bulunmuyor.
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Category Distribution */}
+                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
+                   <h3 className="text-sm font-bold text-slate-900 mb-4">Kategori Dağılımı</h3>
+                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                     {categoryDistribution.map(cat => {
+                       const Icon = cat.icon || Building2;
+                       return (
+                         <div key={cat.id} className="p-3 border rounded-xl flex flex-col" style={{ borderColor: cat.color + '30', backgroundColor: cat.color + '10' }}>
+                           <div className="flex items-center gap-2 mb-2">
+                             <Icon size={14} style={{ color: cat.color }} />
+                             <span className="text-[10px] font-bold text-slate-700 line-clamp-1">{cat.label}</span>
+                           </div>
+                           <div className="text-lg font-black text-slate-900">{cat.count}</div>
+                         </div>
+                       );
+                     })}
+                   </div>
+                </div>
+              </div>
+            );
+          })()}
 
           {/* TERRITORY PLANNING / 3 ODAK BÖLGE */}
           <div className="w-full bg-indigo-50/50 border border-indigo-100/50 rounded-2xl p-4 shadow-sm mb-6 flex flex-col gap-3">
@@ -613,6 +903,23 @@ export const BolgemView = ({
                 <div>
                   <label className="text-xs font-bold text-slate-500 mb-1.5 block">Kategori Adı</label>
                   <input type="text" value={newFilterName} onChange={e => setNewFilterName(e.target.value)} placeholder="Örn: Portföylerim" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none" />
+                </div>
+                <div>
+                  <label className="text-xs font-bold text-slate-500 mb-1.5 block">Kategori Türü</label>
+                  <div className="flex gap-2">
+                    <button 
+                      onClick={() => setNewFilterKind('network_contact')}
+                      className={`flex-1 py-2 text-xs font-bold rounded-lg border-2 transition-all ${newFilterKind === 'network_contact' ? 'border-orange-500 text-orange-600 bg-orange-50' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                    >
+                      Network
+                    </button>
+                    <button 
+                      onClick={() => setNewFilterKind('region_point')}
+                      className={`flex-1 py-2 text-xs font-bold rounded-lg border-2 transition-all ${newFilterKind === 'region_point' ? 'border-blue-500 text-blue-600 bg-blue-50' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                    >
+                      Bölge Noktası
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-500 mb-1.5 block">Renk Seçimi</label>
@@ -740,6 +1047,87 @@ export const BolgemView = ({
       </div>
 
       <AnimatePresence>
+        {pinActionModal && (
+          <div className="fixed inset-0 z-[600] flex items-center justify-center px-4">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setPinActionModal(null)} />
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white w-full max-w-sm rounded-[24px] relative z-10 shadow-2xl p-6 overflow-hidden">
+               <div className="text-center mb-6">
+                 <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                   {pinActionModal.type === 'call' && <Phone size={32} />}
+                   {pinActionModal.type === 'visit' && <MapPin size={32} />}
+                   {pinActionModal.type === 'task' && <Calendar size={32} />}
+                   {pinActionModal.type === 'note' && <FileText size={32} />}
+                 </div>
+                 <h3 className="text-[18px] font-black text-slate-900 leading-tight">
+                   {pinActionModal.type === 'call' ? 'Arama Kaydı' : pinActionModal.type === 'visit' ? 'Ziyaret Kaydı' : pinActionModal.type === 'task' ? 'Takip Oluştur' : 'Not Ekle'}
+                 </h3>
+                 <p className="text-xs text-slate-500 mt-2 font-medium">{pinActionModal.pin.title} için işlem yapıyorsunuz</p>
+               </div>
+               
+               <div className="space-y-4">
+                 {(pinActionModal.type === 'call' || pinActionModal.type === 'visit') && (
+                   <div>
+                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">İlişki Seviyesi (Güncelle)</label>
+                     <select 
+                       value={actionContactStatus}
+                       onChange={(e) => setActionContactStatus(e.target.value)}
+                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                     >
+                       <option value="Düşük">Düşük</option>
+                       <option value="Orta">Orta</option>
+                       <option value="İyi">İyi</option>
+                       <option value="Güçlü">Güçlü</option>
+                     </select>
+                   </div>
+                 )}
+
+                 {pinActionModal.type === 'task' && (
+                   <div>
+                     <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">Takip Tarihi</label>
+                     <input 
+                       type="date"
+                       value={actionDate}
+                       min={getTodayStr()}
+                       onChange={(e) => setActionDate(e.target.value)}
+                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                     />
+                   </div>
+                 )}
+
+                 <div>
+                   <label className="text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2 block">
+                     {pinActionModal.type === 'task' ? 'Takip Notu / Hedef' : 'Detay Notu'}
+                   </label>
+                   <textarea
+                     value={actionNote}
+                     onChange={(e) => setActionNote(e.target.value)}
+                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-blue-500 outline-none h-24 resize-none"
+                     placeholder={pinActionModal.type === 'call' ? "Görüşme nasıl geçti? Ne konuşuldu?" : "Ekstra notlar..."}
+                   />
+                 </div>
+                 
+                 <div className="flex gap-2 pt-2">
+                   <button 
+                     onClick={() => setPinActionModal(null)}
+                     className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-3 rounded-xl font-bold transition-all text-sm"
+                   >
+                     İptal
+                   </button>
+                   <button 
+                     onClick={handlePinActionModalSubmit}
+                     disabled={updatePinMutation.isPending || addTaskMutation.isPending}
+                     className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-bold transition-all text-sm disabled:opacity-50"
+                   >
+                     {(updatePinMutation.isPending || addTaskMutation.isPending) ? 'Kaydediliyor...' : 'Kaydet'}
+                   </button>
+                 </div>
+               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {checkInModalData && (
           <div className="fixed inset-0 z-[600] flex items-center justify-center px-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setCheckInModalData(null)} />
@@ -767,11 +1155,13 @@ export const BolgemView = ({
                    onClick={() => {
                      api.addTask({
                        title: `${checkInModalData.name} Bölge Ziyareti Takibi`,
-                       time: new Date().toISOString().slice(11, 16),
+                       time: new Date().toISOString(),
                        notes: crmNote,
                        type: 'Saha',
                        completed: false,
-                       due_date: new Date().toISOString()
+                       due_date: getTodayStr(),
+                       source: 'bolgem',
+                       metadata: { origin: 'bolgem_checkin', region_name: checkInModalData.name }
                      }).then(() => {
                         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS, profile?.id] });
                         setToast?.({ message: 'Ziyaret takibi CRM görevlerine eklendi!', type: 'success' });

@@ -1,12 +1,12 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Globe, RefreshCw } from 'lucide-react';
-import { Property } from '../../types';
+import { Property, ExternalListing } from '../../types';
 
 interface ExternalListingsModalProps {
   show: boolean;
   onClose: () => void;
-  listings: any[];
+  listings: ExternalListing[];
   onSync: () => void;
   onLink: (propertyId: string, externalId: string) => void;
   isSyncing: boolean;
@@ -64,18 +64,18 @@ export const ExternalListingsModal: React.FC<ExternalListingsModalProps> = ({
           <div className="grid grid-cols-1 gap-4">
             {listings.length === 0 ? (
               <div className="text-center py-12 text-slate-400">Henüz ilan bulunamadı.</div>
-            ) : listings.map((listing: any) => (
+            ) : listings.map((listing: ExternalListing) => (
               <div key={listing.id} className="p-4 bg-slate-50 rounded-2xl border border-slate-100 flex gap-4 items-center">
                 <img src={listing.imageUrl} className="w-20 h-20 rounded-xl object-cover" alt="" referrerPolicy="no-referrer" />
                 <div className="flex-1">
                   <h4 className="text-sm font-bold text-slate-900">{listing.title}</h4>
-                  <p className="text-xs text-slate-500 mt-1">{listing.externalId}</p>
+                  <p className="text-xs text-slate-500 mt-1">{listing.ext_id}</p>
                   <div className="flex gap-2 mt-2">
                     <span className="text-[10px] font-bold px-2 py-1 bg-orange-100 text-orange-600 rounded-lg">{listing.price} TL</span>
                   </div>
                 </div>
                 <button 
-                  onClick={() => selectedProperty && onLink(selectedProperty.id, listing.externalId)}
+                  onClick={() => selectedProperty && onLink(selectedProperty.id, listing.ext_id)}
                   className="px-4 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-600 hover:bg-slate-50"
                 >
                   Eşleştir

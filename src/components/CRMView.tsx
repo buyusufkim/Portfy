@@ -13,6 +13,7 @@ import {
   ArrowUpDown,
   AlertTriangle,
   Globe,
+  BellOff,
   Zap,
   Copy
 } from 'lucide-react';
@@ -68,6 +69,7 @@ export const CRMView: React.FC<CRMViewProps> = ({
   properties = []
 }) => {
   const [activeTab, setActiveTab] = useState<'rehber' | 'araclar'>('rehber');
+  const [crmSegment, setCrmSegment] = useState<'all' | 'customers' | 'network' | 'hot' | 'silent'>('all');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = React.useState('');
   
@@ -143,6 +145,18 @@ export const CRMView: React.FC<CRMViewProps> = ({
     return Array.from(new Set(leads.map(l => l.type || 'Bilinmiyor'))).sort((a, b) => a.localeCompare(b, 'tr')) as Lead['type'][];
   }, [leads]);
 
+  const isSilentLead = React.useCallback((lead: Lead) => {
+    const isAlerted = leadAlerts.some(a =>
+      a.lead_id === lead.id &&
+      (
+        a.alert_type === 'silence' ||
+        ['stale_3d', 'stale_7d', 'stale_14d', 'hot_48h_silence', 'inactive_lead', 'Sessiz Müşteri'].includes(a.alert_type)
+      )
+    );
+    const isRisky = lead.silence_risk_level === 'high' || lead.silence_risk_level === 'medium';
+    return isAlerted || isRisky;
+  }, [leadAlerts]);
+
   const filteredLeads = React.useMemo(() => {
     if (!leads) return [];
     const normalizedQuery = debouncedSearchTerm.trim().toLocaleLowerCase('tr');
@@ -153,7 +167,16 @@ export const CRMView: React.FC<CRMViewProps> = ({
       );
       const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
       const matchesType = typeFilter === 'all' || lead.type === typeFilter;
-      return matchesSearch && matchesStatus && matchesType;
+      
+      let matchesSegment = true;
+      if (crmSegment === 'customers') matchesSegment = lead.type !== 'Bölge Network';
+      else if (crmSegment === 'network') matchesSegment = lead.type === 'Bölge Network';
+      else if (crmSegment === 'hot') matchesSegment = lead.status === 'Sıcak' || lead.temperature === 'hot';
+      else if (crmSegment === 'silent') {
+        matchesSegment = isSilentLead(lead);
+      }
+      
+      return matchesSearch && matchesStatus && matchesType && matchesSegment;
     });
 
     return result.sort((a, b) => {
@@ -165,17 +188,15 @@ export const CRMView: React.FC<CRMViewProps> = ({
       const dateA = a.last_contacted_at || a.last_contact || a.created_at;
       return parseContactDate(dateB) - parseContactDate(dateA);
     });
-  }, [leads, debouncedSearchTerm, statusFilter, typeFilter, sortBy]);
+  }, [leads, debouncedSearchTerm, statusFilter, typeFilter, sortBy, crmSegment, isSilentLead]);
 
-  const hotLeadCount = leads.filter((lead) => lead.status === 'Sıcak').length;
-  const buyerCount = leads.filter((lead) => lead.type === 'Alıcı').length;
-  const sellerCount = leads.filter((lead) => lead.type === 'Satıcı').length;
+  const hotLeadCount = leads.filter((lead) => lead.status === 'Sıcak' || lead.temperature === 'hot').length;
   const hasActiveFilters = searchTerm.length > 0 || statusFilter !== 'all' || typeFilter !== 'all' || sortBy !== 'recent';
 
   const silentLeadAlerts = React.useMemo(() => {
     return leadAlerts.filter(a => 
-      ['stale_3d', 'stale_7d', 'stale_14d', 'hot_48h_silence', 'inactive_lead'].includes(a.alert_type) ||
-      a.alert_type === 'Sessiz Müşteri'
+      a.alert_type === 'silence' ||
+      ['stale_3d', 'stale_7d', 'stale_14d', 'hot_48h_silence', 'inactive_lead', 'Sessiz Müşteri'].includes(a.alert_type)
     );
   }, [leadAlerts]);
 
@@ -256,7 +277,7 @@ export const CRMView: React.FC<CRMViewProps> = ({
       </motion.div>
     )}
 
-    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
       <Card className="p-4 border-orange-100 bg-orange-50/50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-orange-100 text-orange-600 flex items-center justify-center">
@@ -274,7 +295,7 @@ export const CRMView: React.FC<CRMViewProps> = ({
             <Flame size={18} />
           </div>
           <div>
-            <p className="text-xs text-slate-500 font-medium">Sıcak Müşteri</p>
+            <p className="text-xs text-slate-500 font-medium">Sıcak Takip</p>
             <p className="text-lg font-black text-slate-900">{hotLeadCount}</p>
           </div>
         </div>
@@ -282,14 +303,50 @@ export const CRMView: React.FC<CRMViewProps> = ({
       <Card className="p-4 border-emerald-100 bg-emerald-50/50">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl bg-emerald-100 text-emerald-600 flex items-center justify-center">
-            <Filter size={18} />
+            <Globe size={18} />
           </div>
           <div>
-            <p className="text-xs text-slate-500 font-medium">Alıcı / Satıcı</p>
-            <p className="text-lg font-black text-slate-900">{buyerCount} / {sellerCount}</p>
+            <p className="text-xs text-slate-500 font-medium">Bölge Network</p>
+            <p className="text-lg font-black text-slate-900">{leads.filter(l => l.type === 'Bölge Network').length}</p>
           </div>
         </div>
       </Card>
+      <Card className="p-4 border-indigo-100 bg-indigo-50/50">
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-xl bg-indigo-100 text-indigo-600 flex items-center justify-center">
+            <BellOff size={18} />
+          </div>
+          <div>
+            <p className="text-xs text-slate-500 font-medium">Sessizleşenler</p>
+            <p className="text-lg font-black text-slate-900">
+              {leads.filter(isSilentLead).length}
+            </p>
+          </div>
+        </div>
+      </Card>
+    </div>
+
+    {/* Segment Tabs */}
+    <div className="flex overflow-x-auto pb-2 -mx-4 px-4 sm:mx-0 sm:px-0 hide-scrollbar gap-2">
+      {[
+        { id: 'all', label: 'Tümü' },
+        { id: 'customers', label: 'Müşteriler' },
+        { id: 'network', label: 'Bölge Network' },
+        { id: 'hot', label: 'Sıcak Takipler' },
+        { id: 'silent', label: 'Riskli/Sessiz' }
+      ].map(tab => (
+        <button
+          key={tab.id}
+          onClick={() => setCrmSegment(tab.id as 'all' | 'customers' | 'network' | 'hot' | 'silent')}
+          className={`px-4 py-2 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+            crmSegment === tab.id 
+              ? 'bg-slate-800 text-white shadow-sm' 
+              : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
+          }`}
+        >
+          {tab.label}
+        </button>
+      ))}
     </div>
 
     <div className="flex gap-3">
@@ -420,6 +477,62 @@ export const CRMView: React.FC<CRMViewProps> = ({
           </button>
         </div>
       ) : filteredLeads.map(lead => {
+        const isNetwork = lead.type === 'Bölge Network';
+        
+        if (isNetwork) {
+          const hasPhone = typeof lead.phone === 'string' && lead.phone.trim().length > 3;
+          
+          return (
+            <Card 
+              key={lead.id} 
+              className="flex flex-col p-4 bg-emerald-50/30 border border-emerald-100 cursor-pointer hover:border-emerald-300 transition-colors group relative overflow-hidden"
+              onClick={() => onSelectLead(lead)}
+            >
+              <div className="absolute top-0 right-0 bg-emerald-100 text-emerald-800 text-[9px] font-black uppercase px-2 py-1 rounded-bl-xl z-10 flex items-center gap-1">
+                <Globe size={10} /> Bölge Network
+              </div>
+              <div className="flex flex-col gap-3 z-0 pt-2">
+                <div>
+                  <h4 className="font-bold text-slate-900 leading-tight">{lead.name}</h4>
+                  <p className="text-[11px] text-slate-500 mt-0.5 line-clamp-1">{lead.notes || 'Detaylar belirtilmedi'}</p>
+                </div>
+                
+                <div className="flex gap-2" onClick={e => e.stopPropagation()}>
+                  {hasPhone ? (
+                    <>
+                      <a 
+                        href={`tel:${lead.phone}`}
+                        onClick={() => {
+                          sessionStorage.setItem('trigger_call_form', 'true');
+                          onSelectLead(lead);
+                        }}
+                        className="flex-1 flex items-center justify-center gap-1.5 p-2 bg-emerald-600 rounded-lg text-white text-xs font-bold hover:bg-emerald-700 transition-colors"
+                      >
+                        <Phone size={14} /> Ara
+                      </a>
+                      <a 
+                        href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="p-2 bg-emerald-100 rounded-lg text-emerald-700 hover:bg-emerald-200 transition-colors flex flex-col items-center justify-center aspect-square"
+                      >
+                        <MessageSquare size={14} />
+                      </a>
+                    </>
+                  ) : (
+                    <button disabled className="flex-1 p-2 bg-slate-100 rounded-lg text-slate-400 text-xs font-bold cursor-not-allowed">
+                      Telefon Kaydı Yok
+                    </button>
+                  )}
+                  <button onClick={() => onSelectLead(lead)} className="p-2 bg-slate-100 rounded-lg text-slate-600 hover:bg-slate-200 font-bold text-xs shrink-0 cursor-pointer transition-colors">
+                    Detay
+                  </button>
+                </div>
+              </div>
+            </Card>
+          );
+        }
+
         const category = categories.find(c => c.label === lead.type);
         const iconColor = category ? category.color : (lead.type === 'Alıcı' ? '#ea580c' : '#9333ea');
         const iconBg = category ? `${category.color}20` : (lead.type === 'Alıcı' ? '#fff7ed' : '#faf5ff');
@@ -595,7 +708,7 @@ export const CRMView: React.FC<CRMViewProps> = ({
                 { label: 'Görüşmeye Döndü', statuses: ['Görüşmeye döndü', 'converted', 'Kazanıldı', 'İşleme Döndü', 'Görüşülüyor'] },
                 { label: 'Kapanış', statuses: ['Kapanış'] }
               ].map(stage => {
-                const currentMonthCount = referrals.filter((r: Referral) => stage.statuses.includes(r.status) && new Date((r as any).created_at || Date.now()).getMonth() === new Date().getMonth()).length;
+                const currentMonthCount = referrals.filter((r: Referral) => stage.statuses.includes(r.status) && new Date(r.created_at || Date.now()).getMonth() === new Date().getMonth()).length;
                 const allTimeCount = referrals.filter((r: Referral) => stage.statuses.includes(r.status)).length;
                 
                 return (
@@ -612,7 +725,7 @@ export const CRMView: React.FC<CRMViewProps> = ({
               <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
                 {referrals.map((ref: Referral) => (
                   <div key={ref.id} className="bg-white p-3 rounded-xl border border-emerald-50 flex justify-between items-center text-sm shadow-sm hover:border-emerald-200 transition-colors">
-                    <span className="font-medium text-slate-700">{ref.referred_name || (ref as any).referred_email || 'İsimsiz'}</span>
+                    <span className="font-medium text-slate-700">{ref.referred_name || ref.referred_email || 'İsimsiz'}</span>
                     <select 
                       className="text-xs p-1.5 rounded-lg bg-emerald-50 border-none outline-none text-emerald-700 font-bold"
                       value={

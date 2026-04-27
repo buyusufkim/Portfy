@@ -14,7 +14,8 @@ export const generateContent = async (model: string, contents: any, config?: any
       : contents;
 
     // İstek artık doğrudan Google'a değil, kendi güvenli backend'ine gidiyor
-    const response = await fetch('/api/ai/generate', {
+    const apiUrl = window.location.origin + '/api/ai/generate';
+    const response = await fetch(apiUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

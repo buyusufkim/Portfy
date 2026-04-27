@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Plus, Trash2, MapPin } from 'lucide-react';
+import { X, Plus, Trash2, MapPin, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { GoogleMap, useLoadScript, Marker } from '@react-google-maps/api';
 import { locationService } from '../../services/locationService';
 import { Property, Lead } from '../../types';
@@ -12,7 +12,7 @@ import { toast } from 'react-hot-toast';
 interface AddPropertyModalProps {
   show: boolean;
   onClose: () => void;
-  onSubmit: (data: Omit<Property, 'id' | 'user_id'>) => Promise<any>;
+  onSubmit: (data: Omit<Property, 'id' | 'user_id'>) => Promise<unknown | string | Property | void>;
   isPending: boolean;
   initialData?: Property | null;
   leads: Lead[];
@@ -76,12 +76,12 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
         unsold_reason: initialData.unsold_reason || '',
         address: initialData.address,
         details: {
-          brut_m2: initialData.details.brut_m2.toString(),
-          net_m2: initialData.details.net_m2.toString(),
-          rooms: initialData.details.rooms,
-          floor: initialData.details.floor.toString(),
-          totalFloors: initialData.details.totalFloors.toString(),
-          age: initialData.details.age.toString()
+          brut_m2: initialData.details?.brut_m2?.toString() || '',
+          net_m2: initialData.details?.net_m2?.toString() || '',
+          rooms: initialData.details?.rooms || '',
+          floor: initialData.details?.floor?.toString() || '',
+          totalFloors: initialData.details?.totalFloors?.toString() || '',
+          age: initialData.details?.age?.toString() || ''
         },
         owner: initialData.owner,
         commission_rate: initialData.commission_rate,
@@ -115,6 +115,39 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
       });
     }
   }, [initialData, show]);
+
+  const getPropertyQualityWarnings = (data: typeof formData) => {
+    const warnings: { type: 'critical' | 'warning', message: string }[] = [];
+    
+    if (!data.title?.trim()) {
+      warnings.push({ type: 'critical', message: 'Başlık eksik' });
+    }
+    const numericPrice = Number(data.price.toString().replace(/\D/g, ''));
+    if (!numericPrice || numericPrice <= 0) {
+      warnings.push({ type: 'critical', message: 'Fiyat girilmedi' });
+    }
+    if (!data.address.city?.trim() || !data.address.district?.trim()) {
+      warnings.push({ type: 'critical', message: 'Konum eksik' });
+    }
+    if (!data.owner.name?.trim() || !data.owner.phone?.trim()) {
+      warnings.push({ type: 'warning', message: 'Mülk sahibi bilgisi eksik' });
+    } else {
+      const cleanPhone = data.owner.phone.replace(/\D/g, '');
+      if (cleanPhone.length > 0 && cleanPhone.length < 10) {
+        warnings.push({ type: 'warning', message: 'Telefon formatı kontrol edilmeli' });
+      }
+    }
+    if (!data.images || data.images.length === 0) {
+      warnings.push({ type: 'warning', message: 'Fotoğraf eksik' });
+    }
+    if (!data.details.brut_m2 || !data.details.rooms) {
+      warnings.push({ type: 'warning', message: 'Temel özellikler eksik' });
+    }
+    if (!data.notes || data.notes.trim().length < 10) {
+      warnings.push({ type: 'warning', message: 'Açıklama zayıf' });
+    }
+    return warnings;
+  };
 
   const cities = locationService.getCities();
   const districts = formData.address.city ? locationService.getDistricts(formData.address.city) : [];
@@ -164,9 +197,24 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
     }
   };
 
+  const isSavedProperty = (value: unknown): value is Property => {
+    return typeof value === 'object' && value !== null && 'id' in value && typeof (value as { id?: unknown }).id === 'string';
+  };
+
+  const toOptionalNumber = (value: string | number | undefined): number | undefined => {
+    if (value === undefined) return undefined;
+    const trimmed = String(value).trim();
+    if (!trimmed) return undefined;
+    const parsed = Number(trimmed);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+
   const handleSubmit = async () => {
-    if (!formData.title || !formData.price || !formData.address.district) {
-      toast.error('Lütfen zorunlu alanları doldurunuz (Başlık, Fiyat, İlçe)');
+    const warnings = getPropertyQualityWarnings(formData);
+    const criticals = warnings.filter(w => w.type === 'critical');
+
+    if (criticals.length > 0) {
+      toast.error('Lütfen zorunlu alanları doldurunuz: ' + criticals.map(c => c.message).join(', '));
       return;
     }
     if (formData.status === 'Pasif') {
@@ -179,32 +227,50 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
         return;
       }
     }
+    
+    let cleanPhone = formData.owner.phone ? formData.owner.phone.trim() : '';
+    if (cleanPhone === '') cleanPhone = '';
+
     const payload = {
       ...formData,
       price: Number(formData.price.toString().replace(/\D/g, '')),
       unsold_reason: formData.blocker_note, // Legacy field mapping
+      owner: {
+        ...formData.owner,
+        phone: cleanPhone || ''
+      },
       details: {
         ...formData.details,
-        brut_m2: Number(formData.details.brut_m2),
-        net_m2: Number(formData.details.net_m2),
-        floor: Number(formData.details.floor),
-        totalFloors: Number(formData.details.totalFloors),
-        age: Number(formData.details.age)
+        brut_m2: toOptionalNumber(formData.details.brut_m2),
+        net_m2: toOptionalNumber(formData.details.net_m2),
+        floor: toOptionalNumber(formData.details.floor),
+        totalFloors: toOptionalNumber(formData.details.totalFloors),
+        age: toOptionalNumber(formData.details.age)
       }
     };
 
     try {
       const savedProperty = await onSubmit(payload);
-      const propertyId = typeof savedProperty === 'string' ? savedProperty : (savedProperty?.id || initialData?.id);
       
-      if (formData.status === 'Pasif' && propertyId && formData.blocker_type) {
-        await api.momentumOs.createOrUpdatePortfolioBlocker({
-          property_id: propertyId,
-          blocker_type: formData.blocker_type as 'price' | 'presentation' | 'location' | 'demand' | 'process' | 'owner' | 'content',
-          note: formData.blocker_note,
-          impact_score: 80,
-          is_active: true
-        });
+      const propertyId = typeof savedProperty === 'string' 
+        ? savedProperty 
+        : isSavedProperty(savedProperty) 
+          ? savedProperty.id 
+          : initialData?.id;
+      
+      try {
+        if (formData.status === 'Pasif' && propertyId && formData.blocker_type) {
+          await api.momentumOs.createOrUpdatePortfolioBlocker({
+            property_id: propertyId,
+            blocker_type: formData.blocker_type as 'price' | 'presentation' | 'location' | 'demand' | 'process' | 'owner' | 'content',
+            note: formData.blocker_note,
+            impact_score: 80,
+            is_active: true
+          });
+        }
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'Blocker oluşturulurken bir sorun oluştu.';
+        toast.error(msg);
       }
     } catch (error) {
       console.error("Submit işleminde hata:", error);
@@ -234,12 +300,12 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
         }));
       } catch (error) {
         console.error('Upload failed:', error);
-        alert('Fotoğraf yüklenemedi.');
+        toast.error('Fotoğraf yüklenemedi.');
       } finally {
         setIsUploading(false);
       }
     } else {
-      alert('Yeni portföyler için fotoğrafları kaydettikten sonra detay ekranından ekleyebilirsiniz.');
+      toast('Yeni portföyler için fotoğrafları kaydettikten sonra detay ekranından ekleyebilirsiniz.', { icon: 'ℹ️' });
     }
   };
 
@@ -250,10 +316,12 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
     }));
   };
 
-  const filteredLeads = leads.filter(l => 
-    l.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-    l.phone.includes(searchTerm)
-  );
+  const normalizedSearch = searchTerm.trim().toLowerCase();
+  const filteredLeads = leads.filter(l => {
+    const name = l.name?.toLowerCase() || '';
+    const phone = l.phone || '';
+    return name.includes(normalizedSearch) || phone.includes(searchTerm.trim());
+  });
 
   const selectLead = (lead: Lead) => {
     setFormData({
@@ -261,7 +329,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
       owner: {
         ...formData.owner,
         name: lead.name,
-        phone: lead.phone
+        phone: lead.phone || ''
       }
     });
     setSearchTerm(lead.name);
@@ -338,7 +406,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                     className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl p-4 text-sm focus:border-orange-500 outline-none"
                     value={formData.status} onChange={e => setFormData({...formData, status: e.target.value as Property['status']})}
                   >
-                    {['Yeni', 'Hazırlanıyor', 'Yayında', 'İlgi Var', 'Pazarlık', 'Satıldı', 'Pasif'].map(s => <option key={s} value={s}>{s}</option>)}
+                    {['Yeni', 'Hazırlanıyor', 'Yayında', 'İlgi Var', 'Pazarlık', 'Satıldı', 'Kiralandı', 'Pasif'].map(s => <option key={s} value={s}>{s}</option>)}
                   </select>
                 </div>
                 {formData.status === 'Pasif' && (
@@ -661,6 +729,39 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                     value={formData.notes} onChange={e => setFormData({...formData, notes: e.target.value})}
                   />
                 </div>
+
+                {(() => {
+                  const warnings = getPropertyQualityWarnings(formData);
+                  if (warnings.length === 0) {
+                    return (
+                      <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3 text-emerald-700">
+                        <CheckCircle2 size={24} className="shrink-0" />
+                        <div>
+                          <div className="text-sm font-bold">Portföy Kalite Kontrolü</div>
+                          <div className="text-xs mt-0.5">Portföy satış planı için hazır görünüyor.</div>
+                        </div>
+                      </div>
+                    );
+                  }
+                  
+                  return (
+                    <div className="p-4 bg-orange-50 border border-orange-100 rounded-2xl flex items-start gap-3">
+                      <AlertTriangle size={24} className="text-orange-600 shrink-0 mt-1" />
+                      <div className="space-y-1 w-full">
+                        <div className="text-sm font-bold text-orange-900">Portföy Kalite Kontrolü</div>
+                        <div className="text-xs text-orange-700">Portföy satış planının daha verimli çalışabilmesi için eksikleri tamamlayabilirsiniz:</div>
+                        <ul className="text-xs text-orange-800 list-disc list-inside mt-2 space-y-1">
+                          {warnings.map((w, idx) => (
+                            <li key={idx} className={w.type === 'critical' ? 'font-bold' : ''}>
+                              {w.message} {w.type === 'critical' ? '(Kayıt için zorunlu)' : ''}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 <div className="flex gap-4">
                   <button onClick={() => setStep(5)} className="flex-1 py-4 bg-slate-100 text-slate-600 rounded-2xl font-bold text-sm">Geri</button>
                   <button 

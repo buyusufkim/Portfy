@@ -119,31 +119,31 @@ export const VoiceQuickAddModal: React.FC<VoiceQuickAddModalProps> = ({
         // Handle composite actions simultaneously
         for (const action of parsedResult.actions) {
           if (action.type === 'lead') {
-            const budgetText = action.payload.budget ? `\nTahmini Bütçe: ${action.payload.budget}` : '';
-            const notes = `${action.payload.notes || parsedResult.original_text}${budgetText}`;
+            const budgetText = action.payload.budget ? `\nTahmini Bütçe: ${String(action.payload.budget)}` : '';
+            const notes = `${String(action.payload.notes || parsedResult.original_text)}${budgetText}`;
             
             await addLeadMutation.mutateAsync({
-              name: action.payload.name || 'İsimsiz Müşteri',
-              phone: action.payload.phone || '',
+              name: String(action.payload.name || 'İsimsiz Müşteri'),
+              phone: String(action.payload.phone || ''),
               type: 'Alıcı',
               status: 'Aday',
-              district: action.payload.district || action.payload.location || '',
+              district: String(action.payload.district || action.payload.location || ''),
               notes: notes
             });
           } else if (action.type === 'task') {
             await addTaskMutation.mutateAsync({
-              title: action.payload.title || 'Yeni Görev',
-              time: action.payload.time || action.payload.due_date || new Date().toISOString(),
-              type: action.payload.type || 'Arama',
+              title: String(action.payload.title || 'Yeni Görev'),
+              time: String(action.payload.time || action.payload.due_date || new Date().toISOString()),
+              type: String(action.payload.type || 'Arama'),
               completed: false
             });
           } else if (action.type === 'note') {
             await addVisitMutation.mutateAsync({
               title: '',
-              address: action.payload.location || 'Bilinmeyen Adres',
-              district: action.payload.location || '',
+              address: String(action.payload.location || 'Bilinmeyen Adres'),
+              district: String(action.payload.location || ''),
               status: 'Potansiyel',
-              notes: action.payload.notes || action.payload.description || parsedResult.original_text
+              notes: String(action.payload.notes || action.payload.description || parsedResult.original_text)
             });
           }
         }

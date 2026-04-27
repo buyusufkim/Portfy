@@ -3,13 +3,13 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useQuery } from '@tanstack/react-query';
+import { toast } from 'react-hot-toast';
 import { 
   X, 
   TrendingUp, 
+  TrendingDown,
   Zap, 
   Activity, 
-  Globe, 
-  Link as LinkIcon, 
   Sparkles, 
   ChevronRight, 
   MessageSquare, 
@@ -26,9 +26,12 @@ import {
   CheckCircle2,
   ClipboardList,
   FileText,
-  Radar as RadarIcon
+  Radar as RadarIcon,
+  AlertTriangle,
+  Share2,
+  Camera
 } from 'lucide-react';
-import { Property, Lead, PortfolioBlocker } from '../../types';
+import { Property, Lead, PortfolioBlocker, RegionEfficiencyScore, BrokerAccount, Task } from '../../types';
 import { Badge, Card } from '../UI';
 import { MagicLinkButton } from '../premium/MagicLinkButton';
 import { OwnerPortalButton } from '../premium/OwnerPortalButton';
@@ -39,9 +42,9 @@ import { api } from '../../services/api';
 interface PropertyDetailModalProps {
   selectedProperty: Property | null;
   onClose: () => void;
-  leads: any[];
-  regionScores: any[];
-  brokerAccount: any;
+  leads: Lead[];
+  regionScores: RegionEfficiencyScore[];
+  brokerAccount: BrokerAccount | null;
   blockers?: PortfolioBlocker[];
   onResolveBlocker?: (id: string) => void;
   onShowExternalListings: () => void;
@@ -53,11 +56,112 @@ interface PropertyDetailModalProps {
   isDeleting?: boolean;
   magicLinkSlot?: React.ReactNode;
   setShowAddTask?: (show: boolean) => void;
-  tasks?: any[];
+  tasks?: Task[];
   setShowDocumentAutomation?: (val: boolean) => void;
   setDocumentAutomationProperty?: (val: Property | null) => void;
   setDocumentAutomationLead?: (val: Lead | null) => void;
 }
+
+type SalesPlanAction = {
+  title: string;
+  reason: string;
+  tone: 'danger' | 'warning' | 'success' | 'neutral';
+  ctaLabel: string;
+  onClick: () => void;
+  icon: React.ReactNode;
+};
+
+const getPrimarySalesAction = (
+  property: Property,
+  activeBlockers: PortfolioBlocker[],
+  matchedLeads: Lead[],
+  saleProbVal: number,
+  onEdit: () => void,
+  onShowMarketingHub: () => void,
+  onShowAddTask: () => void,
+  onUploadImage: () => void
+): SalesPlanAction => {
+  if (activeBlockers.length > 0) {
+    const blockerType = activeBlockers[0].blocker_type;
+    return {
+      title: "Önce satış engelini kaldır",
+      reason: "Bu portföyde aktif blocker var.",
+      tone: 'danger',
+      ctaLabel: blockerType === 'price' ? "Fiyat Güncelle" : (blockerType === 'content' || blockerType === 'presentation' ? "İçerik Üret" : "Aktivite Ekle"),
+      onClick: blockerType === 'price' ? onEdit : (blockerType === 'content' || blockerType === 'presentation' ? onShowMarketingHub : onShowAddTask),
+      icon: <AlertTriangle size={20} />
+    };
+  }
+  
+  if (matchedLeads.length > 0) {
+    return {
+      title: "Eşleşen müşterilere sun",
+      reason: `${matchedLeads.length} uygun müşteri adayı bulundu.`,
+      tone: 'success',
+      ctaLabel: "Eşleşenleri Gör",
+      onClick: () => toast.success("Eşleşen müşteriler aşağıda listelendi."),
+      icon: <Users size={20} />
+    };
+  }
+
+  if (saleProbVal < 50) {
+    return {
+      title: "Fiyat ve sunumu gözden geçir",
+      reason: "Satış ihtimali düşük görünüyor.",
+      tone: 'warning',
+      ctaLabel: "Fiyat Güncelle",
+      onClick: onEdit,
+      icon: <TrendingDown size={20} />
+    };
+  }
+
+  if (!property.images || property.images.length === 0) {
+    return {
+      title: "Portföy görselini güçlendir",
+      reason: "Fotoğraf eksik veya zayıf.",
+      tone: 'warning',
+      ctaLabel: "Fotoğraf Ekle",
+      onClick: onUploadImage,
+      icon: <Camera size={20} />
+    };
+  }
+
+  return {
+    title: "Portföyü pazara çıkar",
+    reason: "Portföy yayın ve paylaşım için hazır görünüyor.",
+    tone: 'neutral',
+    ctaLabel: "Sunum Alanını Gör",
+    onClick: () => toast.success("Alıcı sunumu ve mülk sahibi portalı hemen aşağıda."),
+    icon: <Share2 size={20} />
+  };
+};
+
+const getLeadMatchReasons = (lead: Lead, property: Property): string[] => {
+  const reasons: string[] = [];
+  
+  const leadDistrict = lead.district?.trim().toLowerCase();
+  const propertyDistrict = property.address?.district?.trim().toLowerCase();
+
+  if (leadDistrict && propertyDistrict && leadDistrict === propertyDistrict) {
+    reasons.push('Bölge Eşleşmesi');
+  }
+
+  const leadNotesLower = lead.notes?.trim().toLowerCase() || '';
+  
+  if (property.type && leadNotesLower.includes(property.type.trim().toLowerCase())) {
+    reasons.push('Notlardan Mülk Tipi Eşleşmesi');
+  }
+  
+  if (propertyDistrict && leadNotesLower.includes(propertyDistrict)) {
+    reasons.push('Notlardan Bölge Eşleşmesi');
+  }
+
+  if (reasons.length > 0 && (lead.status === 'Sıcak' || lead.temperature === 'hot')) {
+    reasons.push('Sıcak Takip');
+  }
+
+  return reasons;
+};
 
 export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
   selectedProperty,
@@ -97,10 +201,11 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
 
   const matchedLeads = (leads || []).filter(l => 
     l.status !== 'Pasif' && 
-    (l.district === selectedProperty.address?.district || l.type === selectedProperty.type)
+    l.type !== 'Bölge Network' &&
+    getLeadMatchReasons(l, selectedProperty).length > 0
   );
   
-  const staticRegionScore = (regionScores || []).find((r: any) => r.district === selectedProperty.address?.district);
+  const staticRegionScore = (regionScores || []).find((r: RegionEfficiencyScore) => r.district === selectedProperty.address?.district);
 
   const marketData = liveMarketAnalysis?.data;
 
@@ -109,7 +214,6 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
     : Math.round((selectedProperty.sale_probability || 0.5) * 100);
     
   const healthScoreVal = marketData?.healthScore || selectedProperty.health_score || 50;
-  const currentRegionScore = marketData?.regionEfficiency || staticRegionScore?.score || 50;
 
   const getSaleProbStyles = (score: number) => {
     if (score >= 80) return { bg: 'bg-emerald-50', border: 'border-emerald-100', icon: 'text-emerald-600', textDark: 'text-emerald-700', desc: 'Bu fiyat bandında talep yüksek. Pazarlama modüllerini hemen kullanın.' };
@@ -123,14 +227,22 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
     return { level: 'Düşük', bg: 'bg-slate-50', border: 'border-slate-100', icon: 'text-slate-600', textDark: 'text-slate-700', desc: 'Yatırımdan ziyade doğrudan oturum amaçlı alıcılara hitap ediyor.' };
   };
 
-  const getRegionDesc = (score: number) => {
-    if (score >= 80) return "Bölgede emlak sirkülasyonu çok yüksek. İlanlar hızlı eriyor.";
-    if (score >= 50) return "Bölgede ortalama bir hareketlilik var. Doğru fiyatlandırma kritik.";
-    return "Bölgedeki işlem hacmi şu an durgun. Satış süreci normalden uzun sürebilir.";
-  };
-
   const saleProbConfig = getSaleProbStyles(saleProbVal);
   const invConfig = getInvStyles(healthScoreVal);
+
+  const activeBlockers = blockers.filter(b => b.property_id === selectedProperty.id && b.is_active);
+  const propertyTasks = tasks.filter(t => t.property_id === selectedProperty.id);
+
+  const primaryAction = getPrimarySalesAction(
+    selectedProperty,
+    activeBlockers,
+    matchedLeads,
+    saleProbVal,
+    onEdit,
+    onGenerateMarketingHub,
+    () => setShowAddTask?.(true),
+    () => fileInputRef.current?.click()
+  );
 
   return (
     <AnimatePresence>
@@ -256,7 +368,105 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
           {/* Content */}
           <div className="flex-1 overflow-auto p-8 space-y-8 no-scrollbar">
 
-            {/* SİHİRLİ LİNK BANNER'I */}
+            {/* 1. PORTFÖY SATIŞ PLANI */}
+            <div className="space-y-4">
+              <div>
+                <h3 className="font-black text-xl text-slate-900">Portföy Satış Planı</h3>
+                <p className="text-sm text-slate-500 font-medium mt-1">Bu portföy için bugün yapılacak en mantıklı aksiyonlar</p>
+              </div>
+              
+              <div className="bg-slate-50 rounded-3xl p-6 border border-slate-100 space-y-6">
+                {/* Metrics Row */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center">
+                    <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Durum</div>
+                    <div className="text-sm font-black text-slate-900">{selectedProperty.status}</div>
+                  </div>
+                  <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center">
+                    <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Satış İhtimali</div>
+                    <div className={`text-sm font-black ${saleProbConfig.icon}`}>%{saleProbVal}</div>
+                  </div>
+                  <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center">
+                    <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Engel Durumu</div>
+                    <div className={`text-sm font-black ${activeBlockers.length > 0 ? 'text-red-600' : 'text-emerald-600'}`}>
+                      {activeBlockers.length} Açık
+                    </div>
+                  </div>
+                  <div className="bg-white p-3 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center">
+                    <div className="text-[10px] text-slate-400 font-bold uppercase mb-1">Eşleşen Müşteri</div>
+                    <div className={`text-sm font-black ${matchedLeads.length > 0 ? 'text-orange-600' : 'text-slate-600'}`}>
+                      {matchedLeads.length} Kişi
+                    </div>
+                  </div>
+                </div>
+
+                {/* Primary Action Banner */}
+                <div className={`rounded-2xl p-5 border ${
+                  primaryAction.tone === 'danger' ? 'bg-red-50 border-red-100' : 
+                  primaryAction.tone === 'success' ? 'bg-emerald-50 border-emerald-100' : 
+                  primaryAction.tone === 'warning' ? 'bg-orange-50 border-orange-100' :
+                  'bg-blue-50 border-blue-100'
+                } flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between`}>
+                  <div className="flex items-center gap-4">
+                    <div className={`w-12 h-12 rounded-2xl flex items-center justify-center ${
+                      primaryAction.tone === 'danger' ? 'bg-red-100 text-red-600' : 
+                      primaryAction.tone === 'success' ? 'bg-emerald-100 text-emerald-600' : 
+                      primaryAction.tone === 'warning' ? 'bg-orange-100 text-orange-600' :
+                      'bg-blue-100 text-blue-600'
+                    }`}>
+                      {primaryAction.icon}
+                    </div>
+                    <div>
+                      <div className={`text-base font-black ${
+                        primaryAction.tone === 'danger' ? 'text-red-900' : 
+                        primaryAction.tone === 'success' ? 'text-emerald-900' : 
+                        primaryAction.tone === 'warning' ? 'text-orange-900' :
+                        'text-blue-900'
+                      }`}>{primaryAction.title}</div>
+                      <div className={`text-xs font-medium mt-0.5 ${
+                        primaryAction.tone === 'danger' ? 'text-red-700' : 
+                        primaryAction.tone === 'success' ? 'text-emerald-700' : 
+                        primaryAction.tone === 'warning' ? 'text-orange-700' :
+                        'text-blue-700'
+                      }`}>{primaryAction.reason}</div>
+                    </div>
+                  </div>
+                  <button 
+                    onClick={primaryAction.onClick}
+                    className={`shrink-0 px-5 py-3 rounded-xl font-bold text-sm shadow-sm transition-all active:scale-95 ${
+                      primaryAction.tone === 'danger' ? 'bg-red-600 text-white hover:bg-red-700' : 
+                      primaryAction.tone === 'success' ? 'bg-emerald-600 text-white hover:bg-emerald-700' : 
+                      primaryAction.tone === 'warning' ? 'bg-orange-600 text-white hover:bg-orange-700' :
+                      'bg-blue-600 text-white hover:bg-blue-700'
+                    }`}
+                  >
+                    {primaryAction.ctaLabel}
+                  </button>
+                </div>
+
+                {/* 3 Quick Actions */}
+                <div className="grid grid-cols-3 gap-3">
+                  <button onClick={onGenerateMarketingHub} className="bg-white p-3 rounded-xl border border-slate-100 hover:border-orange-200 hover:bg-orange-50 transition-all flex flex-col items-center justify-center gap-2 text-slate-600 hover:text-orange-600">
+                    <Sparkles size={18} />
+                    <span className="text-[10px] font-bold">Pazarlama Üret</span>
+                  </button>
+                  <button onClick={() => setShowAddTask?.(true)} className="bg-white p-3 rounded-xl border border-slate-100 hover:border-blue-200 hover:bg-blue-50 transition-all flex flex-col items-center justify-center gap-2 text-slate-600 hover:text-blue-600">
+                    <Plus size={18} />
+                    <span className="text-[10px] font-bold">Aktivite Ekle</span>
+                  </button>
+                  <button onClick={() => {
+                      setDocumentAutomationProperty?.(selectedProperty);
+                      setDocumentAutomationLead?.(null);
+                      setShowDocumentAutomation?.(true);
+                  }} className="bg-white p-3 rounded-xl border border-slate-100 hover:border-emerald-200 hover:bg-emerald-50 transition-all flex flex-col items-center justify-center gap-2 text-slate-600 hover:text-emerald-600">
+                    <FileText size={18} />
+                    <span className="text-[10px] font-bold">Doküman Ekle</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. ALICI SUNUMU / MÜLK SAHİBİ PORTALI */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="bg-gradient-to-r from-indigo-50 to-purple-50 rounded-3xl p-6 border border-indigo-100 shadow-sm flex flex-col items-start justify-between gap-4">
                 <div>
@@ -280,27 +490,6 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                 <OwnerPortalButton propertyId={selectedProperty.id} />
               </div>
             </div>
-
-            {/* DOKÜMAN OTOMASYONU BUTONU */}
-            <button 
-              onClick={() => {
-                setDocumentAutomationProperty?.(selectedProperty);
-                setDocumentAutomationLead?.(null); // Mülk detayındayız, müşteri henüz seçili değil
-                setShowDocumentAutomation?.(true);
-              }}
-              className="w-full p-5 bg-white border-2 border-slate-100 rounded-3xl flex items-center justify-between hover:border-orange-500 transition-all group"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600">
-                  <FileText size={24} />
-                </div>
-                <div className="text-left">
-                  <div className="text-base font-black text-slate-900">Resmi Doküman Oluştur</div>
-                  <div className="text-xs text-slate-400 mt-1">Yer gösterme, yetki sözleşmesi veya teklif formu</div>
-                </div>
-              </div>
-              <Plus size={24} className="text-slate-300 group-hover:text-orange-500 transition-all" />
-            </button>
 
             {/* AÇIK BLOCKER LİSTESİ */}
             {blockers.filter(b => b.property_id === selectedProperty.id && b.is_active).length > 0 && (
@@ -368,6 +557,93 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                 </div>
               </div>
             )}
+
+            {/* Matching Leads */}
+            <div className="space-y-4">
+              <h3 className="font-bold text-slate-900 flex items-center gap-2">
+                <Users size={18} className="text-orange-600" />
+                Eşleşen Müşteriler
+              </h3>
+              <div className="space-y-3">
+                {(matchedLeads || []).length === 0 ? (
+                  <Card className="bg-slate-50 border-dashed border-slate-200 p-10 flex flex-col items-center text-center gap-6">
+                    <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-slate-300 shadow-sm">
+                      <Users size={40} />
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-base font-bold text-slate-900">Henüz otomatik eşleşme yok</h4>
+                      <p className="text-xs text-slate-500 max-w-[240px] mx-auto">
+                        Bu mülk için şu an aktif bir adayımız bulunmuyor.
+                      </p>
+                    </div>
+                  </Card>
+                ) : (
+                  <>
+                    {(matchedLeads || []).slice(0, 3).map(lead => {
+                      const reasons = getLeadMatchReasons(lead, selectedProperty);
+                      const primaryReason = reasons[0] || 'Potansiyel Alıcı';
+                      const extraReasonsCount = reasons.length - 1;
+                      const hasPhone = typeof lead.phone === 'string' && lead.phone.trim().length > 3;
+
+                      return (
+                        <Card key={lead.id} className="p-5 space-y-4 bg-white border-slate-100">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-3">
+                              <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400">
+                                <UserIcon size={24} />
+                              </div>
+                              <div>
+                                <div className="text-sm font-bold text-slate-900">{lead.name}</div>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <Badge variant="success">{primaryReason}</Badge>
+                                  {extraReasonsCount > 0 && (
+                                    <span className="text-[10px] text-slate-500 font-medium">+{extraReasonsCount} sebep</span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="flex gap-2">
+                              {hasPhone ? (
+                                <a href={`tel:${lead.phone}`} className="p-3 bg-slate-50 text-slate-600 rounded-2xl hover:bg-slate-100 transition-colors inline-block">
+                                  <Phone size={18} />
+                                </a>
+                              ) : (
+                                <button disabled className="p-3 bg-slate-50 text-slate-300 rounded-2xl cursor-not-allowed inline-block">
+                                  <Phone size={18} />
+                                </button>
+                              )}
+                              
+                              {hasPhone ? (
+                                <button 
+                                  onClick={() => {
+                                    const cleanPhone = lead.phone.replace(/\D/g, '');
+                                    const waPhone = cleanPhone.startsWith('9') ? cleanPhone : (cleanPhone.startsWith('0') ? '9' + cleanPhone : '90' + cleanPhone);
+                                    const text = encodeURIComponent(`Merhaba ${lead.name}, bu mülk ilginizi çekebilir: ${selectedProperty.title || ''}\nFiyat: ₺${selectedProperty.price.toLocaleString()}\nDetaylar için: https://portfy.app/ilan/${selectedProperty.id}`);
+                                    window.open(`https://wa.me/${waPhone}?text=${text}`, '_blank');
+                                  }}
+                                  className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl hover:bg-emerald-100 transition-colors"
+                                >
+                                  <MessageSquare size={18} />
+                                </button>
+                              ) : (
+                                <button disabled className="p-3 bg-slate-50 text-slate-300 rounded-2xl cursor-not-allowed inline-block">
+                                  <MessageSquare size={18} />
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        </Card>
+                      );
+                    })}
+                    {(matchedLeads || []).length > 3 && (
+                      <div className="text-center text-xs text-slate-500 font-medium py-2">
+                        +{(matchedLeads || []).length - 3} eşleşme daha var
+                      </div>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
 
             {/* Veri Kaynakları Göstergesi */}
             <div className="bg-slate-50 rounded-2xl p-4 border border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
@@ -519,67 +795,26 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
               </div>
             </div>
 
-            {/* Matching Leads */}
-            <div className="space-y-4">
-              <h3 className="font-bold text-slate-900 flex items-center gap-2">
-                <Users size={18} className="text-orange-600" />
-                Eşleşen Müşteriler
-              </h3>
-              <div className="space-y-3">
-                {(matchedLeads || []).length === 0 ? (
-                  <Card className="bg-slate-50 border-dashed border-slate-200 p-10 flex flex-col items-center text-center gap-6">
-                    <div className="w-20 h-20 bg-white rounded-full flex items-center justify-center text-slate-300 shadow-sm">
-                      <Users size={40} />
-                    </div>
-                    <div className="space-y-2">
-                      <h4 className="text-base font-bold text-slate-900">Henüz otomatik eşleşme yok</h4>
-                      <p className="text-xs text-slate-500 max-w-[240px] mx-auto">
-                        Bu mülk için şu an aktif bir adayımız bulunmuyor.
-                      </p>
-                    </div>
-                  </Card>
-                ) : (matchedLeads || []).slice(0, 3).map(lead => (
-                  <Card key={lead.id} className="p-5 space-y-4 bg-white border-slate-100">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-400">
-                          <UserIcon size={24} />
-                        </div>
-                        <div>
-                          <div className="text-sm font-bold text-slate-900">{lead.name}</div>
-                          <div className="flex gap-2 mt-1">
-                            <Badge variant="success">Uyumluluk: %92</Badge>
-                            <Badge variant="info">Bütçe: Uygun</Badge>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <button className="p-3 bg-slate-50 text-slate-600 rounded-2xl hover:bg-slate-100 transition-colors">
-                          <Phone size={18} />
-                        </button>
-                        <button 
-                          onClick={() => {
-                            const cleanPhone = lead.phone.replace(/\D/g, '');
-                            const waPhone = cleanPhone.startsWith('0') ? '9' + cleanPhone : (cleanPhone.length === 10 ? '90' + cleanPhone : cleanPhone);
-                            const text = encodeURIComponent(`Merhaba ${lead.name}, bu mülk ilginizi çekebilir: ${selectedProperty.title || ''}\nFiyat: ₺${selectedProperty.price.toLocaleString()}\nDetaylar için: https://portfy.app/ilan/${selectedProperty.id}`);
-                            window.open(`https://wa.me/${waPhone}?text=${text}`, '_blank');
-                          }}
-                          className="p-3 bg-emerald-50 text-emerald-600 rounded-2xl hover:bg-emerald-100 transition-colors"
-                        >
-                          <MessageSquare size={18} />
-                        </button>
-                      </div>
-                    </div>
-                    <div className="p-3 bg-slate-50 rounded-2xl text-[10px] text-slate-500 italic">
-                      "Müşteri bölgede arayışta, bütçesi bu ilan için ideal."
-                    </div>
-                    <button className="w-full py-2 border border-slate-200 rounded-xl text-[10px] font-bold text-slate-400 flex items-center justify-center gap-2">
-                      <Plus size={12} /> Not Ekle
-                    </button>
-                  </Card>
-                ))}
+            {/* DOKÜMAN OTOMASYONU BUTONU */}
+            <button 
+              onClick={() => {
+                setDocumentAutomationProperty?.(selectedProperty);
+                setDocumentAutomationLead?.(null); // Mülk detayındayız, müşteri henüz seçili değil
+                setShowDocumentAutomation?.(true);
+              }}
+              className="w-full p-5 bg-white border-2 border-slate-100 rounded-3xl flex items-center justify-between hover:border-orange-500 transition-all group"
+            >
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 bg-orange-50 rounded-2xl flex items-center justify-center text-orange-600">
+                  <FileText size={24} />
+                </div>
+                <div className="text-left">
+                  <div className="text-base font-black text-slate-900">Resmi Doküman Oluştur</div>
+                  <div className="text-xs text-slate-400 mt-1">Yer gösterme, yetki sözleşmesi veya teklif formu</div>
+                </div>
               </div>
-            </div>
+              <Plus size={24} className="text-slate-300 group-hover:text-orange-500 transition-all" />
+            </button>
 
             <div className="space-y-4">
               <h3 className="font-bold text-slate-900">Konum Bilgisi</h3>

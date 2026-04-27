@@ -4,7 +4,7 @@ import { MapPin as MapPinType } from '../types';
 
 interface CompetitorListProps {
   filteredPins: MapPinType[];
-  allPinTypes: any[];
+  allPinTypes: { id: string; label?: string; name?: string; icon: React.ElementType | string; color: string; kind?: string }[];
 }
 
 export const CompetitorList: React.FC<CompetitorListProps> = ({ filteredPins, allPinTypes }) => {

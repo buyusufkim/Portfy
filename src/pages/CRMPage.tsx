@@ -20,7 +20,7 @@ interface CRMPageProps {
   setShowWhatsAppImport: (show: boolean) => void;
   setShowAddLead: (show: boolean) => void;
   setIsAnalyzingLeads: (analyzing: boolean) => void;
-  analyzeLeadsMutation: MutationResult<string, any>;
+  analyzeLeadsMutation: MutationResult<string, unknown>;
   isAnalyzingLeads: boolean;
   properties: Property[];
   selectedLead: Lead | null;

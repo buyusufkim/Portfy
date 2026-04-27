@@ -153,9 +153,10 @@ export const propertyService = {
         console.error("Supabase property delete error:", error);
         throw new Error(error.message); // Supabase hatasını direkt yukarı gönder
       }
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error("PropertyService delete exception:", err);
-      throw err; 
+      const message = err instanceof Error ? err.message : 'Bilinmeyen hata';
+      throw new Error(message);
     }
   },
 

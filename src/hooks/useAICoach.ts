@@ -1,16 +1,22 @@
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { api } from '../services/api';
-import { coachService } from '../services/coachService';
-import { QUERY_KEYS } from '../constants/queryKeys';
-import { useAuth } from '../AuthContext';
-import { AICoachAction } from '../types/ai';
-import confetti from 'canvas-confetti';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { api } from "../services/api";
+import { coachService } from "../services/coachService";
+import { QUERY_KEYS } from "../constants/queryKeys";
+import { useAuth } from "../AuthContext";
+import { AICoachAction } from "../types/ai";
+import confetti from "canvas-confetti";
 
 export const useAICoach = () => {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
 
-  const { data: insight, isLoading, error, refetch } = useQuery({
+  const {
+    data: insight,
+    isLoading,
+    isFetching,
+    error,
+    refetch,
+  } = useQuery({
     queryKey: [QUERY_KEYS.AI_COACH_INSIGHT, profile?.id],
     queryFn: api.getDetailedCoachInsight,
     enabled: false,
@@ -18,15 +24,18 @@ export const useAICoach = () => {
   });
 
   const convertToTaskMutation = useMutation({
-    mutationFn: (action: AICoachAction) => coachService.convertActionToTask(action),
+    mutationFn: (action: AICoachAction) =>
+      coachService.convertActionToTask(action),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS, profile?.id] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.TASKS, profile?.id],
+      });
       confetti({
         particleCount: 50,
         spread: 40,
-        origin: { y: 0.8 }
+        origin: { y: 0.8 },
       });
-    }
+    },
   });
 
   const isPremium = profile?.broker_level && profile.broker_level >= 2;
@@ -35,10 +44,11 @@ export const useAICoach = () => {
     insight: insight?.insight,
     generated_at: insight?.generated_at,
     isLoading,
+    isFetching,
     error,
     refetch,
     convertToTask: convertToTaskMutation.mutate,
     isConverting: convertToTaskMutation.isPending,
-    isPremium
+    isPremium,
   };
 };

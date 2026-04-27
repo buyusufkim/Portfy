@@ -9,7 +9,8 @@ import {
   Brain, 
   ShieldCheck, 
   User as UserIcon,
-  Building2
+  Building2,
+  CheckSquare
 } from 'lucide-react';
 import { UserProfile } from '../../types';
 
@@ -72,10 +73,10 @@ export const DesktopSidebar = ({
     
     <div className="space-y-2 flex-1">
       <SidebarLink icon={<LayoutDashboard size={20} />} label="Dashboard" active={activeTab === 'dashboard' && !showAdminPanel} onClick={() => onTabChange('dashboard')} />
+      <SidebarLink icon={<CheckSquare size={20} />} label="Günlük Akış" active={activeTab === 'tasks' && !showAdminPanel} onClick={() => onTabChange('tasks')} />
       <SidebarLink icon={<MapIcon size={20} />} label="Bölgem" active={activeTab === 'bolgem' && !showAdminPanel} onClick={() => onTabChange('bolgem')} />
       <SidebarLink icon={<Briefcase size={20} />} label="Portföyler" active={activeTab === 'portfoyler' && !showAdminPanel} onClick={() => onTabChange('portfoyler')} />
       <SidebarLink icon={<Users size={20} />} label="CRM" active={activeTab === 'crm' && !showAdminPanel} onClick={() => onTabChange('crm')} />
-      <SidebarLink icon={<MessageSquare size={20} />} label="İçerik & Notlar" active={activeTab === 'notes' && !showAdminPanel} onClick={() => onTabChange('notes')} />
       <SidebarLink icon={<Brain size={20} />} label="AI Koç" active={activeTab === 'koc' && !showAdminPanel} onClick={() => onTabChange('koc')} />
     </div>
 
@@ -118,10 +119,10 @@ export const MobileNav = ({
   };
 
   const navItems = [
+    { id: 'tasks', icon: <CheckSquare size={24} />, label: 'Akış' },
     { id: 'bolgem', icon: <MapIcon size={24} />, label: 'Bölgem' },
     { id: 'portfoyler', icon: <Briefcase size={24} />, label: 'Portföyler' },
     { id: 'crm', icon: <Users size={24} />, label: 'CRM' },
-    { id: 'notes', icon: <MessageSquare size={24} />, label: 'İçerik' },
     { id: 'koc', icon: <Brain size={24} />, label: 'AI Koç' },
     { id: 'profil', icon: <UserIcon size={24} />, label: 'Profilim' },
   ];

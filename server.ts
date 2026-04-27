@@ -2,7 +2,34 @@ import express, { Request, Response, NextFunction } from "express";
 import path from "path";
 import dotenv from "dotenv";
 
-import { authenticate, requireAdmin, aiLimiter, xpLimiter, tokenTrackerMiddleware, handleUpdateProfile, handleSubscribe, handleAdminUpdateUser, handleAdminDeleteUser, handleAdminGetUsers, handleAdminGetSettings, handleUpdateGlobalSettings, handleEarnXP, handleAIGeneration, AuthRequest } from "./server/ai-api.js";
+import { 
+  authenticate, 
+  requireAdmin, 
+  aiLimiter, 
+  xpLimiter, 
+  tokenTrackerMiddleware, 
+  handleUpdateProfile, 
+  handleSubscribe, 
+  handleAdminUpdateUser, 
+  handleAdminDeleteUser, 
+  handleAdminResetToken,
+  handleAdminGetUsers, 
+  handleAdminGetSettings, 
+  handleUpdateGlobalSettings, 
+  handleEarnXP, 
+  handleAIGeneration, 
+  AuthRequest,
+  handleAdminGetUserNotes,
+  handleAdminCreateUserNote,
+  handleAdminDeleteUserNote,
+  handleAdminGetAnnouncements,
+  handleAdminCreateAnnouncement,
+  handleAdminUpdateAnnouncement,
+  handleAdminDeleteAnnouncement,
+  handleAdminGetSupportTickets,
+  handleAdminUpdateSupportTicket,
+  handleAdminGetAuditLogs
+} from "./server/ai-api.js";
 import { rateLimit } from 'express-rate-limit';
 import { fetchMarketData } from "./server/marketScraper.js";
 
@@ -20,7 +47,7 @@ export interface CustomRequest extends Request {
 }
 
 app.use(express.json({
-  limit: "100kb",
+  limit: "50mb",
   verify: (req: CustomRequest, res: Response, buf: Buffer) => {
     if (req.url === "/api/webhooks/meta") {
       req.rawBody = buf;
@@ -50,7 +77,20 @@ app.get("/api/ai/admin/users", authenticate, requireAdmin, handleAdminGetUsers);
 app.get("/api/ai/admin/settings", authenticate, requireAdmin, handleAdminGetSettings);
 app.post("/api/ai/admin/update-user", authenticate, requireAdmin, handleAdminUpdateUser);
 app.post("/api/ai/admin/delete-user", authenticate, requireAdmin, handleAdminDeleteUser);
+app.post("/api/ai/admin/reset-token", authenticate, requireAdmin, handleAdminResetToken);
 app.post("/api/ai/admin/update-settings", authenticate, requireAdmin, handleUpdateGlobalSettings);
+
+// Admin V3 Endpoints
+app.get("/api/ai/admin/user-notes/:userId", authenticate, requireAdmin, handleAdminGetUserNotes);
+app.post("/api/ai/admin/user-notes", authenticate, requireAdmin, handleAdminCreateUserNote);
+app.delete("/api/ai/admin/user-notes/:id", authenticate, requireAdmin, handleAdminDeleteUserNote);
+app.get("/api/ai/admin/announcements", authenticate, requireAdmin, handleAdminGetAnnouncements);
+app.post("/api/ai/admin/announcements", authenticate, requireAdmin, handleAdminCreateAnnouncement);
+app.patch("/api/ai/admin/announcements/:id", authenticate, requireAdmin, handleAdminUpdateAnnouncement);
+app.delete("/api/ai/admin/announcements/:id", authenticate, requireAdmin, handleAdminDeleteAnnouncement);
+app.get("/api/ai/admin/support-tickets", authenticate, requireAdmin, handleAdminGetSupportTickets);
+app.patch("/api/ai/admin/support-tickets/:id", authenticate, requireAdmin, handleAdminUpdateSupportTicket);
+app.get("/api/ai/admin/audit-logs", authenticate, requireAdmin, handleAdminGetAuditLogs);
 
 // Momentum Endpoints
 app.post("/api/momentum/maintenance/run", authenticate, handleMaintenanceRun);

@@ -1,27 +1,37 @@
 // Dosya: src/pages/PortfoliosPage.tsx
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo } from "react";
+import { toast } from "react-hot-toast";
 // DÜZELTME: useQuery eklendi
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'; 
-import { motion } from 'motion/react';
-import { api } from '../services/api';
-import { QUERY_KEYS } from '../constants/queryKeys';
-import { Property, BrokerAccount, ExternalListing, Lead, RegionEfficiencyScore, MutationResult, Task } from '../types';
-import { AddPropertyModal } from '../components/portfolios/AddPropertyModal';
-import { IntegrationModal } from '../components/portfolios/IntegrationModal';
-import { ExternalListingsModal } from '../components/portfolios/ExternalListingsModal';
-import { ImportUrlModal } from '../components/portfolios/ImportUrlModal';
-import { PropertyDetailModal } from '../components/portfolios/PropertyDetailModal';
-import { MarketingHubModal } from '../components/portfolios/MarketingHubModal';
-import { AIContentModal } from '../components/portfolios/AIContentModal';
-import { PortfoliosToolbar } from '../components/portfolios/PortfoliosToolbar';
-import { PropertyGrid } from '../components/portfolios/PropertyGrid';
-import { useAuth } from '../AuthContext';
-import { MagicLinkButton } from '../components/premium/MagicLinkButton';
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { motion } from "motion/react";
+import { api } from "../services/api";
+import { QUERY_KEYS } from "../constants/queryKeys";
+import {
+  Property,
+  BrokerAccount,
+  ExternalListing,
+  Lead,
+  RegionEfficiencyScore,
+  MutationResult,
+  Task,
+} from "../types";
+import { MarketingHubData } from "../components/portfolios/MarketingHubModal";
+import { AddPropertyModal } from "../components/portfolios/AddPropertyModal";
+import { IntegrationModal } from "../components/portfolios/IntegrationModal";
+import { ExternalListingsModal } from "../components/portfolios/ExternalListingsModal";
+import { ImportUrlModal } from "../components/portfolios/ImportUrlModal";
+import { PropertyDetailModal } from "../components/portfolios/PropertyDetailModal";
+import { MarketingHubModal } from "../components/portfolios/MarketingHubModal";
+import { AIContentModal } from "../components/portfolios/AIContentModal";
+import { PortfoliosToolbar } from "../components/portfolios/PortfoliosToolbar";
+import { PropertyGrid } from "../components/portfolios/PropertyGrid";
+import { useAuth } from "../AuthContext";
+import { MagicLinkButton } from "../components/premium/MagicLinkButton";
 
 // YENİ EKLENEN MODÜLLER
-import { useSmartMatch } from '../hooks/useSmartMatch';
-import { SmartMatchModal } from '../components/portfolios/SmartMatchModal';
+import { useSmartMatch } from "../hooks/useSmartMatch";
+import { SmartMatchModal } from "../components/portfolios/SmartMatchModal";
 
 interface PortfolioModalsProps {
   showAddProperty: boolean;
@@ -36,9 +46,12 @@ interface PortfolioModalsProps {
   setSelectedProperty: (p: Property | null) => void;
   brokerAccount: BrokerAccount | null;
   externalListings: ExternalListing[];
-  syncListingsMutation: MutationResult<any, void>;
-  linkPropertyMutation: MutationResult<any, { propertyId: string, externalId: string }>;
-  connectIntegrationMutation: MutationResult<any, void>;
+  syncListingsMutation: MutationResult<unknown, void>;
+  linkPropertyMutation: MutationResult<
+    unknown,
+    { propertyId: string; externalId: string }
+  >;
+  connectIntegrationMutation: MutationResult<unknown, string>;
   leads: Lead[];
   regionScores: RegionEfficiencyScore[];
   isEditing: boolean;
@@ -74,15 +87,26 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
   tasks,
   setShowDocumentAutomation,
   setDocumentAutomationProperty,
-  setDocumentAutomationLead
+  setDocumentAutomationLead,
 }) => {
   const { profile } = useAuth();
   const queryClient = useQueryClient();
   const [aiContent, setAiContent] = useState<string | null>(null);
-  const [instagramCaptions, setInstagramCaptions] = useState<{ corporate: string, sales: string, warm: string } | null>(null);
-  const [whatsappMessages, setWhatsappMessages] = useState<{ single: string, status: string, investor: string } | null>(null);
-  const [marketingHubData, setMarketingHubData] = useState<unknown | null>(null);
-  const [aiMarketingType, setAiMarketingType] = useState<'listing' | 'instagram' | 'whatsapp' | 'share' | 'hub' | null>(null);
+  const [instagramCaptions, setInstagramCaptions] = useState<{
+    corporate: string;
+    sales: string;
+    warm: string;
+  } | null>(null);
+  const [whatsappMessages, setWhatsappMessages] = useState<{
+    single: string;
+    status: string;
+    investor: string;
+  } | null>(null);
+  const [marketingHubData, setMarketingHubData] =
+    useState<MarketingHubData | null>(null);
+  const [aiMarketingType, setAiMarketingType] = useState<
+    "listing" | "instagram" | "whatsapp" | "share" | "hub" | null
+  >(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [showMarketingHub, setShowMarketingHub] = useState(false);
 
@@ -93,7 +117,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
     onSuccess: (data) => {
       setAiContent(data);
       setIsGenerating(false);
-    }
+    },
   });
 
   const generateInstagramMutation = useMutation({
@@ -101,7 +125,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
     onSuccess: (data) => {
       setInstagramCaptions(data);
       setIsGenerating(false);
-    }
+    },
   });
 
   const generateWhatsAppMutation = useMutation({
@@ -109,111 +133,135 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
     onSuccess: (data) => {
       setWhatsappMessages(data);
       setIsGenerating(false);
-    }
+    },
   });
 
   const generateMarketingMutation = useMutation({
     mutationFn: (prop: Property) => api.generateMarketingModule(prop),
     onSuccess: (data) => {
-      setMarketingHubData(data);
+      setMarketingHubData(data as unknown as MarketingHubData);
       setIsGenerating(false);
       setShowMarketingHub(true);
-    }
+    },
   });
 
   const { data: blockers = [] } = useQuery({
-    queryKey: ['portfolioBlockers', profile?.id],
+    queryKey: ["portfolioBlockers", profile?.id],
     queryFn: () => api.momentumOs.getPortfolioBlockers(),
-    enabled: !!profile?.id
+    enabled: !!profile?.id,
   });
 
   const resolveBlockerMutation = useMutation({
     mutationFn: (id: string) => api.momentumOs.resolvePortfolioBlocker(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portfolioBlockers', profile?.id] });
-    }
+      queryClient.invalidateQueries({
+        queryKey: ["portfolioBlockers", profile?.id],
+      });
+    },
   });
 
   const addPropertyMutation = useMutation({
-    mutationFn: (data: Omit<Property, 'id' | 'user_id'>) => isEditing && selectedProperty 
-      ? api.updateProperty(selectedProperty.id, data)
-      : api.addProperty(data),
+    mutationFn: (data: Omit<Property, "id" | "user_id">) =>
+      isEditing && selectedProperty
+        ? api.updateProperty(selectedProperty.id, data)
+        : api.addProperty(data),
     onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.id] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD_STATS, profile?.id] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.REGION_SCORES, profile?.id] });
-      
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PROPERTIES, profile?.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD_STATS, profile?.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.REGION_SCORES, profile?.id],
+      });
+
       setShowAddProperty(false);
-      
+
       if (!isEditing && data) {
-        const propertyId = typeof data === 'string' ? data : data.id;
-        
+        const propertyId = typeof data === "string" ? data : data.id;
+
         if (propertyId) {
-          runSmartMatchAsync(propertyId)
-            .catch(err => console.error("Smart Match Hatası:", err));
+          runSmartMatchAsync(propertyId).catch((err) =>
+            console.error("Smart Match Hatası:", err),
+          );
         }
       }
 
       setIsEditing(false);
-    }
+    },
   });
 
   const deletePropertyMutation = useMutation({
     mutationFn: (id: string) => api.deleteProperty(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.id] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.DASHBOARD_STATS, profile?.id] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PROPERTIES, profile?.id],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.DASHBOARD_STATS, profile?.id],
+      });
       setSelectedProperty(null);
     },
     onError: (err: Error) => {
-      alert("Silme işlemi sırasında bir hata oluştu: " + err.message);
+      toast.error("Silme işlemi sırasında bir hata oluştu: " + err.message);
       console.error("Delete Property Error:", err);
-    }
+    },
   });
 
   const uploadImageMutation = useMutation({
-    mutationFn: ({ id, file }: { id: string, file: File }) => api.uploadPropertyImage(id, file),
+    mutationFn: ({ id, file }: { id: string; file: File }) =>
+      api.uploadPropertyImage(id, file),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.id] });
-    }
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PROPERTIES, profile?.id],
+      });
+    },
   });
 
   const importListingMutation = useMutation({
     mutationFn: api.importListingFromUrl,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROPERTIES, profile?.id] });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PROPERTIES, profile?.id],
+      });
       setShowImportUrlModal(false);
       setIsEditing(false);
       setShowAddProperty(true);
-    }
+    },
   });
 
   return (
     <>
-      <IntegrationModal 
-        show={showIntegrationModal} 
-        onClose={() => setShowIntegrationModal(false)} 
-        onConnect={() => connectIntegrationMutation.mutate()}
+      <IntegrationModal
+        show={showIntegrationModal}
+        onClose={() => setShowIntegrationModal(false)}
+        onConnect={(apiKey) => connectIntegrationMutation.mutate(apiKey)}
         isPending={connectIntegrationMutation.isPending}
       />
-      <ExternalListingsModal 
-        show={showExternalListings} 
-        onClose={() => setShowExternalListings(false)} 
+      <ExternalListingsModal
+        show={showExternalListings}
+        onClose={() => setShowExternalListings(false)}
         listings={externalListings}
         onSync={() => syncListingsMutation.mutate()}
         isSyncing={syncListingsMutation.isPending}
-        onLink={(propertyId, externalId) => linkPropertyMutation.mutate({ propertyId, externalId })}
+        onLink={(propertyId, externalId) =>
+          linkPropertyMutation.mutate({ propertyId, externalId })
+        }
         selectedProperty={selectedProperty}
       />
-      <ImportUrlModal 
-        show={showImportUrlModal} 
-        onClose={() => setShowImportUrlModal(false)} 
+      <ImportUrlModal
+        show={showImportUrlModal}
+        onClose={() => setShowImportUrlModal(false)}
         onImport={(url) => importListingMutation.mutate(url)}
         isImporting={importListingMutation.isPending}
       />
-      <PropertyDetailModal 
-        selectedProperty={showAddProperty ? null : selectedProperty} 
-        onClose={() => { setSelectedProperty(null); setAiContent(null); }} 
+      <PropertyDetailModal
+        selectedProperty={showAddProperty ? null : selectedProperty}
+        onClose={() => {
+          setSelectedProperty(null);
+          setAiContent(null);
+        }}
         regionScores={regionScores}
         leads={leads}
         brokerAccount={brokerAccount}
@@ -225,7 +273,12 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         setDocumentAutomationProperty={setDocumentAutomationProperty}
         setDocumentAutomationLead={setDocumentAutomationLead}
         onShowExternalListings={() => setShowExternalListings(true)}
-        onGenerateMarketingHub={() => { if (!selectedProperty) return; setAiMarketingType('hub'); setIsGenerating(true); generateMarketingMutation.mutate(selectedProperty); }}
+        onGenerateMarketingHub={() => {
+          if (!selectedProperty) return;
+          setAiMarketingType("hub");
+          setIsGenerating(true);
+          generateMarketingMutation.mutate(selectedProperty);
+        }}
         onEdit={() => {
           setIsEditing(true);
           setShowAddProperty(true);
@@ -236,52 +289,63 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
           }
         }}
         onUploadImage={(file) => {
-          if (selectedProperty) uploadImageMutation.mutate({ id: selectedProperty.id, file });
+          if (selectedProperty)
+            uploadImageMutation.mutate({ id: selectedProperty.id, file });
         }}
         isUploading={uploadImageMutation.isPending}
-        isDeleting={deletePropertyMutation.isPending} 
-        magicLinkSlot={selectedProperty ? <MagicLinkButton propertyId={selectedProperty.id} /> : null}
+        isDeleting={deletePropertyMutation.isPending}
+        magicLinkSlot={
+          selectedProperty ? (
+            <MagicLinkButton propertyId={selectedProperty.id} />
+          ) : null
+        }
       />
-      <AddPropertyModal 
-        show={showAddProperty} 
+      <AddPropertyModal
+        show={showAddProperty}
         onClose={() => {
           setShowAddProperty(false);
           setIsEditing(false);
-        }} 
+        }}
         onSubmit={(data) => addPropertyMutation.mutateAsync(data)}
         isPending={addPropertyMutation.isPending}
         initialData={isEditing ? selectedProperty : null}
         leads={leads}
       />
-      <MarketingHubModal 
-        show={showMarketingHub} 
-        onClose={() => setShowMarketingHub(false)} 
+      <MarketingHubModal
+        show={showMarketingHub}
+        onClose={() => setShowMarketingHub(false)}
         marketingHubData={marketingHubData}
         onGenerateListing={() => {
           if (!selectedProperty) return;
           setShowMarketingHub(false);
-          setAiMarketingType('listing');
+          setAiMarketingType("listing");
           setIsGenerating(true);
           generateContentMutation.mutate(selectedProperty);
         }}
         onGenerateInstagram={() => {
           if (!selectedProperty) return;
           setShowMarketingHub(false);
-          setAiMarketingType('instagram');
+          setAiMarketingType("instagram");
           setIsGenerating(true);
           generateInstagramMutation.mutate(selectedProperty);
         }}
         onGenerateWhatsApp={() => {
           if (!selectedProperty) return;
           setShowMarketingHub(false);
-          setAiMarketingType('whatsapp');
+          setAiMarketingType("whatsapp");
           setIsGenerating(true);
           generateWhatsAppMutation.mutate(selectedProperty);
         }}
       />
-      <AIContentModal 
-        aiMarketingType={aiMarketingType} 
-        onClose={() => { setAiMarketingType(null); setAiContent(null); setInstagramCaptions(null); setWhatsappMessages(null); setIsGenerating(false); }} 
+      <AIContentModal
+        aiMarketingType={aiMarketingType}
+        onClose={() => {
+          setAiMarketingType(null);
+          setAiContent(null);
+          setInstagramCaptions(null);
+          setWhatsappMessages(null);
+          setIsGenerating(false);
+        }}
         isGenerating={isGenerating}
         aiContent={aiContent}
         instagramCaptions={instagramCaptions}
@@ -290,9 +354,12 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         onRegenerate={() => {
           if (!selectedProperty || !aiMarketingType) return;
           setIsGenerating(true);
-          if (aiMarketingType === 'listing') generateContentMutation.mutate(selectedProperty);
-          else if (aiMarketingType === 'instagram') generateInstagramMutation.mutate(selectedProperty);
-          else if (aiMarketingType === 'whatsapp') generateWhatsAppMutation.mutate(selectedProperty);
+          if (aiMarketingType === "listing")
+            generateContentMutation.mutate(selectedProperty);
+          else if (aiMarketingType === "instagram")
+            generateInstagramMutation.mutate(selectedProperty);
+          else if (aiMarketingType === "whatsapp")
+            generateWhatsAppMutation.mutate(selectedProperty);
         }}
       />
     </>
@@ -305,8 +372,8 @@ interface PortfoliosPageProps {
   selectedDistrict: string;
   setSelectedDistrict: (district: string) => void;
   regionScores: RegionEfficiencyScore[];
-  viewMode: 'list' | 'pipeline';
-  setViewMode: (mode: 'list' | 'pipeline') => void;
+  viewMode: "list" | "pipeline";
+  setViewMode: (mode: "list" | "pipeline") => void;
   setShowImportUrlModal: (show: boolean) => void;
   setSelectedProperty: (p: Property) => void;
   isEditing?: boolean;
@@ -328,69 +395,118 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
   isEditing,
   setIsEditing,
   showAddProperty,
-  setShowAddProperty
+  setShowAddProperty,
 }) => {
   const [showSmartMatch, setShowSmartMatch] = useState(false);
-  const [selectedStatus, setSelectedStatus] = useState<string>('all');
-  const [searchQuery, setSearchQuery] = useState('');
+  const [selectedStatus, setSelectedStatus] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<
+    "all" | "Satılık" | "Kiralık"
+  >("all");
+  const [lifecycleFilter, setLifecycleFilter] = useState<
+    "all" | "active" | "completed" | "archived"
+  >("active");
+  const [searchQuery, setSearchQuery] = useState("");
   const { profile } = useAuth();
   const queryClient = useQueryClient();
-  
+
   // Eksik olan useQuery buraya eklendi
-  const { data: leads = [] } = useQuery({ 
-    queryKey: [QUERY_KEYS.LEADS, profile?.id], 
-    queryFn: api.getLeads, 
-    enabled: !!profile?.id 
+  const { data: leads = [] } = useQuery({
+    queryKey: [QUERY_KEYS.LEADS, profile?.id],
+    queryFn: api.getLeads,
+    enabled: !!profile?.id,
   });
 
   const { data: blockers = [] } = useQuery({
-    queryKey: ['portfolioBlockers', profile?.id],
+    queryKey: ["portfolioBlockers", profile?.id],
     queryFn: () => api.momentumOs.getPortfolioBlockers(),
-    enabled: !!profile?.id
+    enabled: !!profile?.id,
   });
 
   const resolveBlockerMutation = useMutation({
     mutationFn: (id: string) => api.momentumOs.resolvePortfolioBlocker(id),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['portfolioBlockers', profile?.id] });
-    }
+      queryClient.invalidateQueries({
+        queryKey: ["portfolioBlockers", profile?.id],
+      });
+    },
   });
 
-  const filteredProperties = useMemo(() => { 
-    return properties.filter(p => {
-      const matchesDistrict = selectedDistrict === 'all' || p.address.district === selectedDistrict;
-      const matchesStatus = viewMode === 'pipeline' || selectedStatus === 'all' || p.status === selectedStatus;
-      const lowerQuery = searchQuery.toLocaleLowerCase('tr-TR');
-      const matchesSearch = !searchQuery || 
-        p.title.toLocaleLowerCase('tr-TR').includes(lowerQuery) ||
-        p.address.district.toLocaleLowerCase('tr-TR').includes(lowerQuery) ||
-        p.address.neighborhood.toLocaleLowerCase('tr-TR').includes(lowerQuery);
+  const filteredProperties = useMemo(() => {
+    return properties.filter((p) => {
+      const matchesDistrict =
+        selectedDistrict === "all" || p.address.district === selectedDistrict;
+      const matchesStatus =
+        viewMode === "pipeline" ||
+        selectedStatus === "all" ||
+        p.status === selectedStatus;
+      const matchesCategory =
+        categoryFilter === "all" || p.category === categoryFilter;
 
-      return matchesDistrict && matchesStatus && matchesSearch;
+      let matchesLifecycle = true;
+      if (lifecycleFilter === "active") {
+        matchesLifecycle = [
+          "Yeni",
+          "Hazırlanıyor",
+          "Yayında",
+          "İlgi Var",
+          "Pazarlık",
+        ].includes(p.status);
+      } else if (lifecycleFilter === "completed") {
+        matchesLifecycle = ["Satıldı", "Kiralandı"].includes(p.status);
+      } else if (lifecycleFilter === "archived") {
+        matchesLifecycle = p.status === "Pasif";
+      }
+
+      const lowerQuery = searchQuery.toLocaleLowerCase("tr-TR");
+      const matchesSearch =
+        !searchQuery ||
+        p.title.toLocaleLowerCase("tr-TR").includes(lowerQuery) ||
+        p.address.district.toLocaleLowerCase("tr-TR").includes(lowerQuery) ||
+        p.address.neighborhood.toLocaleLowerCase("tr-TR").includes(lowerQuery);
+
+      return (
+        matchesDistrict &&
+        matchesStatus &&
+        matchesCategory &&
+        matchesLifecycle &&
+        matchesSearch
+      );
     });
-  }, [properties, selectedDistrict, selectedStatus, searchQuery, viewMode]);
+  }, [
+    properties,
+    selectedDistrict,
+    selectedStatus,
+    categoryFilter,
+    lifecycleFilter,
+    searchQuery,
+    viewMode,
+  ]);
 
   return (
-    <motion.div 
+    <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       className="flex flex-col h-screen"
     >
-      <PortfoliosToolbar 
+      <PortfoliosToolbar
         viewMode={viewMode}
         setViewMode={setViewMode}
         selectedDistrict={selectedDistrict}
         setSelectedDistrict={setSelectedDistrict}
         selectedStatus={selectedStatus}
         setSelectedStatus={setSelectedStatus}
+        categoryFilter={categoryFilter}
+        setCategoryFilter={setCategoryFilter}
+        lifecycleFilter={lifecycleFilter}
+        setLifecycleFilter={setLifecycleFilter}
         regionScores={regionScores}
         setShowImportUrlModal={setShowImportUrlModal}
         onOpenSmartMatch={() => setShowSmartMatch(true)}
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
       />
-      
-      <PropertyGrid 
+
+      <PropertyGrid
         viewMode={viewMode}
         propertiesLoading={propertiesLoading}
         filteredProperties={filteredProperties}
@@ -398,19 +514,30 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
         setIsEditing={setIsEditing}
         setShowAddProperty={setShowAddProperty}
         renderMagicLink={(id: string) => <MagicLinkButton propertyId={id} />}
-        hasActiveFilters={searchQuery !== '' || selectedDistrict !== 'all'}
-        onClearFilters={() => { setSearchQuery(''); setSelectedDistrict('all'); }}
+        hasActiveFilters={
+          searchQuery !== "" ||
+          selectedDistrict !== "all" ||
+          selectedStatus !== "all" ||
+          categoryFilter !== "all" ||
+          lifecycleFilter !== "active"
+        }
+        onClearFilters={() => {
+          setSearchQuery("");
+          setSelectedDistrict("all");
+          setSelectedStatus("all");
+          setCategoryFilter("all");
+          setLifecycleFilter("active");
+        }}
         blockers={blockers}
         onResolveBlocker={(id: string) => resolveBlockerMutation.mutate(id)}
       />
 
-      <SmartMatchModal 
-        show={showSmartMatch} 
-        onClose={() => setShowSmartMatch(false)} 
+      <SmartMatchModal
+        show={showSmartMatch}
+        onClose={() => setShowSmartMatch(false)}
         properties={properties}
         leads={leads}
       />
-
     </motion.div>
   );
 };
