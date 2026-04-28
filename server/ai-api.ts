@@ -267,6 +267,14 @@ export const handleAIGeneration = async (req: AuthRequest, res: Response) => {
 
     if (responseSchema) {
       config.responseSchema = responseSchema;
+    } else {
+      config.responseSchema = {
+        type: "object",
+        properties: {
+          response: { type: "string", description: "Default response text" },
+          status: { type: "string", description: "Status code or generic status" }
+        }
+      };
     }
 
     if (systemInstruction) {
@@ -288,11 +296,36 @@ export const handleAIGeneration = async (req: AuthRequest, res: Response) => {
 
     const usageMetadata = response.usageMetadata;
     let cleanJson = response.text || "{}";
+    
+    if (typeof cleanJson !== "string") {
+      cleanJson = String(cleanJson);
+    }
+    
     cleanJson = cleanJson
       .replace(/```json/g, "")
       .replace(/```/g, "")
       .trim();
-    const parsedData = JSON.parse(cleanJson);
+      
+    let parsedData: any = {};
+    try {
+      if (cleanJson) {
+        parsedData = JSON.parse(cleanJson);
+        // Schema validate + safe fallback: ensure it's an object/array at least
+        if (typeof parsedData !== "object" || parsedData === null) {
+          console.warn("AI didn't return an object/array. Fallback.");
+          parsedData = { response: String(parsedData), warning: "Invalid schema mapped to default" };
+        }
+      }
+    } catch (e) {
+      console.error("AI JSON parse error:", e);
+      const debugId = `parse_err_${Date.now()}_${Math.random().toString(36).substring(7)}`;
+      return res.status(422).json({ 
+         error: "AI_PARSE_ERROR",
+         message: "Model dönüşü anlaşılamadı, veri formatı hatalı.",
+         debug_id: debugId,
+         raw_output: cleanJson.substring(0, 200)
+      });
+    }
 
     // Sadece veriyi dönüyoruz. DB yazma işini middleware otomatik yakalayacak.
     res.json({

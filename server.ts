@@ -57,9 +57,40 @@ app.use(express.json({
 
 app.use((req, res, next) => {
   if (req.url.startsWith('/api')) {
-    console.log(`[API Request] ${req.method} ${req.url}`);
+    const start = Date.now();
+    
+    res.on('finish', () => {
+      const latency = Date.now() - start;
+      const isProduction = process.env.NODE_ENV === "production";
+      
+      let logBody = '';
+      if (!isProduction && req.method !== 'GET' && Object.keys(req.body || {}).length > 0) {
+        const maskedBody = { ...req.body };
+        const sensitiveFields = ['password', 'token', 'access_token', 'apiKey', 'apikey', 'secret', 'phone', 'email'];
+        Object.keys(maskedBody).forEach(key => {
+          if (sensitiveFields.some(sf => key.toLowerCase().includes(sf))) {
+            maskedBody[key] = '***MASKED***';
+          }
+        });
+        logBody = ` Body: ${JSON.stringify(maskedBody).substring(0, 500)}`;
+      }
+      
+      console.log(`[API] ${req.method} ${req.url} ${res.statusCode} ${latency}ms${logBody}`);
+    });
   }
   next();
+});
+
+app.get(["/health", "/api/health"], (req, res) => {
+  const envVars = [
+    "VITE_SUPABASE_URL",
+    "VITE_SUPABASE_ANON_KEY",
+    "SUPABASE_SERVICE_ROLE_KEY",
+    "GEMINI_API_KEY",
+  ];
+  const missing_env = envVars.filter(env => !process.env[env]);
+  const status = missing_env.length === 0 ? "ok" : "degraded";
+  res.status(status === "ok" ? 200 : 200).json({ status, missing_env });
 });
 
 // YENİ: Meta Webhook Rotaları

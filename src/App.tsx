@@ -45,6 +45,8 @@ import { UpgradeModal } from "./components/premium/UpgradeModal";
 import { PricingScreen } from "./components/PricingScreen";
 import { QUERY_KEYS } from "./constants/queryKeys";
 import { useCategories } from "./hooks/useCategories";
+import { useMainQueries } from "./hooks/useMainQueries";
+import { useMainMutations } from "./hooks/useMainMutations";
 import { PublicPresentation } from "./pages/PublicPresentation";
 import { ClientPortalPage } from "./pages/ClientPortalPage";
 import { LeadEntryMethodModal } from "./components/crm/LeadEntryMethodModal";
@@ -126,238 +128,52 @@ function MainApp() {
   const [leadAnalysis, setLeadAnalysis] = useState<string | null>(null);
   const [isAnalyzingLeads, setIsAnalyzingLeads] = useState(false);
 
-  const { data: leads = [] } = useQuery({
-    queryKey: [QUERY_KEYS.LEADS, profile?.id],
-    queryFn: api.getLeads,
-    enabled: !!profile?.id,
-  });
-  const { data: properties = [] } = useQuery({
-    queryKey: [QUERY_KEYS.PROPERTIES, profile?.id],
-    queryFn: api.getProperties,
-    enabled: !!profile?.id,
-  });
-  const { data: personalTasks = [] } = useQuery({
-    queryKey: [QUERY_KEYS.PERSONAL_TASKS, profile?.id],
-    queryFn: api.getPersonalTasks,
-    enabled: !!profile?.id,
-  });
   const {
-    data: gamifiedTasks = [],
-    isLoading: tasksLoading,
-    isError: tasksError,
-  } = useQuery({
-    queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.id],
-    queryFn: () => api.getDailyGamifiedTasks(),
-    enabled: !!profile?.id,
-  });
-  const { data: fieldVisits = [] } = useQuery({
-    queryKey: [QUERY_KEYS.FIELD_VISITS, profile?.id],
-    queryFn: api.getFieldVisits,
-    enabled: !!profile?.id,
-  });
-  const { data: tasks = [] } = useQuery({
-    queryKey: [QUERY_KEYS.TASKS, profile?.id],
-    queryFn: api.getTasks,
-    enabled: !!profile?.id,
-  });
-  const { data: regionScores = [] } = useQuery({
-    queryKey: [QUERY_KEYS.REGION_SCORES, profile?.id],
-    queryFn: api.getRegionEfficiencyScores,
-    enabled: !!profile?.id,
-  });
-  const { data: brokerAccount } = useQuery({
-    queryKey: [QUERY_KEYS.BROKER_ACCOUNT, profile?.id],
-    queryFn: api.getBrokerAccount,
-    enabled: !!profile?.id,
-  });
-  const { data: externalListings = [] } = useQuery({
-    queryKey: [QUERY_KEYS.EXTERNAL_LISTINGS, profile?.id],
-    queryFn: api.getExternalListings,
-    enabled: !!profile?.id,
-  });
-  const { data: rescueSession } = useQuery({
-    queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.id],
-    queryFn: api.getRescueSession,
-    enabled: !!profile?.id,
-  });
-  const { data: missedOpportunities = [] } = useQuery({
-    queryKey: [QUERY_KEYS.MISSED_OPPORTUNITIES, profile?.id],
-    queryFn: api.getMissedOpportunities,
-    enabled: !!profile?.id,
-  });
-  const { data: dailyRadarData } = useQuery({
-    queryKey: [QUERY_KEYS.DAILY_RADAR, profile?.id],
-    queryFn: () => api.getDailyRadar(),
-    enabled: !!profile?.id && showDailyRadar,
-  });
+    leads,
+    properties,
+    personalTasks,
+    gamifiedTasks,
+    tasksLoading,
+    tasksError,
+    fieldVisits,
+    tasks,
+    regionScores,
+    brokerAccount,
+    externalListings,
+    rescueSession,
+    missedOpportunities,
+    dailyRadarData,
+  } = useMainQueries(profile?.id, showDailyRadar);
 
-  const addLeadMutation = useMutation({
-    mutationFn: api.addLead,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.LEADS, profile?.id],
-      });
-      setShowAddLead(false);
-      setShowQuickAdd(false);
-    },
-  });
-  const updateLeadMutation = useMutation({
-    mutationFn: ({ id, lead }: { id: string; lead: Partial<Lead> }) =>
-      api.updateLead(id, lead),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.LEADS, profile?.id],
-      });
-      setShowAddLead(false);
-      setIsEditingLead(false);
-      setSelectedLead(null);
-    },
-  });
-  const deleteLeadMutation = useMutation({
-    mutationFn: api.deleteLead,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.LEADS, profile?.id],
-      });
-      setSelectedLead(null);
-    },
-  });
-  const addVisitMutation = useMutation({
-    mutationFn: api.addVisit,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.FIELD_VISITS, profile?.id],
-      });
-      setShowAddVisit(false);
-      setShowQuickAdd(false);
-    },
-  });
-  const addTaskMutation = useMutation({
-    mutationFn: api.addTask,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TASKS, profile?.id],
-      });
-    },
-  });
-  const addPersonalTaskMutation = useMutation({
-    mutationFn: api.addPersonalTask,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PERSONAL_TASKS, profile?.id],
-      });
-    },
-  });
-  const completeMorningRitualMutation = useMutation({
-    mutationFn: async (variables: Partial<DailyPlan>) => {
-      // 1. Save new Daily Plan
-      await api.momentumOs.saveDailyPlan(variables);
-      // 2. Start day
-      return api.startDay();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.MOMENTUM_DAILY_PLAN],
-      });
-      setShowDailyRadar(false);
-      setToast({
-        message: "Güne harika bir başlangıç yaptın!",
-        type: "success",
-      });
-    },
-    onError: () => {
-      setShowDailyRadar(false);
-      setToast({ message: "Güne zaten başlamıştın.", type: "info" });
-    },
-  });
-
-  const completeEveningRitualMutation = useMutation({
-    mutationFn: async (variables: Partial<DayClosure>) => {
-      // 1. Save new Day Closure
-      await api.momentumOs.saveDayClosure(variables);
-      // 2. End day
-      return api.endDay(variables);
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.MOMENTUM_DAY_CLOSURE],
-      });
-      setShowDayCloser(false);
-      setToast({
-        message: "Günü başarıyla kapattın. İyi dinlenmeler!",
-        type: "success",
-      });
-      confetti();
-    },
-  });
-  const cancelRescueMutation = useMutation({
-    mutationFn: api.cancelRescueSession,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.id],
-      });
-    },
-  });
-  const completeRescueTaskMutation = useMutation({
-    mutationFn: ({
-      sessionId,
-      taskId,
-    }: {
-      sessionId: string;
-      taskId: string;
-    }) => api.completeRescueTask(sessionId, taskId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.id],
-      });
-    },
-  });
-  const analyzeLeadsMutation = useMutation({
-    mutationFn: api.analyzeLeads,
-    onSuccess: (data) => {
-      setLeadAnalysis(data);
-      setIsAnalyzingLeads(false);
-    },
-  });
-  const updateProfileMutation = useMutation({
-    mutationFn: ({ id, data }: { id: string; data: Partial<UserProfile> }) =>
-      api.updateProfile(id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PROFILE, profile?.id],
-      });
-    },
-  });
-  const syncListingsMutation = useMutation({
-    mutationFn: api.syncExternalListings,
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.EXTERNAL_LISTINGS, profile?.id],
-      });
-    },
-  });
-  const linkPropertyMutation = useMutation({
-    mutationFn: ({
-      propertyId,
-      externalId,
-    }: {
-      propertyId: string;
-      externalId: string;
-    }) => api.linkPropertyToExternal(propertyId, externalId),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.PROPERTIES, profile?.id],
-      });
-    },
-  });
-  const connectIntegrationMutation = useMutation({
-    mutationFn: (apiKey: string) => api.connectSahibinden(apiKey),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.BROKER_ACCOUNT, profile?.id],
-      });
-      setShowIntegrationModal(false);
-    },
+  const {
+    addLeadMutation,
+    updateLeadMutation,
+    deleteLeadMutation,
+    addVisitMutation,
+    addTaskMutation,
+    addPersonalTaskMutation,
+    completeMorningRitualMutation,
+    completeEveningRitualMutation,
+    cancelRescueMutation,
+    completeRescueTaskMutation,
+    analyzeLeadsMutation,
+    updateProfileMutation,
+    syncListingsMutation,
+    linkPropertyMutation,
+    connectIntegrationMutation,
+  } = useMainMutations({
+    profileId: profile?.id,
+    setToast,
+    setShowAddLead,
+    setShowQuickAdd,
+    setIsEditingLead,
+    setSelectedLead,
+    setShowAddVisit,
+    setShowDailyRadar,
+    setShowDayCloser,
+    setLeadAnalysis,
+    setIsAnalyzingLeads,
+    setShowIntegrationModal,
   });
 
   const checkPortfoliosLimit = () => {
