@@ -90,7 +90,7 @@ app.get(["/health", "/api/health"], (req, res) => {
   ];
   const missing_env = envVars.filter(env => !process.env[env]);
   const status = missing_env.length === 0 ? "ok" : "degraded";
-  res.status(status === "ok" ? 200 : 200).json({ status, missing_env });
+  res.status(status === "ok" ? 200 : 503).json({ status, missing_env });
 });
 
 // YENİ: Meta Webhook Rotaları

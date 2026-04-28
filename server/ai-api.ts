@@ -323,7 +323,7 @@ export const handleAIGeneration = async (req: AuthRequest, res: Response) => {
          error: "AI_PARSE_ERROR",
          message: "Model dönüşü anlaşılamadı, veri formatı hatalı.",
          debug_id: debugId,
-         raw_output: cleanJson.substring(0, 200)
+         ...(process.env.NODE_ENV !== "production" ? { raw_output: cleanJson.substring(0, 120) } : {})
       });
     }
 
@@ -415,7 +415,6 @@ export const handleUpdateProfile = async (req: AuthRequest, res: Response) => {
 };
 
 export const handleSubscribe = async (req: AuthRequest, res: Response) => {
-  console.log(`[handleSubscribe] START - Body:`, req.body);
   try {
     const { type } = req.body;
     const userId = req.user.id;
