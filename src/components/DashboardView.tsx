@@ -162,6 +162,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     return taskDate.split("T")[0] <= todayISO;
   };
 
+  const leadAlertDescriptions: Record<string, string> = {
+    stale_7d: "7 gündür temas yok",
+    stale_14d: "14 gündür temas yok",
+    no_contact_7d: "7 gündür iletişim kurulmadı",
+    no_contact: "Temas bekliyor",
+    hot_lead: "Sıcak aday, bugün temas et",
+    followup_due: "Takip zamanı geldi",
+    followup_overdue: "Takip gecikmiş",
+    missing_phone: "Telefon bilgisi eksik",
+    missing_region: "Bölge bilgisi eksik",
+    new_lead: "Yeni lead",
+    cold_lead: "Soğuk lead, yeniden ısıt",
+    warm_lead: "Ilık lead, temas önerilir",
+    silent: "Sessiz müşteri"
+  };
+
   const alertItems: TopActionItem[] = leadAlerts
     .map((alert) => ({
       type: "alert" as const,
@@ -169,7 +185,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       id: `alert-${alert.id}`,
       title: alert.lead?.name || "İsimsiz Lead",
       subtitle: "Acil Alarm",
-      desc: alert.alert_type,
+      desc: leadAlertDescriptions[alert.alert_type] || "Takip gerektiriyor",
       icon: AlertCircle,
       colorClass: "text-red-600 bg-red-100",
       ringClass: "hover:ring-red-200",

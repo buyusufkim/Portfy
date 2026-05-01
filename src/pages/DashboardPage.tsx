@@ -60,11 +60,31 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     enabled: !!profile?.id
   });
 
-  const { data: coachInsights } = useQuery({
-    queryKey: [QUERY_KEYS.COACH_INSIGHTS, profile?.id],
-    queryFn: api.getCoachInsights,
-    enabled: !!profile?.id
-  });
+  const staticCoachInsight = React.useMemo(() => {
+    const overdueTasks = tasks.filter(t => !t.completed && t.due_date && new Date(t.due_date) < new Date());
+    let tip = "Bugünün odağını tek aksiyona indir.";
+    
+    if (overdueTasks.length > 0) {
+      tip = `Geciken ${overdueTasks.length} görevin var. Önce geciken takipleri kapat.`;
+    } else if (tasks.length === 0 && personalTasks.length === 0) {
+      tip = "Bugün için küçük bir hedef belirle ve güne başla.";
+    } else {
+      const remainingTasks = tasks.filter(t => !t.completed).length;
+      if (remainingTasks > 0) {
+         tip = `Bugün bekleyen ${remainingTasks} görevin var. En önemlisinden başla.`;
+      }
+    }
+
+    return {
+      score: 80,
+      daily_tip: tip,
+      strength: { title: "Düzen", description: "İyi bir ritim" },
+      weakness: { title: "Odak", description: "Bir şeye odaklan" },
+      recommended_tasks: [],
+      market_opportunities: [],
+      focus_areas: []
+    };
+  }, [tasks, personalTasks]);
 
   // Dashboard-specific mutations
   const refreshTasksMutation = useMutation({
@@ -92,7 +112,6 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     onSuccess: (data, variables) => {
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_TASKS, profile?.id] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.id] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.COACH_INSIGHTS, profile?.id] });
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.id] });
       
       // 🔥 İŞTE BURASI: Kendi UI kütüphanendeki bildirim sistemini XP için kullanıyoruz 🔥
@@ -226,8 +245,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       isGamifiedTasksError={isGamifiedTasksError}
       properties={properties}
       profile={profile}
-      gamifiedStats={gamifiedStats}
-      coachInsights={coachInsights}
+      gamifiedStats={gamifiedStats || null}
+      coachInsights={staticCoachInsight}
       tasks={tasks}
       personalTasks={personalTasks}
       startRescueMutation={startRescueMutation}

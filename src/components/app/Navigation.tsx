@@ -125,31 +125,57 @@ export const MobileNav = ({
     <>
       {/* Modules Overlay */}
       {showModules && (
-        <div className="lg:hidden fixed inset-0 z-40 bg-slate-900/60 backdrop-blur-sm flex items-end pb-24" onClick={() => setShowModules(false)}>
+        <div 
+          className="lg:hidden fixed inset-0 z-[70] bg-slate-950/40 backdrop-blur-[2px] flex items-end" 
+          onClick={() => setShowModules(false)}
+        >
           <motion.div 
             initial={{ y: "100%" }} 
             animate={{ y: 0 }} 
-            className="bg-white rounded-t-3xl p-6 w-full shadow-2xl"
+            exit={{ y: "100%" }}
+            transition={{ type: "spring", damping: 25, stiffness: 300 }}
+            className="bg-white rounded-t-[32px] p-6 w-full shadow-2xl pb-[calc(2rem+env(safe-area-inset-bottom))]"
             onClick={e => e.stopPropagation()}
           >
-            <h3 className="font-bold text-slate-900 mb-6 text-center">Daha Fazla</h3>
-            <div className="grid grid-cols-4 gap-4">
-              {navItems.map(item => (
-                <button
-                  key={item.id}
-                  onClick={() => {
-                    setShowModules(false);
-                    if (item.id === 'admin') onAdminClick();
-                    else onTabChange(item.id);
-                  }}
-                  className={`flex flex-col items-center gap-2 p-2 rounded-xl transition-colors ${(item.id === 'admin' ? showAdminPanel : activeTab === item.id) ? 'text-[#061A32]' : 'text-slate-500 hover:bg-slate-50'}`}
-                >
-                  <div className={`p-3 rounded-2xl ${(item.id === 'admin' ? showAdminPanel : activeTab === item.id) ? 'bg-slate-100' : 'bg-slate-50'}`}>
-                    {item.icon}
-                  </div>
-                  <span className="text-[10px] font-bold">{item.label}</span>
-                </button>
-              ))}
+            {/* Drag Handle */}
+            <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto mb-8" />
+
+            <div className="mb-8">
+              <h3 className="font-bold text-slate-900 text-xl tracking-tight">Daha Fazla</h3>
+              <p className="text-slate-500 text-sm font-medium">Diğer Portfy araçlarına hızlı eriş.</p>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              {navItems.map(item => {
+                const isActive = item.id === 'admin' ? showAdminPanel : activeTab === item.id;
+                
+                return (
+                  <button
+                    key={item.id}
+                    onClick={() => {
+                      setShowModules(false);
+                      if (item.id === 'admin') onAdminClick();
+                      else onTabChange(item.id);
+                    }}
+                    className={`flex items-center gap-4 p-4 rounded-2xl transition-all active:scale-95 border-2 ${
+                      isActive 
+                        ? 'bg-indigo-50 border-indigo-100 shadow-sm shadow-indigo-100' 
+                        : 'bg-slate-50 border-slate-50 hover:border-slate-100'
+                    }`}
+                  >
+                    <div className={`p-2.5 rounded-xl ${
+                      isActive 
+                        ? 'bg-white text-indigo-600 shadow-sm' 
+                        : 'bg-white text-slate-400 shadow-inner ring-1 ring-slate-100'
+                    }`}>
+                      {React.cloneElement(item.icon as React.ReactElement, { size: 20 })}
+                    </div>
+                    <span className={`text-sm font-bold tracking-tight ${isActive ? 'text-indigo-900' : 'text-slate-600'}`}>
+                      {item.label}
+                    </span>
+                  </button>
+                );
+              })}
             </div>
           </motion.div>
         </div>

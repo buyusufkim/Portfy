@@ -19,30 +19,31 @@ export const LockedOverlay: React.FC<LockedOverlayProps> = ({ featureKey, onUpgr
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="absolute inset-0 z-50 bg-white/60 backdrop-blur-[4px] rounded-[inherit] flex flex-col items-center justify-center p-8 text-center"
+      className="absolute inset-0 z-50 bg-slate-50/80 backdrop-blur-md rounded-[inherit] flex flex-col items-center justify-center p-6 text-center"
     >
-      <div className="w-16 h-16 bg-slate-900 rounded-3xl flex items-center justify-center text-white shadow-2xl shadow-slate-900/20 mb-6">
-        <Lock size={32} />
+      <div className="w-14 h-14 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-xl shadow-slate-900/10 mb-5 relative group">
+        <div className="absolute inset-0 bg-indigo-500 rounded-2xl opacity-0 group-hover:opacity-20 transition-opacity blur-md" />
+        <Lock size={26} className="relative z-10" />
       </div>
       
-      <div className="space-y-2 mb-8 max-w-[240px]">
+      <div className="space-y-2 mb-6 max-w-[280px]">
         <h4 className="text-xl font-bold text-slate-900 tracking-tight">
-          {config.label} Kilitli
+          {config.label} Master ile Açılır
         </h4>
         <p className="text-slate-500 text-sm font-medium leading-relaxed">
-          Bu özelliği kullanmak için en az <span className="text-orange-600 font-bold uppercase">{config.minTier}</span> planına geçmelisiniz.
+          Portfy'nin yapay zeka, CRM ve strateji araçlarını tam kapasite kullanmak için Master plana geç.
         </p>
       </div>
 
       <button 
         onClick={onUpgrade}
-        className="px-8 py-4 bg-orange-600 text-white rounded-2xl font-bold text-sm flex items-center gap-2 hover:bg-orange-700 transition-all shadow-lg shadow-orange-200 active:scale-95"
+        className="px-7 py-3.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98]"
       >
-        Planı Yükselt <ArrowRight size={16} />
+        Planları Gör <ArrowRight size={16} />
       </button>
 
-      <div className="mt-6 flex items-center gap-2 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-        <Sparkles size={12} className="text-orange-500" /> Premium Özellik
+      <div className="mt-8 flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+        <Sparkles size={12} className="text-indigo-400" /> Premium Özellik
       </div>
     </motion.div>
   );
