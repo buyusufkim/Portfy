@@ -493,5 +493,33 @@ export const api = {
     });
     if (!response.ok) throw new Error('Ayarlar güncellenemedi');
     return await response.json();
+  },
+  adminCreateTaskTemplate: async (data: any) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/api/ai/admin/task-templates`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token || ''}` },
+      body: JSON.stringify({ data }),
+    });
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+  },
+  adminUpdateTaskTemplate: async (id: string, data: any) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/api/ai/admin/task-templates/${id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token || ''}` },
+      body: JSON.stringify({ data }),
+    });
+    if (!response.ok) throw new Error(await response.text());
+    return response.json();
+  },
+  adminDeleteTaskTemplate: async (id: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/api/ai/admin/task-templates/${id}`, {
+      method: "DELETE",
+      headers: { "Authorization": `Bearer ${session?.access_token || ''}` },
+    });
+    if (!response.ok) throw new Error(await response.text());
   }
 };

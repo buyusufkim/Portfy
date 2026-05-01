@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
   X,
@@ -40,6 +40,7 @@ interface AddTaskModalProps {
   properties: Property[];
   leads: Lead[];
   initialPropertyId?: string;
+  initialMode?: TaskMode;
 }
 
 export const AddTaskModal: React.FC<AddTaskModalProps> = ({
@@ -50,9 +51,21 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
   properties,
   leads,
   initialPropertyId,
+  initialMode = "work",
 }) => {
-  const [taskMode, setTaskMode] = useState<TaskMode>("work");
+  const [taskMode, setTaskMode] = useState<TaskMode>(initialMode);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTaskMode(initialMode);
+      setFormData((prev) => ({
+        ...prev,
+        due_date: getTodayStr(),
+        property_id: initialPropertyId || "",
+      }));
+    }
+  }, [isOpen, initialMode, initialPropertyId]);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -200,34 +213,54 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
               </button>
             </div>
 
-            <div className="flex overflow-x-auto gap-2 pb-2 mb-4 scrollbar-hide">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2 mb-5">
               <button
                 onClick={() => handleModeChange("work")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${taskMode === "work" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                className={`min-h-[42px] px-3 py-2 rounded-xl text-[11px] sm:text-xs font-bold leading-tight text-center flex items-center justify-center whitespace-normal break-words border transition-all ${
+                  taskMode === "work"
+                    ? "bg-[#061A32] text-white border-[#061A32]"
+                    : "bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100"
+                }`}
               >
                 İş Görevi
               </button>
               <button
                 onClick={() => handleModeChange("followup")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${taskMode === "followup" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                className={`min-h-[42px] px-3 py-2 rounded-xl text-[11px] sm:text-xs font-bold leading-tight text-center flex items-center justify-center whitespace-normal break-words border transition-all ${
+                  taskMode === "followup"
+                    ? "bg-[#061A32] text-white border-[#061A32]"
+                    : "bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100"
+                }`}
               >
                 Takip
               </button>
               <button
                 onClick={() => handleModeChange("content")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${taskMode === "content" ? "bg-fuchsia-600 text-white shadow-lg shadow-fuchsia-600/20" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                className={`min-h-[42px] px-3 py-2 rounded-xl text-[11px] sm:text-xs font-bold leading-tight text-center flex items-center justify-center whitespace-normal break-words border transition-all ${
+                  taskMode === "content"
+                    ? "bg-[#061A32] text-white border-[#061A32]"
+                    : "bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100"
+                }`}
               >
                 İçerik / Reels
               </button>
               <button
                 onClick={() => handleModeChange("personal")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${taskMode === "personal" ? "bg-orange-500 text-white shadow-lg shadow-orange-500/20" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                className={`min-h-[42px] px-3 py-2 rounded-xl text-[11px] sm:text-xs font-bold leading-tight text-center flex items-center justify-center whitespace-normal break-words border transition-all ${
+                  taskMode === "personal"
+                    ? "bg-[#061A32] text-white border-[#061A32]"
+                    : "bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100"
+                }`}
               >
                 Kişisel Hatırlatıcı
               </button>
               <button
                 onClick={() => handleModeChange("activity")}
-                className={`px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-colors ${taskMode === "activity" ? "bg-slate-900 text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
+                className={`col-span-2 sm:col-span-1 min-h-[42px] px-3 py-2 rounded-xl text-[11px] sm:text-xs font-bold leading-tight text-center flex items-center justify-center whitespace-normal break-words border transition-all ${
+                  taskMode === "activity"
+                    ? "bg-[#061A32] text-white border-[#061A32]"
+                    : "bg-slate-50 text-slate-600 border-slate-100 hover:bg-slate-100"
+                }`}
               >
                 Aktivite Kaydı
               </button>
@@ -276,7 +309,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                     className={`flex flex-col items-center gap-2 p-3 rounded-2xl border-2 transition-all ${formData.type === "Saha" ? "border-emerald-500 bg-emerald-50 text-emerald-600" : "border-slate-100 bg-slate-50 text-slate-400 hover:bg-slate-100"}`}
                   >
                     <MapPin size={18} />
-                    <span className="text-[10px] font-bold">Gösterme</span>
+                    <span className="text-[10px] font-bold">Gösterim</span>
                   </button>
                 </div>
               )}
@@ -490,7 +523,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
                 className="w-full mt-4 py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-200 active:scale-95 transition-all disabled:opacity-50 disabled:active:scale-100"
               >
                 {isSubmitting
-                  ? "Kayıt ediliyor..."
+                  ? "Kaydediliyor..."
                   : taskMode === "personal"
                     ? "Hatırlatıcı Oluştur"
                     : "Görev Kaydet"}

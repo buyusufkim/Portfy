@@ -28,7 +28,15 @@ import {
   handleAdminDeleteAnnouncement,
   handleAdminGetSupportTickets,
   handleAdminUpdateSupportTicket,
-  handleAdminGetAuditLogs
+  handleAdminGetAuditLogs,
+  handleAdminCreateTaskTemplate,
+  handleAdminUpdateTaskTemplate,
+  handleAdminDeleteTaskTemplate,
+  handleVerifyTask,
+  handleGetDailyPlanToday,
+  handleSaveDailyPlan,
+  handleGetDayClosureToday,
+  handleSaveDayClosure
 } from "./server/ai-api.js";
 import { rateLimit } from 'express-rate-limit';
 import { fetchMarketData } from "./server/marketScraper.js";
@@ -93,6 +101,37 @@ app.get(["/health", "/api/health"], (req, res) => {
   res.status(status === "ok" ? 200 : 503).json({ status, missing_env });
 });
 
+app.get("/api/time/turkey", (req, res) => {
+  const now = new Date();
+  const formatterDate = new Intl.DateTimeFormat("tr-TR", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+    timeZone: "Europe/Istanbul",
+  });
+
+  const formatterTime = new Intl.DateTimeFormat("tr-TR", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "Europe/Istanbul",
+  });
+
+  const dateLabel = formatterDate.format(now);
+  const timeLabel = formatterTime.format(now);
+  const fullLabel = `${dateLabel} · ${timeLabel}`;
+
+  res.status(200).json({
+    iso: now.toISOString(),
+    timestamp: now.getTime(),
+    timezone: "Europe/Istanbul",
+    dateLabel,
+    timeLabel,
+    fullLabel,
+    source: "server"
+  });
+});
+
 // YENİ: Meta Webhook Rotaları
 app.get("/api/webhooks/meta", handleMetaWebhookGet);
 app.post("/api/webhooks/meta", handleMetaWebhookPost);
@@ -102,6 +141,11 @@ app.post("/api/ai/generate", authenticate, aiLimiter, tokenTrackerMiddleware, ha
 app.post("/api/ai/profile/update", authenticate, handleUpdateProfile);
 app.post("/api/ai/subscribe", authenticate, handleSubscribe);
 app.post("/api/ai/earn-xp", authenticate, xpLimiter, handleEarnXP);
+app.post("/api/ai/verify-task", authenticate, handleVerifyTask);
+app.get("/api/ai/daily-plan/today", authenticate, handleGetDailyPlanToday);
+app.post("/api/ai/daily-plan/save", authenticate, handleSaveDailyPlan);
+app.get("/api/ai/day-closure/today", authenticate, handleGetDayClosureToday);
+app.post("/api/ai/day-closure/save", authenticate, handleSaveDayClosure);
 
 // Admin Endpoints
 app.get("/api/ai/admin/users", authenticate, requireAdmin, handleAdminGetUsers);
@@ -122,6 +166,9 @@ app.delete("/api/ai/admin/announcements/:id", authenticate, requireAdmin, handle
 app.get("/api/ai/admin/support-tickets", authenticate, requireAdmin, handleAdminGetSupportTickets);
 app.patch("/api/ai/admin/support-tickets/:id", authenticate, requireAdmin, handleAdminUpdateSupportTicket);
 app.get("/api/ai/admin/audit-logs", authenticate, requireAdmin, handleAdminGetAuditLogs);
+app.post("/api/ai/admin/task-templates", authenticate, requireAdmin, handleAdminCreateTaskTemplate);
+app.patch("/api/ai/admin/task-templates/:id", authenticate, requireAdmin, handleAdminUpdateTaskTemplate);
+app.delete("/api/ai/admin/task-templates/:id", authenticate, requireAdmin, handleAdminDeleteTaskTemplate);
 
 // Momentum Endpoints
 app.post("/api/momentum/maintenance/run", authenticate, handleMaintenanceRun);

@@ -16,6 +16,7 @@ import {
 import { Property, Lead, MutationResult } from '../../types';
 import { documentService, DocumentType } from '../../services/documentService';
 import { dripService } from '../../services/dripService';
+import { PortfyLogo } from '../PortfyLogo';
 
 interface DocumentAutomationModalProps {
   isOpen: boolean;
@@ -514,8 +515,8 @@ export const DocumentAutomationModal: React.FC<DocumentAutomationModalProps> = (
                         {/* Logo & Agent Header */}
                         <div className="flex justify-between items-start border-b-2 border-slate-900 pb-8 mb-8">
                           <div className="space-y-2">
-                            <h1 className="text-3xl font-black text-slate-900 tracking-tighter">PORTFY</h1>
-                            <div className="text-xs font-bold text-slate-500 uppercase tracking-widest">Gayrimenkul Teknoloji Çözümleri</div>
+                            <PortfyLogo className="h-10" />
+                            <div className="text-xs font-bold text-slate-500 uppercase tracking-widest mt-2">Gayrimenkul Teknoloji Çözümleri</div>
                           </div>
                           <div className="text-right space-y-1">
                             <div className="font-bold text-lg">{agentProfile?.display_name}</div>

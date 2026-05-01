@@ -462,7 +462,7 @@ export const BolgemView = ({
           <div className="absolute right-4 top-40 flex flex-col gap-2 z-[400] pointer-events-auto">
             <button 
               onClick={(e) => { e.stopPropagation(); setShowAddPin(true); }}
-              className="w-14 h-14 rounded-2xl bg-orange-600 text-white flex items-center justify-center shadow-2xl hover:bg-orange-700 transition-all mb-2"
+              className="w-14 h-14 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shadow-2xl hover:bg-indigo-700 transition-all mb-2"
               title="Pin Ekle"
             >
               <Plus size={32} />
@@ -473,7 +473,7 @@ export const BolgemView = ({
                 setIs3D(!is3D);
                 if (!is3D) setMapZoom(18);
               }}
-              className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all ${is3D ? 'bg-orange-500 text-white' : 'bg-slate-900/90 backdrop-blur-md text-slate-300 hover:text-white'}`}
+              className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-xl transition-all ${is3D ? 'bg-indigo-600 text-white' : 'bg-slate-900/90 backdrop-blur-md text-slate-300 hover:text-white'}`}
               title="Uydu Görünümü"
             >
               <Layers size={24} />
@@ -497,12 +497,12 @@ export const BolgemView = ({
                   placeholder="Sokak, portföy veya kişi ara..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="w-full bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white text-sm focus:ring-2 focus:ring-orange-500 outline-none shadow-2xl transition-all"
+                  className="w-full bg-slate-900/90 backdrop-blur-xl border border-white/10 rounded-2xl py-4 pl-12 pr-4 text-white text-sm focus:ring-2 focus:ring-indigo-500 outline-none shadow-2xl transition-all"
                 />
               </div>
               <button 
                 onClick={() => setShowFieldNotes(true)}
-                className="w-14 h-14 bg-orange-600 text-white rounded-2xl flex items-center justify-center shadow-xl hover:bg-orange-700 transition-all"
+                className="w-14 h-14 bg-indigo-600 text-white rounded-2xl flex items-center justify-center shadow-xl hover:bg-indigo-700 transition-all"
                 title="Saha Notları"
               >
                 <MessageSquare size={20} />
@@ -594,7 +594,7 @@ export const BolgemView = ({
               </button>
               <button 
                 onClick={() => setShowFieldNotes(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-orange-100 text-orange-600 rounded-xl text-sm font-bold hover:bg-orange-200 transition-all"
+                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-sm font-bold hover:bg-indigo-100 transition-all"
               >
                 <MessageSquare size={16} /> Saha Notları
               </button>
@@ -733,7 +733,7 @@ export const BolgemView = ({
                                 <h4 className="text-xs font-bold text-slate-900">{pin.title}</h4>
                                 <p className="text-[10px] text-slate-500">{pin.contact_name || pin.type}</p>
                               </div>
-                              <span className="text-[10px] font-bold bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded">{pin.potential}</span>
+                              <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">{pin.potential}</span>
                             </div>
                             <ActionButtons pin={pin} />
                           </div>
@@ -864,7 +864,7 @@ export const BolgemView = ({
                 placeholder="Sokak, bina veya kişi ara..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-white border-2 border-slate-100 rounded-2xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-orange-500 outline-none shadow-sm"
+                className="w-full bg-white border-2 border-slate-100 rounded-2xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
               />
             </div>
 
@@ -902,14 +902,14 @@ export const BolgemView = ({
               <div className="space-y-4">
                 <div>
                   <label className="text-xs font-bold text-slate-500 mb-1.5 block">Kategori Adı</label>
-                  <input type="text" value={newFilterName} onChange={e => setNewFilterName(e.target.value)} placeholder="Örn: Portföylerim" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500 outline-none" />
+                  <input type="text" value={newFilterName} onChange={e => setNewFilterName(e.target.value)} placeholder="Örn: Portföylerim" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500 outline-none" />
                 </div>
                 <div>
                   <label className="text-xs font-bold text-slate-500 mb-1.5 block">Kategori Türü</label>
                   <div className="flex gap-2">
                     <button 
                       onClick={() => setNewFilterKind('network_contact')}
-                      className={`flex-1 py-2 text-xs font-bold rounded-lg border-2 transition-all ${newFilterKind === 'network_contact' ? 'border-orange-500 text-orange-600 bg-orange-50' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
+                      className={`flex-1 py-2 text-xs font-bold rounded-lg border-2 transition-all ${newFilterKind === 'network_contact' ? 'border-indigo-500 text-indigo-600 bg-indigo-50' : 'border-slate-200 text-slate-500 hover:bg-slate-50'}`}
                     >
                       Network
                     </button>
@@ -960,7 +960,7 @@ export const BolgemView = ({
                     <p className="text-[10px] text-slate-400 leading-relaxed">Son 15 günde alıcı trafiğinin en yoğun olduğu mikro bölgeleri belirle.</p>
                   </div>
                   <div className="p-5 bg-white/5 rounded-2xl border border-white/10 space-y-3 hover:bg-white/10 transition-colors cursor-pointer group">
-                    <div className="w-10 h-10 bg-orange-500/20 rounded-xl flex items-center justify-center border border-orange-500/30 text-orange-400 group-hover:bg-orange-500 group-hover:text-white transition-all">
+                    <div className="w-10 h-10 bg-rose-500/20 rounded-xl flex items-center justify-center border border-rose-500/30 text-rose-400 group-hover:bg-rose-500 group-hover:text-white transition-all">
                       <Building2 size={20} />
                     </div>
                     <h4 className="text-sm font-bold text-white">Fırsat Alanı (Drop-off)</h4>
@@ -1034,13 +1034,13 @@ export const BolgemView = ({
       <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-40 bg-slate-900/90 backdrop-blur-xl p-2 rounded-2xl flex shadow-2xl border border-white/10 pointer-events-auto">
         <button 
           onClick={() => setView('map')}
-          className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${view === 'map' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}
+          className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${view === 'map' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
         >
           <MapIcon size={14} /> Radar
         </button>
         <button 
           onClick={() => setView('list')}
-          className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${view === 'list' ? 'bg-orange-600 text-white' : 'text-slate-400 hover:text-white'}`}
+          className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${view === 'list' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
         >
           <LayoutDashboard size={14} /> Analiz
         </button>
@@ -1183,7 +1183,7 @@ export const BolgemView = ({
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setShowFieldNotes(false)} />
             <motion.div initial={{ x: '100%' }} animate={{ x: 0 }} exit={{ x: '100%' }} className="bg-slate-900 w-full max-w-md h-full relative z-10 shadow-2xl flex flex-col border-l border-white/10">
               <div className="p-6 border-b border-white/10 flex justify-between items-center bg-slate-900 sticky top-0">
-                <h3 className="text-xl font-bold text-white flex items-center gap-2"><MessageSquare size={20} className="text-orange-500"/> Saha Notları</h3>
+                <h3 className="text-xl font-bold text-white flex items-center gap-2"><MessageSquare size={20} className="text-indigo-400"/> Saha Notları</h3>
                 <button onClick={() => setShowFieldNotes(false)} className="p-2 text-slate-400 hover:text-white rounded-full transition-colors"><X size={20}/></button>
               </div>
               <div className="flex-1 overflow-y-auto p-6 space-y-4">

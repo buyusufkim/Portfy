@@ -174,11 +174,20 @@ export interface TaskTemplate {
   id: string;
   category: 'listing' | 'sale' | 'prospecting' | 'ritual';
   title: string;
-  description: string;
-  priority: 'low' | 'medium' | 'high';
+  description?: string;
+  priority?: 'low' | 'medium' | 'high';
   points?: number;
-  is_active?: boolean;
   auto_verify?: boolean;
+  recurrence_type?: 'once' | 'daily' | 'interval' | 'weekly' | 'monthly';
+  interval_days?: number | null;
+  recurrence_days?: number[];
+  day_of_month?: number | null;
+  start_date?: string;
+  end_date?: string | null;
+  target_scope?: 'all' | 'free' | 'trial' | 'master';
+  auto_generate?: boolean;
+  is_active?: boolean;
+  action_type?: string;
 }
 
 export interface SystemSettings {
@@ -234,6 +243,8 @@ export interface Task {
   notes?: string;
   type: 'Arama' | 'Randevu' | 'Saha' | 'Saha/Bölge' | 'Takip' | 'Güncelleme' | 'Sosyal Medya' | string;
   completed: boolean;
+  priority?: "low" | "medium" | "high" | string;
+  completed_at?: string | null;
   requires_call?: boolean;
   is_drip?: boolean;
   ai_suggestion?: string;
@@ -470,6 +481,9 @@ export interface GamifiedTask {
   ai_reason?: string;
   reminder_time?: string;
   notified?: boolean;
+  template_id?: string | null;
+  source?: string;
+  action_type?: string;
 }
 
 export interface UserStats {
@@ -647,6 +661,7 @@ export interface PersonalTask {
   is_completed: boolean;
   completed_at?: string;
   created_at: string;
+  updated_at?: string | null;
   priority: 'low' | 'medium' | 'high';
   notes?: string;
   due_date?: string;
@@ -708,4 +723,17 @@ export interface MarketIntelligenceReport {
   action_tip: string;
   created_at: string;
   source_type?: 'verified' | 'unavailable';
+}
+
+export interface NotificationPreference {
+  id: string;
+  user_id: string;
+  type: "new_lead" | "price_revision" | "ai_recommendation" | "market_report" | "system_announcement";
+  in_app: boolean;
+  email: boolean;
+  push: boolean;
+  whatsapp: boolean;
+  frequency: "instant" | "daily" | "weekly" | "never";
+  created_at?: string;
+  updated_at?: string;
 }

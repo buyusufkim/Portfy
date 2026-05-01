@@ -4,6 +4,7 @@ import {
   CheckCircle2, Building2, Sparkles, Image as ImageIcon,
   X
 } from 'lucide-react';
+import { PortfyLogo } from '../components/PortfyLogo';
 import { supabase } from '../lib/supabase';
 
 export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
@@ -116,12 +117,7 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
       {/* Üst Kısım: Marka ve İletişim */}
       <header className="bg-white px-6 py-4 border-b border-slate-100 flex justify-between items-center sticky top-0 z-50 shadow-sm">
         <div className="flex items-center gap-2">
-          <div className="w-8 h-8 bg-gradient-to-tr from-[#FF3D00] to-[#FF9100] rounded-lg flex items-center justify-center shadow-md">
-            <Building2 size={16} className="text-white" />
-          </div>
-          <span className="text-lg font-black italic text-transparent bg-clip-text bg-gradient-to-r from-[#FF3D00] to-[#FF9100]">
-            Portfy
-          </span>
+          <PortfyLogo className="h-7" />
         </div>
         <a 
           href={`tel:${agentPhone}`} 
@@ -251,7 +247,7 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
             <div className="mt-8 pt-6 border-t border-slate-800 text-xs font-bold text-slate-500 flex flex-col items-center justify-center gap-2 relative z-10">
               <div className="flex items-center gap-1.5">
                 <CheckCircle2 size={16} className="text-slate-400" />
-                Bu sunum <span className="text-transparent bg-clip-text bg-gradient-to-r from-[#FF3D00] to-[#FF9100]">Portfy Master</span> ile oluşturulmuştur.
+                Bu sunum <span className="text-[#00c8a5]">Portfy Master</span> ile oluşturulmuştur.
               </div>
             </div>
           </div>

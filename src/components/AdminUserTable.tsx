@@ -9,6 +9,7 @@ import {
   Clock,
 } from "lucide-react";
 import { UserProfile } from "../types";
+import { getEffectiveAiTokenLimit } from "../config/subscriptionLimits";
 
 interface AdminUserTableProps {
   loading: boolean;
@@ -50,15 +51,15 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
             placeholder="İsim veya E-posta ara..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 border border-slate-200 bg-white rounded-2xl focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 text-sm font-medium text-slate-700 outline-none transition-all shadow-sm"
+            className="w-full pl-12 pr-4 py-3 border border-slate-200 bg-white rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm font-medium text-slate-700 outline-none transition-all shadow-sm"
           />
         </div>
       </div>
 
-      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
+      <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
         {loading ? (
           <div className="p-16 flex flex-col items-center justify-center text-slate-500">
-            <div className="w-8 h-8 border-4 border-orange-600 border-t-transparent rounded-full animate-spin mb-4" />
+            <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />
             Üyeler Yükleniyor...
           </div>
         ) : (
@@ -82,17 +83,8 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
             <tbody className="divide-y divide-slate-100">
               {filteredUsers.map((u) => {
                 const used = u.ai_tokens_used || 0;
-                let limit = 5000;
-                if (
-                  u.ai_token_limit !== undefined &&
-                  u.ai_token_limit !== null
-                ) {
-                  limit = u.ai_token_limit;
-                } else if (u.tier === "master") {
-                  limit = 100000;
-                } else if (u.tier === "pro") {
-                  limit = 10000;
-                }
+                let limit = getEffectiveAiTokenLimit(u);
+                
                 const ratio =
                   limit > 0 ? Math.min((used / limit) * 100, 100) : 0;
                 const isWarning = limit > 0 && ratio >= 80;
@@ -124,7 +116,7 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
                           />
                         </div>
                         <div>
-                          <div className="font-bold text-slate-900 group-hover:text-orange-600 transition-colors text-base">
+                          <div className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors text-base">
                             {u.display_name || "İsimsiz Kullanıcı"}
                           </div>
                           <div className="text-xs text-slate-500 font-medium mb-1">{u.email}</div>
@@ -143,7 +135,7 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
                             isActiveMaster
                               ? "bg-indigo-100 text-indigo-700 border border-indigo-200"
                               : isTrial
-                                ? "bg-orange-100 text-orange-700 border border-orange-200"
+                                ? "bg-amber-100 text-amber-700 border border-amber-200"
                                 : "bg-slate-100 text-slate-600 border border-slate-200"
                           }`}
                         >
@@ -159,7 +151,7 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
                         </span>
                         {!isPassive && remainingText && (
                           <span
-                            className={`text-[10px] font-bold flex items-center gap-1 ${isExpired ? "text-red-500" : "text-emerald-600"}`}
+                            className={`text-[10px] font-bold flex items-center gap-1 ${isExpired ? "text-rose-500" : "text-emerald-600"}`}
                           >
                             {isExpired ? (
                               <AlertCircle size={12} />
@@ -182,7 +174,7 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
                         </span>
                         {limit > 0 && (
                           <span
-                            className={`font-bold ${isDanger ? "text-red-500" : isWarning ? "text-orange-500" : "text-emerald-500"}`}
+                            className={`font-bold ${isDanger ? "text-red-500" : isWarning ? "text-amber-500" : "text-emerald-500"}`}
                           >
                             %{Math.round(ratio)}
                           </span>
@@ -190,7 +182,7 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
                       </div>
                       <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
                         <div
-                          className={`h-full rounded-full transition-all duration-500 ${isDanger ? "bg-red-500" : isWarning ? "bg-orange-500" : "bg-emerald-500"}`}
+                          className={`h-full rounded-full transition-all duration-500 ${isDanger ? "bg-red-500" : isWarning ? "bg-amber-500" : "bg-emerald-500"}`}
                           style={{ width: `${ratio}%` }}
                         />
                       </div>

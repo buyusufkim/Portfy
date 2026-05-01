@@ -1,6 +1,23 @@
 import { supabase } from './supabase'; // Auth token'ı almak için
 
-export const generateContent = async (model: string, contents: any, config?: any) => {
+export interface GenerateContentConfig {
+  responseSchema?: Record<string, unknown>;
+  responseMimeType?: string;
+  systemInstruction?: string | { role: string; parts: { text: string }[] };
+}
+
+type ContentPart =
+  | { text: string }
+  | { inlineData: { data: string; mimeType: string } };
+
+type GenerateContentItem = {
+  role: "user" | "model";
+  parts: ContentPart[];
+};
+
+export type GenerateContentInput = string | GenerateContentItem[];
+
+export const generateContent = async <T = unknown>(model: string, contents: GenerateContentInput, config?: GenerateContentConfig): Promise<T> => {
   try {
     // Kullanıcının oturum token'ını al (Backend'deki authenticate middleware'i için şart)
     const { data: { session } } = await supabase.auth.getSession();
@@ -38,8 +55,8 @@ export const generateContent = async (model: string, contents: any, config?: any
     // Backend zaten JSON parse edip 'data' içinde gönderiyor
     return result.data; 
 
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error("Güvenli AI Çağrı Hatası:", error);
-    throw error;
+    throw error instanceof Error ? error : new Error("AI çağrısı başarısız oldu.");
   }
 };

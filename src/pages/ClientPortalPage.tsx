@@ -14,6 +14,7 @@ import {
   Share2,
   ArrowRight
 } from 'lucide-react';
+import { PortfyLogo } from '../components/PortfyLogo';
 import { motion } from 'motion/react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -65,11 +66,9 @@ export const ClientPortalPage: React.FC = () => {
       {/* Header */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-50">
         <div className="max-w-5xl mx-auto px-4 h-16 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <Building2 size={18} className="text-white" />
-            </div>
-            <span className="font-bold text-slate-900 tracking-tight text-lg">PORTFY Portal</span>
+          <div className="flex items-center gap-2 text-slate-900">
+            <PortfyLogo className="h-8" />
+            <span className="font-bold text-slate-900 tracking-tight text-lg border-l-2 border-slate-200 pl-2 ml-1">Portal</span>
           </div>
           <div className="flex items-center gap-3">
              <div className="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold border border-indigo-100">

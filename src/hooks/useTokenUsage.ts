@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
+import { getEffectiveAiTokenLimit } from '../config/subscriptionLimits';
 
 export const useTokenUsage = () => {
   const [usageData, setUsageData] = useState({ current: 0, limit: 100, percentage: 0 });
@@ -12,15 +13,15 @@ export const useTokenUsage = () => {
 
       const { data } = await supabase
         .from('profiles')
-        .select('ai_tokens_used, tier')
+        .select('*')
         .eq('id', user.id)
         .single();
 
       if (data) {
-        // Frontend'de sabit limitler (Pro için 10.000)
-        const limit = data.tier === 'pro' ? 10000 : 1000; 
+        const limit = getEffectiveAiTokenLimit(data); 
         const currentUsage = data.ai_tokens_used || 0;
-        const percentage = (currentUsage / limit) * 100;
+        const MathLimit = Math.max(limit, 1);
+        const percentage = (currentUsage / MathLimit) * 100;
 
         setUsageData({
           current: currentUsage,

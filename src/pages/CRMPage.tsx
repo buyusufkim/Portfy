@@ -21,6 +21,7 @@ interface CRMPageProps {
   setShowAddLead: (show: boolean) => void;
   setIsAnalyzingLeads: (analyzing: boolean) => void;
   analyzeLeadsMutation: MutationResult<string, unknown>;
+  leadAnalysis?: string | null;
   isAnalyzingLeads: boolean;
   properties: Property[];
   selectedLead: Lead | null;
@@ -36,6 +37,7 @@ export const CRMPage: React.FC<CRMPageProps> = ({
   setShowAddLead,
   setIsAnalyzingLeads,
   analyzeLeadsMutation,
+  leadAnalysis,
   isAnalyzingLeads,
   properties,
   selectedLead,
@@ -53,6 +55,7 @@ export const CRMPage: React.FC<CRMPageProps> = ({
       setShowAddLead={setShowAddLead}
       setIsAnalyzingLeads={setIsAnalyzingLeads}
       analyzeLeadsMutation={analyzeLeadsMutation}
+      leadAnalysis={leadAnalysis}
       leads={leads}
       leadsLoading={leadsLoading}
       categories={categories}

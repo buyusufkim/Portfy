@@ -220,6 +220,7 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
           setShowAddLead={leads.setShowAddLead}
           setIsAnalyzingLeads={leads.setIsAnalyzingLeads}
           analyzeLeadsMutation={leads.analyzeLeadsMutation}
+          leadAnalysis={leads.leadAnalysis}
           isAnalyzingLeads={leads.isAnalyzingLeads}
           properties={portfolios.properties || []}
           selectedLead={leads.selectedLead}
@@ -243,7 +244,7 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
       {/* 🔥 AI KOÇ SAYFASI KİLİTLENDİ 🔥 */}
       {navigation.activeTab === 'koc' && (
         <PremiumGate featureKey="ai_coach">
-          <CoachView />
+          <CoachView setActiveTab={navigation.setActiveTab} />
         </PremiumGate>
       )}
 

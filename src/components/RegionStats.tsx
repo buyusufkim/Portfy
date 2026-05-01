@@ -42,7 +42,7 @@ export const RegionStats: React.FC<RegionStatsProps> = ({ profile, pins = [] }) 
       activityColor = "text-emerald-500";
     } else if (demand >= 50) {
       marketActivity = "Dengeli";
-      activityColor = "text-orange-500";
+      activityColor = "text-indigo-500";
     } else {
       marketActivity = "Düşük";
       activityColor = "text-red-500";
@@ -83,7 +83,7 @@ export const RegionStats: React.FC<RegionStatsProps> = ({ profile, pins = [] }) 
 
       {/* 3. Talep Skoru (Gerçek API Verisi) */}
       <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-        <div className="w-12 h-12 bg-orange-100 text-orange-600 rounded-xl flex items-center justify-center">
+        <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
           {isLoading ? <Loader2 className="animate-spin" size={24} /> : <Activity size={24} />}
         </div>
         <div>

@@ -62,7 +62,7 @@ export const RegionSetupModal: React.FC<RegionSetupModalProps> = ({ profile, onC
       >
         <div className="relative z-10">
           <div className="flex items-start justify-between mb-6">
-            <div className="w-16 h-16 bg-orange-100 rounded-3xl flex items-center justify-center text-orange-600 shadow-sm shrink-0">
+            <div className="w-16 h-16 bg-indigo-100 rounded-3xl flex items-center justify-center text-indigo-600 shadow-sm shrink-0">
               <MapPin size={32} />
             </div>
             {profile?.region?.city && (
@@ -93,7 +93,7 @@ export const RegionSetupModal: React.FC<RegionSetupModalProps> = ({ profile, onC
                     setDistrict(''); 
                     setNeighborhoods([]);
                   }}
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-orange-500 outline-none transition-all appearance-none cursor-pointer"
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none cursor-pointer"
                 >
                   {cities.map(c => (
                     <option key={c} value={c}>{c}</option>
@@ -109,7 +109,7 @@ export const RegionSetupModal: React.FC<RegionSetupModalProps> = ({ profile, onC
                     setDistrict(e.target.value);
                     setNeighborhoods([]);
                   }}
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-orange-500 outline-none transition-all appearance-none cursor-pointer"
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none cursor-pointer"
                 >
                   <option value="">İlçe Seçin</option>
                   {districts.map(d => (
@@ -129,7 +129,7 @@ export const RegionSetupModal: React.FC<RegionSetupModalProps> = ({ profile, onC
                 </label>
                 <div className="flex flex-wrap gap-2 mb-3">
                   {neighborhoods.map(n => (
-                    <span key={n} className="flex items-center gap-1.5 px-3 py-1.5 bg-orange-600 text-white text-[10px] font-bold rounded-full animate-in fade-in scale-in">
+                    <span key={n} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-600 text-white text-[10px] font-bold rounded-full animate-in fade-in scale-in">
                       {n}
                       <button onClick={() => toggleNeighborhood(n)} className="hover:opacity-70 transition-opacity">
                         <ArrowRight size={10} className="rotate-45" />
@@ -145,7 +145,7 @@ export const RegionSetupModal: React.FC<RegionSetupModalProps> = ({ profile, onC
                     }
                   }}
                   value=""
-                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-orange-500 outline-none transition-all appearance-none cursor-pointer"
+                  className="w-full bg-slate-50 border-2 border-slate-100 rounded-2xl px-5 py-4 text-sm font-bold text-slate-900 focus:ring-2 focus:ring-indigo-500 outline-none transition-all appearance-none cursor-pointer"
                 >
                   <option value="">Mahalle Ekle...</option>
                   {allNeighborhoods
@@ -173,16 +173,16 @@ export const RegionSetupModal: React.FC<RegionSetupModalProps> = ({ profile, onC
             </button>
           </div>
 
-          <div className="mt-8 flex items-center gap-3 p-4 bg-orange-50 rounded-2xl border border-orange-100">
-            <Sparkles size={20} className="text-orange-500 shrink-0" />
-            <p className="text-[10px] text-orange-700 font-bold leading-relaxed">
+          <div className="mt-8 flex items-center gap-3 p-4 bg-indigo-50 rounded-2xl border border-indigo-100">
+            <Sparkles size={20} className="text-indigo-500 shrink-0" />
+            <p className="text-[10px] text-indigo-700 font-bold leading-relaxed">
               Bölge seçimi sonrası AI Koç, o bölgedeki piyasa verilerini senin için özel olarak analiz edecek.
             </p>
           </div>
         </div>
 
         {/* Decorative elements */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-orange-500/5 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
+        <div className="absolute top-0 right-0 w-32 h-32 bg-indigo-500/5 rounded-full -mr-16 -mt-16 blur-3xl pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-32 h-32 bg-slate-500/5 rounded-full -ml-16 -mb-16 blur-3xl pointer-events-none" />
       </motion.div>
     </div>

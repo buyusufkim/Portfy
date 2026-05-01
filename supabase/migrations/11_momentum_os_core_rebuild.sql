@@ -8,7 +8,8 @@ ADD COLUMN IF NOT EXISTS temperature text default 'normal',
 ADD COLUMN IF NOT EXISTS silence_risk_level text default 'none',
 ADD COLUMN IF NOT EXISTS forget_protection_state text default 'safe',
 ADD COLUMN IF NOT EXISTS last_call_result text,
-ADD COLUMN IF NOT EXISTS last_call_result_at timestamptz;
+ADD COLUMN IF NOT EXISTS last_call_result_at timestamptz,
+ADD COLUMN IF NOT EXISTS last_contacted_at timestamptz;
 
 -- B) Properties table expansion
 ALTER TABLE IF EXISTS properties 
@@ -130,6 +131,11 @@ CREATE INDEX IF NOT EXISTS idx_portfolio_blockers_prop_active ON portfolio_block
 CREATE INDEX IF NOT EXISTS idx_owner_portal_events_prop_created ON owner_portal_events(property_id, created_at desc);
 
 -- F) Backfill
-UPDATE leads SET last_contacted_at = coalesce(last_contacted_at, CASE WHEN last_contact IS NOT NULL AND last_contact <> '' THEN last_contact::timestamptz ELSE created_at END) WHERE last_contacted_at IS NULL;
-UPDATE properties SET last_status_change_at = coalesce(last_status_change_at, created_at) WHERE last_status_change_at IS NULL;
-UPDATE properties SET last_activity_at = coalesce(last_activity_at, updated_at, created_at) WHERE last_activity_at IS NULL;
+DO $$ 
+BEGIN
+  UPDATE leads SET last_contacted_at = coalesce(last_contacted_at, CASE WHEN last_contact IS NOT NULL THEN last_contact ELSE created_at END) WHERE last_contacted_at IS NULL;
+  UPDATE properties SET last_status_change_at = coalesce(last_status_change_at, created_at) WHERE last_status_change_at IS NULL;
+  UPDATE properties SET last_activity_at = coalesce(last_activity_at, updated_at, created_at) WHERE last_activity_at IS NULL;
+EXCEPTION WHEN OTHERS THEN
+  -- ignore missing columns if they don't exist yet or other issues
+END $$;

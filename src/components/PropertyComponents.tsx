@@ -62,22 +62,22 @@ export const PropertyCard: React.FC<{
   onResolveBlocker?: (id: string) => void
 }> = ({ property, onClick, activeBlockers, onResolveBlocker }) => {
   const getHealthColor = (score: number) => {
-    if (score >= 80) return 'text-emerald-500';
-    if (score >= 50) return 'text-orange-500';
-    return 'text-red-500';
+    if (score >= 80) return 'text-emerald-600';
+    if (score >= 50) return 'text-amber-600';
+    return 'text-rose-600';
   };
 
   const blocker = activeBlockers?.[0]; // Show the first active blocker
   const quality = getPropertyCardQuality(property);
 
   const getQualityStyle = (level: string) => {
-    if (level === 'good') return 'bg-emerald-50 text-emerald-600 border-emerald-200';
-    if (level === 'medium') return 'bg-orange-50 text-orange-600 border-orange-200';
-    return 'bg-red-50 text-red-600 border-red-200';
+    if (level === 'good') return 'bg-emerald-50 text-emerald-700 border-emerald-200';
+    if (level === 'medium') return 'bg-amber-50 text-amber-700 border-amber-200';
+    return 'bg-rose-50 text-rose-700 border-rose-200';
   };
 
   return (
-    <Card onClick={onClick} className="group flex flex-col h-full border-2 border-transparent hover:border-orange-500 hover:shadow-xl transition-all overflow-hidden rounded-3xl cursor-pointer">
+    <Card onClick={onClick} className="group flex flex-col h-full border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all overflow-hidden rounded-3xl cursor-pointer">
       <div className="relative h-48 overflow-hidden bg-slate-100 flex-shrink-0">
         {property.images && property.images.length > 0 ? (
           <img 
@@ -86,10 +86,10 @@ export const PropertyCard: React.FC<{
             alt={property.title || 'Mülk Fotoğrafı'}
           />
         ) : (
-          <div className="w-full h-full flex flex-col items-center justify-center text-slate-300 group-hover:scale-105 transition-transform duration-500 relative bg-gradient-to-br from-slate-100 to-slate-200">
-            <ImageIcon size={40} className="mb-2 opacity-50" />
-            <span className="text-[10px] font-bold uppercase tracking-widest opacity-80 decoration-slate-300">Fotoğraf Eksik</span>
-            <div className="absolute inset-0 bg-black/5 mix-blend-overlay"></div>
+          <div className="w-full h-full flex flex-col items-center justify-center text-slate-400 group-hover:scale-105 transition-transform duration-500 relative bg-gradient-to-br from-slate-50 to-slate-100 border-b border-slate-200">
+            <ImageIcon size={40} className="mb-2 opacity-50 text-slate-400" />
+            <span className="text-[10px] font-bold uppercase tracking-widest opacity-80 decoration-slate-300 text-slate-500">Görsel Yok</span>
+            <div className="absolute inset-0 bg-slate-900/5 mix-blend-overlay"></div>
           </div>
         )}
         <div className="absolute top-4 left-4 flex flex-col gap-2">
@@ -97,20 +97,20 @@ export const PropertyCard: React.FC<{
             <Badge 
               variant="success" 
               className={`${
-                property.status === 'Pasif' ? 'bg-red-500 text-white' : 
-                ['Satıldı', 'Kiralandı'].includes(property.status) ? 'bg-indigo-500 text-white' :
-                'bg-white/90 text-slate-900'
-              } backdrop-blur-md border border-black/5 shadow-sm`}
+                property.status === 'Pasif' ? 'bg-rose-500 text-white' : 
+                ['Satıldı', 'Kiralandı'].includes(property.status) ? 'bg-indigo-600 text-white' :
+                'bg-white/95 text-slate-800'
+              } backdrop-blur-md border border-slate-200 shadow-sm font-semibold`}
             >
               {property.status === 'Pasif' ? 'Satış Engeli (Pasif)' : property.status}
             </Badge>
             {property.market_analysis?.status === 'Fırsat' && (
-              <Badge variant="info" className="bg-emerald-500 text-white border-none shadow-sm">FIRSAT</Badge>
+              <Badge variant="info" className="bg-emerald-600 text-white border-none shadow-sm font-semibold">FIRSAT</Badge>
             )}
           </div>
           {property.status === 'Pasif' && (
             blocker ? (
-              <div className="bg-red-600/90 backdrop-blur-sm px-3 py-2 rounded-xl shadow-sm border border-red-500/50 max-w-[200px]">
+              <div className="bg-rose-600/95 backdrop-blur-sm px-3 py-2 rounded-xl shadow-sm border border-rose-500/50 max-w-[200px]">
                 <div className="flex items-start gap-2">
                   <AlertCircle size={12} className="text-white shrink-0 mt-0.5" />
                   <span className="text-[10px] font-bold text-white line-clamp-2 leading-tight">{blocker.blocker_type}: {blocker.note}</span>
@@ -118,14 +118,14 @@ export const PropertyCard: React.FC<{
                 {onResolveBlocker && (
                   <button 
                     onClick={(e) => { e.stopPropagation(); onResolveBlocker(blocker.id); }}
-                    className="mt-2 w-full text-[10px] bg-white text-red-600 py-1.5 rounded-lg font-bold hover:bg-red-50 transition-colors shadow-sm"
+                    className="mt-2 w-full text-[10px] bg-white text-rose-600 py-1.5 rounded-lg font-bold hover:bg-rose-50 transition-colors shadow-sm"
                   >
                     Çözüldü İşaretle
                   </button>
                 )}
               </div>
             ) : property.unsold_reason && (
-              <div className="bg-red-500/90 backdrop-blur-sm px-3 py-2 rounded-xl shadow-sm border border-red-400/20 max-w-[200px]">
+              <div className="bg-rose-500/95 backdrop-blur-sm px-3 py-2 rounded-xl shadow-sm border border-rose-400/20 max-w-[200px]">
                 <div className="flex items-start gap-2">
                   <AlertCircle size={12} className="text-white shrink-0 mt-0.5" />
                   <span className="text-[10px] font-bold text-white line-clamp-2">{property.unsold_reason}</span>
@@ -140,13 +140,13 @@ export const PropertyCard: React.FC<{
             {quality.label}
           </div>
         </div>
-        <div className="absolute bottom-4 right-4 bg-white/95 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-sm border border-slate-100/50">
-          <span className="text-orange-600 font-bold text-base tracking-tight">₺{property.price ? property.price.toLocaleString() : 'Fiyat Yok'}</span>
+        <div className="absolute bottom-4 right-4 bg-slate-900/80 backdrop-blur-md px-3 py-1.5 rounded-xl shadow-sm border border-white/10">
+          <span className="text-white font-bold text-sm tracking-tight">₺{property.price ? property.price.toLocaleString() : 'Fiyat Yok'}</span>
         </div>
       </div>
       <div className="p-5 flex flex-col flex-1">
         <div className="mb-4">
-          <h3 className="font-bold text-slate-900 line-clamp-1 text-base group-hover:text-orange-600 transition-colors">{property.title || 'Başlık Eksik'}</h3>
+          <h3 className="font-bold text-slate-900 line-clamp-1 text-[15px] group-hover:text-indigo-600 transition-colors">{property.title || 'Başlık Eksik'}</h3>
           <div className="flex items-center gap-1.5 text-slate-500 text-xs mt-1.5 font-medium">
             <MapPin size={12} className="shrink-0" />
             <span className="line-clamp-1">{property.address?.district || 'İlçe yok'}, {property.address?.city || 'İl yok'}</span>
@@ -168,14 +168,14 @@ export const PropertyCard: React.FC<{
             <div className={`text-[10px] font-bold uppercase tracking-wider ${getHealthColor(property.health_score)}`}>%{property.health_score} Sağlık</div>
             <div className="w-16 h-1.5 bg-slate-100 rounded-full mt-1.5 overflow-hidden">
               <div 
-                className={`h-full rounded-full transition-all duration-1000 ${property.health_score >= 80 ? 'bg-emerald-500' : property.health_score >= 50 ? 'bg-orange-500' : 'bg-red-500'}`}
+                className={`h-full rounded-full transition-all duration-1000 ${property.health_score >= 80 ? 'bg-emerald-500' : property.health_score >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
                 style={{ width: `${property.health_score}%` }}
               />
             </div>
           </div>
         </div>
 
-        <div className="flex gap-2">
+        <div className="flex gap-2 relative z-10 pointer-events-auto">
           <button 
             onClick={(e) => {
               e.stopPropagation();
@@ -184,13 +184,13 @@ export const PropertyCard: React.FC<{
               const text = encodeURIComponent(`Merhaba, bu mülk ilginizi çekebilir: ${property.title || ''}\nFiyat: ₺${property.price ? property.price.toLocaleString() : '-'}\nKonum: ${property.address?.district || ''}, ${property.address?.city || ''}\nDetaylar: ${rooms}, ${m2}`);
               window.open(`https://wa.me/?text=${text}`, '_blank');
             }}
-            className="flex-1 py-2.5 bg-emerald-50 text-emerald-700 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 hover:bg-emerald-600 hover:text-white transition-all border border-emerald-100 hover:border-emerald-600"
+            className="flex-1 py-2.5 bg-slate-50 text-slate-700 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 hover:bg-slate-100 hover:text-slate-900 transition-all border border-slate-200"
           >
-            <MessageSquare size={14} /> Paylaş
+            <Share2 size={14} /> Paylaş
           </button>
           <button 
             onClick={(e) => { e.stopPropagation(); onClick(); }}
-            className="flex-1 py-2.5 bg-orange-50 text-orange-700 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 hover:bg-orange-600 hover:text-white transition-all border border-orange-100 hover:border-orange-600"
+            className="flex-1 py-2.5 bg-indigo-50 text-indigo-700 rounded-xl text-[11px] font-bold flex items-center justify-center gap-1.5 hover:bg-indigo-600 hover:text-white transition-all border border-indigo-100 hover:border-indigo-600"
           >
             <Sparkles size={14} /> AI Analiz
           </button>
@@ -217,7 +217,7 @@ export const PipelineColumn: React.FC<{
           <h3 className="font-bold text-slate-900 text-sm tracking-tight">{title}</h3>
           <Badge variant="default" className="bg-white border border-slate-200 text-slate-600 shadow-sm">{properties.length}</Badge>
         </div>
-        <div className="text-[11px] font-bold text-emerald-600 bg-emerald-50 px-2 py-1 rounded-lg">₺{totalRevenue.toLocaleString()}</div>
+        <div className="text-[11px] font-bold text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-lg border border-emerald-100 shadow-sm">₺{totalRevenue.toLocaleString()}</div>
       </div>
       
       <div className="flex-1 space-y-3 overflow-y-auto px-1 pb-4 no-scrollbar min-h-[500px]">
@@ -233,25 +233,25 @@ export const PipelineColumn: React.FC<{
               animate={{ opacity: 1, scale: 1 }}
               whileHover={{ y: -2 }}
             >
-              <Card onClick={() => onPropertyClick(property)} className="p-4 space-y-3 shadow-sm hover:shadow-md transition-all border-l-4 border-l-orange-500 relative cursor-pointer bg-white group">
+              <Card onClick={() => onPropertyClick(property)} className="p-4 space-y-3 shadow-sm hover:shadow-md transition-all border border-slate-200 border-l-4 border-l-indigo-400 relative cursor-pointer bg-white group">
                 {activeBlocker && (
-                  <div className="bg-red-50 text-red-700 p-2.5 rounded-xl text-[10px] font-bold border border-red-100 flex justify-between items-center mb-3 shadow-sm">
+                  <div className="bg-rose-50 text-rose-700 p-2.5 rounded-xl text-[10px] font-bold border border-rose-100 flex justify-between items-center mb-3 shadow-sm">
                     <span className="flex items-center gap-1.5"><AlertCircle size={12}/> {activeBlocker.blocker_type} engeli</span>
                     {onResolveBlocker && (
-                      <button onClick={e => { e.stopPropagation(); onResolveBlocker(activeBlocker.id); }} className="px-2.5 py-1 bg-white border border-red-200 rounded-lg text-red-600 hover:bg-red-600 hover:text-white hover:border-red-600 transition-colors shadow-sm">Çöz</button>
+                      <button onClick={e => { e.stopPropagation(); onResolveBlocker(activeBlocker.id); }} className="px-2.5 py-1 bg-white border border-rose-200 rounded-lg text-rose-600 hover:bg-rose-600 hover:text-white hover:border-rose-600 transition-colors shadow-sm">Çöz</button>
                     )}
                   </div>
                 )}
                 
                 {property.status === 'Pasif' && !activeBlocker && property.unsold_reason && (
-                  <div className="bg-red-50 text-red-700 p-2.5 rounded-xl text-[10px] font-bold border border-red-100 flex items-center gap-1.5 mb-3 shadow-sm">
+                  <div className="bg-rose-50 text-rose-700 p-2.5 rounded-xl text-[10px] font-bold border border-rose-100 flex items-center gap-1.5 mb-3 shadow-sm">
                     <AlertCircle size={12}/> <span className="line-clamp-1">{property.unsold_reason}</span>
                   </div>
                 )}
                 
                 <div className="flex justify-between items-start gap-3">
-                  <h4 className="text-sm font-bold text-slate-900 line-clamp-2 leading-tight group-hover:text-orange-600 transition-colors">{property.title || 'Başlık Yok'}</h4>
-                  <div className="text-xs font-black text-orange-600 shrink-0 bg-orange-50 px-2 py-1 rounded-lg">₺{property.price ? property.price.toLocaleString() : '-'}</div>
+                  <h4 className="text-sm font-bold text-slate-900 line-clamp-2 leading-tight group-hover:text-indigo-600 transition-colors">{property.title || 'Başlık Yok'}</h4>
+                  <div className="text-xs font-black text-slate-800 shrink-0 bg-slate-100 px-2 py-1.5 rounded-lg border border-slate-200">₺{property.price ? property.price.toLocaleString() : '-'}</div>
                 </div>
                 
                 <div className="flex items-center justify-between text-[10px]">
@@ -260,7 +260,7 @@ export const PipelineColumn: React.FC<{
                     <span className="line-clamp-1">{property.address?.district || 'Konum yok'}{property.address?.city ? `, ${property.address.city}` : ''}</span>
                   </div>
                   {quality.level !== 'good' && (
-                    <div className={`px-1.5 py-0.5 rounded flex items-center gap-1 text-[9px] font-bold ${quality.level === 'weak' ? 'bg-red-50 text-red-600' : 'bg-orange-50 text-orange-600'}`}>
+                    <div className={`px-1.5 py-0.5 rounded flex items-center gap-1 text-[9px] font-bold border ${quality.level === 'weak' ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-amber-50 text-amber-600 border-amber-200'}`}>
                       <AlertCircle size={8} />
                       {quality.label}
                     </div>
@@ -281,7 +281,7 @@ export const PipelineColumn: React.FC<{
                   <div className="flex items-center gap-2">
                     <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">Sağlık</span>
                     <div className="w-12 h-1.5 bg-slate-100 rounded-full overflow-hidden">
-                      <div className={`h-full rounded-full transition-all duration-1000 ${property.health_score >= 80 ? 'bg-emerald-500' : property.health_score >= 50 ? 'bg-orange-500' : 'bg-red-500'}`} style={{ width: `${property.health_score}%` }} />
+                      <div className={`h-full rounded-full transition-all duration-1000 ${property.health_score >= 80 ? 'bg-emerald-500' : property.health_score >= 50 ? 'bg-amber-500' : 'bg-rose-500'}`} style={{ width: `${property.health_score}%` }} />
                     </div>
                   </div>
                 </div>

@@ -230,66 +230,135 @@ export const momentumOsService = {
 
   // Momentum OS Core Methods
   getDailyPlan: async (dateStr?: string): Promise<DailyPlan | null> => {
-    const userId = await getUserId();
-    const targetDate = dateStr || getTodayStr();
-    const { data, error } = await supabase
-      .from('daily_plan')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('plan_date', targetDate)
-      .maybeSingle();
-    if (error) throw error;
+    // If a specific past date is requested, fallback to DB query
+    if (dateStr && dateStr !== getTodayStr()) {
+      const userId = await getUserId();
+      const { data, error } = await supabase
+        .from('daily_plan')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('plan_date', dateStr)
+        .maybeSingle();
+      if (error) throw error;
+      return data as DailyPlan | null;
+    }
+
+    // For today, use server endpoint
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not authenticated");
+
+    const res = await fetch("/api/ai/daily-plan/today", {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      }
+    });
+
+    if (!res.ok) throw new Error("Failed to get daily plan");
+    const data = await res.json();
     return data as DailyPlan | null;
   },
 
   saveDailyPlan: async (payload: Partial<DailyPlan>, dateStr?: string): Promise<DailyPlan> => {
-    const userId = await getUserId();
-    const targetDate = dateStr || getTodayStr();
-    const { data, error } = await supabase
-      .from('daily_plan')
-      .upsert({ ...payload, user_id: userId, plan_date: targetDate, updated_at: new Date().toISOString() }, { onConflict: 'user_id, plan_date' })
-      .select()
-      .single();
-    if (error) throw error;
+    // If a specific past date is requested, fallback to DB direct query
+    if (dateStr && dateStr !== getTodayStr()) {
+      const userId = await getUserId();
+      const { data, error } = await supabase
+        .from('daily_plan')
+        .upsert({ ...payload, user_id: userId, plan_date: dateStr, updated_at: new Date().toISOString() }, { onConflict: 'user_id, plan_date' })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as DailyPlan;
+    }
+
+    // For today, use server endpoint
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not authenticated");
+
+    const res = await fetch("/api/ai/daily-plan/save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) throw new Error("Failed to save daily plan");
+    const data = await res.json();
     return data as DailyPlan;
   },
 
   getDayClosure: async (dateStr?: string): Promise<DayClosure | null> => {
-    const userId = await getUserId();
-    const targetDate = dateStr || getTodayStr();
-    const { data, error } = await supabase
-      .from('day_closure')
-      .select('*')
-      .eq('user_id', userId)
-      .eq('closure_date', targetDate)
-      .maybeSingle();
-    if (error) throw error;
+    // If a specific past date is requested, fallback to DB query
+    if (dateStr && dateStr !== getTodayStr()) {
+      const userId = await getUserId();
+      const { data, error } = await supabase
+        .from('day_closure')
+        .select('*')
+        .eq('user_id', userId)
+        .eq('closure_date', dateStr)
+        .maybeSingle();
+      if (error) throw error;
+      return data as DayClosure | null;
+    }
+
+    // For today, use server endpoint
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not authenticated");
+
+    const res = await fetch("/api/ai/day-closure/today", {
+      headers: {
+        Authorization: `Bearer ${session.access_token}`
+      }
+    });
+
+    if (!res.ok) throw new Error("Failed to get day closure");
+    const data = await res.json();
     return data as DayClosure | null;
   },
 
   saveDayClosure: async (payload: Partial<DayClosure> & { tasks_completed?: number, revenue?: number, calls?: number, visits?: number, social?: number, top3_tomorrow?: string[], blockers?: string, wins?: string }, dateStr?: string): Promise<DayClosure> => {
-    const userId = await getUserId();
-    const targetDate = dateStr || getTodayStr();
-    
-    // Normalize payload to match DB schema
-    const normalizedPayload: Partial<DayClosure> = {
-      user_id: userId,
-      closure_date: targetDate,
-      updated_at: new Date().toISOString(),
-      wins: payload.wins,
-      blockers: payload.blockers,
-      tomorrow_top3: payload.top3_tomorrow || payload.tomorrow_top3,
-      completed_calls: payload.calls || payload.completed_calls || 0,
-      completed_portfolio_actions: payload.visits || payload.completed_portfolio_actions || 0,
-      completed_followups: payload.completed_followups || 0
-    };
+    // If a specific past date is requested, fallback to DB direct query
+    if (dateStr && dateStr !== getTodayStr()) {
+      const userId = await getUserId();
+      
+      const normalizedPayload: Partial<DayClosure> = {
+        user_id: userId,
+        closure_date: dateStr,
+        updated_at: new Date().toISOString(),
+        wins: payload.wins,
+        blockers: payload.blockers,
+        tomorrow_top3: payload.top3_tomorrow || payload.tomorrow_top3,
+        completed_calls: payload.calls || payload.completed_calls || 0,
+        completed_portfolio_actions: payload.visits || payload.completed_portfolio_actions || 0,
+        completed_followups: payload.completed_followups || 0
+      };
 
-    const { data, error } = await supabase
-      .from('day_closure')
-      .upsert(normalizedPayload, { onConflict: 'user_id, closure_date' })
-      .select()
-      .single();
-    if (error) throw error;
+      const { data, error } = await supabase
+        .from('day_closure')
+        .upsert(normalizedPayload, { onConflict: 'user_id, closure_date' })
+        .select()
+        .single();
+      if (error) throw error;
+      return data as DayClosure;
+    }
+
+    // For today, use server endpoint
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not authenticated");
+
+    const res = await fetch("/api/ai/day-closure/save", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) throw new Error("Failed to save day closure");
+    const data = await res.json();
     return data as DayClosure;
   },
 

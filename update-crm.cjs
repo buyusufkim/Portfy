@@ -1,215 +1,23 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { 
-  MessageSquare, 
-  Plus, 
-  Search, 
-  Sparkles, 
-  Users, 
-  User as UserIcon, 
-  Phone,
-  AlertTriangle,
-  Globe,
-  BellOff,
-  Zap
-} from 'lucide-react';
-import { Lead, LeadAlert, UserProfile, Property, Referral, MutationResult } from '../types';
-import { Card, Badge, Skeleton } from './UI';
-import { api } from '../services/api';
-import { QUERY_KEYS } from '../constants/queryKeys';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import toast from 'react-hot-toast';
+const fs = require('fs');
 
-interface LeadCategory {
-  label: string;
-  color: string;
+const path = './src/components/CRMView.tsx';
+let txt = fs.readFileSync(path, 'utf8');
+
+// I am replacing everything from:
+// return (
+//   <motion.div
+// down to the end of the file.
+
+const startMarker = '  return (\n    <motion.div \n      initial={{ opacity: 0 }}\n      animate={{ opacity: 1 }}\n      className="p-6 space-y-6"\n    >';
+
+if (!txt.includes(startMarker)) {
+  console.log("Could not find start marker");
+  process.exit(1);
 }
 
-interface CRMViewProps {
-  leads: Lead[];
-  leadsLoading: boolean;
-  setShowWhatsAppImport: (show: boolean) => void;
-  setShowAddLead: (show: boolean) => void;
-  isAnalyzingLeads: boolean;
-  setIsAnalyzingLeads: (analyzing: boolean) => void;
-  analyzeLeadsMutation: MutationResult<string, unknown>;
-  leadAnalysis?: string | null;
-  categories: LeadCategory[];
-  onSelectLead: (lead: Lead) => void;
-  leadAlerts?: LeadAlert[];
-  profile?: UserProfile | null;
-  properties?: Property[];
-}
+const beforeReturn = txt.substring(0, txt.indexOf(startMarker));
 
-const parseContactDate = (value?: string) => {
-  if (!value) return 0;
-  const timestamp = new Date(value).getTime();
-  return Number.isNaN(timestamp) ? 0 : timestamp;
-};
-
-export const CRMView: React.FC<CRMViewProps> = ({
-  leads,
-  leadsLoading,
-  setShowWhatsAppImport,
-  setShowAddLead,
-  isAnalyzingLeads,
-  setIsAnalyzingLeads,
-  analyzeLeadsMutation,
-  leadAnalysis,
-  categories,
-  onSelectLead,
-  leadAlerts = [],
-  profile,
-  properties = []
-}) => {
-  const [activeTab, setActiveTab] = useState<'rehber' | 'araclar'>('rehber');
-  const [crmSegment, setCrmSegment] = useState<'all' | 'customers' | 'network' | 'hot' | 'silent'>('all');
-  const [searchTerm, setSearchTerm] = React.useState('');
-  const [debouncedSearchTerm, setDebouncedSearchTerm] = React.useState('');
-  
-  // Araçlar - Sahip Portalı
-  const [portalLink, setPortalLink] = useState<string | null>(null);
-
-  // Araçlar - Referral Motoru
-  const queryClient = useQueryClient();
-  const { data: referrals = [] } = useQuery({
-    queryKey: ['referrals', profile?.id],
-    queryFn: () => api.momentumOs.getReferrals(),
-    enabled: !!profile?.id && activeTab === 'araclar'
-  });
-
-  const [showReferralInput, setShowReferralInput] = useState(false);
-  const [newReferralName, setNewReferralName] = useState('');
-  
-  const addReferralMutation = useMutation({
-    mutationFn: (name: string) => api.momentumOs.addReferral({ referred_name: name, referrer_name: 'Davet Linki', status: 'İstendi' }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['referrals', profile?.id] });
-      setNewReferralName('');
-      setShowReferralInput(false);
-      toast.success("Referral başarıyla eklendi.");
-    }
-  });
-
-  const updateReferralMutation = useMutation({
-    mutationFn: ({ id, status }: { id: string, status: string }) => api.momentumOs.updateReferral(id, { status }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['referrals', profile?.id] });
-      toast.success("Referral durumu güncellendi.");
-    }
-  });
-
-  const { data: portalEvents = [] } = useQuery({
-    queryKey: [QUERY_KEYS.MOMENTUM_PORTAL_EVENTS, profile?.id],
-    queryFn: () => api.momentumOs.getOwnerPortalEventsSummary(),
-    enabled: !!profile?.id && activeTab === 'araclar'
-  });
-
-  const getPropertyTraffic = (propertyId: string) => {
-    const stat = portalEvents.find(e => e.property_id === propertyId);
-    return {
-      views: stat ? stat.views : 0,
-      lastView: stat ? stat.last_seen : null
-    };
-  };
-
-  const handleCreatePortal = async (propertyId: string) => {
-    try {
-      const response = await api.momentumOs.createPortalToken(propertyId);
-      const link = `${window.location.origin}/portal/${response.token}`;
-      setPortalLink(link);
-      toast.success("Portföy portal linki oluşturuldu!");
-    } catch (error) {
-      console.error("Portal creation error:", error);
-      toast.error("Portal linki oluşturulamadı.");
-    }
-  };
-  const [statusFilter, setStatusFilter] = React.useState<'all' | Lead['status']>('all');
-  const [typeFilter, setTypeFilter] = React.useState<'all' | Lead['type']>('all');
-  const [sortBy, setSortBy] = React.useState<'recent' | 'name'>('recent');
-  const [showAdvancedFilters, setShowAdvancedFilters] = React.useState(false);
-
-  React.useEffect(() => {
-    const timeout = setTimeout(() => setDebouncedSearchTerm(searchTerm), 300);
-    return () => clearTimeout(timeout);
-  }, [searchTerm]);
-
-  const leadTypes = React.useMemo(() => {
-    if (!leads) return [];
-    return Array.from(new Set(leads.map(l => l.type || 'Bilinmiyor'))).sort((a, b) => a.localeCompare(b, 'tr')) as Lead['type'][];
-  }, [leads]);
-
-  const isSilentLead = React.useCallback((lead: Lead) => {
-    const isAlerted = leadAlerts.some(a =>
-      a.lead_id === lead.id &&
-      (
-        a.alert_type === 'silence' ||
-        ['stale_3d', 'stale_7d', 'stale_14d', 'hot_48h_silence', 'inactive_lead', 'Sessiz Müşteri'].includes(a.alert_type)
-      )
-    );
-    const isRisky = lead.silence_risk_level === 'high' || lead.silence_risk_level === 'medium';
-    return isAlerted || isRisky;
-  }, [leadAlerts]);
-
-  const filteredLeads = React.useMemo(() => {
-    if (!leads) return [];
-    const normalizedQuery = debouncedSearchTerm.trim().toLocaleLowerCase('tr');
-    const result = leads.filter((lead) => {
-      if (!lead) return false;
-      const matchesSearch = !normalizedQuery || [lead.name, lead.phone, lead.district].some((value) =>
-        (value || '').toLocaleLowerCase('tr').includes(normalizedQuery)
-      );
-      const matchesStatus = statusFilter === 'all' || lead.status === statusFilter;
-      const matchesType = typeFilter === 'all' || lead.type === typeFilter;
-      
-      let matchesSegment = true;
-      if (crmSegment === 'customers') matchesSegment = lead.type !== 'Bölge Network';
-      else if (crmSegment === 'network') matchesSegment = lead.type === 'Bölge Network';
-      else if (crmSegment === 'hot') matchesSegment = lead.status === 'Sıcak' || lead.temperature === 'hot';
-      else if (crmSegment === 'silent') {
-        matchesSegment = isSilentLead(lead);
-      }
-      
-      return matchesSearch && matchesStatus && matchesType && matchesSegment;
-    });
-
-    return result.sort((a, b) => {
-      if (sortBy === 'name') {
-        return (a.name || '').localeCompare(b.name || '', 'tr');
-      }
-      // Hem last_contact hem last_contacted_at'e bakıyoruz
-      const dateB = b.last_contacted_at || b.last_contact || b.created_at;
-      const dateA = a.last_contacted_at || a.last_contact || a.created_at;
-      return parseContactDate(dateB) - parseContactDate(dateA);
-    });
-  }, [leads, debouncedSearchTerm, statusFilter, typeFilter, sortBy, crmSegment, isSilentLead]);
-
-  const hotLeadCount = leads.filter((lead) => lead.status === 'Sıcak' || lead.temperature === 'hot').length;
-  const hasActiveFilters = searchTerm.length > 0 || statusFilter !== 'all' || typeFilter !== 'all' || sortBy !== 'recent';
-
-  const silentLeadAlerts = React.useMemo(() => {
-    return leadAlerts.filter(a => 
-      a.alert_type === 'silence' ||
-      ['stale_3d', 'stale_7d', 'stale_14d', 'hot_48h_silence', 'inactive_lead', 'Sessiz Müşteri'].includes(a.alert_type)
-    );
-  }, [leadAlerts]);
-
-  const filterPills = [
-    statusFilter !== 'all' ? { key: 'status', label: `Durum: ${statusFilter}` } : null,
-    typeFilter !== 'all' ? { key: 'type', label: `Tip: ${typeFilter}` } : null,
-    sortBy !== 'recent' ? { key: 'sort', label: 'Sıralama: İsme Göre' } : null,
-    debouncedSearchTerm.trim() ? { key: 'search', label: `Arama: ${debouncedSearchTerm}` } : null
-  ].filter(Boolean) as Array<{ key: string; label: string }>;
-
-  const clearFilters = () => {
-    setSearchTerm('');
-    setDebouncedSearchTerm('');
-    setStatusFilter('all');
-    setTypeFilter('all');
-    setSortBy('recent');
-  };
-
-  const renderCRMSummary = () => (
+const newReturn = `  const renderCRMSummary = () => (
     <Card className="p-5 border-slate-100 shadow-sm space-y-4">
       <h3 className="font-bold text-slate-800 flex items-center gap-2">
         <Users size={18} className="text-blue-500" /> CRM Özeti
@@ -251,25 +59,29 @@ export const CRMView: React.FC<CRMViewProps> = ({
           <button 
             id="btn-add-lead" 
             onClick={() => setShowAddLead(true)} 
-            className="w-full md:w-auto px-4 py-2 bg-slate-900 text-white rounded-xl shadow-lg border border-slate-800 flex justify-center items-center gap-2 text-sm font-bold hover:bg-slate-800 transition"
+            className="px-4 py-2 bg-slate-900 text-white rounded-xl shadow-lg border border-slate-800 flex items-center gap-2 text-sm font-bold hover:bg-slate-800 transition"
           >
             <Plus size={18} /> Yeni Kayıt
           </button>
           <button 
             onClick={() => setShowWhatsAppImport(true)} 
-            className="flex-1 md:flex-none justify-center px-4 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-xl flex items-center gap-2 text-sm font-bold shadow-sm hover:bg-emerald-100 transition"
+            className="px-4 py-2 bg-emerald-50 text-emerald-600 border border-emerald-200 rounded-xl flex items-center gap-2 text-sm font-bold shadow-sm hover:bg-emerald-100 transition"
           >
-            <MessageSquare size={18} /> <span className="md:inline hidden">WhatsApp Aktar</span><span className="md:hidden">WhatsApp</span>
+            <MessageSquare size={18} /> WhatsApp Aktar
           </button>
           <button 
             onClick={() => { setIsAnalyzingLeads(true); analyzeLeadsMutation.mutate(leads); }}
             disabled={isAnalyzingLeads || leads.length === 0}
-            className="flex-1 md:flex-none justify-center px-4 py-2 bg-purple-50 text-purple-600 border border-purple-200 rounded-xl flex items-center gap-2 text-sm font-bold shadow-sm hover:bg-purple-100 transition disabled:opacity-50"
+            className="px-4 py-2 bg-purple-50 text-purple-600 border border-purple-200 rounded-xl flex items-center gap-2 text-sm font-bold shadow-sm hover:bg-purple-100 transition disabled:opacity-50"
           >
             {isAnalyzingLeads ? (
               <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }}><Sparkles size={18} /></motion.div>
             ) : <Sparkles size={18} />}
             AI Analiz
+          </button>
+          {/* Sadece UI görseli olarak */}
+          <button className="px-4 py-2 bg-slate-50 text-slate-600 border border-slate-200 rounded-xl flex items-center gap-2 text-sm font-bold shadow-sm hover:bg-slate-100 transition">
+            <Copy size={18} /> Kartvizit Tara
           </button>
         </div>
       </div>
@@ -281,13 +93,13 @@ export const CRMView: React.FC<CRMViewProps> = ({
           <div className="flex border-b border-slate-200 w-full mb-2">
             <button 
               onClick={() => setActiveTab('rehber')} 
-              className={`flex items-center gap-2 pb-3 px-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'rehber' ? 'border-orange-500 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              className={\`flex items-center gap-2 pb-3 px-4 text-sm font-bold transition-all border-b-2 \${activeTab === 'rehber' ? 'border-orange-500 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}\`}
             >
               <UserIcon size={16} /> Rehber
             </button>
             <button 
               onClick={() => setActiveTab('araclar')} 
-              className={`flex items-center gap-2 pb-3 px-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'araclar' ? 'border-orange-500 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+              className={\`flex items-center gap-2 pb-3 px-4 text-sm font-bold transition-all border-b-2 \${activeTab === 'araclar' ? 'border-orange-500 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}\`}
             >
               <Globe size={16} /> Araçlar
             </button>
@@ -297,53 +109,51 @@ export const CRMView: React.FC<CRMViewProps> = ({
             <>
               {/* 4. Arama ve filtreler */}
               <div className="flex flex-col md:flex-row gap-3">
-                <div className="w-full md:flex-1 relative">
+                <div className="flex-1 relative">
                   <Search size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
                   <input 
                     type="text" 
-                    placeholder="Ara (isim, telefon, vb.)" 
+                    placeholder="Ara (isim, telefon, mahalle, not...)" 
                     value={searchTerm}
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    className="w-full bg-white border border-slate-200 rounded-xl py-2 pl-10 pr-4 text-sm shadow-sm"
+                    className="w-full bg-white border border-slate-200 rounded-2xl py-2.5 pl-10 pr-4 text-sm shadow-sm"
                   />
                 </div>
-                <div className="grid grid-cols-2 md:flex items-center gap-2 w-full md:w-auto">
-                  <select
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
-                    className="w-full md:w-auto bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm shadow-sm text-slate-700"
-                  >
-                    <option value="all">Durum</option>
-                    <option value="Aday">Aday</option>
-                    <option value="Sıcak">Sıcak</option>
-                    <option value="Yetki Alındı">Yetki Alındı</option>
-                    <option value="Pasif">Pasif</option>
-                  </select>
-                  <select
-                    value={typeFilter}
-                    onChange={(e) => setTypeFilter(e.target.value as Lead['type'] | 'all')}
-                    className="w-full md:w-auto bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm shadow-sm text-slate-700"
-                  >
-                    <option value="all">Tip</option>
-                    {leadTypes.map((type) => (
-                      <option key={type} value={type}>
-                        {type}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={sortBy}
-                    onChange={(e) => setSortBy(e.target.value as 'recent' | 'name')}
-                    className="col-span-2 w-full md:col-span-1 md:w-auto bg-white border border-slate-200 rounded-xl py-2 px-3 text-sm shadow-sm text-slate-700"
-                  >
-                    <option value="recent">Sırala: Son</option>
-                    <option value="name">Sırala: İsim</option>
-                  </select>
-                </div>
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value as typeof statusFilter)}
+                  className="bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm shadow-sm text-slate-700"
+                >
+                  <option value="all">Durum</option>
+                  <option value="Aday">Aday</option>
+                  <option value="Sıcak">Sıcak</option>
+                  <option value="Yetki Alındı">Yetki Alındı</option>
+                  <option value="Pasif">Pasif</option>
+                </select>
+                <select
+                  value={typeFilter}
+                  onChange={(e) => setTypeFilter(e.target.value as Lead['type'] | 'all')}
+                  className="bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm shadow-sm text-slate-700"
+                >
+                  <option value="all">Tip</option>
+                  {leadTypes.map((type) => (
+                    <option key={type} value={type}>
+                      {type}
+                    </option>
+                  ))}
+                </select>
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value as 'recent' | 'name')}
+                  className="bg-white border border-slate-200 rounded-2xl py-2.5 px-4 text-sm shadow-sm text-slate-700"
+                >
+                  <option value="recent">Sırala: Son İletişim</option>
+                  <option value="name">İsme Göre</option>
+                </select>
               </div>
 
               {/* 5. Segment chipleri */}
-              <div className="flex overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 gap-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              <div className="flex overflow-x-auto pb-2 -mx-4 px-4 md:mx-0 md:px-0 hide-scrollbar gap-2">
                 {[
                   { id: 'all', label: 'Tümü' },
                   { id: 'customers', label: 'Müşteriler' },
@@ -354,13 +164,13 @@ export const CRMView: React.FC<CRMViewProps> = ({
                   <button
                     key={tab.id}
                     onClick={() => setCrmSegment(tab.id as 'all' | 'customers' | 'network' | 'hot' | 'silent')}
-                    className={`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all ${
+                    className={\`flex items-center gap-1.5 px-4 py-1.5 rounded-full text-xs font-bold whitespace-nowrap transition-all \${
                       crmSegment === tab.id 
                         ? 'bg-emerald-500 text-white shadow-sm border border-emerald-600' 
                         : 'bg-white text-slate-600 hover:bg-slate-50 border border-slate-200'
-                    }`}
+                    }\`}
                   >
-                    {tab.dot && <span className={`w-2 h-2 rounded-full ${tab.dot}`} />}
+                    {tab.dot && <span className={\`w-2 h-2 rounded-full \${tab.dot}\`} />}
                     {tab.label}
                   </button>
                 ))}
@@ -394,7 +204,7 @@ export const CRMView: React.FC<CRMViewProps> = ({
               <div className="space-y-3">
                 {leadsLoading ? (
                   Array.from({ length: 4 }).map((_, i) => (
-                    <Card key={`skeleton-${i}`} className="flex items-center justify-between p-4">
+                    <Card key={\`skeleton-\${i}\`} className="flex items-center justify-between p-4">
                       <div className="flex gap-4 items-center">
                         <Skeleton className="w-12 h-12 rounded-full" />
                         <div className="space-y-2">
@@ -421,45 +231,32 @@ export const CRMView: React.FC<CRMViewProps> = ({
                 ) : (
                   filteredLeads.map(lead => {
                     const category = categories.find(c => c.label === lead.type);
-                    const iconBg = category ? `${category.color}20` : '#f1f5f9';
+                    const iconBg = category ? \`\${category.color}20\` : '#f1f5f9';
                     const iconColor = category ? category.color : '#64748b';
                     const hasPhone = typeof lead.phone === 'string' && lead.phone.trim().length > 3;
 
                     return (
-                      <Card key={lead.id} className="p-3 md:p-4 flex flex-col md:flex-row md:items-center justify-between gap-3 border border-slate-200 shadow-sm hover:border-slate-300 transition-all cursor-pointer" onClick={() => onSelectLead(lead)}>
-                        {/* Üst Satır (Mobil) / Sol Kolon (Desktop): Avatar, İsim, Type, Status, Son Görüşme */}
-                        <div className="flex items-center justify-between gap-3 w-full md:flex-1">
-                          <div className="flex items-center gap-3 overflow-hidden flex-1">
-                            <div className="w-10 h-10 md:w-12 md:h-12 shrink-0 rounded-full flex items-center justify-center font-bold text-base md:text-lg" style={{ backgroundColor: iconBg, color: iconColor }}>
-                              {lead.name?.charAt(0).toUpperCase()}
-                            </div>
-                            <div className="overflow-hidden flex flex-col w-full">
-                              <div className="flex items-center justify-between gap-2 w-full">
-                                <h4 className="font-bold text-slate-800 text-sm truncate">{lead.name}</h4>
-                                <span className="text-[10px] md:text-xs text-slate-400 whitespace-nowrap shrink-0">
-                                  Son: {lead.last_contacted_at ? new Date(lead.last_contacted_at).toLocaleDateString('tr-TR', {day:'numeric', month:'short'}) : '-'}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-1 mt-0.5">
-                                <Badge className="text-[10px] px-1.5 py-0 border-none bg-slate-100 text-slate-500 font-medium truncate">{lead.type}</Badge>
-                                <Badge variant={
-                                  lead.status === 'Sıcak' || lead.temperature === 'hot' ? 'warning' :
-                                  lead.temperature === 'cold' ? 'default' : 'success'
-                                } className="text-[10px] px-1.5 py-0 border-none truncate md:hidden">
-                                  {lead.status === 'Sıcak' || lead.temperature === 'hot' ? 'Sıcak' :
-                                   lead.temperature === 'cold' ? 'Soğuk' : 'Ilık'}
-                                </Badge>
-                              </div>
-                            </div>
+                      <Card key={lead.id} className="p-4 flex flex-col md:flex-row md:items-center justify-between gap-4 border border-slate-200 shadow-sm hover:border-slate-300 transition-all cursor-pointer" onClick={() => onSelectLead(lead)}>
+                        <div className="flex items-center gap-3 w-full md:w-1/3">
+                          <div className="w-12 h-12 shrink-0 rounded-full flex items-center justify-center font-bold text-lg" style={{ backgroundColor: iconBg, color: iconColor }}>
+                            {lead.name?.charAt(0).toUpperCase()}
+                          </div>
+                          <div className="overflow-hidden">
+                            <h4 className="font-bold text-slate-800 text-sm truncate">{lead.name}</h4>
+                            <Badge className="mt-1 text-[10px] px-1.5 py-0 border-none bg-slate-100 text-slate-500 font-medium">{lead.type}</Badge>
                           </div>
                         </div>
+                        
+                        <div className="flex flex-col md:w-1/3 text-xs text-slate-500 gap-1">
+                          <span className="flex items-center gap-1.5"><Globe size={12}/> {lead.district || '-'}</span>
+                          <span className="flex items-center gap-1.5"><AlertTriangle size={12}/> Son: {lead.last_contacted_at ? new Date(lead.last_contacted_at).toLocaleDateString('tr-TR', {day:'numeric', month:'short', year:'numeric'}) : '-'}</span>
+                        </div>
 
-                        {/* Alt Satır (Mobil) / Sağ Kolon (Desktop): Aksiyonlar */}
-                        <div className="flex items-center justify-center md:justify-end gap-2 w-full md:w-auto" onClick={e => e.stopPropagation()}>
+                        <div className="flex items-center justify-end gap-2 w-full md:w-auto" onClick={e => e.stopPropagation()}>
                           <Badge variant={
                             lead.status === 'Sıcak' || lead.temperature === 'hot' ? 'warning' :
                             lead.temperature === 'cold' ? 'default' : 'success'
-                          } className="hidden md:inline-flex mr-2">
+                          } className="mr-2">
                             {lead.status === 'Sıcak' || lead.temperature === 'hot' ? 'Sıcak' :
                              lead.temperature === 'cold' ? 'Soğuk' : 'Ilık'}
                           </Badge>
@@ -469,18 +266,17 @@ export const CRMView: React.FC<CRMViewProps> = ({
                               <button onClick={() => {
                                 sessionStorage.setItem('trigger_call_form', 'true');
                                 onSelectLead(lead);
-                                window.location.href = `tel:${lead.phone}`;
-                              }} className="flex-1 md:flex-none flex items-center justify-center gap-1.5 h-9 px-2 rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-semibold">
-                                <Phone size={14} /> <span className="md:hidden">Ara</span>
+                                window.location.href = \`tel:\${lead.phone}\`;
+                              }} className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50">
+                                <Phone size={14} />
                               </button>
-                              <a href={`https://wa.me/${lead.phone.replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="flex-1 md:flex-none flex items-center justify-center gap-1.5 h-9 px-2 rounded-lg border border-emerald-200 bg-emerald-50 text-emerald-600 hover:bg-emerald-100 text-xs font-semibold">
-                                <MessageSquare size={14} /> <span className="md:hidden">WhatsApp</span>
+                              <a href={\`https://wa.me/\${lead.phone.replace(/\\D/g, '')}\`} target="_blank" rel="noreferrer" className="w-9 h-9 flex items-center justify-center rounded-lg border border-emerald-200 text-emerald-600 hover:bg-emerald-50">
+                                <MessageSquare size={14} />
                               </a>
                             </>
                           ) : null}
-                          <button onClick={() => onSelectLead(lead)} className="flex-1 md:flex-none flex items-center justify-center gap-1.5 h-9 px-2 rounded-lg border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 text-xs font-semibold">
-                            <span className="hidden md:inline font-bold tracking-widest leading-none">...</span>
-                            <span className="md:hidden">Detay</span>
+                          <button onClick={() => onSelectLead(lead)} className="w-9 h-9 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold tracking-widest leading-none">
+                            ...
                           </button>
                         </div>
                       </Card>
@@ -644,11 +440,9 @@ export const CRMView: React.FC<CRMViewProps> = ({
                    <div className="w-2 h-2 rounded-full bg-orange-500 mt-1 shrink-0 self-start" />
                    <div className="flex-1">
                      <p className="text-sm font-bold text-slate-800 line-clamp-1">{l.name}</p>
-                     <p className="text-[11px] text-slate-500">{alert.alert_type === 'silent_lead' ? 'Uzun süredir temassız' : alert.alert_type === 'hot_lead_followup' ? 'Sıcak takip zamanı' : 'Temas bekleniyor'}</p>
+                     <p className="text-[11px] text-slate-500">{alert.message || 'Temas bekleniyor'}</p>
                    </div>
-                   <Badge className="shrink-0 text-[10px] px-1.5 leading-tight py-0.5" variant={l.status === 'Sıcak' || l.temperature === 'hot' ? 'warning' : l.temperature === 'cold' ? 'default' : 'success'}>
-                     {l.status === 'Sıcak' || l.temperature === 'hot' ? 'Sıcak' : l.temperature === 'cold' ? 'Soğuk' : 'Ilık'}
-                   </Badge>
+                   <Badge className="shrink-0 text-[10px] px-1.5 leading-tight py-0.5" variant="warning">Sıcak</Badge>
                  </div>
                 )
               })}
@@ -667,8 +461,8 @@ export const CRMView: React.FC<CRMViewProps> = ({
               <Badge className="bg-purple-100 text-purple-700 border-none text-[10px]">AI</Badge>
             </div>
             <div className="p-4 bg-white text-sm text-slate-600 prose prose-sm prose-purple max-h-64 overflow-auto">
-              {leadAnalysis ? (
-                <div className="whitespace-pre-wrap leading-relaxed">{leadAnalysis.replace(/\*\*/g, '')}</div>
+              {(analyzeLeadsMutation.data && typeof analyzeLeadsMutation.data === 'string') ? (
+                <div dangerouslySetInnerHTML={{ __html: analyzeLeadsMutation.data.replace(/\\*\\*([^\\*]+)\\*\\*/g, '<strong>$1</strong>').replace(/\\n/g, '<br/>') }} />
               ) : (
                 <div className="text-center py-4 space-y-3">
                   <p className="text-xs text-slate-500">AI CRM özeti için AI Analiz'i çalıştır.</p>
@@ -696,9 +490,9 @@ export const CRMView: React.FC<CRMViewProps> = ({
                 <Users size={20} className="text-orange-500"/>
                 <span className="text-[10px] font-bold text-slate-600 text-center leading-tight">Referral<br/>Motoru</span>
               </button>
-              <button onClick={() => setShowAddLead(true)} className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 transition gap-2">
-                <Plus size={20} className="text-blue-500"/>
-                <span className="text-[10px] font-bold text-slate-600 text-center leading-tight">Hızlı<br/>Kayıt</span>
+              <button className="flex flex-col items-center justify-center p-3 rounded-xl border border-slate-100 bg-slate-50 hover:bg-slate-100 transition gap-2">
+                <Copy size={20} className="text-blue-500"/>
+                <span className="text-[10px] font-bold text-slate-600 text-center leading-tight">Kartvizit<br/>Tara</span>
               </button>
             </div>
           </Card>
@@ -708,3 +502,9 @@ export const CRMView: React.FC<CRMViewProps> = ({
     </motion.div>
   );
 };
+`;
+
+const res = beforeReturn + newReturn;
+
+fs.writeFileSync(path, res, 'utf8');
+console.log("Updated CRMView");

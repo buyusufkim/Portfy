@@ -4,28 +4,47 @@ import { supabase } from '../lib/supabase';
 import { taskService } from './taskService';
 import { leadService } from './leadService';
 import { propertyService } from './propertyService';
+import { profileService } from './profileService';
+import { normalizeAiCoachTone, getAiCoachToneInstruction } from '../lib/aiPromptBuilder';
 import { generateContent } from '../lib/aiClient';
+
+import { getEffectiveAiTokenLimit } from '../config/subscriptionLimits';
 
 // Scraper tipi importu (Gerçekte backendden API ile gelecek)
 interface MarketComp { price: number; title: string; sqM: number; }
+
+export interface ParsedBusinessCard {
+  name: string;
+  phone: string;
+  email: string;
+  notes: string;
+}
+
+export interface ValuationReport {
+  estimatedValueRange: { min: number; max: number };
+  recommendedListingPrice: number;
+  marketInsight: string;
+  persuasionScript: string;
+  competitorSummary: string;
+}
 
 export const aiService = {
   checkUsage: async (userId: string): Promise<{ current: number, limit: number }> => {
     const { data: profile } = await supabase
       .from('profiles')
-      .select('ai_tokens_used, tier')
+      .select('*')
       .eq('id', userId)
       .single();
 
     const currentUsage = profile?.ai_tokens_used || 0;
-    const limit = profile?.tier === 'pro' ? 10000 : 1000;
+    const limit = getEffectiveAiTokenLimit(profile);
 
     return { current: currentUsage, limit };
   },
 /**
    * Kartvizitten Lead Çıkarma (OCR Asistanı)
    */
-  parseBusinessCard: async (base64Image: string, mimeType: string): Promise<any> => {
+  parseBusinessCard: async (base64Image: string, mimeType: string): Promise<ParsedBusinessCard> => {
     const prompt = `
       Sen yetenekli bir OCR ve veri çıkarma asistanısın. 
       Bu kartvizit görselini analiz et ve bir emlak müşterisi (Lead) kaydı oluşturmak için şu bilgileri çıkar:
@@ -43,7 +62,7 @@ export const aiService = {
     `;
 
     // Gemini API'sine gönderilecek format
-    const contents = [
+    const contents: import('../lib/aiClient').GenerateContentInput = [
       {
         role: 'user',
         parts: [
@@ -54,8 +73,7 @@ export const aiService = {
     ];
 
     try {
-      // aiClient içindeki mevcut generateContent fonksiyonunu kullanıyoruz
-      const response = await generateContent("gemini-2.0-flash", contents, { responseMimeType: "application/json" });
+      const response = await generateContent<ParsedBusinessCard>("gemini-2.0-flash", contents, { responseMimeType: "application/json" });
       return response;
     } catch (error) {
       console.error("Business Card OCR Error:", error);
@@ -67,11 +85,15 @@ export const aiService = {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const [tasks, leads, properties] = await Promise.all([
+    const [profile, tasks, leads, properties] = await Promise.all([
+      profileService.getProfile(),
       taskService.getTasks(),
       leadService.getLeads(),
       propertyService.getProperties()
     ]);
+    
+    const tone = normalizeAiCoachTone(profile?.ai_coach_tone);
+    const toneInstruction = getAiCoachToneInstruction(tone);
 
     const prompt = `
       Sen bir emlak danışmanı koçusun. Danışmanın verileri:
@@ -80,24 +102,27 @@ export const aiService = {
       - Portföy Özeti: Toplam ${properties.length} portföyünüz var.
       
       Bugün için en kritik 3 hamleyi seç ve kısa, vurucu birer cümle olarak yaz. 
-      Ayrıca genel bir motivasyonel içgörü ver.
+      Ayrıca genel bir içgörü ver.
+      
+      ${toneInstruction}
+      
       Yanıtı JSON formatında ver:
       {
         "tasks": ["Hamle 1", "Hamle 2", "Hamle 3"],
-        "insight": "Motivasyonel içgörü"
+        "insight": "Motivasyonel/Direkt içgörü"
       }
     `;
 
     try {
-      const response: any = await generateContent(
+      const response = await generateContent<{ tasks: string[], insight: string }>(
         "gemini-2.0-flash",
         prompt,
         { responseMimeType: "application/json" }
       );
 
       return response;
-    } catch (e) {
-      console.error("Daily Radar AI error", e);
+    } catch (error) {
+      console.error("Daily Radar AI error", error);
       return {
         tasks: [
           "Dünkü en sıcak 3 müşterini ara ve durum güncellemesi yap.",
@@ -117,7 +142,7 @@ export const aiService = {
   /**
    * YENİ ÖZELLİK: Portföy Değerleme & Satıcı İkna Raporu (CMA Motoru)
    */
-  generateValuationReport: async (propertyDetails: Partial<Property>, marketComps: MarketComp[]): Promise<any> => {
+  generateValuationReport: async (propertyDetails: Partial<Property>, marketComps: MarketComp[]): Promise<ValuationReport> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
@@ -144,7 +169,7 @@ export const aiService = {
     `;
 
     try {
-      const response = await generateContent("gemini-2.0-flash", prompt, { responseMimeType: "application/json" });
+      const response = await generateContent<ValuationReport>("gemini-2.0-flash", prompt, { responseMimeType: "application/json" });
       return response;
     } catch (error) {
       console.error("Valuation AI error", error);

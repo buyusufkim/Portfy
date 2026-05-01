@@ -199,15 +199,18 @@ function MainApp() {
       if (checkLeadsLimit()) setShowAddLead(true);
     };
     const handleOpenQuickAdd = () => setShowQuickAdd(true);
+    const handleOpenUpgrade = () => setShowUpgradeModal(true);
 
     window.addEventListener("open-add-task", handleOpenTask);
     window.addEventListener("open-add-lead", handleOpenLead);
     window.addEventListener("open-quick-add", handleOpenQuickAdd);
+    window.addEventListener("open-upgrade-modal", handleOpenUpgrade);
 
     return () => {
       window.removeEventListener("open-add-task", handleOpenTask);
       window.removeEventListener("open-add-lead", handleOpenLead);
       window.removeEventListener("open-quick-add", handleOpenQuickAdd);
+      window.removeEventListener("open-upgrade-modal", handleOpenUpgrade);
     };
   }, [isFree, leads.length]);
 

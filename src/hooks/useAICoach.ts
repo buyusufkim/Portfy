@@ -3,39 +3,40 @@ import { api } from "../services/api";
 import { coachService } from "../services/coachService";
 import { QUERY_KEYS } from "../constants/queryKeys";
 import { useAuth } from "../AuthContext";
-import { AICoachAction } from "../types/ai";
-import confetti from "canvas-confetti";
+import { taskService } from "../services/taskService";
+import { leadService } from "../services/leadService";
+import { propertyService } from "../services/propertyService";
 
 export const useAICoach = () => {
   const { profile } = useAuth();
-  const queryClient = useQueryClient();
 
   const {
     data: insight,
-    isLoading,
-    isFetching,
+    isPending,
     error,
-    refetch,
-  } = useQuery({
-    queryKey: [QUERY_KEYS.AI_COACH_INSIGHT, profile?.id],
-    queryFn: api.getDetailedCoachInsight,
-    enabled: false,
-    staleTime: 1000 * 60 * 15, // 15 dakika cache
+    mutate: fetchInsight,
+    mutateAsync: fetchInsightAsync,
+  } = useMutation({
+    mutationFn: (params: { requestType?: string; customMessage?: string }) => 
+      coachService.getDetailedInsight(params),
   });
 
-  const convertToTaskMutation = useMutation({
-    mutationFn: (action: AICoachAction) =>
-      coachService.convertActionToTask(action),
-    onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: [QUERY_KEYS.TASKS, profile?.id],
-      });
-      confetti({
-        particleCount: 50,
-        spread: 40,
-        origin: { y: 0.8 },
-      });
+  const { data: stats } = useQuery({
+    queryKey: ['coach_operations_summary', profile?.id],
+    queryFn: async () => {
+      const [tasks, leads, properties] = await Promise.all([
+        taskService.getTasks(),
+        leadService.getLeads(),
+        propertyService.getProperties()
+      ]);
+      const openTasks = tasks.filter(t => !t.completed).length;
+      const todayTasks = tasks.filter(t => !t.completed && new Date(t.due_date).toDateString() === new Date().toDateString()).length;
+      const overdueTasks = tasks.filter(t => !t.completed && new Date(t.due_date) < new Date(new Date().setHours(0,0,0,0))).length;
+      const hotLeads = leads.filter(l => l.status === 'Sıcak').length;
+      const activeProperties = properties.filter(p => ['Yayında', 'İlgi Var', 'Pazarlık', 'Yeni'].includes(p.status)).length;
+      return { openTasks, todayTasks, overdueTasks, hotLeads, activeProperties };
     },
+    enabled: !!profile?.id
   });
 
   const isPremium = profile?.broker_level && profile.broker_level >= 2;
@@ -43,12 +44,12 @@ export const useAICoach = () => {
   return {
     insight: insight?.insight,
     generated_at: insight?.generated_at,
-    isLoading,
-    isFetching,
+    isLoading: isPending,
     error,
-    refetch,
-    convertToTask: convertToTaskMutation.mutate,
-    isConverting: convertToTaskMutation.isPending,
+    fetchInsight,
+    fetchInsightAsync,
+    stats,
     isPremium,
+    profile
   };
 };

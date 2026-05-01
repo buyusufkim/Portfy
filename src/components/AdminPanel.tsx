@@ -15,6 +15,7 @@ import { AdminAnnouncements } from './AdminAnnouncements';
 import { AdminAudit } from './AdminAudit';
 import { AdminUserNotes } from './AdminUserNotes';
 import { api } from '../services/api';
+import { getEffectiveAiTokenLimit } from '../config/subscriptionLimits';
 
 interface AdminPanelProps {
   onClose: () => void;
@@ -53,6 +54,15 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const [newTaskCategory, setNewTaskCategory] = useState<'sweet' | 'main'>('sweet');
   const [newTaskDescription, setNewTaskDescription] = useState('');
   const [newTaskAutoVerify, setNewTaskAutoVerify] = useState(true);
+  const [newTaskRecurrenceType, setNewTaskRecurrenceType] = useState<'once'|'daily'|'interval'|'weekly'|'monthly'>('once');
+  const [newTaskIntervalDays, setNewTaskIntervalDays] = useState<number>(2);
+  const [newTaskRecurrenceDays, setNewTaskRecurrenceDays] = useState<number[]>([]);
+  const [newTaskDayOfMonth, setNewTaskDayOfMonth] = useState<number>(1);
+  const [newTaskStartDate, setNewTaskStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [newTaskEndDate, setNewTaskEndDate] = useState('');
+  const [newTaskTargetScope, setNewTaskTargetScope] = useState<'all'|'free'|'trial'|'master'>('all');
+  const [newTaskAutoGenerate, setNewTaskAutoGenerate] = useState(false);
+  const [newTaskActionType, setNewTaskActionType] = useState('general');
 
   // Sistem Ayarları State'i (WhatsApp)
   const [whatsappNumber, setWhatsappNumber] = useState('');
@@ -134,23 +144,36 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
   const handleAddTask = async () => {
     if (!newTaskTitle) return alert("Görev adı boş olamaz!");
-    const { error } = await supabase.from('task_templates').insert({ 
-      title: newTaskTitle, points: newTaskPoints, category: newTaskCategory, description: newTaskDescription, auto_verify: newTaskAutoVerify 
-    });
-    if (!error) {
-      setNewTaskTitle(''); setNewTaskPoints(10); setNewTaskDescription(''); setNewTaskAutoVerify(true); fetchTasks();
-    } else {
+    try {
+      await api.adminCreateTaskTemplate({
+        title: newTaskTitle, points: newTaskPoints, category: newTaskCategory, description: newTaskDescription, auto_verify: newTaskAutoVerify,
+        recurrence_type: newTaskRecurrenceType, interval_days: newTaskIntervalDays, recurrence_days: newTaskRecurrenceDays, day_of_month: newTaskDayOfMonth,
+        start_date: newTaskStartDate, end_date: newTaskEndDate || null, target_scope: newTaskTargetScope, auto_generate: newTaskAutoGenerate, action_type: newTaskActionType
+      });
+      setNewTaskTitle(''); setNewTaskPoints(10); setNewTaskDescription(''); setNewTaskAutoVerify(true);
+      setNewTaskRecurrenceType('once'); setNewTaskIntervalDays(2); setNewTaskRecurrenceDays([]); setNewTaskDayOfMonth(1);
+      setNewTaskStartDate(new Date().toISOString().split('T')[0]); setNewTaskEndDate(''); setNewTaskTargetScope('all'); setNewTaskAutoGenerate(false); setNewTaskActionType('general');
+      fetchTasks();
+    } catch (error: any) {
       alert("Görev eklenirken hata: " + error.message);
     }
   };
 
   const toggleTaskStatus = async (id: string, currentStatus: boolean) => {
-    await supabase.from('task_templates').update({ is_active: !currentStatus }).eq('id', id); fetchTasks();
+    try {
+      await api.adminUpdateTaskTemplate(id, { is_active: !currentStatus }); fetchTasks();
+    } catch (error: any) {
+      alert("Durum güncellenirken hata: " + error.message);
+    }
   };
 
   const deleteTask = async (id: string) => {
     if (window.confirm('Bu görevi silmek istediğinize emin misiniz?')) { 
-      await supabase.from('task_templates').delete().eq('id', id); fetchTasks(); 
+      try {
+        await api.adminDeleteTaskTemplate(id); fetchTasks(); 
+      } catch (error: any) {
+        alert("Görev silinirken hata: " + error.message);
+      }
     }
   };
 
@@ -360,10 +383,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
   const active7d = users.filter(u => u.last_active_date && new Date(u.last_active_date) >= sevenDaysAgo).length;
   
   const getLimit = (u: UserProfile) => {
-    if (u.ai_token_limit !== undefined && u.ai_token_limit !== null) return u.ai_token_limit;
-    if (u.tier === 'master') return 100000;
-    if (u.tier === 'pro') return 10000;
-    return 5000;
+    return getEffectiveAiTokenLimit(u);
   };
 
   const topTokenUsers = [...users].sort((a,b) => (b.ai_tokens_used || 0) - (a.ai_tokens_used || 0)).slice(0, 5);
@@ -396,50 +416,55 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     <div className="fixed inset-0 bg-slate-900 z-50 flex flex-col md:flex-row overflow-hidden">
       {/* Sidebar */}
       <div className="w-full md:w-64 bg-slate-900 border-r border-slate-800 flex flex-col shrink-0">
-        <div className="p-6 flex items-center justify-between">
-          <h1 className="text-2xl font-black italic font-logo text-transparent bg-clip-text bg-gradient-to-r from-[#FF3D00] to-[#FF9100]">Admin</h1>
-          <button onClick={onClose} className="p-2 text-slate-400 hover:text-white md:hidden"><X size={24} /></button>
+        <div className="p-6 flex items-center justify-between border-b border-slate-800">
+          <h1 className="text-2xl font-black tracking-tight text-white flex items-center gap-2">
+            <span className="w-8 h-8 rounded-lg bg-indigo-600 flex items-center justify-center">
+              <span className="text-white text-lg font-black">P</span>
+            </span>
+            Admin
+          </h1>
+          <button onClick={onClose} className="p-2 text-slate-400 hover:text-white transition-colors md:hidden"><X size={24} /></button>
         </div>
-        <nav className="flex-1 px-4 space-y-2 overflow-y-auto mt-4">
-          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'dashboard' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-            <LayoutDashboard size={20} className={activeTab === 'dashboard' ? "text-orange-500" : ""} /> Dashboard
+        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto mt-6">
+          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'dashboard' ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}`}>
+            <LayoutDashboard size={20} className={activeTab === 'dashboard' ? "text-teal-400" : ""} /> Dashboard
           </button>
-          <button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'users' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-            <Users size={20} className={activeTab === 'users' ? "text-orange-500" : ""} /> Üyeler & Abonelik
+          <button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'users' ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}`}>
+            <Users size={20} className={activeTab === 'users' ? "text-teal-400" : ""} /> Üyeler & Abonelik
           </button>
-          <button onClick={() => setActiveTab('support')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'support' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-            <Mail size={20} className={activeTab === 'support' ? "text-orange-500" : ""} /> Destek Talepleri
+          <button onClick={() => setActiveTab('support')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'support' ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}`}>
+            <Mail size={20} className={activeTab === 'support' ? "text-teal-400" : ""} /> Destek Talepleri
           </button>
-          <button onClick={() => setActiveTab('announcements')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'announcements' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-            <Briefcase size={20} className={activeTab === 'announcements' ? "text-orange-500" : ""} /> Duyurular
+          <button onClick={() => setActiveTab('announcements')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'announcements' ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}`}>
+            <Briefcase size={20} className={activeTab === 'announcements' ? "text-teal-400" : ""} /> Duyurular
           </button>
-          <button onClick={() => setActiveTab('packages')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'packages' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-            <Package size={20} className={activeTab === 'packages' ? "text-orange-500" : ""} /> Paketler
+          <button onClick={() => setActiveTab('packages')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'packages' ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}`}>
+            <Package size={20} className={activeTab === 'packages' ? "text-teal-400" : ""} /> Paketler
           </button>
-          <button onClick={() => setActiveTab('tasks')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'tasks' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-            <ClipboardList size={20} className={activeTab === 'tasks' ? "text-orange-500" : ""} /> Görev Yönetimi
+          <button onClick={() => setActiveTab('tasks')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'tasks' ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}`}>
+            <ClipboardList size={20} className={activeTab === 'tasks' ? "text-teal-400" : ""} /> Görev Yönetimi
           </button>
-          <button onClick={() => setActiveTab('audit')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'audit' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-            <Activity size={20} className={activeTab === 'audit' ? "text-orange-500" : ""} /> Audit Log
+          <button onClick={() => setActiveTab('audit')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'audit' ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}`}>
+            <Activity size={20} className={activeTab === 'audit' ? "text-teal-400" : ""} /> Audit Log
           </button>
-          <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-3 px-4 py-3.5 rounded-xl font-bold transition-all ${activeTab === 'settings' ? 'bg-orange-500/10 text-orange-500' : 'text-slate-400 hover:text-white hover:bg-slate-800'}`}>
-            <Settings size={20} className={activeTab === 'settings' ? "text-orange-500" : ""} /> Genel Ayarlar
+          <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'settings' ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}`}>
+            <Settings size={20} className={activeTab === 'settings' ? "text-teal-400" : ""} /> Genel Ayarlar
           </button>
         </nav>
-        <div className="p-4 border-t border-slate-800 hidden md:block">
-          <button onClick={onClose} className="w-full py-3.5 bg-slate-800 text-slate-300 rounded-xl font-bold hover:bg-slate-700 hover:text-white transition-colors">Uygulamaya Dön</button>
+        <div className="p-6 border-t border-slate-800 hidden md:block">
+          <button onClick={onClose} className="w-full py-3 bg-slate-800/50 text-slate-300 rounded-xl font-bold hover:bg-slate-700 hover:text-white transition-colors border border-slate-700">Uygulamaya Dön</button>
         </div>
       </div>
 
       {/* Main Content */}
       <div className="flex-1 bg-slate-50 flex flex-col h-screen overflow-hidden">
         {/* Modern Header */}
-        <div className="bg-white border-b border-slate-200 px-8 py-6 shrink-0 relative overflow-hidden">
+        <div className="bg-white border-b border-slate-200 px-8 py-5 shrink-0 relative overflow-hidden">
           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
-              <h1 className="text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
+              <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
                 Yönetim Merkezi
-                <span className="px-2.5 py-1 bg-slate-100 text-slate-600 text-[10px] uppercase tracking-wider rounded-lg border border-slate-200">
+                <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-[10px] uppercase tracking-widest font-bold rounded-full border border-indigo-100">
                   {activeTab === 'dashboard' && 'Metrikler'}
                   {activeTab === 'users' && 'Üyeler'}
                   {activeTab === 'support' && 'Destek'}
@@ -450,7 +475,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   {activeTab === 'settings' && 'Sistem'}
                 </span>
               </h1>
-              <p className="text-sm text-slate-500 font-medium mt-1">
+              <p className="text-sm text-slate-500 font-medium mt-1.5 line-clamp-1">
                 {activeTab === 'dashboard' && 'SaaS gelir, kullanıcı büyümesi ve yapay zeka maliyet özeti.'}
                 {activeTab === 'users' && 'Kullanıcı yönetimi, abonelik düzenlemeleri ve token limit kontrolü.'}
                 {activeTab === 'support' && 'Kullanıcı destek talepleri ve iletişim.'}
@@ -462,10 +487,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               </p>
             </div>
             <div className="md:hidden">
-              <button onClick={onClose} className="w-full py-2 bg-slate-900 text-white rounded-xl text-sm font-bold">Uygulamaya Dön</button>
+              <button onClick={onClose} className="w-full py-2.5 bg-slate-900 text-white rounded-xl text-sm font-bold">Uygulamaya Dön</button>
             </div>
           </div>
-          <div className="absolute -top-24 -right-24 w-64 h-64 bg-slate-50 rounded-full mix-blend-multiply opacity-50 pointer-events-none" />
+          <div className="absolute -top-32 -right-32 w-64 h-64 bg-slate-50 rounded-full mix-blend-multiply opacity-50 pointer-events-none" />
         </div>
 
         <div className="flex-1 overflow-y-auto relative p-4 md:p-8">
@@ -478,7 +503,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[32px] p-8 max-w-2xl w-full relative z-10 shadow-2xl border border-slate-100 max-h-[90vh] overflow-y-auto">
                 <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
                   <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                    <Users className="text-orange-600" /> Kullanıcı Detayları
+                    <Users className="text-amber-500" /> Kullanıcı Detayları
                   </h3>
                   <button onClick={() => setSelectedUserDetail(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
                 </div>
@@ -498,7 +523,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                       </div>
                       <div className="mt-4 flex items-center justify-center md:justify-start gap-2">
                          {selectedUserDetail.region ? (
-                           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-100 text-orange-700 rounded-xl text-xs font-bold">
+                           <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-100 text-amber-700 rounded-xl text-xs font-bold">
                              <MapPin size={14} />
                              {selectedUserDetail.region.city} / {selectedUserDetail.region.district}
                            </span>
@@ -516,7 +541,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                             return (
                               <span className={`px-3 py-1.5 rounded-xl text-xs font-bold uppercase tracking-wider ${
                                 isActiveMaster ? 'bg-indigo-100 text-indigo-700' : 
-                                isTrial ? 'bg-orange-100 text-orange-700' :
+                                isTrial ? 'bg-amber-100 text-amber-700' :
                                 'bg-slate-200 text-slate-700'
                               }`}>
                                 {isActiveMaster ? 'Master' : isTrial ? 'Deneme' : isPassive ? (isExpired ? 'Süresi Doldu / Pasif' : 'Başlangıç') : 'Başlangıç'} Paket
@@ -535,7 +560,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                       <div className="text-xs font-bold text-slate-500 mt-1">Aktif Portföy</div>
                     </div>
                     <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center justify-center text-center">
-                      <div className="w-10 h-10 bg-orange-50 text-orange-600 rounded-full flex items-center justify-center mb-2"><Target size={20} /></div>
+                      <div className="w-10 h-10 bg-amber-50 text-amber-600 rounded-full flex items-center justify-center mb-2"><Target size={20} /></div>
                       <div className="text-2xl font-black text-slate-900">{userDetailStats.loading ? '...' : userDetailStats.leads}</div>
                       <div className="text-xs font-bold text-slate-500 mt-1">Takipte Lead</div>
                     </div>
@@ -553,7 +578,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
 
                   {/* Diğer Bilgiler */}
                   <div className="bg-slate-50 rounded-2xl p-6 border border-slate-100 text-sm">
-                    <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2"><Activity size={16} className="text-orange-600"/> Sistem & Aktivite Bilgileri</h4>
+                    <h4 className="font-bold text-slate-900 mb-4 flex items-center gap-2"><Activity size={16} className="text-amber-500"/> Sistem & Aktivite Bilgileri</h4>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-8">
                       <div className="flex justify-between border-b border-slate-200 pb-2">
                         <span className="text-slate-500 font-medium">Kayıt Tarihi:</span>
@@ -635,7 +660,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="bg-white rounded-[32px] p-8 max-w-lg w-full relative z-10 shadow-2xl border border-slate-100">
                 <div className="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
                   <h3 className="text-xl font-bold text-slate-900 flex items-center gap-2">
-                    <Crown className="text-orange-600" /> Abonelik Yönetimi
+                    <Crown className="text-amber-500" /> Abonelik Yönetimi
                   </h3>
                   <button onClick={() => setEditingUser(null)} className="p-2 text-slate-400 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
                 </div>
@@ -665,9 +690,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                       </button>
                       <button 
                         onClick={() => setEditTier('trial')}
-                        className={`p-4 rounded-2xl border-2 font-bold text-sm transition-all flex flex-col items-center justify-center gap-2 ${editTier === 'trial' ? 'border-orange-500 bg-orange-500 text-white shadow-lg shadow-orange-500/20' : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
+                        className={`p-4 rounded-2xl border-2 font-bold text-sm transition-all flex flex-col items-center justify-center gap-2 ${editTier === 'trial' ? 'border-amber-500 bg-amber-500 text-white shadow-lg shadow-amber-500/20' : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
                       >
-                        <Clock size={20} className={editTier === 'trial' ? 'text-orange-200' : 'text-slate-400'}/> 
+                        <Clock size={20} className={editTier === 'trial' ? 'text-amber-200' : 'text-slate-400'}/> 
                         Deneme
                       </button>
                       <button 
@@ -718,26 +743,25 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
           <div className="space-y-6">
             {/* Temel Metrikler (Gelir & Kullanıcı) */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
                   <div className="flex justify-between items-start mb-6">
-                    <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:bg-emerald-100 transition-colors">
+                    <div className="w-12 h-12 bg-slate-50 text-slate-700 rounded-2xl flex items-center justify-center shrink-0 border border-slate-100 transition-colors">
                       <DollarSign size={24} />
                     </div>
-                    <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-lg uppercase tracking-wider">Aylık Tahmini</span>
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full uppercase tracking-wider">Aylık Tahmini</span>
                   </div>
                   <div className="space-y-1">
                     <div className="text-slate-500 text-sm font-bold">Aylık Gelir (MRR)</div>
                     <div className="text-3xl font-black text-slate-900 tracking-tight">{estimatedMRR.toLocaleString('tr-TR')} ₺</div>
                   </div>
-                  <div className="absolute -bottom-6 -right-6 text-emerald-50 opacity-50 pointer-events-none transform group-hover:scale-110 transition-transform duration-500"><TrendingUp size={120} /></div>
                 </div>
 
-                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+                <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
                   <div className="flex justify-between items-start mb-6">
-                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0 group-hover:bg-indigo-100 transition-colors">
+                    <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0 border border-indigo-100 transition-colors">
                       <Crown size={24} />
                     </div>
-                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-100 px-2.5 py-1 rounded-lg uppercase tracking-wider">Ödeyen</span>
+                    <span className="text-[10px] font-bold text-indigo-700 bg-indigo-50 px-2.5 py-1 rounded-full border border-indigo-100 uppercase tracking-wider">Ödeyen</span>
                   </div>
                   <div className="space-y-1">
                     <div className="text-slate-500 text-sm font-bold">Master Üyeler</div>
@@ -749,12 +773,12 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start mb-6">
-                    <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center shrink-0">
+                    <div className="w-12 h-12 bg-slate-50 text-slate-600 rounded-2xl flex items-center justify-center shrink-0 border border-slate-100">
                       <Users size={24} />
                     </div>
-                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-lg uppercase tracking-wider">Kayıtlı</span>
+                    <span className="text-[10px] font-bold text-slate-500 bg-slate-100 px-2.5 py-1 rounded-full uppercase tracking-wider">Kayıtlı</span>
                   </div>
                   <div className="space-y-1">
                     <div className="text-slate-500 text-sm font-bold">Toplam Üye</div>
@@ -762,16 +786,16 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   </div>
                   <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-3">
                      <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300"></span><span className="text-xs font-bold text-slate-500">{freeUsers || 0} Free</span></div>
-                     <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-orange-400"></span><span className="text-xs font-bold text-orange-600">{trialUsers || 0} Deneme</span></div>
+                     <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400"></span><span className="text-xs font-bold text-amber-600">{trialUsers || 0} Deneme</span></div>
                   </div>
                 </div>
 
-                <div className="bg-white p-6 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow">
+                <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
                   <div className="flex justify-between items-start mb-6">
-                    <div className="w-12 h-12 bg-orange-50 text-orange-600 rounded-2xl flex items-center justify-center shrink-0">
+                    <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center shrink-0 border border-teal-100">
                       <Activity size={24} />
                     </div>
-                    <span className="text-[10px] font-bold text-orange-700 bg-orange-100 px-2.5 py-1 rounded-lg uppercase tracking-wider">Canlı</span>
+                    <span className="text-[10px] font-bold text-teal-700 bg-teal-50 border border-teal-100 px-2.5 py-1 rounded-full uppercase tracking-wider">Canlı</span>
                   </div>
                   <div className="space-y-1">
                     <div className="text-slate-500 text-sm font-bold">Bugün Aktif Olanlar</div>
@@ -779,7 +803,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   </div>
                   <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
                     <span className="text-xs font-medium text-slate-500 flex items-center gap-1.5 hover:text-slate-700"><Check size={12}/> Aktif/Toplam Oranı: {totalUsers > 0 ? ((onlineToday/totalUsers)*100).toFixed(0) : 0}%</span>
-                    <span className="text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-md">7G: +{active7d} Aktif</span>
+                    <span className="text-xs font-bold text-teal-600 bg-teal-50 px-2.5 py-1 rounded-md">7G: +{active7d} Aktif</span>
                   </div>
                 </div>
               </div>
@@ -788,9 +812,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                 <div className="col-span-1 lg:col-span-2 space-y-6">
                   {/* Etkileşim Skoru ve Büyüme (Sağlık) */}
-                  <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm overflow-hidden relative">
-                    <h3 className="font-bold tracking-tight text-slate-900 mb-4 flex items-center gap-2">
-                       <TrendingUp className="text-orange-500" size={20} /> SaaS Büyüme Özeti
+                  <div className="bg-white border border-slate-100 rounded-[24px] p-6 shadow-sm overflow-hidden relative">
+                    <h3 className="font-bold tracking-tight text-slate-900 mb-6 flex items-center gap-2 text-lg">
+                       <TrendingUp className="text-indigo-500" size={20} /> SaaS Büyüme Özeti
                     </h3>
                     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                        <div className="bg-slate-50 rounded-2xl p-4 flex gap-3 flex-col border border-slate-100">
@@ -802,8 +826,8 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                           <span className="text-2xl font-black text-slate-900">{active7d}</span>
                        </div>
                        <div className="bg-slate-50 rounded-2xl p-4 flex gap-3 flex-col border border-slate-100">
-                          <span className="text-xs font-bold text-orange-600 uppercase tracking-wider">Deneme Süresi</span>
-                          <span className="text-2xl font-black text-orange-600">{trialUsers}</span>
+                          <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">Deneme Süresi</span>
+                          <span className="text-2xl font-black text-amber-600">{trialUsers}</span>
                        </div>
                        <div className="bg-red-50 rounded-2xl p-4 flex gap-3 flex-col border border-red-100">
                           <span className="text-xs font-bold text-red-600 uppercase tracking-wider">3G İçi Biten (Deneme)</span>
@@ -813,52 +837,57 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   </div>
 
                   {/* Riskli Kullanıcılar Listesi */}
-                  <div className="bg-white border border-red-200 rounded-3xl p-6 shadow-sm overflow-hidden relative">
-                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-red-500 to-orange-400"></div>
-                    <h3 className="font-bold tracking-tight text-slate-900 mb-4 flex justify-between items-center">
-                       <span className="flex items-center gap-2"><AlertCircle className="text-red-500" size={20} /> Riskli & Pasifleşen Kullanıcılar</span>
-                       <span className="text-xs font-bold bg-slate-100 text-slate-500 px-2 py-1 rounded-md">{expiredUsersList.length + approachingLimitUsers.length + inactiveFor14dList.length} Toplam Kayıt</span>
+                  <div className="bg-white border border-rose-100 rounded-[24px] p-6 shadow-sm overflow-hidden relative">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-rose-400 to-amber-300"></div>
+                    <h3 className="font-bold tracking-tight text-slate-900 mb-6 flex justify-between items-center text-lg">
+                       <span className="flex items-center gap-2"><AlertCircle className="text-rose-500" size={20} /> Dikkat Gerekenler</span>
+                       <span className="text-xs font-bold bg-slate-100 text-slate-500 px-2.5 py-1 rounded-full">{expiredUsersList.length + approachingLimitUsers.length + inactiveFor14dList.length} Kullanıcı</span>
                     </h3>
                     
                     <div className="space-y-3 max-h-[300px] overflow-y-auto pr-2">
                        {trialExpiring3dUsers.map(u => (
-                          <div key={u.id} className="flex justify-between items-center p-3 rounded-xl bg-orange-50 border border-orange-100 cursor-pointer hover:border-orange-300" onClick={() => handleOpenUserDetail(u)}>
+                          <div key={u.id} className="flex justify-between items-center p-3 rounded-xl bg-amber-50 border border-amber-100 cursor-pointer hover:border-amber-200 transition-colors" onClick={() => handleOpenUserDetail(u)}>
                              <div>
                                 <div className="font-bold text-sm text-slate-900">{u.display_name || u.email}</div>
-                                <div className="text-xs text-orange-700">Deneme sürümü 3 günden az içinde bitiyor.</div>
+                                <div className="text-xs text-amber-700 mt-0.5">Deneme sürümü yakında bitiyor</div>
                              </div>
-                             <span className="text-xs font-bold bg-orange-200 text-orange-800 px-2 py-1 rounded-lg">Önlem Al</span>
+                             <span className="text-[10px] font-bold bg-amber-200/50 text-amber-800 px-2 py-1 rounded-lg uppercase tracking-wider">Önlem Al</span>
                           </div>
                        ))}
                        {expiredUsersList.map(u => (
-                          <div key={u.id} className="flex justify-between items-center p-3 rounded-xl bg-red-50 border border-red-100 cursor-pointer hover:border-red-300" onClick={() => handleOpenUserDetail(u)}>
+                          <div key={u.id} className="flex justify-between items-center p-3 rounded-xl bg-rose-50 border border-rose-100 cursor-pointer hover:border-rose-200 transition-colors" onClick={() => handleOpenUserDetail(u)}>
                              <div>
                                 <div className="font-bold text-sm text-slate-900">{u.display_name || u.email}</div>
-                                <div className="text-xs text-red-700">Abonelik süresi doldu!</div>
+                                <div className="text-xs text-rose-700 mt-0.5">Abonelik süresi doldu</div>
                              </div>
-                             <span className="text-xs font-bold bg-red-200 text-red-800 px-2 py-1 rounded-lg">Süresi Bitti</span>
+                             <span className="text-[10px] font-bold bg-rose-200/50 text-rose-800 px-2 py-1 rounded-lg uppercase tracking-wider">Süresi Bitti</span>
                           </div>
                        ))}
                        {approachingLimitUsers.filter(u => !trialExpiring3dUsers.find(t=>t.id===u.id) && !expiredUsersList.find(e=>e.id===u.id)).map(u => (
-                          <div key={u.id} className="flex justify-between items-center p-3 rounded-xl bg-yellow-50 border border-yellow-200 cursor-pointer hover:border-yellow-300" onClick={() => handleOpenUserDetail(u)}>
+                          <div key={u.id} className="flex justify-between items-center p-3 rounded-xl bg-indigo-50 border border-indigo-100 cursor-pointer hover:border-indigo-200 transition-colors" onClick={() => handleOpenUserDetail(u)}>
                              <div>
                                 <div className="font-bold text-sm text-slate-900">{u.display_name || u.email}</div>
-                                <div className="text-xs text-yellow-700">Token limiti dolmak üzere (Üst limitin %80'i aşıldı).</div>
+                                <div className="text-xs text-indigo-700 mt-0.5">Token limiti dolmak üzere</div>
                              </div>
-                             <span className="text-xs font-bold bg-yellow-200 text-yellow-800 px-2 py-1 rounded-lg">Satış Fırsatı</span>
+                             <span className="text-[10px] font-bold bg-indigo-200/50 text-indigo-800 px-2 py-1 rounded-lg uppercase tracking-wider">Satış Fırsatı</span>
                           </div>
                        ))}
                         {inactiveFor14dList.slice(0,5).filter(u => !trialExpiring3dUsers.find(t=>t.id===u.id) && !expiredUsersList.find(e=>e.id===u.id) && !approachingLimitUsers.find(a=>a.id===u.id)).map(u => (
-                          <div key={u.id} className="flex justify-between items-center p-3 rounded-xl bg-slate-50 border border-slate-200 cursor-pointer hover:border-slate-300" onClick={() => handleOpenUserDetail(u)}>
+                          <div key={u.id} className="flex justify-between items-center p-3 rounded-xl bg-slate-50 border border-slate-100 cursor-pointer hover:border-slate-200 transition-colors" onClick={() => handleOpenUserDetail(u)}>
                              <div>
                                 <div className="font-bold text-sm text-slate-900">{u.display_name || u.email}</div>
-                                <div className="text-xs text-slate-500">14 günden uzun süredir inaktif.</div>
+                                <div className="text-xs text-slate-500 mt-0.5">14 günden uzun süredir pasif</div>
                              </div>
-                             <span className="text-xs font-bold bg-slate-200 text-slate-600 px-2 py-1 rounded-lg">Uyandır</span>
+                             <span className="text-[10px] font-bold bg-slate-200 text-slate-600 px-2 py-1 rounded-lg uppercase tracking-wider">Uyandır</span>
                           </div>
                        ))}
                        {(trialExpiring3dUsers.length + expiredUsersList.length + approachingLimitUsers.length + inactiveFor14dList.length) === 0 && (
-                          <div className="text-center p-6 text-slate-500 text-sm font-medium">Riskli kategoride kullanıcı bulunmuyor, her şey harika! 🎉</div>
+                          <div className="text-center py-10 text-slate-500 text-sm font-medium flex flex-col items-center gap-3">
+                            <div className="w-12 h-12 bg-emerald-50 text-emerald-500 rounded-full flex items-center justify-center">
+                              <Check size={24} />
+                            </div>
+                            Riskli kategoride kullanıcı bulunmuyor.
+                          </div>
                        )}
                     </div>
                   </div>
@@ -941,34 +970,38 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               </div>
               
               {editingPkg ? (
-                <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200 space-y-6">
+                <div className="bg-white p-6 md:p-8 rounded-[24px] shadow-sm border border-slate-100 space-y-6">
                   <div className="flex justify-between items-center border-b border-slate-100 pb-4">
                     <h3 className="font-bold text-xl flex items-center gap-2 text-slate-900">
-                      <Package className="text-orange-600" /> Paketi Düzenle: <span className="uppercase text-orange-600">{editingPkg.tier}</span>
+                      <Package className="text-indigo-600" /> Paketi Düzenle: <span className="uppercase text-indigo-600">{editingPkg.tier}</span>
                     </h3>
-                    <button onClick={() => setEditingPkg(null)} className="p-2 hover:bg-slate-100 rounded-full transition-colors"><X size={20}/></button>
+                    <button onClick={() => setEditingPkg(null)} className="p-2 hover:bg-slate-50 text-slate-400 hover:text-slate-600 rounded-full transition-colors"><X size={20}/></button>
                   </div>
                   
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div><label className="block text-xs font-bold text-slate-500 mb-2">Paket Görünen Adı</label><input type="text" value={editingPkg.name} onChange={e => setEditingPkg({...editingPkg, name: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 text-sm font-medium" /></div>
-                    <div><label className="block text-xs font-bold text-slate-500 mb-2">Periyot</label><input type="text" value={editingPkg.interval} onChange={e => setEditingPkg({...editingPkg, interval: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 text-sm font-medium" /></div>
-                    <div><label className="block text-xs font-bold text-slate-500 mb-2">Görünen Fiyat Metni</label><input type="text" value={editingPkg.price_text} onChange={e => setEditingPkg({...editingPkg, price_text: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 text-sm font-medium" /></div>
-                    <div><label className="block text-xs font-bold text-slate-500 mb-2">Sıralama Değeri (Sayı)</label><input type="number" value={editingPkg.price_numeric} onChange={e => setEditingPkg({...editingPkg, price_numeric: Number(e.target.value)})} className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 text-sm font-medium" /></div>
-                    <div><label className="block text-xs font-bold text-slate-500 mb-2">Avantaj Rozeti</label><input type="text" value={editingPkg.badge || ''} onChange={e => setEditingPkg({...editingPkg, badge: e.target.value})} placeholder="Boş bırakılabilir" className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 text-sm font-medium" /></div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-2">
+                    <div><label className="block text-xs font-bold text-slate-500 mb-2">Paket Görünen Adı</label><input type="text" value={editingPkg.name} onChange={e => setEditingPkg({...editingPkg, name: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium" /></div>
+                    <div><label className="block text-xs font-bold text-slate-500 mb-2">Periyot</label><input type="text" value={editingPkg.interval} onChange={e => setEditingPkg({...editingPkg, interval: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium" /></div>
+                    <div><label className="block text-xs font-bold text-slate-500 mb-2">Görünen Fiyat Metni</label><input type="text" value={editingPkg.price_text} onChange={e => setEditingPkg({...editingPkg, price_text: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium" /></div>
+                    <div><label className="block text-xs font-bold text-slate-500 mb-2">Sıralama Değeri (Sayı)</label><input type="number" value={editingPkg.price_numeric} onChange={e => setEditingPkg({...editingPkg, price_numeric: Number(e.target.value)})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium" /></div>
+                    <div><label className="block text-xs font-bold text-slate-500 mb-2">Avantaj Rozeti</label><input type="text" value={editingPkg.badge || ''} onChange={e => setEditingPkg({...editingPkg, badge: e.target.value})} placeholder="Boş bırakılabilir" className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium" /></div>
                     <div className="flex flex-col justify-center">
-                      <label className="flex items-center gap-3 cursor-pointer p-3 border border-slate-200 rounded-xl hover:bg-slate-50 transition-colors h-full">
-                        <input type="checkbox" checked={editingPkg.is_popular} onChange={e => setEditingPkg({...editingPkg, is_popular: e.target.checked})} className="w-5 h-5 accent-orange-600 rounded" />
-                        <div className="flex flex-col"><span className="text-sm font-bold text-slate-900">"En Popüler" Etiketi</span></div>
+                      <label className="flex items-center gap-3 cursor-pointer p-4 bg-slate-50 border border-slate-200 rounded-xl hover:bg-indigo-50 hover:border-indigo-100 transition-colors h-[48px] group">
+                        <div className="relative flex items-center">
+                          <input type="checkbox" checked={editingPkg.is_popular} onChange={e => setEditingPkg({...editingPkg, is_popular: e.target.checked})} className="peer sr-only" />
+                          <div className="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-500"></div>
+                        </div>
+                        <div className="flex flex-col"><span className="text-sm font-bold text-slate-900 group-hover:text-teal-700 transition-colors">"En Popüler" Etiketi Göster</span></div>
                       </label>
                     </div>
-                    <div className="md:col-span-2"><label className="block text-xs font-bold text-slate-500 mb-2">Kısa Açıklama</label><input type="text" value={editingPkg.description} onChange={e => setEditingPkg({...editingPkg, description: e.target.value})} className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 text-sm font-medium" /></div>
+                    <div className="md:col-span-2"><label className="block text-xs font-bold text-slate-500 mb-2">Kısa Açıklama</label><input type="text" value={editingPkg.description} onChange={e => setEditingPkg({...editingPkg, description: e.target.value})} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium" /></div>
                     <div className="md:col-span-2">
                       <label className="block text-xs font-bold text-slate-500 mb-2">Özellik Listesi (Her satıra bir özellik)</label>
-                      <textarea rows={8} value={Array.isArray(editingPkg.features) ? editingPkg.features.join('\n') : editingPkg.features} onChange={e => setEditingPkg({...editingPkg, features: e.target.value})} className="w-full p-4 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 leading-relaxed text-sm font-medium" />
+                      <textarea rows={8} value={Array.isArray(editingPkg.features) ? editingPkg.features.join('\n') : editingPkg.features} onChange={e => setEditingPkg({...editingPkg, features: e.target.value})} className="w-full p-4 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all leading-relaxed text-sm font-medium" />
                     </div>
                   </div>
-                  <div className="pt-4 flex justify-end">
-                    <button onClick={handleSavePackage} className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors flex items-center gap-2 shadow-lg shadow-slate-900/20"><Save size={18} /> Değişiklikleri Kaydet</button>
+                  <div className="pt-4 flex justify-end gap-3 border-t border-slate-100">
+                    <button onClick={() => setEditingPkg(null)} className="px-6 py-3 border border-slate-200 text-slate-600 rounded-xl font-bold hover:bg-slate-50 transition-colors">Vazgeç</button>
+                    <button onClick={handleSavePackage} className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors flex items-center gap-2 shadow-lg shadow-slate-900/20"><Save size={18} /> Kaydet</button>
                   </div>
                 </div>
               ) : (
@@ -976,26 +1009,29 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                   {packagesLoading ? (
                     <div className="col-span-full p-12 text-center text-slate-500">Paketler yükleniyor...</div>
                   ) : packages.map(pkg => (
-                    <div key={pkg.id} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 flex flex-col justify-between group hover:border-orange-200 transition-colors">
+                    <div key={pkg.id} className="bg-white p-6 rounded-[24px] shadow-sm border border-slate-100 flex flex-col justify-between group hover:shadow-md hover:border-slate-200 transition-all relative overflow-hidden">
+                      {pkg.is_popular && (
+                         <div className="absolute top-0 right-0 bg-teal-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl tracking-wider uppercase">Popüler</div>
+                      )}
                       <div>
                         <div className="flex justify-between items-start mb-4">
                           <h3 className="text-xl font-black text-slate-900">{pkg.name} <span className="text-sm text-slate-400 font-medium">({pkg.tier})</span></h3>
-                          {pkg.badge && <span className="bg-emerald-100 text-emerald-700 px-2.5 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider">{pkg.badge}</span>}
+                          {pkg.badge && <span className="bg-teal-50 text-teal-700 border border-teal-100 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">{pkg.badge}</span>}
                         </div>
                         <div className="flex items-baseline gap-1 mb-4">
-                          <span className="text-3xl font-black text-slate-900">{pkg.price_text}</span>
+                          <span className="text-3xl font-black text-slate-900 tracking-tight">{pkg.price_text}</span>
                           <span className="text-sm text-slate-400 font-medium">{pkg.interval}</span>
                         </div>
                         <p className="text-xs text-slate-500 mb-6 font-medium leading-relaxed">{pkg.description}</p>
                         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3 border-b border-slate-100 pb-2">Özellikler</div>
-                        <ul className="text-xs space-y-2 mb-6 text-slate-600 font-medium">
+                        <ul className="text-xs space-y-2.5 mb-6 text-slate-600 font-medium">
                           {(pkg.features || []).slice(0,5).map((f:string, i:number) => (
-                            <li key={i} className="flex items-start gap-2"><Check size={14} className="text-emerald-500 shrink-0 mt-0.5" /><span className="line-clamp-2">{f}</span></li>
+                            <li key={i} className="flex items-start gap-2"><Check size={14} className="text-teal-500 shrink-0 mt-0.5" /><span className="line-clamp-2">{f}</span></li>
                           ))}
-                          {(pkg.features || []).length > 5 && <li className="text-orange-500 italic font-bold">+{pkg.features.length - 5} özellik daha...</li>}
+                          {(pkg.features || []).length > 5 && <li className="text-indigo-500 italic font-bold">+{pkg.features.length - 5} özellik daha...</li>}
                         </ul>
                       </div>
-                      <button onClick={() => setEditingPkg(pkg)} className="w-full py-3 bg-slate-50 text-slate-600 rounded-xl font-bold hover:bg-slate-900 hover:text-white transition-all flex items-center justify-center gap-2 group-hover:shadow-md">
+                      <button onClick={() => setEditingPkg(pkg)} className="w-full py-3 border border-slate-200 bg-white text-slate-700 rounded-xl font-bold hover:bg-slate-50 hover:text-slate-900 transition-all flex items-center justify-center gap-2">
                         <Edit2 size={16} /> Düzenle
                       </button>
                     </div>
@@ -1012,37 +1048,127 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 <h2 className="text-2xl font-black text-slate-900 tracking-tight">Oyunlaştırma: Görev Havuzu</h2>
                 <p className="text-sm font-medium text-slate-500 mt-1">Kullanıcıların XP kazanıp seviye atlayabileceği görev şablonları.</p>
               </div>
-              <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200 flex flex-col gap-6">
+              <div className="bg-white p-6 md:p-8 rounded-[24px] shadow-sm border border-slate-100 flex flex-col gap-6">
                 <div className="flex flex-col md:flex-row gap-4 items-end">
-                  <div className="flex-1 w-full"><label className="block text-xs font-bold text-slate-500 mb-2">Görev Adı</label><input type="text" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 text-sm font-medium" /></div>
-                  <div className="w-full md:w-32"><label className="block text-xs font-bold text-slate-500 mb-2">Puan (XP)</label><input type="number" value={newTaskPoints} onChange={e => setNewTaskPoints(Number(e.target.value))} className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 text-sm font-medium" /></div>
-                  <div className="w-full md:w-48"><label className="block text-xs font-bold text-slate-500 mb-2">Zorluk Seviyesi</label><select value={newTaskCategory} onChange={e => setNewTaskCategory(e.target.value as 'sweet' | 'main')} className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 text-sm font-medium"><option value="sweet">Sweet (Kolay XP)</option><option value="main">Main (Saha Görevi)</option></select></div>
+                  <div className="flex-1 w-full"><label className="block text-xs font-bold text-slate-500 mb-2">Görev Adı</label><input type="text" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium" /></div>
+                  <div className="w-full md:w-32"><label className="block text-xs font-bold text-slate-500 mb-2">Puan (XP)</label><input type="number" value={newTaskPoints} onChange={e => setNewTaskPoints(Number(e.target.value))} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium" /></div>
+                  <div className="w-full md:w-48"><label className="block text-xs font-bold text-slate-500 mb-2">Zorluk Seviyesi</label><select value={newTaskCategory} onChange={e => setNewTaskCategory(e.target.value as 'sweet' | 'main')} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium"><option value="sweet">Sweet (Kolay XP)</option><option value="main">Main (Saha Görevi)</option></select></div>
                 </div>
                 <div className="flex flex-col md:flex-row gap-4 items-start">
-                  <div className="flex-1 w-full"><label className="block text-xs font-bold text-slate-500 mb-2">Görev Açıklaması / Talimatlar</label><input type="text" value={newTaskDescription} onChange={e => setNewTaskDescription(e.target.value)} className="w-full p-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-orange-500/20 text-sm font-medium placeholder-slate-400" placeholder="Örn: Müşteri ile en az 10 dakikalık bir görüşme yap ve notlarını CRM'e gir." /></div>
-                  <div className="w-full md:w-auto flex flex-col justify-center mt-6">
-                     <label className="flex items-center gap-3 cursor-pointer p-3 border border-slate-200 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors h-full">
-                        <input type="checkbox" checked={newTaskAutoVerify} onChange={e => setNewTaskAutoVerify(e.target.checked)} className="w-5 h-5 accent-orange-600 rounded" />
-                        <div className="flex flex-col"><span className="text-sm font-bold text-slate-900">Otomatik Doğrula</span></div>
-                     </label>
+                  <div className="flex-1 w-full"><label className="block text-xs font-bold text-slate-500 mb-2">Görev Açıklaması / Talimatlar</label><input type="text" value={newTaskDescription} onChange={e => setNewTaskDescription(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium placeholder-slate-400" placeholder="Örn: Müşteri ile en az 10 dakikalık bir görüşme yap ve notlarını CRM'e gir." /></div>
+                </div>
+
+                {/* YENİ ALANLAR */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 border-t border-slate-100 pt-6 mt-2">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-2">Tekrar Tipi</label>
+                    <select value={newTaskRecurrenceType} onChange={e => setNewTaskRecurrenceType(e.target.value as any)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium">
+                      <option value="once">Tek Seferlik</option>
+                      <option value="daily">Her Gün</option>
+                      <option value="interval">Her X Günde Bir</option>
+                      <option value="weekly">Haftanın Günleri</option>
+                      <option value="monthly">Ayın Günü</option>
+                    </select>
                   </div>
-                  <div className="mt-6 self-stretch flex">
-                    <button onClick={handleAddTask} className="w-full md:w-auto h-full px-8 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-colors shadow-lg shadow-slate-900/20">Görev Oluştur</button>
+                  {newTaskRecurrenceType === 'interval' && (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-2">Kaç günde bir? (Örn: 2)</label>
+                      <input type="number" min={1} value={newTaskIntervalDays} onChange={e => setNewTaskIntervalDays(Number(e.target.value))} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium" />
+                    </div>
+                  )}
+                  {newTaskRecurrenceType === 'monthly' && (
+                    <div>
+                      <label className="block text-xs font-bold text-slate-500 mb-2">Ayın Hangi Günü? (1-31)</label>
+                      <input type="number" min={1} max={31} value={newTaskDayOfMonth} onChange={e => setNewTaskDayOfMonth(Number(e.target.value))} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium" />
+                    </div>
+                  )}
+                  {newTaskRecurrenceType === 'weekly' && (
+                    <div className="md:col-span-2">
+                      <label className="block text-xs font-bold text-slate-500 mb-2">Haftanın Günleri (0=Pazar, 1=Pzt...)</label>
+                      <div className="flex gap-2 flex-wrap">
+                        {['Paz', 'Pzt', 'Sal', 'Çar', 'Per', 'Cum', 'Cmt'].map((d, i) => (
+                          <button key={i} type="button" onClick={() => setNewTaskRecurrenceDays(prev => prev.includes(i) ? prev.filter(x => x !== i) : [...prev, i])} className={`px-4 py-2 text-xs font-bold rounded-lg border transition-colors ${newTaskRecurrenceDays.includes(i) ? 'bg-indigo-100 text-indigo-700 border-indigo-200' : 'bg-slate-50 text-slate-500 border-slate-200 hover:bg-white hover:border-slate-300'}`}>{d}</button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-2">Aksiyon Tipi</label>
+                    <select value={newTaskActionType} onChange={e => setNewTaskActionType(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium">
+                      <option value="general">Genel</option>
+                      <option value="content_story">Günlük Story</option>
+                      <option value="content_reels">Reels / İçerik</option>
+                      <option value="crm_visit">CRM Ziyareti</option>
+                      <option value="crm_call">CRM Araması</option>
+                      <option value="property_check">Portföy Kontrolü</option>
+                      <option value="bolgem_visit">Bölgem Ziyareti</option>
+                      <option value="daily_start">Gün Başlatma</option>
+                      <option value="daily_close">Gün Kapatma</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-2">Hedef Kitle</label>
+                    <select value={newTaskTargetScope} onChange={e => setNewTaskTargetScope(e.target.value as any)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium">
+                      <option value="all">Tüm Kullanıcılar</option>
+                      <option value="free">Ücretsiz Paket</option>
+                      <option value="trial">Deneme Sürecindekiler</option>
+                      <option value="master">Master (Ücretli) Kullanıcılar</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-2">Başlangıç Tarihi</label>
+                    <input type="date" value={newTaskStartDate} onChange={e => setNewTaskStartDate(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium" />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-500 mb-2">Bitiş Tarihi (Opsiyonel)</label>
+                    <input type="date" value={newTaskEndDate} onChange={e => setNewTaskEndDate(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium" />
                   </div>
                 </div>
+
+                <div className="flex flex-wrap items-center justify-between gap-4 mt-4 border-t border-slate-100 pt-6">
+                  <div className="flex gap-6">
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className="relative flex items-center">
+                        <input type="checkbox" checked={newTaskAutoVerify} onChange={e => setNewTaskAutoVerify(e.target.checked)} className="peer sr-only" />
+                        <div className="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                      </div>
+                      <div className="flex flex-col"><span className="text-sm font-bold text-slate-900">Otomatik Doğrula</span></div>
+                    </label>
+                    <label className="flex items-center gap-3 cursor-pointer group">
+                      <div className="relative flex items-center">
+                        <input type="checkbox" checked={newTaskAutoGenerate} onChange={e => setNewTaskAutoGenerate(e.target.checked)} className="peer sr-only" />
+                        <div className="w-10 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-teal-500"></div>
+                      </div>
+                      <div className="flex flex-col"><span className="text-sm font-bold text-slate-900">Otomatik Üret</span><span className="text-[10px] text-slate-500">Hedef kitleye her gün uygunsa üretilir</span></div>
+                    </label>
+                  </div>
+                  <button onClick={handleAddTask} className="w-full md:w-auto h-12 px-8 bg-indigo-600 text-white rounded-xl font-bold hover:bg-indigo-700 transition-colors shadow-lg shadow-indigo-900/20">Görev Oluştur</button>
+                </div>
               </div>
+
               <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
                 {tasksLoading ? <div className="p-8 text-center text-slate-500">Yükleniyor...</div> : (
-                  <table className="w-full text-left min-w-[600px]">
+                  <table className="w-full text-left min-w-[1000px]">
                     <thead className="bg-slate-50 border-b border-slate-100">
-                      <tr><th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Görev Adı</th><th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Açıklama</th><th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Kategori & Puan</th><th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Aktiflik</th><th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">İşlem</th></tr>
+                      <tr><th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Görev Adı</th><th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Açıklama</th><th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Kategori & Puan</th><th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase">Ayarlar</th><th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-center">Aktiflik</th><th className="px-6 py-4 text-xs font-bold text-slate-500 uppercase text-right">İşlem</th></tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
                       {taskTemplates.map(task => (
                         <tr key={task.id} className={`hover:bg-slate-50 ${!task.is_active ? 'opacity-50' : ''}`}>
                           <td className="px-6 py-4 font-bold text-slate-900">{task.title}</td>
                           <td className="px-6 py-4 text-xs text-slate-500">{task.description || '-'}</td>
-                          <td className="px-6 py-4"><span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${task.category === 'main' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}>{task.category}</span><span className="ml-2 text-xs font-bold text-orange-600">+{task.points} XP</span></td>
+                          <td className="px-6 py-4"><span className={`px-2 py-1 rounded-md text-[10px] font-bold uppercase tracking-wider ${task.category === 'main' ? 'bg-indigo-100 text-indigo-700' : 'bg-emerald-100 text-emerald-700'}`}>{task.category}</span><span className="ml-2 text-xs font-bold text-amber-500">+{task.points} XP</span></td>
+                          <td className="px-6 py-4">
+                            <div className="flex flex-wrap gap-1">
+                              <span className="px-2 py-0.5 bg-slate-100 text-slate-600 text-[10px] font-bold rounded">{task.recurrence_type === 'once' ? 'Tek Sefer' : task.recurrence_type === 'daily' ? 'Her Gün' : task.recurrence_type === 'interval' ? `${task.interval_days} Günde Bir` : task.recurrence_type === 'weekly' ? 'Haftalık' : 'Aylık'}</span>
+                              {task.auto_generate && <span className="px-2 py-0.5 bg-emerald-100 text-emerald-700 text-[10px] font-bold rounded">Oto Üretim</span>}
+                              <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-bold rounded capitalize">{task.target_scope}</span>
+                              <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-bold rounded truncate max-w-[80px]" title={task.action_type}>{task.action_type}</span>
+                            </div>
+                          </td>
                           <td className="px-6 py-4 text-center"><button onClick={() => toggleTaskStatus(task.id, task.is_active)} className={`w-10 h-5 rounded-full relative transition-colors ${task.is_active ? 'bg-emerald-500' : 'bg-slate-300'}`}><div className={`w-4 h-4 bg-white rounded-full absolute top-0.5 transition-transform ${task.is_active ? 'translate-x-5' : 'translate-x-1'}`} /></button></td>
                           <td className="px-6 py-4 text-right"><button onClick={() => deleteTask(task.id)} className="p-2 text-slate-400 hover:text-red-600 transition-colors rounded-lg hover:bg-red-50"><Trash2 size={18} /></button></td>
                         </tr>

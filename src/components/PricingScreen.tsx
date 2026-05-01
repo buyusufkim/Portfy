@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
+import { PortfyLogo } from './PortfyLogo';
 import { LogOut, CheckCircle2, Building2, Crown, Sparkles, ArrowRight, Briefcase } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../lib/supabase';
@@ -59,10 +60,7 @@ export const PricingScreen = () => {
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-orange-100">
       <header className="px-6 py-6 flex justify-between items-center bg-white border-b border-slate-100 z-10 sticky top-0">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-gradient-to-tr from-[#FF3D00] to-[#FF9100] rounded-xl flex items-center justify-center shadow-lg shadow-orange-200">
-            <Building2 size={20} className="text-white" />
-          </div>
-          <span className="text-2xl font-black italic font-logo text-transparent bg-clip-text bg-gradient-to-r from-[#FF3D00] to-[#FF9100] tracking-wide">Portfy</span>
+          <PortfyLogo className="h-8" />
         </div>
         <button onClick={logout} className="flex items-center gap-2 px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded-xl transition-colors">
           <LogOut size={16} /> <span className="hidden sm:inline">Çıkış Yap</span>

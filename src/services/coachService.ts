@@ -1,6 +1,6 @@
 import { CoachInsight, PersonalTask, GamifiedTask, Task } from "../types";
 import { AICoachResponse, AICoachAction } from "../types/ai";
-import { AI_COACH_SCHEMA, buildCoachPrompt } from "../lib/aiPromptBuilder";
+import { AI_COACH_SCHEMA, buildCoachPrompt, normalizeAiCoachTone, getAiCoachToneInstruction } from "../lib/aiPromptBuilder";
 import { supabase } from "../lib/supabase";
 import { leadService } from "./leadService";
 import { taskService } from "./taskService";
@@ -16,7 +16,7 @@ export const coachService = {
    * Returns a detailed AI-generated coaching response with strategic actions.
    * Used in the dedicated AI Coach Panel (Premium feature).
    */
-  getDetailedInsight: async (): Promise<AICoachResponse> => {
+  getDetailedInsight: async (params?: { requestType?: string; customMessage?: string }): Promise<AICoachResponse> => {
     const {
       data: { user },
     } = await supabase.auth.getUser();
@@ -37,16 +37,17 @@ export const coachService = {
       properties,
       tasks,
       missedOpportunities,
+      requestType: params?.requestType,
+      customMessage: params?.customMessage,
     });
 
     try {
-      const response: any = await generateContent("gemini-2.0-flash", prompt, {
-        // @ts-ignore
+      const response = await generateContent<AICoachResponse>("gemini-2.0-flash", prompt, {
         responseSchema: AI_COACH_SCHEMA,
         responseMimeType: "application/json",
       });
 
-      return response as AICoachResponse;
+      return response;
     } catch (error) {
       console.error("AI Coach Service Error:", error);
       throw new Error(
@@ -65,7 +66,8 @@ export const coachService = {
     } = await supabase.auth.getUser();
     if (!user) throw new Error("Not authenticated");
 
-    const [leads, tasks, missedOpps] = await Promise.all([
+    const [profile, leads, tasks, missedOpps] = await Promise.all([
+      profileService.getProfile(),
       leadService.getLeads(),
       taskService.getTasks(),
       missedOpportunityService.getMissedOpportunities(),
@@ -79,10 +81,14 @@ export const coachService = {
     const activeLeads = leads.filter((l) => l.status !== "Pasif").length;
     const missedCount = missedOpps.length;
 
+    const tone = normalizeAiCoachTone(profile?.ai_coach_tone);
+    const toneInstruction = getAiCoachToneInstruction(tone);
+
     const prompt = `Sen Türkiye'de çalışan bireysel gayrimenkul danışmanları için uzman bir "Davranışsal Koç" (Behavioral Coach) yapay zekasısın.
     Amacın danışmanın verilerini analiz edip ona 1 güçlü yön, 1 zayıf yön ve 1 günlük odak noktası vermek.
     Özellikle sosyal medya kullanımı (Reels, Story, LinkedIn) ve dijital görünürlük konularında da tavsiyeler ekle.
-    Dramatik veya abartılı olma. Gerçekçi, profesyonel ve motive edici bir dil kullan.
+    
+    ${toneInstruction}
 
     Danışmanın Verileri:
     - Toplam Görev: ${totalTasks} (Tamamlanan: ${completedTasks}, Oran: %${taskCompletionRate})
@@ -104,11 +110,11 @@ export const coachService = {
     }`;
 
     try {
-      const response: any = await generateContent("gemini-2.0-flash", prompt, {
+      const response = await generateContent<CoachInsight>("gemini-2.0-flash", prompt, {
         responseMimeType: "application/json",
       });
 
-      return response as CoachInsight;
+      return response;
     } catch (error) {
       console.error("Coach insight error:", error);
       return {

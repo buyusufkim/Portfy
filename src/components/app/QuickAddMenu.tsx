@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Mic, MapPin, Users, Home, Camera, Edit3, ChevronLeft } from 'lucide-react';
+import { Mic, MapPin, Users, Home } from 'lucide-react';
 
 // Daha minimal ikon butonu
 const MinimalQuickAddButton = ({ icon, title, color, onClick }: { icon: React.ReactNode, title: string, color: string, onClick?: () => void }) => (
@@ -36,12 +36,6 @@ export const QuickAddMenu = ({
   onLead, 
   onPortfolio 
 }: QuickAddMenuProps) => {
-  const [leadMode, setLeadMode] = useState(false);
-
-  const handleClose = () => {
-    setLeadMode(false);
-    onClose();
-  };
 
   const iconColors = {
     sesli: "bg-[#FFF1F2] text-[#E11D48]",
@@ -58,7 +52,7 @@ export const QuickAddMenu = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={handleClose}
+            onClick={onClose}
             className="fixed inset-0 bg-slate-900/40 backdrop-blur-[2px] z-[60]"
           />
           
@@ -72,73 +66,44 @@ export const QuickAddMenu = ({
             {/* Tutamaç */}
             <div className="w-12 h-1 bg-[#E2E8F0] rounded-full mx-auto mt-4" />
             
-            {!leadMode ? (
-              <div className="pt-8 pb-10 px-6">
-                <h2 className="text-[20px] font-bold text-[#0F172A] mb-8 text-center tracking-tight">Hızlı Kayıt</h2>
+            <div className="pt-8 pb-10 px-6">
+              <h2 className="text-[20px] font-bold text-[#0F172A] mb-8 text-center tracking-tight">Hızlı Kayıt</h2>
+              
+              {/* 4'lü Grid */}
+              <div className="grid grid-cols-4 gap-2">
+                <MinimalQuickAddButton 
+                  onClick={onVoice}
+                  icon={<Mic size={24} strokeWidth={2} />} 
+                  title="Sesli" 
+                  color={iconColors.sesli} 
+                />
                 
-                {/* 4'lü Grid - Gap azaltıldı */}
-                <div className="grid grid-cols-4 gap-2">
-                  <MinimalQuickAddButton 
-                    onClick={() => { handleClose(); onVoice(); }}
-                    icon={<Mic size={24} strokeWidth={2} />} 
-                    title="Sesli" 
-                    color={iconColors.sesli} 
-                  />
-                  
-                  <MinimalQuickAddButton 
-                    onClick={() => { handleClose(); onVisit(); }}
-                    icon={<MapPin size={24} strokeWidth={2} />} 
-                    title="Ziyaret" 
-                    color={iconColors.ziyaret} 
-                  />
-                  
-                  <MinimalQuickAddButton 
-                    onClick={() => setLeadMode(true)}
-                    icon={<Users size={24} strokeWidth={2} />} 
-                    title="Lead" 
-                    color={iconColors.lead} 
-                  />
-                  
-                  <MinimalQuickAddButton 
-                    onClick={() => { handleClose(); onPortfolio(); }}
-                    icon={<Home size={24} strokeWidth={2} />} 
-                    title="Portföy" 
-                    color={iconColors.portfoy} 
-                  />
-                </div>
+                <MinimalQuickAddButton 
+                  onClick={onVisit}
+                  icon={<MapPin size={24} strokeWidth={2} />} 
+                  title="Ziyaret" 
+                  color={iconColors.ziyaret} 
+                />
+                
+                <MinimalQuickAddButton 
+                  onClick={onLead}
+                  icon={<Users size={24} strokeWidth={2} />} 
+                  title="Lead" 
+                  color={iconColors.lead} 
+                />
+                
+                <MinimalQuickAddButton 
+                  onClick={onPortfolio}
+                  icon={<Home size={24} strokeWidth={2} />} 
+                  title="Portföy" 
+                  color={iconColors.portfoy} 
+                />
               </div>
-            ) : (
-              <div className="pt-8 pb-10 px-6 animate-in fade-in slide-in-from-right-4 duration-300">
-                <div className="flex items-center justify-center relative mb-8">
-                  <button 
-                    onClick={() => setLeadMode(false)} 
-                    className="absolute left-0 p-2 text-slate-400 hover:text-slate-600 transition-colors"
-                  >
-                    <ChevronLeft size={20} />
-                  </button>
-                  <h2 className="text-[18px] font-bold text-[#0F172A]">Müşteri Ekle</h2>
-                </div>
+            </div>
 
-                <div className="flex justify-center gap-12">
-                  <MinimalQuickAddButton 
-                    onClick={() => { handleClose(); onLead(); }} 
-                    icon={<Camera size={24} strokeWidth={2} />} 
-                    title="Kartvizit" 
-                    color={iconColors.lead} 
-                  />
-                  <MinimalQuickAddButton 
-                    onClick={() => { handleClose(); onLead(); }} 
-                    icon={<Edit3 size={24} strokeWidth={2} />} 
-                    title="Manuel" 
-                    color={iconColors.sesli} 
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Vazgeç Butonu - Görseldeki gibi tam genişlikte ve gri tonda */}
+            {/* Vazgeç Butonu */}
             <button 
-              onClick={handleClose}
+              onClick={onClose}
               className="w-full bg-[#F8FAFC] hover:bg-[#F1F5F9] py-5 text-[#64748B] font-bold text-[15px] border-t border-[#F1F5F9] transition-colors pb-safe"
             >
               Vazgeç

@@ -1,4 +1,37 @@
-import { Lead, Property, Task, MissedOpportunity } from '../types';
+import { Lead, Property, Task, MissedOpportunity, UserProfile } from '../types';
+
+export type AiCoachTone = "professional" | "friendly" | "motivational" | "direct";
+
+export const normalizeAiCoachTone = (value?: string | null): AiCoachTone => {
+  switch (value) {
+    case "friendly":
+    case "motive_edici":
+      return "friendly";
+    case "motivational":
+      return "motivational";
+    case "direct":
+    case "sert_koc":
+      return "direct";
+    case "professional":
+    case "net":
+    default:
+      return "professional";
+  }
+};
+
+export const getAiCoachToneInstruction = (tone: AiCoachTone): string => {
+  switch (tone) {
+    case "friendly":
+      return "AI Koç Tonu: Dostça, sıcak, destekleyici ve samimi bir dil kullan. Fakat profesyonelliği koru, aşırı emoji kullanma.";
+    case "motivational":
+      return "AI Koç Tonu: Enerji veren, fazlasıyla motive edici, moral yükselten ve pozitif bir dil kullan.";
+    case "direct":
+      return "AI Koç Tonu: Direkt, kesin, sonuç odaklı ve lafı dolandırmayan bir dil kullan. Zayıf noktaları net bir şekilde yüzleşecek kıvamda belirt.";
+    case "professional":
+    default:
+      return "AI Koç Tonu: Net, kurumsal, profesyonel, ölçülü ve mesafeli bir dil kullan. Gereksiz samimiyetten kaçın.";
+  }
+};
 
 export const AI_COACH_SCHEMA = {
   type: "object",
@@ -6,33 +39,36 @@ export const AI_COACH_SCHEMA = {
     insight: {
       type: "object",
       properties: {
-        score: { type: "number", description: "0-100 arası genel performans skoru" },
-        briefing: { type: "string", description: "Günün kısa özeti ve motivasyonel mesaj" },
-        actions: {
+        coachComment: { type: "string", description: "Danışman için kısa, net ve özel koçluk yorumu" },
+        mainFocus: {
+          type: "array",
+          description: "Maksimum 3 adet ana odak noktası",
+          items: {
+            type: "object",
+            properties: {
+              title: { type: "string" },
+              reason: { type: "string" },
+              targetRoute: { type: "string", description: "Yönlendirme rotası (Örn: /tasks, /crm, /portfolio)" }
+            },
+            required: ["title", "reason", "targetRoute"]
+          }
+        },
+        suggestedActions: {
           type: "array",
           items: {
             type: "object",
             properties: {
-              id: { type: "string" },
-              type: { type: "string", enum: ["call", "visit", "followup", "update", "rescue", "social"] },
               title: { type: "string" },
-              description: { type: "string", description: "Aksiyonun detaylı açıklaması (Örn: Reels videosu için senaryo önerisi)" },
-              priority: { type: "string", enum: ["high", "medium", "low"] },
-              target_id: { type: "string" },
-              target_name: { type: "string" },
-              points: { type: "number" }
+              description: { type: "string" },
+              targetRoute: { type: "string", description: "Yönlendirme rotası (Örn: /tasks, /crm, /portfolio)" },
+              priority: { type: "string", enum: ["high", "medium", "low"] }
             },
-            required: ["id", "type", "title", "description", "priority", "points"]
+            required: ["title", "description", "targetRoute", "priority"]
           }
         },
-        warnings: {
-          type: "array",
-          items: { type: "string" }
-        },
-        performance_evaluation: { type: "string" },
-        is_rescue_mode_recommended: { type: "boolean" }
+        emptyReason: { type: "string", nullable: true, description: "Eğer veri yetersizse kullanıcıya gösterilecek açıklama" }
       },
-      required: ["score", "briefing", "actions", "warnings", "performance_evaluation", "is_rescue_mode_recommended"]
+      required: ["coachComment", "mainFocus", "suggestedActions"]
     },
     generated_at: { type: "string" }
   },
@@ -40,11 +76,13 @@ export const AI_COACH_SCHEMA = {
 };
 
 export const buildCoachPrompt = (data: {
-  profile: any;
+  profile: UserProfile | null;
   leads: Lead[];
   properties: Property[];
   tasks: Task[];
   missedOpportunities: MissedOpportunity[];
+  requestType?: string;
+  customMessage?: string;
 }) => {
   const strippedLeads = data.leads
     .filter(l => l.status === 'Sıcak')
@@ -63,10 +101,23 @@ export const buildCoachPrompt = (data: {
   const strippedOpps = data.missedOpportunities
     .slice(0, 3)
     .map(m => ({ detay: m.description, neden: m.reason }));
+    
+  const tone = normalizeAiCoachTone(data.profile?.ai_coach_tone);
+  const toneInstruction = getAiCoachToneInstruction(tone);
+
+  let activeContext = "Danışmanın genel durumunu analiz et ve gün için stratejik bir plan çıkar.";
+  if (data.requestType === "analyze") activeContext = "Danışmanın tüm verilerini derinlemesine analiz et ve genel bir özet/durum değerlendirmesi çıkar.";
+  if (data.requestType === "priorities") activeContext = "Danışmanın BUGÜN yapması gereken en acil 3 önceliği belirle.";
+  if (data.requestType === "risks") activeContext = "Geciken görevleri veya kaybedilmek üzere olan müşterileri (riskleri) tespit et ve uyar.";
+  if (data.requestType === "region") activeContext = "Danışmanın bölgesine veya portföylerine odaklanarak saha çalışması veya bölge bölgesi için strateji öner.";
+  if (data.requestType === "portfolio") activeContext = "Mevcut portföyleri ve sıcak müşterileri eşleştirme fırsatları ara veya portföy pazarlama fırsatlarını çıkar.";
+  if (data.customMessage) activeContext = `Kullanıcının özel mesajı/sorusu: "${data.customMessage}". Öncelikle bu soruya ve isteğe göre planı şekillendir.`;
 
   return `
     Sen Portfy uygulamasının AI Koçusun. Bir gayrimenkul danışmanına rehberlik ediyorsun.
     Aşağıdaki verilere dayanarak danışman için stratejik bir günlük plan üret.
+    
+    Aksiyon Context / İstem: ${activeContext}
     
     Kullanıcı Profili: ${JSON.stringify(profileSummary(data.profile))}
     Sıcak Müşteriler: ${JSON.stringify(strippedLeads)}
@@ -77,15 +128,15 @@ export const buildCoachPrompt = (data: {
     Kurallar:
     1. Yanıt mutlaka belirlenen JSON şemasına uygun olmalı.
     2. Aksiyonlar net ve yapılabilir olmalı.
-    3. Kullanıcının bölgesine (region) özel en az bir tavsiye ver.
-    4. Dil profesyonel, sert ve aksiyon odaklı olmalı.
+    3. Hangi rotaya gidilmesi gerektiği (targetRoute) doğru belirtilmeli (Örn: görevse /tasks, müşteriyse /crm, portföyse /portfolio).
+    4. ${toneInstruction}
   `;
 };
 
-const profileSummary = (p: any) => ({
+const profileSummary = (p?: UserProfile | null) => ({
   name: p?.display_name,
   level: p?.broker_level,
   xp: p?.total_xp,
   streak: p?.current_streak,
-  region: p?.region // Haklıydın, bunu geri ekledik.
+  region: p?.region
 });

@@ -8,76 +8,116 @@ export const gamificationService = {
     if (!userId) throw new Error("Not authenticated");
     const today = getTodayStr();
 
-    // Görevleri getir
+    // 1. Kullanıcı profili bilgisini al (hedef kitle kontrolü için)
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("tier, subscription_type")
+      .eq("id", userId)
+      .single();
+
+    // 2. Bugünkü gamified görevleri getir
     let { data: tasks } = await supabase
       .from("gamified_tasks")
       .select("*")
       .eq("user_id", userId)
       .eq("date", today);
 
-    // Eğer bugün hiç görev yoksa varsayılan görevleri oluştur
-    if (!tasks || tasks.length === 0) {
-      const defaultTasks = [
-        {
-          user_id: userId,
-          title: "Güne Erken Başla (Sabah Ritüelini Tamamla)",
-          points: 100,
-          category: "main",
-          date: today,
-          is_completed: false,
-        },
-        {
-          user_id: userId,
-          title: "Bugün 3 Yeni Lead Ekle",
-          points: 150,
-          category: "smart",
-          date: today,
-          is_completed: false,
-        },
-        {
-          user_id: userId,
-          title: "Bugün 1 Yeni Portföy Ekle",
-          points: 300,
-          category: "smart",
-          date: today,
-          is_completed: false,
-        },
-        {
-          user_id: userId,
-          title: "Akşam Gün Kapanışını (Ritüeli) Tamamla",
-          points: 100,
-          category: "main",
-          date: today,
-          is_completed: false,
-        },
-        {
-          user_id: userId,
-          title: "1 Kişisel Görev Tamamla",
-          points: 50,
-          category: "sweet",
-          date: today,
-          is_completed: false,
-        },
-        {
-          user_id: userId,
-          title: "Peş peşe girişini sürdür",
-          points: 50,
-          category: "sweet",
-          date: today,
-          is_completed: false,
-        },
-      ];
+    // 3. Aktif Task Template'leri getir (auto_generate = true olanlar)
+    const { data: templates } = await supabase
+      .from("task_templates")
+      .select("*")
+      .eq("auto_generate", true)
+      .eq("is_active", true)
+      .lte("start_date", today);
 
-      const { data: newTasks, error: insertError } = await supabase
-        .from("gamified_tasks")
-        .insert(defaultTasks)
-        .select();
-      if (insertError) {
-        console.error("Default gamified tasks insert error:", insertError);
-        throw insertError;
+    const userTier = profile?.tier || "free";
+    const userSub = profile?.subscription_type || "none";
+
+    // 4. Template kontrolü & lazy creation
+    const newTasksToInsert: any[] = [];
+
+    if (templates && templates.length > 0) {
+      for (const t of templates) {
+        // end_date kontrolü
+        if (t.end_date && t.end_date < today) continue;
+
+        // Target Scope Kontrolü
+        if (t.target_scope === "free" && userTier !== "free" && userSub !== "none") continue;
+        if (t.target_scope === "trial" && userSub !== "trial") continue;
+        if (t.target_scope === "master" && userTier !== "master") continue;
+
+        let shouldGenerate = false;
+
+        // Recurrence Kontrolü
+        if (t.recurrence_type === "once") {
+          if (t.start_date === today) shouldGenerate = true;
+        } else if (t.recurrence_type === "daily") {
+          shouldGenerate = true;
+        } else if (t.recurrence_type === "interval" && t.interval_days > 0) {
+          const startDate = new Date(t.start_date);
+          const currentDate = new Date(today);
+          const diffTime = Math.abs(currentDate.getTime() - startDate.getTime());
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          if (diffDays >= 0 && diffDays % t.interval_days === 0) {
+            shouldGenerate = true;
+          }
+        } else if (t.recurrence_type === "weekly" && t.recurrence_days?.length > 0) {
+          const currentDayOfWeek = new Date(today).getDay(); // 0 is Sunday, 1 is Monday ...
+          if (t.recurrence_days.includes(currentDayOfWeek)) {
+            shouldGenerate = true;
+          }
+        } else if (t.recurrence_type === "monthly" && t.day_of_month) {
+          const currentDayOfMonth = new Date(today).getDate();
+          if (currentDayOfMonth === t.day_of_month) {
+            shouldGenerate = true;
+          }
+        }
+
+        if (shouldGenerate) {
+          const templateAlreadyGenerated = tasks?.some(
+            (task) => task.template_id === t.id && task.date === today
+          );
+
+          if (!templateAlreadyGenerated) {
+            newTasksToInsert.push({
+              user_id: userId,
+              title: t.title,
+              points: t.points || 10,
+              category: t.category,
+              date: today,
+              is_completed: false,
+              template_id: t.id,
+              source: "admin_template",
+              action_type: t.action_type || "general",
+            });
+          }
+        }
       }
-      if (newTasks) {
-        tasks = newTasks;
+    }
+
+    // Default task fallback if no tasks and no new templates to insert
+    if ((!tasks || tasks.length === 0) && newTasksToInsert.length === 0) {
+      newTasksToInsert.push(
+        { user_id: userId, title: "Güne Erken Başla (Sabah Ritüelini Tamamla)", points: 100, category: "main", date: today, is_completed: false },
+        { user_id: userId, title: "Bugün 3 Yeni Lead Ekle", points: 150, category: "smart", date: today, is_completed: false },
+        { user_id: userId, title: "Bugün 1 Yeni Portföy Ekle", points: 300, category: "smart", date: today, is_completed: false },
+        { user_id: userId, title: "Akşam Gün Kapanışını (Ritüeli) Tamamla", points: 100, category: "main", date: today, is_completed: false },
+        { user_id: userId, title: "1 Kişisel Görev Tamamla", points: 50, category: "sweet", date: today, is_completed: false },
+        { user_id: userId, title: "Peş peşe girişini sürdür", points: 50, category: "sweet", date: today, is_completed: false }
+      );
+    }
+
+    if (newTasksToInsert.length > 0) {
+      const { data: insertedTasks, error: insertError } = await supabase
+        .from("gamified_tasks")
+        .insert(newTasksToInsert)
+        .select();
+
+      if (!insertError && insertedTasks) {
+         if(!tasks) tasks = [];
+         tasks = [...tasks, ...insertedTasks];
+      } else if (insertError) {
+         console.warn("Could not insert recurring tasks. Might be a unique constraint violation", insertError);
       }
     }
 
@@ -134,91 +174,26 @@ export const gamificationService = {
 
   verifyGamifiedTask: async (task: GamifiedTask) => {
     const title = task.title.toLowerCase();
-    const todayStr = getTodayStr();
-    const userId = await getUserId();
 
     if (task.is_completed)
       return { verified: false, message: "Bu görevi bugün zaten tamamladın." };
 
     try {
-      if (title.includes("peş peşe girişini sürdür")) {
-        return { verified: true };
-      }
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return { verified: false, message: "Oturum açmadınız." };
 
-      if (title.includes("müşteri") || title.includes("lead")) {
-        const { count } = await supabase
-          .from("leads")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", userId)
-          .gte("created_at", `${todayStr}T00:00:00`);
+      const res = await fetch("/api/ai/verify-task", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ title: task.title }),
+      });
 
-        const match = title.match(/(\d+)/);
-        const target = match ? parseInt(match[1]) : 1;
-
-        if ((count || 0) >= target) return { verified: true };
-        return {
-          verified: false,
-          message: `Bugün ${count || 0}/${target} müşteri ekledin. ${target - (count || 0)} kişi daha eklemelisin!`,
-        };
-      }
-
-      if (title.includes("portföy")) {
-        const { count } = await supabase
-          .from("properties")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", userId)
-          .gte("created_at", `${todayStr}T00:00:00`);
-
-        const match = title.match(/(\d+)/);
-        const target = match ? parseInt(match[1]) : 1;
-
-        if ((count || 0) >= target) return { verified: true };
-        return {
-          verified: false,
-          message: `Bugün ${count || 0}/${target} portföy ekledin. ${target - (count || 0)} portföy daha eklemelisin!`,
-        };
-      }
-
-      if (title.includes("görev")) {
-        const { count } = await supabase
-          .from("personal_tasks")
-          .select("*", { count: "exact", head: true })
-          .eq("user_id", userId)
-          .eq("is_completed", true)
-          .gte("updated_at", `${todayStr}T00:00:00`);
-
-        const match = title.match(/(\d+)/);
-        // "1 kişisel görev" - check for numbers
-        const target = match ? parseInt(match[1]) : 1;
-
-        if ((count || 0) >= target) return { verified: true };
-        return {
-          verified: false,
-          message: `Bugün ${count || 0}/${target} kişisel görev tamamladın!`,
-        };
-      }
-
-      if (title.includes("sabah ritüeli") || title.includes("erken başla")) {
-        const profile = await supabase
-          .from("profiles")
-          .select("morning_ritual_completed")
-          .eq("id", userId)
-          .single();
-        if (profile.data?.morning_ritual_completed) return { verified: true };
-        return {
-          verified: false,
-          message: "Sabah ritüelini henüz tamamlamadın.",
-        };
-      }
-
-      if (title.includes("akşam ritüeli") || title.includes("kapanış")) {
-        const profile = await supabase
-          .from("profiles")
-          .select("evening_ritual_completed")
-          .eq("id", userId)
-          .single();
-        if (profile.data?.evening_ritual_completed) return { verified: true };
-        return { verified: false, message: "Gün kapanışını henüz yapmadın." };
+      if (res.ok) {
+        const data = await res.json();
+        return data; // { verified: boolean, message?: string }
       }
     } catch (e) {
       console.error("verify error:", e);
@@ -230,21 +205,33 @@ export const gamificationService = {
 
   earnXP: async (actionType: string, entityId?: string, stats?: any) => {
     const {
-      data: { user },
-    } = await supabase.auth.getUser();
-    if (!user) throw new Error("Not authenticated");
+      data: { session },
+    } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not authenticated");
 
-    const { data, error } = await supabase.rpc("award_xp", {
-      p_user_id: user.id,
-      p_action_type: actionType,
-      p_entity_id: entityId || null,
-      p_today: getTodayStr(),
-      p_now: new Date().toISOString(),
-      p_stats: stats || {},
+    const res = await fetch("/api/ai/earn-xp", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        actionType,
+        taskId: entityId, // the backend checks leadId || propertyId || sessionId || taskId
+        stats: stats || {}
+      })
     });
 
-    if (error) throw error;
-    return data;
+    if (!res.ok) {
+        let errorMsg = "XP kazanılamadı";
+        try {
+            const errData = await res.json();
+            if (errData.error) errorMsg = errData.error;
+        } catch(e) {}
+        throw new Error(errorMsg);
+    }
+    
+    return await res.json();
   },
 
   getGamifiedStats: async () => {

@@ -59,7 +59,7 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
                   <p className="text-slate-400 text-xs">Filtreleri veya aramayı temizleyerek tekrar deneyin.</p>
                   <button 
                     onClick={onClearFilters}
-                    className="mt-3 px-4 py-2 bg-orange-600 text-white rounded-xl text-xs font-bold"
+                    className="mt-3 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl text-xs font-bold transition-all"
                   >
                     Filtreleri Sıfırla
                   </button>

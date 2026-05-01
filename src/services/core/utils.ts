@@ -29,9 +29,31 @@ export const getUserId = async () => {
   return _cachedUserId;
 };
 
-export const getTodayStr = (d = new Date()) => {
-  const year = d.getFullYear();
-  const month = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
+let globalServerOffset = 0;
+
+export const setGlobalServerOffset = (offset: number) => {
+  globalServerOffset = offset;
+};
+
+export const getSyncedDate = (): Date => {
+  return new Date(Date.now() + globalServerOffset);
+};
+
+export const getTodayStrFromDate = (date: Date): string => {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    timeZone: "Europe/Istanbul",
+  }).formatToParts(date);
+
+  const year = parts.find((p) => p.type === "year")?.value;
+  const month = parts.find((p) => p.type === "month")?.value;
+  const day = parts.find((p) => p.type === "day")?.value;
+
   return `${year}-${month}-${day}`;
+};
+
+export const getTodayStr = (d?: Date) => {
+  return getTodayStrFromDate(d || getSyncedDate());
 };

@@ -201,7 +201,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
           >
             <div className="p-2 w-[240px]">
               <div className="mb-2 pb-2 border-b border-slate-100">
-                <span className="text-[10px] font-bold text-orange-500 uppercase">{selectedPin.kind === 'region_point' ? 'Bölge Noktası' : 'Network Teması'}</span>
+                <span className="text-[10px] font-bold text-indigo-500 uppercase">{selectedPin.kind === 'region_point' ? 'Bölge Noktası' : 'Network Teması'}</span>
                 <h3 className="font-bold text-slate-900 text-sm mb-1">{selectedPin.title}</h3>
                 {selectedPin.contact_name && <p className="text-xs font-medium text-slate-700 m-0">{selectedPin.contact_name}</p>}
                 {selectedPin.phone && <p className="text-xs text-slate-500 m-0">{selectedPin.phone}</p>}
@@ -385,7 +385,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
                           value={newPinData.title || ''}
                           onChange={(e) => setNewPinData({...newPinData, title: e.target.value})}
                           placeholder="Örn: Ahmet Bakkal"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                         />
                       </div>
                       <div>
@@ -395,7 +395,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
                           value={newPinData.contact_name || ''}
                           onChange={(e) => setNewPinData({...newPinData, contact_name: e.target.value})}
                           placeholder="Örn: Ahmet Yılmaz"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                         />
                       </div>
                     </div>
@@ -406,7 +406,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
                         value={newPinData.phone || ''}
                         onChange={(e) => setNewPinData({...newPinData, phone: e.target.value})}
                         placeholder="Örn: 0555 555 55 55"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                       />
                     </div>
                   </>
@@ -418,7 +418,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
                       value={newPinData.title || ''}
                       onChange={(e) => setNewPinData({...newPinData, title: e.target.value})}
                       placeholder="Örn: Yeni İnşaat Projesi"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                     />
                   </div>
                 )}
@@ -428,7 +428,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
                     Kategori
                     {!showAddCategoryForm && (
                       <button 
-                        className="text-orange-500 hover:text-orange-600 lowercase"
+                        className="text-indigo-500 hover:text-indigo-600 lowercase"
                         onClick={() => setShowAddCategoryForm(true)}
                       >
                         + Yeni Kategori
@@ -437,10 +437,10 @@ export const RegionMap: React.FC<RegionMapProps> = ({
                   </label>
                   
                   {showAddCategoryForm && (
-                    <div className="bg-orange-50 border border-orange-100 p-3 rounded-xl mb-3 space-y-3">
+                    <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-xl mb-3 space-y-3">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-orange-900">Yeni Kategori Ekle</span>
-                        <button onClick={() => setShowAddCategoryForm(false)} className="text-orange-400 hover:text-orange-600">
+                        <span className="text-xs font-bold text-indigo-900">Yeni Kategori Ekle</span>
+                        <button onClick={() => setShowAddCategoryForm(false)} className="text-indigo-400 hover:text-indigo-600">
                           <X size={16} />
                         </button>
                       </div>
@@ -449,18 +449,18 @@ export const RegionMap: React.FC<RegionMapProps> = ({
                         value={newCatName}
                         onChange={(e) => setNewCatName(e.target.value)}
                         placeholder="Örn: Eczane, Spor Salonu"
-                        className="w-full bg-white border border-orange-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                        className="w-full bg-white border border-indigo-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                       />
-                      <div className="flex bg-white rounded-lg border border-orange-200 p-0.5">
+                      <div className="flex bg-white rounded-lg border border-indigo-200 p-0.5">
                         <button 
                           onClick={() => setNewCatKind('network_contact')}
-                          className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${newCatKind === 'network_contact' ? 'bg-orange-100 text-orange-800' : 'text-slate-500 hover:text-slate-700'}`}
+                          className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${newCatKind === 'network_contact' ? 'bg-indigo-100 text-indigo-800' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                           Network
                         </button>
                         <button 
                           onClick={() => setNewCatKind('region_point')}
-                          className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${newCatKind === 'region_point' ? 'bg-orange-100 text-orange-800' : 'text-slate-500 hover:text-slate-700'}`}
+                          className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${newCatKind === 'region_point' ? 'bg-indigo-100 text-indigo-800' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                           Nokta
                         </button>
@@ -470,7 +470,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
                           type="checkbox" 
                           checked={newCatAutoCrm} 
                           onChange={(e) => setNewCatAutoCrm(e.target.checked)}
-                          className="mt-0.5 w-4 h-4 rounded border-slate-300 text-orange-600 focus:ring-orange-500"
+                          className="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                         />
                         <span className="text-xs text-slate-700 leading-tight">CRM'e otomatik olarak eklensin (Sadece bu kategori için)</span>
                       </label>
@@ -487,7 +487,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
                             setShowAddCategoryForm(false);
                           }
                         }}
-                        className="w-full bg-orange-600 text-white font-bold py-2 rounded-lg text-xs hover:bg-orange-700"
+                        className="w-full bg-indigo-600 text-white font-bold py-2 rounded-lg text-xs hover:bg-indigo-700"
                       >
                         Kaydet
                       </button>
@@ -497,7 +497,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
                   <select 
                     value={newPinData.type || ''}
                     onChange={(e) => setNewPinData({...newPinData, type: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                   >
                     <option value="" disabled>Seçiniz</option>
                     {(categories || []).filter(c => c.kind === (newPinData.kind || 'network_contact') || !c.kind).map(c => (
@@ -512,7 +512,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
                     <select 
                       value={newPinData.relationship_level || ''}
                       onChange={(e) => setNewPinData({...newPinData, relationship_level: e.target.value as MapPinType['relationship_level']})}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                     >
                       <option value="" disabled>Seçiniz</option>
                       <option value="Soğuk Temas">Soğuk Temas</option>
@@ -551,7 +551,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
                       <button
                         key={lvl}
                         onClick={() => setNewPinData({...newPinData, potential: lvl as MapPinType['potential']})}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg border ${newPinData.potential === lvl ? 'border-orange-500 bg-orange-50 text-orange-600' : 'border-slate-200 text-slate-500 bg-white'}`}
+                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg border ${newPinData.potential === lvl ? 'border-indigo-500 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-500 bg-white'}`}
                       >
                         {lvl}
                       </button>
@@ -566,7 +566,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
                     value={newPinData.address || ''}
                     onChange={(e) => setNewPinData({...newPinData, address: e.target.value})}
                     placeholder="Örn: Atatürk Cad. No:12"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-orange-500 outline-none"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                   />
                 </div>
 
@@ -576,7 +576,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
                       type="checkbox" 
                       checked={newPinData.add_to_crm || false} 
                       onChange={(e) => setNewPinData({...newPinData, add_to_crm: e.target.checked})}
-                      className="w-5 h-5 rounded border-slate-300 text-orange-600 focus:ring-orange-500"
+                      className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                     />
                     <div>
                       <span className="block text-sm font-bold text-slate-700">CRM'e Ekle</span>
@@ -591,14 +591,14 @@ export const RegionMap: React.FC<RegionMapProps> = ({
                     value={newPinData.notes || ''}
                     onChange={(e) => setNewPinData({...newPinData, notes: e.target.value})}
                     placeholder="Detaylı notlar..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-orange-500 outline-none resize-none h-20"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-20"
                   />
                 </div>
 
                 <button 
                   onClick={handleAddPin}
                   disabled={!newPinData.title || !newPinData.type || addPinMutation.isPending}
-                  className="w-full bg-orange-600 hover:bg-orange-700 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2"
+                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2"
                 >
                   {addPinMutation.isPending ? (
                     <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

@@ -21,9 +21,9 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
         <p className="text-sm text-slate-500 mt-1 font-medium">Uygulamanın çalışmasını etkileyen temel yapılandırmalar.</p>
       </div>
       
-      <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-200">
+      <div className="bg-white p-6 md:p-8 rounded-[24px] shadow-sm border border-slate-100">
         <div className="flex items-start gap-4 pb-6 border-b border-slate-100">
-          <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center shrink-0">
+          <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0 border border-indigo-100">
             <MessageCircle size={24} />
           </div>
           <div>
@@ -47,11 +47,11 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
               value={whatsappNumber} 
               onChange={e => setWhatsappNumber(e.target.value)} 
               placeholder="Örn: 905551234567" 
-              className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:border-emerald-500 focus:ring-emerald-100 transition-all font-medium text-slate-700 bg-slate-50 focus:bg-white outline-none" 
+              className="w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:border-indigo-500 focus:ring-indigo-500/20 transition-all font-medium text-slate-700 bg-slate-50 focus:bg-white outline-none" 
             />
           </div>
           <p className="text-xs text-slate-500 mt-2 font-medium flex items-center gap-1.5">
-            <span className="w-1.5 h-1.5 rounded-full bg-orange-400"></span>
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400"></span>
             Numarayı alan kodu ile birlikte boşluk bırakmadan girin (Örn: 90532...).
           </p>
         </div>
@@ -60,7 +60,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
           <button 
             onClick={saveSystemSettings} 
             disabled={settingsLoading} 
-            className="px-6 py-3 bg-slate-900 border border-slate-800 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-200 disabled:opacity-70"
+            className="px-8 py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all flex items-center gap-2 shadow-lg shadow-slate-900/20 disabled:opacity-70 disabled:cursor-not-allowed"
           >
             <Save size={18} className={settingsLoading ? "animate-pulse" : ""} /> 
             {settingsLoading ? 'Kaydediliyor...' : 'Değişiklikleri Kaydet'}

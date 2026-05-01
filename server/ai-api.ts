@@ -2,6 +2,7 @@ import { GoogleGenAI } from "@google/genai";
 import { rateLimit } from "express-rate-limit";
 import { User } from "@supabase/supabase-js";
 import { Request, Response, NextFunction } from "express";
+import { getEffectiveAiTokenLimit } from "../src/config/subscriptionLimits";
 
 export interface AuthRequest extends Request {
   user?: User;
@@ -10,6 +11,7 @@ export interface AuthRequest extends Request {
 import { createClient } from "@supabase/supabase-js";
 import { addMonths } from "date-fns";
 import * as dotenv from "dotenv";
+import { getTurkeyTodayISO } from "./time.js";
 
 dotenv.config({ override: true });
 
@@ -236,7 +238,7 @@ export const handleAIGeneration = async (req: AuthRequest, res: Response) => {
     // 2. Token Limit Check (Server-side Enforcement)
     const { data: profile, error: fetchError } = await supabaseAdmin
       .from("profiles")
-      .select("ai_tokens_used, tier")
+      .select("ai_tokens_used, tier, ai_token_limit, role, subscription_type, subscription_end_date")
       .eq("id", userId)
       .single();
 
@@ -244,14 +246,14 @@ export const handleAIGeneration = async (req: AuthRequest, res: Response) => {
       return res.status(404).json({ error: "Kullanıcı profili bulunamadı." });
     }
 
-    const limit = profile.tier === "pro" ? 10000 : 1000;
+    const limit = getEffectiveAiTokenLimit(profile);
     const currentUsage = profile.ai_tokens_used || 0;
 
     if (currentUsage >= limit) {
       return res.status(403).json({
         error: "Yapay zeka kullanım limitiniz doldu.",
         details:
-          "Daha fazla kullanım için Portfy Pro paketinize geçiş yapabilir veya bir sonraki ayı bekleyebilirsiniz.",
+          "Daha fazla kullanım için paketinizi yükseltebilirsiniz. Mevcut limitinizi aştınız.",
       });
     }
 
@@ -684,6 +686,239 @@ export const handleAdminGetSettings = async (
   }
 };
 
+export const handleGetDailyPlanToday = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!supabaseAdmin)
+      return res.status(503).json({ error: "Privileged service unavailable" });
+
+    const userId = req.user.id;
+    const todayStr = getTurkeyTodayISO(new Date());
+
+    const { data, error } = await supabaseAdmin
+      .from("daily_plan")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("plan_date", todayStr)
+      .maybeSingle();
+
+    if (error) {
+        return res.status(500).json({ error: error.message });
+    }
+
+    return res.json(data || null);
+  } catch (error: unknown) {
+    console.error("Get Daily Plan Error:", error);
+    res.status(500).json({ error: safeErrorMessage(error, "Failed to get daily plan") });
+  }
+};
+
+export const handleSaveDailyPlan = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!supabaseAdmin)
+      return res.status(503).json({ error: "Privileged service unavailable" });
+
+    const userId = req.user.id;
+    const todayStr = getTurkeyTodayISO(new Date());
+    
+    // Discard any date/today/plan_date from req.body
+    const payload = { ...req.body };
+    delete payload.plan_date;
+    delete payload.date;
+    delete payload.today;
+    delete payload.user_id;
+
+    const { data, error } = await supabaseAdmin
+      .from("daily_plan")
+      .upsert(
+        { 
+          ...payload, 
+          user_id: userId, 
+          plan_date: todayStr, 
+          updated_at: new Date().toISOString() 
+        }, 
+        { onConflict: "user_id, plan_date" }
+      )
+      .select()
+      .single();
+
+    if (error) {
+        return res.status(500).json({ error: error.message });
+    }
+
+    return res.json(data);
+  } catch (error: unknown) {
+    console.error("Save Daily Plan Error:", error);
+    res.status(500).json({ error: safeErrorMessage(error, "Failed to save daily plan") });
+  }
+};
+
+export const handleGetDayClosureToday = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!supabaseAdmin)
+      return res.status(503).json({ error: "Privileged service unavailable" });
+
+    const userId = req.user.id;
+    const todayStr = getTurkeyTodayISO(new Date());
+
+    const { data, error } = await supabaseAdmin
+      .from("day_closure")
+      .select("*")
+      .eq("user_id", userId)
+      .eq("closure_date", todayStr)
+      .maybeSingle();
+
+    if (error) {
+        return res.status(500).json({ error: error.message });
+    }
+
+    return res.json(data || null);
+  } catch (error: unknown) {
+    console.error("Get Day Closure Error:", error);
+    res.status(500).json({ error: safeErrorMessage(error, "Failed to get day closure") });
+  }
+};
+
+export const handleSaveDayClosure = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!supabaseAdmin)
+      return res.status(503).json({ error: "Privileged service unavailable" });
+
+    const userId = req.user.id;
+    const todayStr = getTurkeyTodayISO(new Date());
+    
+    const payload = req.body;
+    
+    // Normalize payload to match DB schema exactly like frontend
+    const normalizedPayload = {
+      user_id: userId,
+      closure_date: todayStr,
+      updated_at: new Date().toISOString(),
+      wins: payload.wins,
+      blockers: payload.blockers,
+      tomorrow_top3: payload.top3_tomorrow || payload.tomorrow_top3,
+      completed_calls: payload.calls || payload.completed_calls || 0,
+      completed_portfolio_actions: payload.visits || payload.completed_portfolio_actions || 0,
+      completed_followups: payload.completed_followups || 0
+    };
+
+    const { data, error } = await supabaseAdmin
+      .from("day_closure")
+      .upsert(normalizedPayload, { onConflict: "user_id, closure_date" })
+      .select()
+      .single();
+
+    if (error) {
+        return res.status(500).json({ error: error.message });
+    }
+
+    return res.json(data);
+  } catch (error: unknown) {
+    console.error("Save Day Closure Error:", error);
+    res.status(500).json({ error: safeErrorMessage(error, "Failed to save day closure") });
+  }
+};
+
+export const handleVerifyTask = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!supabaseAdmin)
+      return res.status(503).json({ error: "Privileged service unavailable" });
+    const { title } = req.body;
+    const userId = req.user.id;
+
+    if (!title) {
+        return res.status(400).json({ error: "Missing title" });
+    }
+
+    const todayStr = getTurkeyTodayISO(new Date());
+    const titleLower = title.toLowerCase();
+
+    if (titleLower.includes("peş peşe girişini sürdür")) {
+        return res.json({ verified: true });
+    }
+
+    if (titleLower.includes("müşteri") || titleLower.includes("lead")) {
+        const { count } = await supabaseAdmin
+            .from("leads")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .gte("created_at", `${todayStr}T00:00:00+03:00`);
+            
+        const match = titleLower.match(/(\d+)/);
+        const target = match ? parseInt(match[1], 10) : 1;
+
+        if ((count || 0) >= target) return res.json({ verified: true });
+        return res.json({
+            verified: false,
+            message: `Bugün ${count || 0}/${target} müşteri ekledin. ${target - (count || 0)} kişi daha eklemelisin!`,
+        });
+    }
+
+    if (titleLower.includes("portföy")) {
+        const { count } = await supabaseAdmin
+            .from("properties")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .gte("created_at", `${todayStr}T00:00:00+03:00`);
+
+        const match = titleLower.match(/(\d+)/);
+        const target = match ? parseInt(match[1], 10) : 1;
+
+        if ((count || 0) >= target) return res.json({ verified: true });
+        return res.json({
+            verified: false,
+            message: `Bugün ${count || 0}/${target} portföy ekledin. ${target - (count || 0)} portföy daha eklemelisin!`,
+        });
+    }
+
+    if (titleLower.includes("görev")) {
+        const { count } = await supabaseAdmin
+            .from("personal_tasks")
+            .select("*", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .eq("is_completed", true)
+            .gte("updated_at", `${todayStr}T00:00:00+03:00`);
+
+        const match = titleLower.match(/(\d+)/);
+        const target = match ? parseInt(match[1], 10) : 1;
+
+        if ((count || 0) >= target) return res.json({ verified: true });
+        return res.json({
+            verified: false,
+            message: `Bugün ${count || 0}/${target} kişisel görev tamamladın!`,
+        });
+    }
+
+    if (titleLower.includes("sabah ritüeli") || titleLower.includes("erken başla")) {
+        const { data: profile } = await supabaseAdmin
+            .from("profiles")
+            .select("morning_ritual_completed")
+            .eq("id", userId)
+            .single();
+        if (profile?.morning_ritual_completed) return res.json({ verified: true });
+        return res.json({
+            verified: false,
+            message: "Sabah ritüelini henüz tamamlamadın.",
+        });
+    }
+
+    if (titleLower.includes("akşam ritüeli") || titleLower.includes("kapanış")) {
+        const { data: profile } = await supabaseAdmin
+            .from("profiles")
+            .select("evening_ritual_completed")
+            .eq("id", userId)
+            .single();
+        if (profile?.evening_ritual_completed) return res.json({ verified: true });
+        return res.json({ verified: false, message: "Gün kapanışını henüz yapmadın." });
+    }
+
+    return res.json({ verified: true });
+
+  } catch (error: unknown) {
+    console.error("Verify Task Error:", error);
+    res.status(500).json({ error: safeErrorMessage(error, "Görev doğrulama hatası") });
+  }
+};
+
 export const handleEarnXP = async (req: AuthRequest, res: Response) => {
   try {
     if (!supabaseAdmin)
@@ -695,20 +930,13 @@ export const handleEarnXP = async (req: AuthRequest, res: Response) => {
       propertyId,
       sessionId,
       stats,
-      today: clientToday,
-      now: clientNow,
     } = req.body;
     const userId = req.user.id;
 
-    const getLocalDateISO = (d = new Date()) => {
-      const year = d.getFullYear();
-      const month = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    };
-
-    const today = clientToday || getLocalDateISO();
-    const now = clientNow || new Date().toISOString();
+    // Use server time regardless of client payload
+    const nowObj = new Date();
+    const today = getTurkeyTodayISO(nowObj);
+    const now = nowObj.toISOString();
 
     if (!actionType) {
       return res.status(400).json({ error: "Missing actionType" });
@@ -908,6 +1136,87 @@ export const handleAdminUpdateSupportTicket = async (req: AuthRequest, res: Resp
     res.json(data);
   } catch (error: unknown) {
     res.status(500).json({ error: safeErrorMessage(error, "Error updating ticket") });
+  }
+};
+
+export const handleAdminCreateTaskTemplate = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
+    const { data } = req.body;
+    
+    // Allowlist explicitly listing the allowed fields
+    const ALLOWLIST = [
+      'title', 'description', 'points', 'category', 'auto_verify',
+      'recurrence_type', 'interval_days', 'recurrence_days', 'day_of_month',
+      'start_date', 'end_date', 'target_scope', 'auto_generate', 'is_active', 'action_type'
+    ];
+    const filteredData: Record<string, unknown> = {};
+    if (data) Object.keys(data).forEach(key => {
+      if (ALLOWLIST.includes(key)) filteredData[key] = data[key];
+    });
+
+    const { data: newTemplate, error } = await supabaseAdmin
+      .from('task_templates')
+      .insert([filteredData])
+      .select()
+      .single();
+
+    if (error) throw error;
+    await logAdminAudit(req.user?.id || '', newTemplate.id, 'TASK_TEMPLATE_CREATED', filteredData);
+    
+    res.json({ success: true, data: newTemplate });
+  } catch (error) {
+    console.error("Admin Create Task Template Error:", error);
+    res.status(500).json({ error: safeErrorMessage(error, "Error creating task template") });
+  }
+};
+
+export const handleAdminUpdateTaskTemplate = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
+    const { id } = req.params;
+    const { data } = req.body;
+    
+    const ALLOWLIST = [
+      'title', 'description', 'points', 'category', 'auto_verify',
+      'recurrence_type', 'interval_days', 'recurrence_days', 'day_of_month',
+      'start_date', 'end_date', 'target_scope', 'auto_generate', 'is_active', 'action_type'
+    ];
+    const filteredData: Record<string, unknown> = {};
+    if (data) Object.keys(data).forEach(key => {
+      if (ALLOWLIST.includes(key)) filteredData[key] = data[key];
+    });
+
+    const { data: updated, error } = await supabaseAdmin
+      .from('task_templates')
+      .update(filteredData)
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) throw error;
+    await logAdminAudit(req.user?.id || '', id, 'TASK_TEMPLATE_UPDATED', filteredData);
+    
+    res.json({ success: true, data: updated });
+  } catch (error) {
+    console.error("Admin Update Task Template Error:", error);
+    res.status(500).json({ error: safeErrorMessage(error, "Error updating task template") });
+  }
+};
+
+export const handleAdminDeleteTaskTemplate = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
+    const { id } = req.params;
+    
+    const { error } = await supabaseAdmin.from('task_templates').delete().eq('id', id);
+    if (error) throw error;
+    
+    await logAdminAudit(req.user?.id || '', id, 'TASK_TEMPLATE_DELETED', {});
+    res.json({ success: true });
+  } catch (error) {
+    console.error("Admin Delete Task Template Error:", error);
+    res.status(500).json({ error: safeErrorMessage(error, "Error deleting task template") });
   }
 };
 
