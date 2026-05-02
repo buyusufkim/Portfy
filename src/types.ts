@@ -137,8 +137,23 @@ export interface UserProfile {
   expertise_areas?: string[];
   working_style?: string[];
   preferred_start_time?: string;
+  work_start_time?: string;
+  work_end_time?: string;
   ai_coach_tone?: string;
   notification_preference?: string;
+}
+
+export interface WorkDisciplineLog {
+  id: string;
+  user_id: string;
+  log_date: string;
+  type: 'early_start' | 'early_close' | 'missed_close_penalty';
+  scheduled_time?: string;
+  actual_time: string;
+  reason?: string;
+  xp_delta?: number;
+  metadata?: any;
+  created_at: string;
 }
 
 export interface GlobalSettings {
@@ -484,6 +499,7 @@ export interface GamifiedTask {
   template_id?: string | null;
   source?: string;
   action_type?: string;
+  auto_verify?: boolean;
 }
 
 export interface UserStats {

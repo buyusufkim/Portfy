@@ -181,7 +181,7 @@ export const MobileNav = ({
         </div>
       )}
 
-      <nav id="bottom-nav" className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 flex justify-between items-center z-[60] px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
+      <nav id="bottom-nav" className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 flex justify-between items-center z-30 px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
         <button 
           onClick={() => { setShowModules(false); onTabChange('dashboard'); }}
           className={`flex-1 flex flex-col items-center py-2 gap-1 transition-colors ${activeTab === 'dashboard' && !showAdminPanel ? 'text-[#061A32]' : 'text-slate-400'}`}

@@ -33,10 +33,12 @@ import {
   handleAdminUpdateTaskTemplate,
   handleAdminDeleteTaskTemplate,
   handleVerifyTask,
+  handleCompleteGamifiedTask,
   handleGetDailyPlanToday,
   handleSaveDailyPlan,
   handleGetDayClosureToday,
-  handleSaveDayClosure
+  handleSaveDayClosure,
+  handleGetDailyGamifiedTasks
 } from "./server/ai-api.js";
 import { rateLimit } from 'express-rate-limit';
 import { fetchMarketData } from "./server/marketScraper.js";
@@ -142,6 +144,8 @@ app.post("/api/ai/profile/update", authenticate, handleUpdateProfile);
 app.post("/api/ai/subscribe", authenticate, handleSubscribe);
 app.post("/api/ai/earn-xp", authenticate, xpLimiter, handleEarnXP);
 app.post("/api/ai/verify-task", authenticate, handleVerifyTask);
+app.post("/api/ai/complete-gamified-task", authenticate, handleCompleteGamifiedTask);
+app.get("/api/ai/gamified-tasks/daily", authenticate, handleGetDailyGamifiedTasks);
 app.get("/api/ai/daily-plan/today", authenticate, handleGetDailyPlanToday);
 app.post("/api/ai/daily-plan/save", authenticate, handleSaveDailyPlan);
 app.get("/api/ai/day-closure/today", authenticate, handleGetDayClosureToday);

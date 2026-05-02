@@ -332,7 +332,7 @@ function MainApp() {
   const [showScanner, setShowScanner] = useState(false);
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-28 md:pb-0 font-sans text-slate-900 overflow-x-hidden">
+    <div className="min-h-screen bg-slate-50 pb-[calc(8rem+env(safe-area-inset-bottom))] lg:pb-0 font-sans text-slate-900 overflow-x-hidden">
       {(profile && (!profile.region || !profile.region.city)) ||
       showRegionSetup ? (
         <RegionSetupModal
@@ -348,6 +348,7 @@ function MainApp() {
 
       <div className="flex flex-col md:flex-row w-full min-h-screen">
         <RitualOverlays
+          profile={profile}
           showDailyRadar={showDailyRadar}
           setShowDailyRadar={setShowDailyRadar}
           dailyRadarData={dailyRadarData}

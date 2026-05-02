@@ -135,9 +135,9 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   });
 
   const startDayMutation = useMutation({
-    mutationFn: async () => {
+    mutationFn: async (variables?: { early_start_reason?: string }) => {
       // 1. Start the day on the backend
-      await api.startDay();
+      await api.startDay(variables);
       
       // 2. Try to refresh tasks, but don't let it block the success of starting the day
       try {
@@ -184,24 +184,10 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     }
   });
 
-  // Auto-complete specific gamified tasks
+  // Removed: Auto-completing specific gamified tasks automatically
   const completingTasks = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (gamifiedTasks && gamifiedTasks.length > 0 && profile?.id) {
-      // 1. Peş peşe girişini sürdür
-      const loginTask = gamifiedTasks.find(t => t.title === "Peş peşe girişini sürdür" && !t.is_completed);
-      if (loginTask && !completingTasks.current.has(loginTask.id)) {
-        completingTasks.current.add(loginTask.id);
-        completeTaskMutation.mutate({ task: loginTask });
-      }
-
-      // 2. Bugün 100 puan kazan
-      const pointsTask = gamifiedTasks.find(t => t.title === "Bugün 100 puan kazan" && !t.is_completed);
-      if (pointsTask && (gamifiedStats?.points_today || 0) >= 100 && !completingTasks.current.has(pointsTask.id)) {
-        completingTasks.current.add(pointsTask.id);
-        completeTaskMutation.mutate({ task: pointsTask });
-      }
-    }
+    // Intentionally left empty to prevent automatic gamification triggers on dashboard open
   }, [gamifiedTasks, profile?.id, gamifiedStats?.points_today]);
 
   const { data: leadAlerts = [] } = useQuery({

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { getTodayStrFromDate, getTodayStr as getTurkiyeTodayStr } from '../../services/core/utils';
 import { motion, AnimatePresence } from 'motion/react';
 import { Sun, Moon, ArrowRight, CheckCircle2, Sparkles, Trophy, Zap, Shield, Star, Award } from 'lucide-react';
 import { useHabitEngine } from '../../hooks/useHabitEngine';
@@ -22,29 +23,30 @@ export const HabitEnginePage: React.FC = () => {
   const [showRadar, setShowRadar] = useState(false);
   const [showCloser, setShowCloser] = useState(false);
 
-  const getTodayStr = () => {
-    const now = new Date();
-    return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-  };
-
-  const todayISO = getTodayStr();
+  const todayISO = getTurkiyeTodayStr();
   const localStarted = profile?.id ? localStorage.getItem(`day_started_${profile.id}_${todayISO}`) : null;
   const localEnded = profile?.id ? localStorage.getItem(`day_ended_${profile.id}_${todayISO}`) : null;
   
-  const isDayStarted = (profile?.last_day_started_at?.startsWith(todayISO)) || 
-                       (profile?.last_active_date === todayISO) || 
+  const isDayStarted = (profile?.last_day_started_at && getTodayStrFromDate(new Date(profile.last_day_started_at)) === todayISO) || 
                        !!localStarted;
   
   const dayStartTimestamp = profile?.last_day_started_at || localStarted || '';
   const isDayEnded = !!localEnded || (
-    !!profile?.last_ritual_completed_at?.startsWith(todayISO) && 
+    !!(profile?.last_ritual_completed_at && getTodayStrFromDate(new Date(profile.last_ritual_completed_at)) === todayISO) && 
     profile.last_ritual_completed_at > dayStartTimestamp
   );
 
   useEffect(() => {
     if (profile) {
-      const today = getTodayStr();
-      const lastRitual = profile.last_ritual_completed_at ? profile.last_ritual_completed_at.split('T')[0] : (profile.last_active_date || null);
+      const today = getTurkiyeTodayStr();
+      
+      let lastRitual = null;
+      if (profile.last_ritual_completed_at) {
+          const d = new Date(profile.last_ritual_completed_at);
+          if (!isNaN(d.getTime())) {
+              lastRitual = getTodayStrFromDate(d);
+          }
+      }
       
       if (lastRitual !== today && !localStarted) {
         const hour = new Date().getHours();

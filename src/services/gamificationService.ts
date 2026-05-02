@@ -2,167 +2,74 @@ import { supabase } from "../lib/supabase";
 import { getTodayStr, getUserId } from "./core/utils";
 import { GamifiedTask } from "../types";
 
+export type GamifiedTaskInsert = {
+  user_id: string;
+  title: string;
+  points: number;
+  category: string;
+  date: string;
+  is_completed: boolean;
+  template_id?: string;
+  source?: string;
+  action_type?: string;
+  auto_verify?: boolean;
+};
+
 export const gamificationService = {
   getDailyGamifiedTasks: async (forceRefresh: boolean = false) => {
-    const userId = await getUserId();
-    if (!userId) throw new Error("Not authenticated");
-    const today = getTodayStr();
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not authenticated");
 
-    // 1. Kullanıcı profili bilgisini al (hedef kitle kontrolü için)
-    const { data: profile } = await supabase
-      .from("profiles")
-      .select("tier, subscription_type")
-      .eq("id", userId)
-      .single();
+    const res = await fetch("/api/ai/gamified-tasks/daily", {
+       headers: {
+         Authorization: `Bearer ${session.access_token}`,
+       }
+    });
 
-    // 2. Bugünkü gamified görevleri getir
-    let { data: tasks } = await supabase
-      .from("gamified_tasks")
-      .select("*")
-      .eq("user_id", userId)
-      .eq("date", today);
-
-    // 3. Aktif Task Template'leri getir (auto_generate = true olanlar)
-    const { data: templates } = await supabase
-      .from("task_templates")
-      .select("*")
-      .eq("auto_generate", true)
-      .eq("is_active", true)
-      .lte("start_date", today);
-
-    const userTier = profile?.tier || "free";
-    const userSub = profile?.subscription_type || "none";
-
-    // 4. Template kontrolü & lazy creation
-    const newTasksToInsert: any[] = [];
-
-    if (templates && templates.length > 0) {
-      for (const t of templates) {
-        // end_date kontrolü
-        if (t.end_date && t.end_date < today) continue;
-
-        // Target Scope Kontrolü
-        if (t.target_scope === "free" && userTier !== "free" && userSub !== "none") continue;
-        if (t.target_scope === "trial" && userSub !== "trial") continue;
-        if (t.target_scope === "master" && userTier !== "master") continue;
-
-        let shouldGenerate = false;
-
-        // Recurrence Kontrolü
-        if (t.recurrence_type === "once") {
-          if (t.start_date === today) shouldGenerate = true;
-        } else if (t.recurrence_type === "daily") {
-          shouldGenerate = true;
-        } else if (t.recurrence_type === "interval" && t.interval_days > 0) {
-          const startDate = new Date(t.start_date);
-          const currentDate = new Date(today);
-          const diffTime = Math.abs(currentDate.getTime() - startDate.getTime());
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-          if (diffDays >= 0 && diffDays % t.interval_days === 0) {
-            shouldGenerate = true;
-          }
-        } else if (t.recurrence_type === "weekly" && t.recurrence_days?.length > 0) {
-          const currentDayOfWeek = new Date(today).getDay(); // 0 is Sunday, 1 is Monday ...
-          if (t.recurrence_days.includes(currentDayOfWeek)) {
-            shouldGenerate = true;
-          }
-        } else if (t.recurrence_type === "monthly" && t.day_of_month) {
-          const currentDayOfMonth = new Date(today).getDate();
-          if (currentDayOfMonth === t.day_of_month) {
-            shouldGenerate = true;
-          }
-        }
-
-        if (shouldGenerate) {
-          const templateAlreadyGenerated = tasks?.some(
-            (task) => task.template_id === t.id && task.date === today
-          );
-
-          if (!templateAlreadyGenerated) {
-            newTasksToInsert.push({
-              user_id: userId,
-              title: t.title,
-              points: t.points || 10,
-              category: t.category,
-              date: today,
-              is_completed: false,
-              template_id: t.id,
-              source: "admin_template",
-              action_type: t.action_type || "general",
-            });
-          }
-        }
-      }
+    if (!res.ok) {
+        throw new Error("Failed to load daily tasks");
     }
 
-    // Default task fallback if no tasks and no new templates to insert
-    if ((!tasks || tasks.length === 0) && newTasksToInsert.length === 0) {
-      newTasksToInsert.push(
-        { user_id: userId, title: "Güne Erken Başla (Sabah Ritüelini Tamamla)", points: 100, category: "main", date: today, is_completed: false },
-        { user_id: userId, title: "Bugün 3 Yeni Lead Ekle", points: 150, category: "smart", date: today, is_completed: false },
-        { user_id: userId, title: "Bugün 1 Yeni Portföy Ekle", points: 300, category: "smart", date: today, is_completed: false },
-        { user_id: userId, title: "Akşam Gün Kapanışını (Ritüeli) Tamamla", points: 100, category: "main", date: today, is_completed: false },
-        { user_id: userId, title: "1 Kişisel Görev Tamamla", points: 50, category: "sweet", date: today, is_completed: false },
-        { user_id: userId, title: "Peş peşe girişini sürdür", points: 50, category: "sweet", date: today, is_completed: false }
-      );
-    }
-
-    if (newTasksToInsert.length > 0) {
-      const { data: insertedTasks, error: insertError } = await supabase
-        .from("gamified_tasks")
-        .insert(newTasksToInsert)
-        .select();
-
-      if (!insertError && insertedTasks) {
-         if(!tasks) tasks = [];
-         tasks = [...tasks, ...insertedTasks];
-      } else if (insertError) {
-         console.warn("Could not insert recurring tasks. Might be a unique constraint violation", insertError);
-      }
-    }
-
-    return (tasks || []) as GamifiedTask[];
+    const data = await res.json();
+    return (data.tasks || []) as GamifiedTask[];
   },
 
   completeGamifiedTask: async (taskId: string) => {
-    const userId = await getUserId();
-    if (!userId) throw new Error("Not authenticated");
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Not authenticated");
 
-    const { data: task } = await supabase
-      .from("gamified_tasks")
-      .select("*")
-      .eq("id", taskId)
-      .eq("user_id", userId)
-      .single();
-    if (!task) throw new Error("Task not found or permission denied");
-    if (task.is_completed) return; // Zaten tamamlanmış
+    const res = await fetch("/api/ai/complete-gamified-task", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ taskId }),
+    });
 
-    const { data: updatedData, error } = await supabase
-      .from("gamified_tasks")
-      .update({ is_completed: true, completed_at: new Date().toISOString() })
-      .eq("id", taskId)
-      .eq("user_id", userId)
-      .select("id, points")
-      .single();
+    if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.message || err.error || "Failed to complete task");
+    }
 
-    if (error) throw error;
-    if (!updatedData) throw new Error("Task not found or permission denied");
-
-    // Ödül puanını ver
-    if (updatedData.points > 0) {
-      await gamificationService.earnXP("COMPLETE_TASK", taskId, {
-        points: updatedData.points,
-      });
+    const data = await res.json();
+    if (!data.success) {
+        throw new Error(data.message || "Failed to complete task");
     }
   },
 
-  updateGamifiedTask: async (id: string, data: Partial<GamifiedTask>) => {
+  updateGamifiedTask: async (id: string, data: Pick<GamifiedTask, "ai_reason" | "reminder_time" | "notified">) => {
     const userId = await getUserId();
     if (!userId) throw new Error("Not authenticated");
 
+    const allowedData: Pick<GamifiedTask, "ai_reason" | "reminder_time" | "notified"> = {};
+    if (data.ai_reason !== undefined) allowedData.ai_reason = data.ai_reason;
+    if (data.reminder_time !== undefined) allowedData.reminder_time = data.reminder_time;
+    if (data.notified !== undefined) allowedData.notified = data.notified;
+
     const { data: updatedData, error } = await supabase
       .from("gamified_tasks")
-      .update(data)
+      .update(allowedData)
       .eq("id", id)
       .eq("user_id", userId)
       .select("id")
@@ -173,8 +80,6 @@ export const gamificationService = {
   },
 
   verifyGamifiedTask: async (task: GamifiedTask) => {
-    const title = task.title.toLowerCase();
-
     if (task.is_completed)
       return { verified: false, message: "Bu görevi bugün zaten tamamladın." };
 
@@ -188,7 +93,7 @@ export const gamificationService = {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ title: task.title }),
+        body: JSON.stringify({ taskId: task.id }),
       });
 
       if (res.ok) {
@@ -199,11 +104,10 @@ export const gamificationService = {
       console.error("verify error:", e);
     }
 
-    // Fallback: If it's a generic task, just verify
-    return { verified: true };
+    return { verified: false, message: "Bağlantı hatası veya sunucu yanıt vermedi." };
   },
 
-  earnXP: async (actionType: string, entityId?: string, stats?: any) => {
+  earnXP: async (actionType: string, entityId?: string, stats?: Record<string, string | number | boolean | null | undefined>) => {
     const {
       data: { session },
     } = await supabase.auth.getSession();

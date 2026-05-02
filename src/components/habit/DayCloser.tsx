@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Moon, Star, Trophy, ArrowRight, CheckCircle2, RefreshCw, Share2, Target, AlertTriangle } from 'lucide-react';
-import { DayClosure } from '../../types';
+import { DayClosure, UserProfile } from '../../types';
+import { useTurkeyClock } from '../../hooks/useTurkeyClock';
 
 interface DayCloserProps {
   stats: {
@@ -11,27 +12,42 @@ interface DayCloserProps {
     visits: number;
     social: number;
   };
-  onComplete: (data: Partial<DayClosure>) => void;
+  profile?: UserProfile | null;
+  onComplete: (data: Partial<DayClosure> & { early_close_reason?: string }) => void;
   isPending?: boolean;
   onClose?: () => void;
 }
 
-export const DayCloser: React.FC<DayCloserProps> = ({ stats, onComplete, isPending, onClose }) => {
+export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete, isPending, onClose }) => {
   const [step, setStep] = useState(1);
   const [wins, setWins] = useState('');
   const [blockers, setBlockers] = useState('');
   const [tomorrowTop3, setTomorrowTop3] = useState(['', '', '']);
+  const [earlyCloseReason, setEarlyCloseReason] = useState('');
+  const { timeLabel } = useTurkeyClock();
+
+  const isEarlyClose = React.useMemo(() => {
+    if (!profile?.work_end_time) return false;
+    const [currentHour, currentMinutes] = timeLabel.split(':').map(Number);
+    const [endH, endM] = profile.work_end_time.split(':').map(Number);
+    return currentHour < endH || (currentHour === endH && currentMinutes < endM);
+  }, [profile, timeLabel]);
 
   const handleNext = () => {
     if (step === 1) setStep(2);
-    else if (step === 2) setStep(3);
+    else if (step === 2) {
+      if (isEarlyClose) setStep(3);
+      else setStep(4);
+    }
+    else if (step === 3) setStep(4);
     else {
       onComplete({
         completed_calls: stats.calls,
         completed_portfolio_actions: stats.visits,
         wins,
         blockers,
-        tomorrow_top3: tomorrowTop3.filter(t => t.trim() !== '')
+        tomorrow_top3: tomorrowTop3.filter(t => t.trim() !== ''),
+        early_close_reason: earlyCloseReason.trim()
       });
     }
   };
@@ -163,9 +179,40 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, onComplete, isPendi
                 Sonuçları Kayla <ArrowRight size={24} />
               </button>
             </motion.div>
-          ) : (
+          ) : step === 3 ? (
             <motion.div
               key="step3"
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              className="space-y-8 relative z-10"
+            >
+              <div className="text-center space-y-4">
+                 <div className="w-20 h-20 bg-rose-500/20 rounded-3xl mx-auto flex items-center justify-center text-rose-500 mb-6">
+                   <AlertTriangle size={32} />
+                 </div>
+                 <h1 className="text-3xl font-black text-white tracking-tight">Erken Kapanış</h1>
+                 <p className="text-slate-400 text-sm font-medium">Mesai saatinizden ({profile?.work_end_time}) önce günü kapatıyorsunuz.</p>
+              </div>
+              <div>
+                <textarea 
+                  value={earlyCloseReason}
+                  onChange={(e) => setEarlyCloseReason(e.target.value)}
+                  placeholder="Sebebini kısaca not et..."
+                  className="w-full bg-white/5 border border-white/10 rounded-3xl p-5 text-white/90 text-sm focus:border-rose-500 outline-none h-32 transition-colors"
+                />
+              </div>
+              <button
+                onClick={handleNext}
+                disabled={!earlyCloseReason.trim()}
+                className="w-full py-6 bg-white text-slate-900 rounded-[32px] font-black text-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Devam Et <ArrowRight size={24} />
+              </button>
+            </motion.div>
+          ) : (
+            <motion.div
+              key="step4"
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 1.1, opacity: 0 }}

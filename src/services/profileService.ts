@@ -1,4 +1,4 @@
-import { UserProfile, DashboardStats, Property, Task, Lead, DailyStats, GamifiedTask, UserStats, RescueSession, RescueTask, MissedOpportunity, VoiceParseResult, CoachInsight, MapPin, UserNote, PersonalTask, DayClosure } from '../types';
+import { UserProfile, DashboardStats, Property, Task, Lead, DailyStats, GamifiedTask, UserStats, RescueSession, RescueTask, MissedOpportunity, VoiceParseResult, CoachInsight, MapPin, UserNote, PersonalTask, DayClosure, WorkDisciplineLog } from '../types';
 import { supabase } from '../lib/supabase';
 import { getUserId, getTodayStr } from './core/utils';
 import { leadService } from './leadService';
@@ -55,26 +55,46 @@ export const profileService = {
     }
   },
 
-  startDay: async () => {
+  getWorkDisciplineLogs: async (): Promise<WorkDisciplineLog[]> => {
+    const userId = await getUserId();
+    if (!userId) return [];
+    try {
+      const { data, error } = await supabase
+        .from('work_discipline_logs')
+        .select('*')
+        .eq('user_id', userId)
+        .order('log_date', { ascending: false })
+        .order('created_at', { ascending: false })
+        .limit(10);
+      if (error) throw error;
+      return data || [];
+    } catch (e) {
+      console.error("error fetching discipline logs:", e);
+      return [];
+    }
+  },
+
+  startDay: async (stats?: { early_start_reason?: string }) => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
 
     // Use server-side START_DAY action to update timestamps securely
-    await gamificationService.earnXP('START_DAY');
+    await gamificationService.earnXP('START_DAY', undefined, stats);
     
     return { success: true };
   },
 
-  endDay: async (stats: Partial<DayClosure>) => {
+  endDay: async (stats: Partial<DayClosure> & { early_close_reason?: string }) => {
     const userId = await getUserId();
     if (!userId) throw new Error('Not authenticated');
 
     // Use server-side END_DAY action to update timestamps, stats, and award XP securely
-    await gamificationService.earnXP('END_DAY', null, {
+    await gamificationService.earnXP('END_DAY', undefined, {
       tasks_completed: stats.completed_calls || 0,
       calls_made: stats.completed_calls || 0,
       visits_made: stats.completed_portfolio_actions || 0,
-      potential_revenue_handled: 0
+      potential_revenue_handled: 0,
+      early_close_reason: stats.early_close_reason
     });
 
     return { success: true };

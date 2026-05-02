@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { getTodayStrFromDate } from "../services/core/utils";
 import { TokenUsageAlert } from "./TokenUsageAlert";
 import { motion } from "motion/react";
 import {
@@ -109,7 +110,7 @@ interface DashboardViewProps {
   setActiveTab: (tab: string) => void;
   setShowDayCloser: (show: boolean) => void;
   queryClient: QueryClient;
-  startDayMutation: MutationResult<boolean, void>;
+  startDayMutation: MutationResult<boolean, any>;
   completeMorningRitualMutation: MutationResult<
     { success: boolean },
     Partial<DailyPlan>
@@ -153,9 +154,48 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [microGoalInput, setMicroGoalInput] = useState("");
   const [showMicroGoalForm, setShowMicroGoalForm] = useState(false);
   const [visiblePriorityCount, setVisiblePriorityCount] = useState(5);
+  const [showEarlyStartModal, setShowEarlyStartModal] = useState(false);
+  const [earlyStartReason, setEarlyStartReason] = useState("");
 
-  // --- Bugünün Öncelikleri Logic ---
-  const { todayISO } = useTurkeyClock();
+  const { todayISO, timeLabel } = useTurkeyClock();
+
+  // Missed close warning
+  const showMissedCloseWarning = React.useMemo(() => {
+    const lastStartedStr = profile?.last_day_started_at;
+    const lastClosedStr = profile?.last_ritual_completed_at;
+    if (!lastStartedStr) return false;
+    
+    const startedDate = new Date(lastStartedStr);
+    if (isNaN(startedDate.getTime())) return false;
+    const lastStartedDate = getTodayStrFromDate(startedDate);
+
+    if (lastStartedDate < todayISO) {
+        let wasClosed = false;
+        if (lastClosedStr) {
+           const closedDate = new Date(lastClosedStr);
+           if (!isNaN(closedDate.getTime()) && getTodayStrFromDate(closedDate) === lastStartedDate) {
+               wasClosed = true;
+           }
+        }
+        if (!wasClosed) return true;
+    }
+    return false;
+  }, [profile, todayISO]);
+
+  const handleStartDayClick = () => {
+    const [currentHour, currentMinutes] = timeLabel.split(':').map(Number);
+
+    if (profile?.work_start_time) {
+      const [startH, startM] = profile.work_start_time.split(':').map(Number);
+      if (currentHour < startH || (currentHour === startH && currentMinutes < startM)) {
+        setShowEarlyStartModal(true);
+        return;
+      }
+    }
+
+    startDayMutation.mutate({});
+    if (setShowDailyRadar) setShowDailyRadar(true);
+  };
 
   const isTodayOrOverdue = (taskDate?: string) => {
     if (!taskDate) return true; // Without date falls to today
@@ -336,8 +376,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const isDayStarted = !!(
     (profile?.last_day_started_at &&
-      profile.last_day_started_at.startsWith(todayISO)) ||
-    profile?.last_active_date === todayISO ||
+      getTodayStrFromDate(new Date(profile.last_day_started_at)) === todayISO) ||
     localStarted ||
     startDayMutation.isSuccess ||
     completeMorningRitualMutation.isSuccess
@@ -347,16 +386,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const isDayEnded = !!(
     localEnded ||
     (profile?.last_ritual_completed_at &&
-      profile.last_ritual_completed_at.startsWith(todayISO) &&
+      getTodayStrFromDate(new Date(profile.last_ritual_completed_at)) === todayISO &&
       (!dayStartTimestamp ||
         profile.last_ritual_completed_at > dayStartTimestamp))
   );
 
   React.useEffect(() => {
     if (profile?.id && !localStarted) {
-      const dbStartedToday =
-        profile.last_day_started_at?.startsWith(todayISO) ||
-        profile.last_active_date === todayISO;
+      const dbStartedToday = profile.last_day_started_at && getTodayStrFromDate(new Date(profile.last_day_started_at)) === todayISO;
       if (dbStartedToday) {
         localStorage.setItem(
           `day_started_${profile.id}_${todayISO}`,
@@ -519,12 +556,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   Planla, önceliklendir, ilerle ve günü güçlü kapat.
                 </p>
 
+                {showMissedCloseWarning && (
+                  <div className="mb-4 bg-red-500/10 border border-red-500/20 text-red-200 text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2">
+                    <AlertCircle size={14} className="shrink-0" />
+                    Önceki günü kapatmadın! Yeni günü başlattığında kapatılmayan gün için disiplin kaydı oluşturulabilir.
+                  </div>
+                )}
                 {!isDayStarted && !isDayEnded && (
                   <button
-                    onClick={() => {
-                      startDayMutation.mutate();
-                      if (setShowDailyRadar) setShowDailyRadar(true);
-                    }}
+                    onClick={handleStartDayClick}
                     disabled={startDayMutation.isPending}
                     className="bg-white hover:bg-slate-50 text-[#FF6B1A] px-8 h-12 rounded-xl text-sm font-bold active:scale-95 transition-all w-full md:w-auto flex items-center justify-center gap-2 group disabled:opacity-50"
                   >
@@ -1180,6 +1220,41 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           }
         }}
       />
+      {showEarlyStartModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
+          <div className="bg-white rounded-[24px] p-6 w-full max-w-sm shadow-2xl">
+            <h3 className="text-lg font-black text-slate-900 mb-2">Güne Erken Başlıyorsun</h3>
+            <p className="text-sm text-slate-500 mb-4">
+              Mesai başlangıç saatinin {profile?.work_start_time} olduğunu görüyorum. Günü erken başlatmak için bir not eklemelisin.
+            </p>
+            <textarea
+              className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:border-indigo-500 min-h-[100px] resize-none mb-4"
+              placeholder="Örn: Bugün sahada işim olduğu için erken çıkıyorum..."
+              value={earlyStartReason}
+              onChange={(e) => setEarlyStartReason(e.target.value)}
+            />
+            <div className="flex justify-end gap-3">
+              <button
+                className="px-4 py-2 rounded-xl text-sm font-bold text-slate-600 hover:bg-slate-50"
+                onClick={() => setShowEarlyStartModal(false)}
+              >
+                İptal
+              </button>
+              <button
+                className="px-6 py-2 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
+                disabled={!earlyStartReason.trim() || startDayMutation.isPending}
+                onClick={() => {
+                  startDayMutation.mutate({ early_start_reason: earlyStartReason.trim() });
+                  setShowEarlyStartModal(false);
+                  if (setShowDailyRadar) setShowDailyRadar(true);
+                }}
+              >
+                {startDayMutation.isPending ? "Kaydediliyor..." : "Günü Başlat"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </motion.div>
   );
 };

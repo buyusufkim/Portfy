@@ -2,10 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DailyRadar } from '../habit/DailyRadar';
 import { DayCloser } from '../habit/DayCloser';
-import { GamifiedTask, PersonalTask, Property, Task, DailyPlan, DayClosure } from '../../types';
+import { GamifiedTask, PersonalTask, Property, Task, DailyPlan, DayClosure, UserProfile } from '../../types';
 import { UseMutationResult } from '@tanstack/react-query';
 
 interface RitualOverlaysProps {
+  profile?: UserProfile | null;
   showDailyRadar: boolean;
   dailyRadarData: { tasks: string[], insight: string } | null;
   setShowDailyRadar: (val: boolean) => void;
@@ -20,6 +21,7 @@ interface RitualOverlaysProps {
 }
 
 export const RitualOverlays = ({ 
+  profile,
   showDailyRadar, 
   setShowDailyRadar,
   dailyRadarData, 
@@ -192,6 +194,7 @@ export const RitualOverlays = ({
         {/* Akşam Ritüeli (Day Closer) */}
         {showDayCloser && (
           <DayCloser 
+            profile={profile}
             isPending={completeEveningRitualMutation.isPending || showReward}
             onClose={() => setShowDayCloser(false)}
             stats={{

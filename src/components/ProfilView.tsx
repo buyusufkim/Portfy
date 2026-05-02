@@ -27,6 +27,8 @@ import {
   updateNotificationPreference 
 } from "../services/notificationPreferenceService";
 import { Card, Badge } from "./UI";
+import { useQuery } from "@tanstack/react-query";
+import { profileService } from "../services/profileService";
 
 interface ProfilViewProps {
   profile: UserProfile | null;
@@ -139,6 +141,8 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
     expertise_areas: profile?.expertise_areas || [],
     working_style: profile?.working_style || [],
     preferred_start_time: profile?.preferred_start_time || "09:00",
+    work_start_time: profile?.work_start_time || "09:00",
+    work_end_time: profile?.work_end_time || "18:00",
     ai_coach_tone: profile?.ai_coach_tone || "direct",
     notification_preference: profile?.notification_preference || "normal",
   });
@@ -179,6 +183,8 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
         expertise_areas: profile.expertise_areas || [],
         working_style: profile.working_style || [],
         preferred_start_time: profile.preferred_start_time || "09:00",
+        work_start_time: profile.work_start_time || "09:00",
+        work_end_time: profile.work_end_time || "18:00",
         ai_coach_tone: profile.ai_coach_tone || "direct",
         notification_preference: profile.notification_preference || "normal",
       });
@@ -194,6 +200,12 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
       setLocalAvatar(profile.avatar_url);
     }
   }, [profile?.avatar_url]);
+
+  const { data: disciplineLogs = [], isLoading: isDisciplineLoading } = useQuery({
+    queryKey: ['workDisciplineLogs', profile?.id],
+    queryFn: profileService.getWorkDisciplineLogs,
+    enabled: !!profile?.id
+  });
 
   const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     try {
@@ -664,8 +676,12 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
               )}
               
               <div className="flex items-center justify-between text-[11px] pt-1">
-                <span className="text-slate-500">Başlangıç Saati</span>
-                <span className="font-bold text-slate-700">{profile?.preferred_start_time || 'Eklenmedi'}</span>
+                <span className="text-slate-500">Mesai Başlangıç Saati</span>
+                <span className="font-bold text-slate-700">{profile?.work_start_time || profile?.preferred_start_time || 'Eklenmedi'}</span>
+              </div>
+              <div className="flex items-center justify-between text-[11px] pt-1">
+                <span className="text-slate-500">Mesai Bitiş Saati</span>
+                <span className="font-bold text-slate-700">{profile?.work_end_time || 'Eklenmedi'}</span>
               </div>
               <div className="flex items-center justify-between text-[11px] pt-1">
                 <span className="text-slate-500">Çalışma Modeli</span>
@@ -680,63 +696,102 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
 
         {/* AI Koç Tonu */}
         <Card 
-          className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 transition-colors"
+          onClick={() => setSelectedPanel("aiTone")}
+          className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 relative cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors"
         >
-          <div className="flex justify-between items-center border-b border-slate-100 pb-3">
-             <div className="flex items-start sm:items-center gap-3 lg:gap-2">
+          {/* Header / Mobile Summary */}
+          <div className="flex items-center justify-between lg:border-b lg:border-slate-100 lg:pb-3">
+             <div className="flex items-center gap-3 lg:gap-2">
                 <div className="w-10 h-10 lg:w-8 lg:h-8 bg-indigo-50 rounded-xl lg:rounded-lg flex items-center justify-center text-indigo-600 shrink-0">
                   <Sparkles size={20} className="lg:w-4 lg:h-4" />
                 </div>
                 <div>
                   <h4 className="text-sm font-bold text-slate-900">AI Koç Tonu</h4>
-                  <p className="text-[11px] text-slate-500 mt-0.5 lg:text-[12px] line-clamp-1">AI Koç'un seninle nasıl konuşmasını istersin?</p>
+                  <p className="text-[11px] text-slate-500 mt-0.5 lg:hidden line-clamp-1 pr-4">Asistanın iletişim dilini seçin.</p>
+                  <p className="text-[10px] text-slate-400 lg:hidden line-clamp-1 pr-4 mt-0.5">
+                    Aktif Ton: {
+                      formData.ai_coach_tone === 'professional' ? 'Profesyonel' :
+                      formData.ai_coach_tone === 'friendly' ? 'Dostça' :
+                      formData.ai_coach_tone === 'motivational' ? 'Motivasyonel' :
+                      'Direkt'
+                    }
+                  </p>
                 </div>
              </div>
+             <ArrowRight size={18} className="text-slate-300 lg:hidden shrink-0" />
+             <button 
+               onClick={(e) => { e.stopPropagation(); setSelectedPanel("aiTone"); }}
+               className="hidden lg:block absolute top-4 right-4 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+             >
+               Düzenle
+             </button>
           </div>
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 mt-4">
-            {[
-              { id: 'professional', legacyIds: ['professional', 'profesyonel'], title: 'Profesyonel', desc: 'Resmi ve net iletişim' },
-              { id: 'friendly', legacyIds: ['friendly', 'dostca', 'motive_edici'], title: 'Dostça', desc: 'Samimi ve destekleyici' },
-              { id: 'motivational', legacyIds: ['motivational', 'motivasyonel'], title: 'Motivasyonel', desc: 'Enerjik ve motive edici' },
-              { id: 'direct', legacyIds: ['net', 'sert_koc', 'direct'], title: 'Direkt', desc: 'Net ve doğrudan iletişim' }
-            ].map(tone => {
-              const currentTone = formData.ai_coach_tone || 'direct';
-              const matchedTone = tone.id === currentTone || tone.legacyIds.includes(currentTone);
-              
-              return (
-              <button
-                key={tone.id}
-                onClick={() => {
-                   setFormData(p => ({ ...p, ai_coach_tone: tone.id }));
-                   if (profile) {
-                     updateProfileMutation.mutate({ id: profile.id, data: { ai_coach_tone: tone.id } });
-                   }
-                }}
-                className={`p-3 rounded-[16px] border text-left transition-all relative ${
-                  matchedTone 
-                    ? 'border-indigo-500 bg-indigo-50/40' 
-                    : 'border-slate-100 bg-white hover:border-slate-200 hover:bg-slate-50/50'
-                }`}
-              >
-                {matchedTone && <div className="absolute top-0 left-0 w-1 h-full bg-indigo-500 rounded-l-[16px]" />}
-                <div className="flex items-center gap-2 mb-0.5">
-                   <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${
-                     matchedTone ? 'border-indigo-500' : 'border-slate-200'
-                   }`}>
-                      {matchedTone && <div className="w-2 h-2 rounded-full bg-indigo-500" />}
-                   </div>
-                   <span className={`text-[12px] font-bold ${matchedTone ? 'text-indigo-900' : 'text-slate-600'}`}>
-                     {tone.title}
-                   </span>
-                </div>
-                <div className="text-[11px] text-slate-500 pl-6 leading-snug">{tone.desc}</div>
-              </button>
-            )})}
+          {/* Desktop Details */}
+          <div className="hidden lg:block space-y-3 mt-4">
+             <div className="flex flex-col">
+               <span className="block text-[10px] text-slate-400 mb-0.5">Aktif Ton</span>
+               <span className="text-[11px] font-bold text-slate-700">
+                 {
+                   formData.ai_coach_tone === 'professional' ? 'Profesyonel' :
+                   formData.ai_coach_tone === 'friendly' ? 'Dostça' :
+                   formData.ai_coach_tone === 'motivational' ? 'Motivasyonel' :
+                   'Direkt'
+                 }
+               </span>
+               <span className="text-[10px] text-slate-500 mt-1">
+                 {
+                   formData.ai_coach_tone === 'professional' ? 'Resmi ve net iletişim.' :
+                   formData.ai_coach_tone === 'friendly' ? 'Samimi ve destekleyici iletişim.' :
+                   formData.ai_coach_tone === 'motivational' ? 'Enerjik ve motive edici iletişim.' :
+                   'Net ve doğrudan iletişim.'
+                 }
+               </span>
+             </div>
           </div>
-          <div className="flex text-[10px] text-slate-400 items-center justify-center sm:justify-start gap-1.5 pt-4 text-center sm:text-left">
-             <div className="w-1 h-1 rounded-full bg-slate-300 shrink-0" />
-             AI Koç sohbetlerinde bu tonu kullanarak yanıt verir. Değişiklik anında kaydedilir.
+        </Card>
+
+        {/* Çalışma Disiplini Arşivi */}
+        <Card className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 transition-colors">
+          <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
+            <div className="flex items-start sm:items-center gap-3 lg:gap-2">
+              <div className="w-10 h-10 lg:w-8 lg:h-8 bg-indigo-50 rounded-xl lg:rounded-lg flex items-center justify-center text-indigo-600 shrink-0">
+                <Check size={20} className="lg:w-4 lg:h-4" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-slate-900">Çalışma Disiplini Arşivi</h4>
+                <p className="text-[11px] text-slate-500 mt-0.5 lg:text-[12px] line-clamp-1">Mesai dışı hareketler (Erken başlama / Erken kapanış / Kapanmayan gün) listesi.</p>
+              </div>
+            </div>
+          </div>
+          
+          <div className="space-y-3">
+            {isDisciplineLoading ? (
+              <div className="text-xs text-slate-400">Yükleniyor...</div>
+            ) : disciplineLogs.length > 0 ? (
+              disciplineLogs.map(log => (
+                <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 border border-slate-100 rounded-xl">
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-slate-400">
+                      {new Date(log.actual_time).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                    </span>
+                    <span className="text-[13px] font-bold text-slate-700">
+                      {log.type === 'early_start' ? 'Erken Başlangıç' : 
+                       log.type === 'early_close' ? 'Erken Kapanış' : 
+                       log.type === 'missed_close_penalty' ? 'Kapatılmayan Gün' : log.type}
+                    </span>
+                    {log.reason && <span className="text-xs text-slate-500 mt-1">{log.reason}</span>}
+                  </div>
+                  {log.xp_delta && log.xp_delta !== 0 && (
+                    <div className="shrink-0 flex items-center gap-1 text-xs font-bold text-red-500 bg-red-100 px-2 py-1 rounded-md">
+                      {log.xp_delta} XP
+                    </div>
+                  )}
+                </div>
+              ))
+            ) : (
+              <div className="text-xs text-slate-500 italic">Hiç disiplin kaydı bulunmuyor.</div>
+            )}
           </div>
         </Card>
 
@@ -1282,14 +1337,25 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
 
                 {selectedPanel === "workingStyle" && (
                   <div className="space-y-6">
-                    <div>
-                      <label className="block text-[11px] font-bold text-slate-500 mb-2">Başlangıç Saati</label>
-                      <input 
-                        type="time" 
-                        value={formData.preferred_start_time} 
-                        onChange={(e) => setFormData(p => ({ ...p, preferred_start_time: e.target.value }))}
-                        className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 focus:bg-white transition-colors"
-                      />
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-500 mb-2">Mesai Başlangıç Saati</label>
+                        <input 
+                          type="time" 
+                          value={formData.work_start_time || formData.preferred_start_time} 
+                          onChange={(e) => setFormData(p => ({ ...p, work_start_time: e.target.value, preferred_start_time: e.target.value }))}
+                          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 focus:bg-white transition-colors"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[11px] font-bold text-slate-500 mb-2">Mesai Bitiş Saati</label>
+                        <input 
+                          type="time" 
+                          value={formData.work_end_time} 
+                          onChange={(e) => setFormData(p => ({ ...p, work_end_time: e.target.value }))}
+                          className="w-full px-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm outline-none focus:border-indigo-500 focus:bg-white transition-colors"
+                        />
+                      </div>
                     </div>
                     <div>
                       <label className="block text-[11px] font-bold text-slate-500 mb-2">Çalışma Etiketleri</label>
@@ -1333,14 +1399,16 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                              key={tone.id}
                              onClick={() => {
                                 setFormData(p => ({ ...p, ai_coach_tone: tone.id }));
-                                if (profile?.id) {
-                                  updateProfileMutation.mutate({ id: profile.id, data: { ai_coach_tone: tone.id }});
-                                }
                              }}
-                             className={`w-full p-4 rounded-xl text-left border transition-all ${isActive ? 'bg-indigo-50 border-indigo-500 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50'}`}
+                             className={`w-full p-4 rounded-xl text-left border transition-all flex items-center justify-between ${isActive ? 'bg-indigo-50 border-indigo-500 shadow-sm' : 'bg-white border-slate-200 hover:bg-slate-50'}`}
                            >
-                              <div className="font-bold text-sm text-slate-900 mb-1">{tone.title}</div>
-                              <div className="text-[11px] text-slate-500">{tone.desc}</div>
+                              <div>
+                                <div className={`font-bold text-sm mb-1 ${isActive ? "text-indigo-900" : "text-slate-900"}`}>{tone.title}</div>
+                                <div className={`text-[11px] ${isActive ? 'text-indigo-700/80' : 'text-slate-500'}`}>{tone.desc}</div>
+                              </div>
+                              <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${isActive ? 'border-indigo-500' : 'border-slate-300'}`}>
+                                 {isActive && <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />}
+                              </div>
                            </button>
                          )
                      })}
@@ -1571,7 +1639,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                 )}
               </section>
 
-              {['profile', 'expertise', 'workingStyle'].includes(selectedPanel) && (
+              {['profile', 'expertise', 'workingStyle', 'aiTone'].includes(selectedPanel) && (
                 <footer className="shrink-0 border-t border-slate-100 bg-white px-5 pt-4 pb-[calc(1rem+env(safe-area-inset-bottom))] sm:p-6">
                   <button
                     disabled={updateProfileMutation.isPending}
@@ -1594,7 +1662,9 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                        } else if (selectedPanel === "expertise") {
                           dataToSave = { expertise_areas: formData.expertise_areas };
                        } else if (selectedPanel === "workingStyle") {
-                          dataToSave = { working_style: formData.working_style, preferred_start_time: formData.preferred_start_time };
+                          dataToSave = { working_style: formData.working_style, preferred_start_time: formData.work_start_time || formData.preferred_start_time, work_start_time: formData.work_start_time, work_end_time: formData.work_end_time };
+                       } else if (selectedPanel === "aiTone") {
+                          dataToSave = { ai_coach_tone: formData.ai_coach_tone };
                        }
                        
                        updateProfileMutation.mutate({ id: profile.id, data: dataToSave });
