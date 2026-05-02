@@ -168,6 +168,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     no_contact_7d: "7 gündür iletişim kurulmadı",
     no_contact: "Temas bekliyor",
     hot_lead: "Sıcak aday, bugün temas et",
+    hot_48h_silence: "Sıcak aday: 48 saattir sessizlik!",
+    stale_3d: "3 gündür temas yok",
     followup_due: "Takip zamanı geldi",
     followup_overdue: "Takip gecikmiş",
     missing_phone: "Telefon bilgisi eksik",
