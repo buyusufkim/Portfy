@@ -76,6 +76,7 @@ export const DesktopSidebar = ({
       <SidebarLink icon={<Briefcase size={20} />} label="Portföyler" active={activeTab === 'portfoyler' && !showAdminPanel} onClick={() => onTabChange('portfoyler')} />
       <SidebarLink icon={<Users size={20} />} label="CRM" active={activeTab === 'crm' && !showAdminPanel} onClick={() => onTabChange('crm')} />
       <SidebarLink icon={<Brain size={20} />} label="AI Koç" active={activeTab === 'koc' && !showAdminPanel} onClick={() => onTabChange('koc')} />
+      <SidebarLink icon={<CheckSquare size={20} />} label="90 Gün Kampı" active={activeTab === 'campaign-90' && !showAdminPanel} onClick={() => onTabChange('campaign-90')} />
     </div>
 
     <div className="pt-6 mt-4 border-t border-slate-100 flex flex-col space-y-1">
@@ -114,6 +115,7 @@ export const MobileNav = ({
   const navItems = [
     { id: 'crm', icon: <Users size={24} />, label: 'CRM' },
     { id: 'koc', icon: <Brain size={24} />, label: 'AI Koç' },
+    { id: 'campaign-90', icon: <CheckSquare size={24} />, label: '90 Gün Kampı' },
     { id: 'profil', icon: <UserIcon size={24} />, label: 'Profilim' },
   ];
 

@@ -27,6 +27,55 @@ import { Task, PersonalTask, UserProfile } from "../types";
 import toast from "react-hot-toast";
 import { getTodayStr } from "../services/core/utils";
 import { AddTaskModal } from "../components/app/modals/AddTaskModal";
+import { campaign90Service } from '../services/campaign90Service';
+import { useNavigate } from 'react-router-dom';
+
+const Campaign90RedirectBanner: React.FC<{userId: string, setActiveTab?: (t: string) => void}> = ({ userId, setActiveTab }) => {
+  const { data: campaign } = useQuery({
+    queryKey: ['campaign90_active', userId],
+    queryFn: () => campaign90Service.getActiveCampaign(userId),
+    enabled: !!userId,
+  });
+
+  const todayStr = getTodayStr();
+
+  const { data: tasks } = useQuery({
+      queryKey: ['campaign90_tasks', campaign?.id, todayStr],
+      queryFn: () => campaign90Service.getTodayCampaignTasks(userId, todayStr),
+      enabled: !!campaign?.id
+  });
+
+  const pendingCount = tasks?.filter(t => t.status !== 'completed' && t.status !== 'skipped').length || 0;
+
+  if (!campaign) return null;
+
+  return (
+    <div className="bg-gradient-to-r from-slate-900 to-slate-800 rounded-3xl p-4 md:p-5 mb-8 flex flex-col md:flex-row items-center justify-between gap-4 text-white shadow-lg overflow-hidden relative">
+      <div className="absolute right-0 top-0 h-full w-48 bg-white/5 skew-x-[-20deg] translate-x-10" />
+      <div className="flex items-center gap-4 relative z-10 w-full md:w-auto">
+         <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center shrink-0">
+            <Target size={24} className="text-[#00D2B4]" />
+         </div>
+         <div>
+            <h3 className="font-black text-lg md:text-xl flex items-center gap-2">
+              90 Gün Kampı
+              {pendingCount > 0 && (
+                <span className="bg-[#FF6B1A] text-white text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider">{pendingCount} Görev</span>
+              )}
+            </h3>
+            <p className="text-sm font-medium text-slate-300">Gün {campaign.current_day}/90 görevlerin seni bekliyor.</p>
+         </div>
+      </div>
+      <button 
+         onClick={() => setActiveTab?.('campaign-90')}
+         className="w-full md:w-auto px-6 py-3 bg-white text-slate-900 font-bold rounded-xl text-sm flex items-center justify-center gap-2 hover:bg-slate-50 transition-colors relative z-10 shrink-0"
+      >
+        Görevleri Aç <ChevronRight size={16} />
+      </button>
+    </div>
+  );
+};
+
 
 const safeFormatTime = (isoString?: string | null) => {
   if (!isoString) return "Tam Gün";
@@ -35,11 +84,12 @@ const safeFormatTime = (isoString?: string | null) => {
   return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul' });
 };
 
-interface TasksPageProps {
+export interface TasksPageProps {
   profile: UserProfile | null;
   tasks: Task[];
   personalTasks: PersonalTask[];
   setShowAddTask: (show: boolean) => void;
+  setActiveTab?: (tab: string) => void;
 }
 
 type FlowItem = {
@@ -163,6 +213,7 @@ export const TasksPage: React.FC<TasksPageProps> = ({
   profile,
   tasks,
   personalTasks,
+  setActiveTab
 }) => {
   const queryClient = useQueryClient();
   const [flowFilter, setFlowFilter] = useState<"today" | "overdue" | "upcoming" | "all">("today");
@@ -516,6 +567,8 @@ export const TasksPage: React.FC<TasksPageProps> = ({
           <Plus size={18} /> Yeni Görev
         </button>
       </div>
+
+      {profile?.id && <Campaign90RedirectBanner userId={profile.id} setActiveTab={setActiveTab} />}
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
         {/* Left Column - Task List */}

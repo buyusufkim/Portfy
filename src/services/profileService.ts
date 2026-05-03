@@ -66,7 +66,13 @@ export const profileService = {
         .order('log_date', { ascending: false })
         .order('created_at', { ascending: false })
         .limit(10);
-      if (error) throw error;
+      if (error) {
+        if (error.code === 'PGRST205' || error.message.includes('PGRST205')) {
+            // Table doesn't exist yet, graceful fallback
+            return [];
+        }
+        throw error;
+      }
       return data || [];
     } catch (e) {
       console.error("error fetching discipline logs:", e);

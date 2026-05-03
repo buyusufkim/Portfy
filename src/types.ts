@@ -753,3 +753,58 @@ export interface NotificationPreference {
   created_at?: string;
   updated_at?: string;
 }
+
+export type CampaignStatus = 'active' | 'paused' | 'completed' | 'cancelled';
+export type CampaignTaskStatus = 'pending' | 'completed' | 'skipped';
+export type CampaignTaskType = 'prospecting' | 'crm' | 'field' | 'content' | 'learning' | 'portfolio' | 'followup' | 'review' | 'gpa';
+export type GpaBucket = 'G' | 'P' | 'A';
+
+export interface AdvisorCampaign {
+  id: string;
+  user_id: string;
+  campaign_type: string;
+  status: CampaignStatus;
+  start_date: string;
+  current_day: number;
+  current_week: number;
+  region?: string;
+  niche?: string;
+  daily_contact_target: number;
+  weekly_contact_target: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampaignTask {
+  id: string;
+  campaign_id: string;
+  user_id: string;
+  day_number: number;
+  week_number: number;
+  task_key: string;
+  task_type: CampaignTaskType;
+  title: string;
+  description?: string;
+  gpa_bucket?: GpaBucket;
+  xp_reward: number;
+  status: CampaignTaskStatus;
+  due_date: string;
+  completed_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CampaignDailyScore {
+  id: string;
+  campaign_id: string;
+  user_id: string;
+  score_date: string;
+  g_score: number;
+  p_score: number;
+  a_score: number;
+  total_score: number;
+  completed_tasks: number;
+  total_tasks: number;
+  created_at: string;
+  updated_at: string;
+}

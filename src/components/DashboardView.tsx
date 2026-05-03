@@ -130,6 +130,8 @@ interface DashboardViewProps {
   setSelectedProperty?: (prop: Property | null) => void;
 }
 
+import { Campaign90MiniCard } from "./habit/Campaign90MiniCard";
+
 export const DashboardView: React.FC<DashboardViewProps> = ({
   profile,
   gamifiedStats,
@@ -918,6 +920,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                 </div>
               </Card>
+          </section>
+
+          {/* 90 DAY CAMPAIGN MINI CARD */}
+          <section className="order-4">
+             {profile?.id && <Campaign90MiniCard userId={profile.id} setActiveTab={setActiveTab} />}
           </section>
 
           {/* 4. GÜNÜN NOTLARI / AKIŞ NOTLARI */}

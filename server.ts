@@ -35,6 +35,7 @@ import {
   handleAdminDeleteTaskTemplate,
   handleVerifyTask,
   handleCompleteGamifiedTask,
+  handleCompleteCampaignTask,
   handleGetDailyPlanToday,
   handleSaveDailyPlan,
   handleGetDayClosureToday,
@@ -146,6 +147,7 @@ app.post("/api/ai/subscribe", authenticate, handleSubscribe);
 app.post("/api/ai/earn-xp", authenticate, xpLimiter, handleEarnXP);
 app.post("/api/ai/verify-task", authenticate, handleVerifyTask);
 app.post("/api/ai/complete-gamified-task", authenticate, handleCompleteGamifiedTask);
+app.post("/api/ai/complete-campaign-task", authenticate, handleCompleteCampaignTask);
 app.get("/api/ai/gamified-tasks/daily", authenticate, handleGetDailyGamifiedTasks);
 app.get("/api/ai/daily-plan/today", authenticate, handleGetDailyPlanToday);
 app.post("/api/ai/daily-plan/save", authenticate, handleSaveDailyPlan);

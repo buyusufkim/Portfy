@@ -1584,6 +1584,45 @@ export const handleAdminGetAuditLogs = async (req: AuthRequest, res: Response) =
   }
 };
 
+export const handleCompleteCampaignTask = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
+
+    const { taskId } = req.body;
+    const userId = req.user.id;
+
+    if (!taskId) return res.status(400).json({ error: "Missing taskId" });
+
+    const nowObj = new Date();
+    const todayStr = getTurkeyTodayISO(nowObj);
+    const nowStr = nowObj.toISOString();
+
+    const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc("complete_campaign_task_and_award_xp", {
+      p_user_id: userId,
+      p_task_id: taskId,
+      p_today: todayStr,
+      p_now: nowStr
+    });
+
+    if (rpcError) {
+      console.error("RPC complete_campaign_task_and_award_xp failed", rpcError);
+      return res.status(500).json({ error: "İşlem sırasında sunucu hatası oluştu" });
+    }
+
+    if (!rpcResult.success) {
+      const errorMsg = rpcResult.error || "Bilinmeyen hata";
+      if (errorMsg === 'Task not found') return res.status(404).json({ error: errorMsg });
+      if (errorMsg === 'Unauthorized') return res.status(403).json({ error: errorMsg });
+      return res.status(400).json({ error: errorMsg });
+    }
+
+    return res.json(rpcResult);
+  } catch (error: unknown) {
+    console.error("Complete Campaign Task Error:", error);
+    res.status(500).json({ error: safeErrorMessage(error, "Error completing task") });
+  }
+};
+
 export const handleGetDailyGamifiedTasks = async (req: AuthRequest, res: Response) => {
   try {
     if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });

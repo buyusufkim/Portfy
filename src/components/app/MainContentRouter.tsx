@@ -2,6 +2,7 @@ import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { DashboardPage } from '../../pages/DashboardPage';
 import { TasksPage } from '../../pages/TasksPage';
+import { Campaign90Page } from '../../pages/Campaign90Page';
 import { PortfoliosPage } from '../../pages/PortfoliosPage';
 import { CRMPage } from '../../pages/CRMPage';
 import { ProfilView } from '../ProfilView';
@@ -196,6 +197,7 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
             tasks={utilities.tasks || []}
             personalTasks={utilities.personalTasks || []}
             setShowAddTask={utilities.setShowAddTask}
+            setActiveTab={navigation.setActiveTab}
           />
         )}
         {navigation.activeTab === 'bolgem' && (
@@ -205,6 +207,9 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
               setToast={utilities.setToast}
             />
           </React.Suspense>
+        )}
+        {navigation.activeTab === 'campaign-90' && (
+          <Campaign90Page />
         )}
         {navigation.activeTab === 'portfoyler' && (
           <PortfoliosPage 
