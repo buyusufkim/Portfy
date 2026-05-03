@@ -341,12 +341,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const planFocus = todaysFocuses.find(m => m.target_metric === 'day_close_tomorrow_focus');
 
   const focusesToDisplay: (MicroGoal & { label: string })[] = [];
+  
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = getTodayStrFromDate(tomorrow);
+
   if (startFocus) {
     focusesToDisplay.push({ ...startFocus, label: selectedGoalDate === todayISO ? 'Gün Başlangıç Odağı' : 'Ana Odak' });
   }
   if (planFocus) {
     if (!startFocus || startFocus.title !== planFocus.title) {
-       focusesToDisplay.push({ ...planFocus, label: 'Dünden Planlanan Odak' });
+       focusesToDisplay.push({ ...planFocus, label: selectedGoalDate === tomorrowStr ? 'Yarın İçin Planlanan Odak' : 'Dünden Planlanan Odak' });
     }
   }
 
@@ -772,20 +777,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
                 {/* YATAY TARİH ÇUBUĞU */}
                 <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none mb-4 -mx-2 px-2">
-                  {Array.from({ length: 30 }, (_, i) => {
+                  {Array.from({ length: 31 }, (_, i) => {
                     const d = new Date();
-                    d.setDate(d.getDate() - i);
+                    d.setDate(d.getDate() - (i - 1)); // i.e., -1 yields tomorrow, 0 yields today, 1 yields yesterday
                     return getTodayStrFromDate(d);
                   }).map((dateStr) => {
                     let label = "";
-                    if (dateStr === todayISO) label = "Bugün";
-                    else {
-                      const d = new Date(dateStr);
-                      const diffDays = Math.floor((new Date(todayISO).getTime() - d.getTime()) / (1000 * 3600 * 24));
-                      if (diffDays === 1) label = "Dün";
-                      else if (diffDays <= 5) label = d.toLocaleDateString("tr-TR", { weekday: "short" });
-                      else label = d.toLocaleDateString("tr-TR", { day: '2-digit', month: '2-digit' });
-                    }
+                    const d = new Date(dateStr);
+                    const diffDays = Math.floor((new Date(todayISO).getTime() - d.getTime()) / (1000 * 3600 * 24));
+                    
+                    if (diffDays === -1) label = "Yarın";
+                    else if (diffDays === 0) label = "Bugün";
+                    else if (diffDays === 1) label = "Dün";
+                    else if (diffDays <= 5 && diffDays > 1) label = d.toLocaleDateString("tr-TR", { weekday: "short" });
+                    else label = d.toLocaleDateString("tr-TR", { day: '2-digit', month: '2-digit' });
+                    
                     const isSelected = selectedGoalDate === dateStr;
                     return (
                       <button

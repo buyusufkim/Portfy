@@ -3,6 +3,7 @@ import { api } from "../services/api";
 import { QUERY_KEYS } from "../constants/queryKeys";
 import { Lead, DailyPlan, DayClosure, UserProfile } from "../types";
 import confetti from "canvas-confetti";
+import { getTodayStr } from "../services/core/utils";
 
 interface MainMutationsProps {
   profileId?: string;
@@ -147,7 +148,8 @@ export function useMainMutations({
          try {
            const tomorrow = new Date();
            tomorrow.setDate(tomorrow.getDate() + 1);
-           await api.momentumOs.setDailyFocus(variables.tomorrow_top3[0], tomorrow.toISOString(), 'day_close_tomorrow_focus');
+           const tomorrowStr = getTodayStr(tomorrow);
+           await api.momentumOs.setDailyFocus(variables.tomorrow_top3[0], tomorrowStr, 'day_close_tomorrow_focus');
          } catch (e) {
            console.error("Failed to add tomorrow's MicroGoal", e);
          }
@@ -156,6 +158,12 @@ export function useMainMutations({
       return api.endDay(variables);
     },
     onSuccess: (data) => {
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.MICRO_GOALS],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.MICRO_GOALS, profileId],
+      });
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.MOMENTUM_DAY_CLOSURE],
       });
