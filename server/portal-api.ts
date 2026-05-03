@@ -72,7 +72,7 @@ export const handleGetPortalData = async (req: Request, res: Response) => {
 
     const propertyId = tokenData.property_id;
 
-    // Fetch minimal property data (owner eklendi)
+    // Fetch minimal property data
     const { data: property, error: propError } = await supabaseAdmin
       .from('properties')
       .select(`
@@ -83,8 +83,7 @@ export const handleGetPortalData = async (req: Request, res: Response) => {
         sale_probability,
         address,
         user_id,
-        created_at,
-        owner
+        created_at
       `)
       .eq('id', propertyId)
       .single();
@@ -95,7 +94,7 @@ export const handleGetPortalData = async (req: Request, res: Response) => {
 
     // --- TRAFİK MOTORU (SİNYAL) ENTEGRASYONU ---
     // Mülk sahibi kimliği ve portföy başlığı ile spesifik görev oluşturuyoruz
-    const ownerName = property.owner?.name || 'Mülk Sahibi';
+    const ownerName = 'Mülk Sahibi';
     const propertyTitle = property.title || 'Portföyünüz';
 
     try {

@@ -3,7 +3,11 @@ import { motion, AnimatePresence } from 'motion/react';
 import { DailyRadar } from '../habit/DailyRadar';
 import { DayCloser } from '../habit/DayCloser';
 import { GamifiedTask, PersonalTask, Property, Task, DailyPlan, DayClosure, UserProfile } from '../../types';
-import { UseMutationResult } from '@tanstack/react-query';
+import { useQuery, UseMutationResult } from '@tanstack/react-query';
+import { QUERY_KEYS } from '../../constants/queryKeys';
+import { api } from '../../services/api';
+import { useTurkeyClock } from '../../hooks/useTurkeyClock';
+import { getTodayStrFromDate } from '../../services/core/utils';
 
 interface RitualOverlaysProps {
   profile?: UserProfile | null;
@@ -12,12 +16,13 @@ interface RitualOverlaysProps {
   setShowDailyRadar: (val: boolean) => void;
   showDayCloser: boolean;
   setShowDayCloser: (val: boolean) => void;
-  completeMorningRitualMutation: UseMutationResult<unknown, Error, Partial<DailyPlan>, unknown>;
+  completeMorningRitualMutation: UseMutationResult<unknown, Error, Partial<DailyPlan> & { early_start_reason?: string }, unknown>;
   completeEveningRitualMutation: UseMutationResult<unknown, Error, Partial<DayClosure>, unknown>;
   gamifiedTasks: GamifiedTask[];
   personalTasks: PersonalTask[];
   properties: Property[];
   tasks: Task[];
+  pendingEarlyStartReason?: string;
 }
 
 export const RitualOverlays = ({ 
@@ -32,8 +37,40 @@ export const RitualOverlays = ({
   gamifiedTasks, 
   personalTasks, 
   properties, 
-  tasks 
+  tasks,
+  pendingEarlyStartReason
 }: RitualOverlaysProps) => {
+
+  // MİKRO HEDEFLER
+  const { todayISO } = useTurkeyClock();
+  const { data: microGoals } = useQuery({
+    queryKey: [QUERY_KEYS.MICRO_GOALS, profile?.id],
+    queryFn: api.momentumOs.getMicroGoals,
+    enabled: !!profile?.id,
+  });
+
+  const todayPendingGoals = microGoals?.filter((m) => {
+    if (!m.deadline || m.status !== "pending") return false;
+    const dateObj = new Date(m.deadline);
+    if (isNaN(dateObj.getTime())) return false;
+    return getTodayStrFromDate(dateObj) === todayISO;
+  }) || [];
+
+  const activeMicroGoal = 
+    todayPendingGoals.find(m => m.target_metric === 'day_start_focus') ||
+    todayPendingGoals.find(m => m.target_metric === 'day_close_tomorrow_focus') ||
+    todayPendingGoals.find(m => m.target_metric === 'daily_focus');
+
+  const tomorrowObj = new Date();
+  tomorrowObj.setDate(tomorrowObj.getDate() + 1);
+  const tomorrowISO = getTodayStrFromDate(tomorrowObj);
+  
+  const tomorrowMicroGoal = microGoals?.find((m) => {
+    if (!m.deadline || m.status !== "pending") return false;
+    const dateObj = new Date(m.deadline);
+    if (isNaN(dateObj.getTime())) return false;
+    return getTodayStrFromDate(dateObj) === tomorrowISO && m.target_metric === 'day_close_tomorrow_focus';
+  });
 
   // Görsel XP Ödülü Ekranı İçin State Yönetimi
   const [showReward, setShowReward] = useState(false);
@@ -66,7 +103,8 @@ export const RitualOverlays = ({
         planned_calls: payload.planned_calls,
         planned_followups: payload.planned_followups,
         planned_portfolio_actions: payload.planned_portfolio_actions,
-        top3: payload.top3
+        top3: payload.top3,
+        early_start_reason: pendingEarlyStartReason
       });
     }, 2000);
   };
@@ -86,10 +124,11 @@ export const RitualOverlays = ({
 
   return (
     <>
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {/* Ödül / XP Kazanım Görsel Katmanı */}
         {showReward && (
           <motion.div
+            key="reward_overlay"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
@@ -147,13 +186,16 @@ export const RitualOverlays = ({
         {showDailyRadar && (
           dailyRadarData ? (
             <DailyRadar 
+              key="radar_overlay"
               tasks={dailyRadarData.tasks}
               insight={dailyRadarData.insight}
               onComplete={handleMorningComplete}
               isPending={completeMorningRitualMutation.isPending || showReward}
+              initialFocus={activeMicroGoal?.title}
             />
           ) : (
             <motion.div 
+              key="radar_loading"
               initial={{ opacity: 0, backdropFilter: 'blur(0px)' }}
               animate={{ opacity: 1, backdropFilter: 'blur(16px)' }}
               exit={{ opacity: 0, backdropFilter: 'blur(0px)' }}
@@ -194,6 +236,7 @@ export const RitualOverlays = ({
         {/* Akşam Ritüeli (Day Closer) */}
         {showDayCloser && (
           <DayCloser 
+            key="closer_overlay"
             profile={profile}
             isPending={completeEveningRitualMutation.isPending || showReward}
             onClose={() => setShowDayCloser(false)}
@@ -205,6 +248,7 @@ export const RitualOverlays = ({
               social: tasks.filter(t => t.type === 'Sosyal Medya' && t.completed).length
             }}
             onComplete={handleEveningComplete}
+            initialFocus={tomorrowMicroGoal?.title}
           />
         )}
       </AnimatePresence>

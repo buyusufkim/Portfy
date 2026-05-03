@@ -24,7 +24,6 @@ import {
   Clock,
   Phone,
   UserCheck,
-  CheckSquare,
   LifeBuoy,
   ChevronRight,
   Mail,
@@ -51,6 +50,7 @@ import {
   WeeklyReport,
   LeadAlert,
   Lead,
+  MicroGoal,
 } from "../types";
 import { RevenueStats } from "../types/revenue";
 import { QueryClient, useMutation, useQuery } from "@tanstack/react-query";
@@ -119,6 +119,7 @@ interface DashboardViewProps {
   personalTasks?: PersonalTask[];
   setShowAdminPanel?: (show: boolean) => void;
   setShowDailyRadar?: (show: boolean) => void;
+  setPendingEarlyStartReason?: (val: string) => void;
   setShowMissedOpportunities?: (show: boolean) => void;
   missedOpportunities?: MissedOpportunity[];
   leadAlerts?: LeadAlert[];
@@ -147,40 +148,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   tasks = [],
   personalTasks = [],
   setShowDailyRadar,
+  setPendingEarlyStartReason,
   leadAlerts = [],
   dailyPlan,
   weeklyReports = [],
 }) => {
-  const [microGoalInput, setMicroGoalInput] = useState("");
-  const [showMicroGoalForm, setShowMicroGoalForm] = useState(false);
   const [visiblePriorityCount, setVisiblePriorityCount] = useState(5);
   const [showEarlyStartModal, setShowEarlyStartModal] = useState(false);
   const [earlyStartReason, setEarlyStartReason] = useState("");
+  const [optimisticDayStartedAt, setOptimisticDayStartedAt] = useState<string | null>(null);
+  const [isResettingToday, setIsResettingToday] = useState(false);
+  const [resetConfirmArmed, setResetConfirmArmed] = useState(false);
 
   const { todayISO, timeLabel } = useTurkeyClock();
 
-  // Missed close warning
-  const showMissedCloseWarning = React.useMemo(() => {
-    const lastStartedStr = profile?.last_day_started_at;
-    const lastClosedStr = profile?.last_ritual_completed_at;
-    if (!lastStartedStr) return false;
-    
-    const startedDate = new Date(lastStartedStr);
-    if (isNaN(startedDate.getTime())) return false;
-    const lastStartedDate = getTodayStrFromDate(startedDate);
+  const [selectedGoalDate, setSelectedGoalDate] = useState<string>(todayISO);
 
-    if (lastStartedDate < todayISO) {
-        let wasClosed = false;
-        if (lastClosedStr) {
-           const closedDate = new Date(lastClosedStr);
-           if (!isNaN(closedDate.getTime()) && getTodayStrFromDate(closedDate) === lastStartedDate) {
-               wasClosed = true;
-           }
-        }
-        if (!wasClosed) return true;
+  const markDayStartedLocally = () => {
+    const nowIso = new Date().toISOString();
+    setOptimisticDayStartedAt(nowIso);
+    if (profile?.id) {
+      localStorage.setItem(`day_started_${profile.id}_${todayISO}`, nowIso);
     }
-    return false;
-  }, [profile, todayISO]);
+    return nowIso;
+  };
 
   const handleStartDayClick = () => {
     const [currentHour, currentMinutes] = timeLabel.split(':').map(Number);
@@ -193,7 +184,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       }
     }
 
-    startDayMutation.mutate({});
     if (setShowDailyRadar) setShowDailyRadar(true);
   };
 
@@ -340,26 +330,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     enabled: !!profile?.id,
   });
 
-  const activeMicroGoal = microGoals?.find((m) => m.status === "pending");
+  const todaysFocuses = microGoals?.filter((m) => {
+    if (!m.deadline) return false;
+    const dateObj = new Date(m.deadline);
+    if (isNaN(dateObj.getTime())) return false;
+    return getTodayStrFromDate(dateObj) === selectedGoalDate;
+  }) || [];
 
-  const addMicroGoalMutation = useMutation({
-    mutationFn: (title: string) =>
-      api.momentumOs.addMicroGoal({
-        title,
-        status: "pending",
-        deadline: new Date().toISOString(),
-        target_metric: "daily_focus",
-        target_value: 1,
-        current_value: 0,
-      }),
+  const startFocus = todaysFocuses.find(m => m.target_metric === 'day_start_focus' || m.target_metric === 'daily_focus');
+  const planFocus = todaysFocuses.find(m => m.target_metric === 'day_close_tomorrow_focus');
+
+  const focusesToDisplay: (MicroGoal & { label: string })[] = [];
+  if (startFocus) {
+    focusesToDisplay.push({ ...startFocus, label: selectedGoalDate === todayISO ? 'Gün Başlangıç Odağı' : 'Ana Odak' });
+  }
+  if (planFocus) {
+    if (!startFocus || startFocus.title !== planFocus.title) {
+       focusesToDisplay.push({ ...planFocus, label: 'Dünden Planlanan Odak' });
+    }
+  }
+
+  const completeMicroGoalMutation = useMutation({
+    mutationFn: async (goal: MicroGoal) => {
+      // First update goal status
+      const updatedGoal = await api.momentumOs.updateMicroGoal(goal.id, { 
+        status: 'completed', 
+        current_value: goal.target_value 
+      });
+      
+      // Attempt to award XP safely
+      try {
+        await api.earnXP('DAILY_FOCUS_COMPLETED', goal.id);
+      } catch (e) {
+         console.warn("Could not award XP for daily focus or already awarded.", e);
+      }
+      
+      return updatedGoal;
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.MICRO_GOALS, profile?.id],
       });
-      setMicroGoalInput("");
-      setShowMicroGoalForm(false);
-      toast.success("Mikro hedef başarıyla belirlendi!");
-    },
+      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile?.id] });
+      toast.success("Odak tamamlandı! +25 XP kazandınız.");
+    }
   });
 
   // Premium Erişim Kontrolleri
@@ -378,6 +392,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     (profile?.last_day_started_at &&
       getTodayStrFromDate(new Date(profile.last_day_started_at)) === todayISO) ||
     localStarted ||
+    optimisticDayStartedAt ||
     startDayMutation.isSuccess ||
     completeMorningRitualMutation.isSuccess
   );
@@ -390,6 +405,53 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       (!dayStartTimestamp ||
         profile.last_ritual_completed_at > dayStartTimestamp))
   );
+  const showMissedCloseWarning = React.useMemo(() => {
+    if (isDayStarted || optimisticDayStartedAt || startDayMutation.isPending) return false;
+    const lastStartedStr = profile?.last_day_started_at;
+    const lastClosedStr = profile?.last_ritual_completed_at;
+    if (!lastStartedStr) return false;
+    
+    const startedDate = new Date(lastStartedStr);
+    if (isNaN(startedDate.getTime())) return false;
+    const lastStartedDate = getTodayStrFromDate(startedDate);
+
+    if (lastStartedDate < todayISO) {
+        let wasClosed = false;
+        if (lastClosedStr) {
+           const closedDate = new Date(lastClosedStr);
+           if (!isNaN(closedDate.getTime()) && getTodayStrFromDate(closedDate) === lastStartedDate) {
+               wasClosed = true;
+           }
+        }
+        if (!wasClosed) return true;
+    }
+    return false;
+  }, [profile, todayISO, isDayStarted, optimisticDayStartedAt, startDayMutation.isPending]);
+
+  const startedTimeLabel = React.useMemo(() => {
+    if (!isDayStarted) return null;
+    let d = new Date();
+    let foundRef = false;
+
+    if (optimisticDayStartedAt) {
+      d = new Date(optimisticDayStartedAt);
+      foundRef = true;
+    } else if (profile?.last_day_started_at && getTodayStrFromDate(new Date(profile.last_day_started_at)) === todayISO) {
+      d = new Date(profile.last_day_started_at);
+      foundRef = true;
+    } else if (localStarted && localStarted !== "true") {
+      const parsed = new Date(localStarted);
+      if (!isNaN(parsed.getTime())) {
+          d = parsed;
+          foundRef = true;
+      }
+    }
+
+    if (foundRef) {
+      return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+    }
+    return timeLabel;
+  }, [isDayStarted, optimisticDayStartedAt, profile?.last_day_started_at, todayISO, localStarted, timeLabel]);
 
   React.useEffect(() => {
     if (profile?.id && !localStarted) {
@@ -455,26 +517,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const calcCallsTarget = dailyPlan?.planned_calls ?? 0;
   const calcCallsDone = dailyPlan?.completed_calls ?? 0;
-  const calcCallsPercent = safePercent(calcCallsDone, calcCallsTarget);
 
   const calcFollowupsTarget = dailyPlan?.planned_followups ?? 0;
   const calcFollowupsDone = dailyPlan?.completed_followups ?? 0;
-  const calcFollowupsPercent = safePercent(calcFollowupsDone, calcFollowupsTarget);
 
   const calcVisitsTarget = dailyPlan?.planned_portfolio_actions ?? 0;
   const calcVisitsDone = dailyPlan?.completed_portfolio_actions ?? 0;
-  const calcVisitsPercent = safePercent(calcVisitsDone, calcVisitsTarget);
-
-  const offerTasks = tasks.filter(t => 
-    t.title.toLowerCase().includes('teklif') || 
-    t.title.toLowerCase().includes('offer') ||
-    (t.type && t.type.toLowerCase().includes('teklif')) ||
-    (t.notes && t.notes.toLowerCase().includes('teklif'))
-  );
-  
-  const calcOffersTarget = offerTasks.length;
-  const calcOffersDone = offerTasks.filter(t => t.completed).length;
-  const calcOffersPercent = safePercent(calcOffersDone, calcOffersTarget);
 
   // Action Center
   const countBolgemAlerts = (tasks || [])
@@ -506,6 +554,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const hasMomentumData = weeklyReports?.[0]?.metrics?.performance_score !== undefined || gamifiedStats?.streak;
   const momentumScore = (weeklyReports?.[0]?.metrics?.performance_score as number) ?? (gamifiedStats?.streak ? Math.min(100, Math.round((gamifiedStats.streak / 7) * 100)) : 0);
 
+  const canUseDebugReset = profile?.role === "admin" || profile?.role === "super_admin";
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 10 }}
@@ -529,7 +579,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <div>
               <h3 className="text-sm font-bold">Bugün Başarıyla Tamamlandı</h3>
               <p className="text-[10px] font-medium uppercase tracking-wider">
-                İyi dinlenmeler şampiyon!
+                Bugünün kaydı tamamlandı. Yarın için güçlü bir başlangıç hazır.
               </p>
             </div>
           </div>
@@ -571,6 +621,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <Play size={18} className="fill-current group-hover:scale-110 transition-transform" />
                     {startDayMutation.isPending ? "Başlatılıyor..." : "Günü Başlat"}
                   </button>
+                )}
+                {isDayStarted && !isDayEnded && (
+                  <div className="bg-[#00D2B4]/10 border border-[#00D2B4]/20 text-[#00D2B4] px-6 h-12 rounded-xl text-sm font-bold w-full md:w-auto inline-flex items-center justify-center gap-2">
+                    <CheckCircle2 size={18} className="shrink-0" />
+                    Gün Başladı {startedTimeLabel}
+                  </div>
                 )}
               </div>
 
@@ -631,14 +687,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             completeTaskMutation.mutate({ task: item.originalItem });
                           }
                         }}
-                        className={`flex items-center justify-between p-2 hover:bg-slate-50 transition-colors rounded-xl border border-transparent hover:border-slate-100 group min-h-[64px] ${item.type === "gamified" ? "cursor-pointer" : ""}`}
+                        className={`flex items-center justify-between p-2.5 hover:bg-slate-50 transition-colors rounded-xl border border-transparent hover:border-slate-100 group min-h-[64px] ${item.type === "gamified" ? "cursor-pointer" : ""}`}
                       >
                         <div className="flex items-center gap-4 min-w-0 pr-2">
-                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${item.colorClass}`}>
+                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.colorClass} saturate-[0.8] shadow-sm`}>
                             <item.icon size={20} />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <h4 className="text-sm font-bold text-slate-900 truncate">
+                            <h4 className="text-sm font-bold text-slate-800 truncate">
                               {item.title}
                             </h4>
                             <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
@@ -648,22 +704,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         </div>
                         
                         <div className="shrink-0 flex items-center ml-2">
-                            <div className={`px-2.5 py-1 text-[10px] font-bold rounded ${
-                              item.type === "alert" ? "bg-red-100 text-red-700" :
-                              item.type === "drip" ? "bg-orange-100 text-orange-700" :
-                              item.type === "smart_rec" ? "bg-amber-100 text-amber-700" :
-                              item.type === "daily" ? "bg-blue-100 text-blue-700" :
-                              item.type === "personal" ? "bg-rose-100 text-rose-700" :
-                              item.type === "gamified" ? "bg-indigo-100 text-indigo-700" :
-                              "bg-slate-100 text-slate-600"
+                            <div className={`px-2.5 py-1 text-[10px] font-bold rounded-md ${
+                              item.type === "alert" ? "bg-red-50 text-red-700" :
+                              item.type === "drip" ? "bg-orange-50 text-orange-700" :
+                              item.type === "smart_rec" ? "bg-amber-50 text-amber-700" :
+                              item.type === "daily" ? "bg-blue-50 text-blue-700" :
+                              item.type === "personal" ? "bg-rose-50 text-rose-700" :
+                              item.type === "gamified" ? "bg-indigo-50 text-indigo-700" :
+                              "bg-slate-50 text-slate-600"
                             }`}>
-                            {item.type === "alert" ? "Kritik" :
+                            {item.type === "alert" ? "Kritik Aksiyon" :
                              item.type === "drip" ? "Takip" :
-                             item.type === "smart_rec" ? "Öneri" :
-                             item.type === "daily" ? "Planlandı" :
+                             item.type === "smart_rec" ? "Sistem Önerisi" :
+                             item.type === "daily" ? "Planlı Görev" :
                              item.type === "personal" ? "Kişisel" :
                              item.type === "gamified" ? "Gelişim" :
-                             "Planlandı"}
+                             "Planlı Görev"}
                             </div>
                         </div>
                       </div>
@@ -677,26 +733,26 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             setVisiblePriorityCount(5);
                           }
                         }}
-                        className="w-full text-center text-xs font-bold text-slate-500 hover:text-slate-700 py-2 mt-2 transition-colors border border-slate-100 rounded-lg hover:bg-slate-50"
+                        className="w-full text-center text-[11px] font-bold text-slate-500 hover:text-slate-800 py-2.5 mt-2 transition-colors border border-slate-200/50 rounded-xl hover:bg-slate-50"
                       >
-                        {visiblePriorityCount < Math.min(15, todaysPriorities.length) ? "5 öncelik daha göster" : "Daha az göster"}
+                        {visiblePriorityCount < Math.min(15, todaysPriorities.length) ? "+5 öncelik daha göster" : "Daha az göster"}
                       </button>
                     )}
                     {isGamifiedTasksLoading && (
-                      <div className="text-center text-[10px] font-medium text-slate-400 mt-2">
-                        Gelişim görevleri yükleniyor...
+                      <div className="flex items-center justify-center py-2 text-[10px] font-bold text-slate-400 mt-2 gap-1.5 animate-pulse">
+                        <Sparkles size={12} /> Gelişim hedefleri güncelleniyor...
                       </div>
                     )}
                   </>
                 ) : (
-                  <div className="flex flex-col items-center justify-center py-6 text-center">
-                    <div className="w-12 h-12 bg-slate-50 rounded-full flex items-center justify-center mb-3">
-                      <Target size={24} className="text-slate-400" />
+                  <div className="flex flex-col items-center justify-center py-10 text-center bg-slate-50/50 rounded-2xl border border-slate-100/50">
+                    <div className="w-12 h-12 bg-white rounded-full flex items-center justify-center mb-4 shadow-sm border border-slate-100">
+                      <CheckCircle2 size={24} className="text-[#00D2B4]" />
                     </div>
-                    <h4 className="text-sm font-bold text-slate-900 mb-1">Bugün için öncelik yok</h4>
-                    <p className="text-xs text-slate-500 mb-4 max-w-[200px]">Yeni görev, lead takibi veya portföy aksiyonu eklendiğinde burada görünür.</p>
-                    <button onClick={() => setActiveTab && setActiveTab("tasks")} className="text-xs font-bold text-blue-600 hover:text-blue-700">
-                      Günlük Akış'a git
+                    <h4 className="text-sm font-black text-slate-800 mb-1.5">Şu Anlık Her Şey Temiz!</h4>
+                    <p className="text-[11px] text-slate-500 mb-5 max-w-[240px] font-medium leading-relaxed">Aktif önceliğin bulunmuyor. Yeni bir hedef ekleyerek günü planlamaya başlayabilirsin.</p>
+                    <button onClick={() => setActiveTab && setActiveTab("tasks")} className="text-xs font-bold text-blue-600 hover:text-blue-700 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200 transition-colors">
+                      Yeni Görev Oluştur
                     </button>
                   </div>
                 )}
@@ -704,94 +760,166 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </Card>
           </section>
 
-          {/* 2. MİKRO HEDEF */}
+          {/* 2. BUGÜNÜN ODAK NOKTASI */}
           <section className="order-3">
               <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">2</div>
-                    <h3 className="text-base font-bold text-slate-900">Mikro Hedef</h3>
+                    <h3 className="text-base font-bold text-slate-900">Bugünün Odak Noktası</h3>
                   </div>
-                  {!showMicroGoalForm && (
-                      <button onClick={() => setShowMicroGoalForm(true)} className="text-xs font-bold text-slate-500 hover:text-slate-700 transition-colors flex items-center gap-1.5 border border-slate-200 px-3 py-1.5 rounded-lg shrink-0">
-                        <Edit3 size={12} /> {activeMicroGoal ? "Yeni Hedef" : "Mikro Hedef Ekle"}
-                      </button>
-                  )}
                 </div>
 
-                {showMicroGoalForm ? (
-                    <div className="bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-                        <input
-                            type="text"
-                            placeholder="Bugünkü mikro hedefini yaz..."
-                            value={microGoalInput}
-                            onChange={(e) => setMicroGoalInput(e.target.value)}
-                            className="w-full bg-white border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 mb-3"
-                            autoFocus
-                        />
-                        <div className="flex gap-2 justify-end">
-                            <button
-                                onClick={() => {
-                                    setShowMicroGoalForm(false);
-                                    setMicroGoalInput("");
-                                }}
-                                className="px-4 py-2 text-xs font-bold text-slate-600 hover:text-slate-900 transition-colors"
-                            >
-                                İptal
-                            </button>
-                            <button
-                                onClick={() => addMicroGoalMutation.mutate(microGoalInput.trim())}
-                                disabled={!microGoalInput.trim() || addMicroGoalMutation.isPending}
-                                className="px-4 py-2 text-xs font-bold text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50 transition-colors"
-                            >
-                                {addMicroGoalMutation.isPending ? "Kaydediliyor..." : "Kaydet"}
-                            </button>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="flex flex-col md:flex-row md:items-center gap-4 bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
-                      <div className="w-12 h-12 rounded-full bg-teal-50 flex items-center justify-center shrink-0 self-start md:self-auto">
-                        <Target size={24} className="text-[#00D2B4]" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
-                          <div className="min-w-0">
-                            <h4 className="text-sm font-bold text-slate-900 truncate">{activeMicroGoal?.title || "Mikro hedef belirlenmedi"}</h4>
-                            <p className="text-xs text-slate-500 truncate">{activeMicroGoal ? 'Hedef' : 'Bugün odaklanacağın küçük hedefi belirle.'}</p>
+                {/* YATAY TARİH ÇUBUĞU */}
+                <div className="flex gap-2 overflow-x-auto pb-2 scrollbar-none mb-4 -mx-2 px-2">
+                  {Array.from({ length: 30 }, (_, i) => {
+                    const d = new Date();
+                    d.setDate(d.getDate() - i);
+                    return getTodayStrFromDate(d);
+                  }).map((dateStr) => {
+                    let label = "";
+                    if (dateStr === todayISO) label = "Bugün";
+                    else {
+                      const d = new Date(dateStr);
+                      const diffDays = Math.floor((new Date(todayISO).getTime() - d.getTime()) / (1000 * 3600 * 24));
+                      if (diffDays === 1) label = "Dün";
+                      else if (diffDays <= 5) label = d.toLocaleDateString("tr-TR", { weekday: "short" });
+                      else label = d.toLocaleDateString("tr-TR", { day: '2-digit', month: '2-digit' });
+                    }
+                    const isSelected = selectedGoalDate === dateStr;
+                    return (
+                      <button
+                        key={dateStr}
+                        onClick={() => setSelectedGoalDate(dateStr)}
+                        className={`shrink-0 px-3 py-1.5 rounded-xl text-xs font-bold transition-colors ${
+                          isSelected 
+                            ? "bg-slate-800 text-white" 
+                            : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-100"
+                        }`}
+                      >
+                        {label}
+                      </button>
+                    );
+                  })}
+                </div>
+
+                <div className="space-y-3">
+                      {focusesToDisplay.length > 0 ? (
+                        focusesToDisplay.map((focus, idx) => (
+                          <div key={focus.id || idx} className={`flex flex-col gap-3 p-4 rounded-2xl border border-slate-100 transition-colors ${focus.status === 'completed' ? 'bg-emerald-50/50' : 'bg-slate-50/50'}`}>
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex items-start gap-3 min-w-0">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center shrink-0 ${focus.status === 'completed' ? 'bg-emerald-100 text-emerald-600' : 'bg-orange-50 text-orange-500'}`}>
+                                  {focus.status === 'completed' ? <CheckCircle2 size={20} /> : <Target size={20} />}
+                                </div>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500">
+                                      {focus.label}
+                                    </span>
+                                    {focus.status === 'completed' && (
+                                      <span className="text-[9px] font-bold bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded-full">TEMİZ</span>
+                                    )}
+                                  </div>
+                                  <h4 className={`text-sm font-bold truncate ${focus.status === 'completed' ? 'text-slate-500 line-through' : 'text-slate-900'}`}>
+                                    {focus.title}
+                                  </h4>
+                                </div>
+                              </div>
+                              
+                              {focus.status !== 'completed' && selectedGoalDate === todayISO && (
+                                <button 
+                                  onClick={() => completeMicroGoalMutation.mutate(focus)}
+                                  disabled={completeMicroGoalMutation.isPending}
+                                  className="shrink-0 flex items-center gap-1.5 bg-white border border-slate-200 hover:border-emerald-500 hover:text-emerald-600 text-slate-600 text-xs font-bold px-3 py-1.5 rounded-lg transition-all"
+                                >
+                                  {completeMicroGoalMutation.isPending ? <RefreshCw size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
+                                  <span className="hidden sm:inline">Tamamla</span>
+                                </button>
+                              )}
+                              {focus.status === 'completed' && (
+                                <div className="shrink-0 flex items-center gap-1 bg-amber-100 text-amber-700 px-2 py-1 rounded text-[10px] font-bold">
+                                  <Star size={10} className="fill-current" /> +25 XP
+                                </div>
+                              )}
+                            </div>
                           </div>
-                          {activeMicroGoal && (
-                            <span className="text-xs font-bold text-slate-600 shrink-0 self-start md:self-auto">
-                              {`${activeMicroGoal.current_value ?? 0} / ${activeMicroGoal.target_value ?? 1}`}
-                            </span>
-                          )}
-                        </div>
-                        
-                        {activeMicroGoal ? (
-                          <div className="h-1.5 bg-slate-200 rounded-full overflow-hidden w-full">
-                              <div className="h-full bg-[#00D2B4]" style={{ width: `${Math.min(100, ((activeMicroGoal.current_value ?? 0) / Math.max(1, activeMicroGoal.target_value ?? 1)) * 100)}%` }} />
+                        ))
+                      ) : (
+                        <div className="flex flex-col md:flex-row md:items-center gap-4 bg-slate-50/50 p-4 rounded-2xl border border-slate-100">
+                          <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 self-start md:self-auto bg-slate-100 text-slate-400">
+                            <Target size={24} />
                           </div>
-                        ) : (
-                          <button onClick={() => setShowMicroGoalForm(true)} className="text-xs font-bold text-blue-600 hover:text-blue-700 w-full text-left mt-2 flex items-center">
-                            Mikro hedef ekle <Plus size={14} className="ml-1" />
-                          </button>
-                        )}
-                      </div>
+                          <div className="flex-1 min-w-0">
+                            <h4 className="text-sm font-bold text-slate-900 truncate">
+                              Bugün için odak noktası belirlenmedi.
+                            </h4>
+                            <p className="text-xs text-slate-500 truncate">
+                              Gününü başlatırken ana odağını belirleyebilirsin.
+                            </p>
+                          </div>
+                        </div>
+                      )}
                     </div>
-                )}
                 
                 <div className="flex items-center gap-1.5 mt-3 text-slate-400">
-                  <Clock size={12} />
-                  <span className="text-[10px] font-medium">Günün bitmesine <strong className="font-bold">6sa 48dk</strong> kaldı</span>
+                  <Play size={10} className="fill-current text-slate-300" />
+                  <span className="text-[10px] font-medium">Önceliklerini sadeleştir, en yüksek etkili 1 aksiyona odaklan.</span>
                 </div>
               </Card>
           </section>
 
-          {/* 3. GÜNÜN NOTLARI / AKIŞ NOTLARI */}
+          {/* 3. GÜNLÜK PLAN MİNİ GÖSTERGELERİ */}
           <section className="order-4">
+              <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
+                <div className="flex items-center gap-3 mb-4">
+                  <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">3</div>
+                  <h3 className="text-base font-bold text-slate-900">Günlük Plan Mini Göstergeleri</h3>
+                </div>
+
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col justify-center">
+                    <div className="flex items-center gap-1.5 text-emerald-500 mb-1">
+                      <Phone size={14} />
+                      <span className="text-[10px] font-bold text-slate-600">Arama</span>
+                    </div>
+                    <div className="flex items-baseline gap-1 mt-1">
+                      <span className="text-lg font-black text-slate-900">{calcCallsDone}</span>
+                      <span className="text-xs text-slate-400 font-medium">/ {calcCallsTarget}</span>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col justify-center">
+                    <div className="flex items-center gap-1.5 text-orange-500 mb-1">
+                      <UserCheck size={14} />
+                      <span className="text-[10px] font-bold text-slate-600">Takip</span>
+                    </div>
+                    <div className="flex items-baseline gap-1 mt-1">
+                      <span className="text-lg font-black text-slate-900">{calcFollowupsDone}</span>
+                      <span className="text-xs text-slate-400 font-medium">/ {calcFollowupsTarget}</span>
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col justify-center">
+                    <div className="flex items-center gap-1.5 text-blue-500 mb-1">
+                      <Calendar size={14} />
+                      <span className="text-[10px] font-bold text-slate-600">Ziyaret</span>
+                    </div>
+                    <div className="flex items-baseline gap-1 mt-1">
+                      <span className="text-lg font-black text-slate-900">{calcVisitsDone}</span>
+                      <span className="text-xs text-slate-400 font-medium">/ {calcVisitsTarget}</span>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+          </section>
+
+          {/* 4. GÜNÜN NOTLARI / AKIŞ NOTLARI */}
+          <section className="order-5">
               <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">3</div>
+                    <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">4</div>
                     <h3 className="text-base font-bold text-slate-900">Günün Notları / Akış Notları</h3>
                   </div>
                   {setActiveTab && (
@@ -830,79 +958,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </Card>
           </section>
 
-          {/* 4. GÜNLÜK PLAN GÖSTERGELERİ */}
-          <section className="order-6">
-              <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">4</div>
-                  <h3 className="text-base font-bold text-slate-900">Günlük Plan Göstergeleri</h3>
-                </div>
 
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
-                  <div className="md:border-r border-slate-100 md:pr-4">
-                      <div className="flex items-center gap-1.5 text-emerald-500 mb-2">
-                        <Phone size={16} />
-                        <span className="text-xs font-bold text-slate-600">Arama</span>
-                      </div>
-                      <div className="flex justify-between items-end mb-2">
-                        <div className="text-2xl font-black text-slate-900 leading-none">{calcCallsDone}<span className="text-sm text-slate-400 font-medium ml-1">/ {calcCallsTarget}</span></div>
-                        <span className="text-[10px] font-bold text-slate-400">%{calcCallsPercent}</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-emerald-500" style={{width: `${calcCallsPercent}%`}} />
-                      </div>
-                  </div>
-                  
-                  <div className="md:border-r border-slate-100 md:pr-4">
-                      <div className="flex items-center gap-1.5 text-orange-500 mb-2">
-                        <UserCheck size={16} />
-                        <span className="text-xs font-bold text-slate-600">Takip</span>
-                      </div>
-                      <div className="flex justify-between items-end mb-2">
-                        <div className="text-2xl font-black text-slate-900 leading-none">{calcFollowupsDone}<span className="text-sm text-slate-400 font-medium ml-1">/ {calcFollowupsTarget}</span></div>
-                        <span className="text-[10px] font-bold text-slate-400">%{calcFollowupsPercent}</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-orange-500" style={{width: `${calcFollowupsPercent}%`}} />
-                      </div>
-                  </div>
 
-                  <div className="md:border-r border-slate-100 md:pr-4">
-                      <div className="flex items-center gap-1.5 text-blue-500 mb-2">
-                        <Calendar size={16} />
-                        <span className="text-xs font-bold text-slate-600">Ziyaret</span>
-                      </div>
-                      <div className="flex justify-between items-end mb-2">
-                        <div className="text-2xl font-black text-slate-900 leading-none">{calcVisitsDone}<span className="text-sm text-slate-400 font-medium ml-1">/ {calcVisitsTarget}</span></div>
-                        <span className="text-[10px] font-bold text-slate-400">%{calcVisitsPercent}</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-blue-500" style={{width: `${calcVisitsPercent}%`}} />
-                      </div>
-                  </div>
-
-                  <div>
-                      <div className="flex items-center gap-1.5 text-indigo-500 mb-2">
-                        <CheckSquare size={16} />
-                        <span className="text-xs font-bold text-slate-600">Teklif</span>
-                      </div>
-                      <div className="flex justify-between items-end mb-2">
-                        <div className="text-2xl font-black text-slate-900 leading-none">{calcOffersDone}<span className="text-sm text-slate-400 font-medium ml-1">/ {calcOffersTarget}</span></div>
-                        <span className="text-[10px] font-bold text-slate-400">%{calcOffersPercent}</span>
-                      </div>
-                      <div className="h-1.5 w-full bg-slate-100 rounded-full overflow-hidden">
-                        <div className="h-full bg-indigo-500" style={{width: `${calcOffersPercent}%`}} />
-                      </div>
-                  </div>
-                </div>
-              </Card>
-          </section>
-
-          {/* 5. RESCUE */}
+          {/* 7. RESCUE / GÜNÜN ÖZETİ */}
           <section className="order-8">
               <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">5</div>
+                  <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">7</div>
                   <h3 className="text-base font-bold text-slate-900">Rescue / Günün Özeti</h3>
                 </div>
 
@@ -932,33 +994,49 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </Card>
           </section>
 
-          {/* GÜNÜ KAPAT */}
+          {/* 8. GÜNÜ KAPAT */}
           <section className="order-9">
-              <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
-                <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-5">
-                  <div className="flex items-center gap-4 text-center md:text-left w-full">
-                    <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center shrink-0">
-                      <Moon size={24} />
+              {isDayEnded ? (
+                <Card className="p-4 bg-[#F2FFF8] border border-emerald-100 flex items-center justify-between rounded-[24px]">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
+                      <CheckCircle2 size={24} />
                     </div>
-                    <div className="flex-1 text-left">
-                      <h4 className="text-base font-bold text-slate-900">Günü Kapat</h4>
-                      <p className="text-[11px] text-slate-500 font-medium mt-0.5 pr-2">Bugünkü ilerlemeni kaydet, kazanımlarını not al ve yarına hazır ol.</p>
+                    <div>
+                      <h3 className="text-sm font-bold text-slate-900">Bugün Başarıyla Tamamlandı</h3>
+                      <p className="text-[11px] text-slate-500 font-medium tracking-wide">
+                        Bugünün kaydı tamamlandı. Yarın için güçlü bir başlangıç hazır.
+                      </p>
                     </div>
                   </div>
-                  <div className="flex items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
-                      <button onClick={() => setShowDayCloser(true)} className="h-10 px-6 rounded-xl bg-[#061A32] text-white font-bold text-[11px] flex items-center gap-1.5 hover:bg-[#082B55] transition-colors w-full md:w-auto justify-center shadow-md">
-                        <CheckCircle2 size={16} /> Günü Kapat
-                      </button>
+                </Card>
+              ) : (
+                <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
+                  <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-5">
+                    <div className="flex items-center gap-4 text-center md:text-left w-full">
+                      <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center shrink-0">
+                        <Moon size={24} />
+                      </div>
+                      <div className="flex-1 text-left">
+                        <h4 className="text-base font-bold text-slate-900">Günü Kapat</h4>
+                        <p className="text-[11px] text-slate-500 font-medium mt-0.5 pr-2">Bugünkü ilerlemeni kaydet, kazanımlarını not al ve yarına hazır ol.</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
+                        <button onClick={() => setShowDayCloser(true)} className="h-10 px-6 rounded-xl bg-[#061A32] text-white font-bold text-[11px] flex items-center gap-1.5 hover:bg-[#082B55] transition-colors w-full md:w-auto justify-center shadow-md">
+                          <CheckCircle2 size={16} /> Günü Kapat
+                        </button>
+                    </div>
                   </div>
-                </div>
-              </Card>
+                </Card>
+              )}
           </section>
         </div>
 
         {/* SAĞ KOLON (WIDGETS: AI İçgörü, Gelir Özeti vs.) */}
         <div className="contents lg:flex lg:flex-col lg:col-span-1 lg:gap-6 mt-4 lg:mt-0">
           
-          {/* Aksiyon Merkezi */}
+          {/* 6. AKSİYON MERKEZİ */}
           <section className="order-7">
             <Card className="p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
              <div className="flex items-center justify-between mb-4">
@@ -1018,7 +1096,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </Card>
           </section>
 
-          {/* Gelir Özeti (White style) */}
+          {/* 9. GELİR ÖZETİ */}
           <section className="order-10">
             <Card className="p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
              <div className="flex items-center justify-between mb-4">
@@ -1083,8 +1161,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </Card>
           </section>
 
-          {/* AI İçgörü */}
-          <section className="order-5">
+          {/* 5. AI İÇGÖRÜ */}
+          <section className="order-6">
             <Card
               onClick={() => {
                 if (!canUseAiCoach) {
@@ -1121,7 +1199,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </Card>
           </section>
 
-          {/* Haftalık Momentum */}
+          {/* 10. HAFTALIK MOMENTUM */}
           <section className="order-11 mb-8 lg:mb-0">
             <Card className="p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
              <div className="flex items-center justify-between mb-4">
@@ -1244,7 +1322,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 className="px-6 py-2 rounded-xl text-sm font-bold text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50"
                 disabled={!earlyStartReason.trim() || startDayMutation.isPending}
                 onClick={() => {
-                  startDayMutation.mutate({ early_start_reason: earlyStartReason.trim() });
+                  if (setPendingEarlyStartReason) {
+                    setPendingEarlyStartReason(earlyStartReason.trim());
+                  }
                   setShowEarlyStartModal(false);
                   if (setShowDailyRadar) setShowDailyRadar(true);
                 }}
@@ -1253,6 +1333,47 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </button>
             </div>
           </div>
+        </div>
+      )}
+      {canUseDebugReset && (
+        <div className="mt-12 text-center">
+          <button
+            onClick={async () => {
+              if (!resetConfirmArmed) {
+                setResetConfirmArmed(true);
+                setTimeout(() => setResetConfirmArmed(false), 6000);
+                return;
+              }
+              try {
+                setIsResettingToday(true);
+                await api.adminResetToday();
+                localStorage.removeItem(`day_started_${profile.id}_${todayISO}`);
+                localStorage.removeItem(`day_ended_${profile.id}_${todayISO}`);
+                queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE] });
+                queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.PROFILE, profile.id] });
+                queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_DAILY_PLAN] });
+                queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_DAILY_PLAN, profile.id] });
+                queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MICRO_GOALS] });
+                queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MICRO_GOALS, profile.id] });
+                queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_DAY_CLOSURE] });
+                queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_DAY_CLOSURE, profile.id] });
+                if (setOptimisticDayStartedAt) {
+                  setOptimisticDayStartedAt(null);
+                }
+                toast.success("Bugünkü test kayıtları sıfırlandı. Sayfa yenileniyor.");
+                setTimeout(() => window.location.reload(), 500);
+              } catch (err: unknown) {
+                const message = err instanceof Error ? err.message : "Sıfırlama başarısız.";
+                toast.error(message);
+                setIsResettingToday(false);
+                setResetConfirmArmed(false);
+              }
+            }}
+            disabled={isResettingToday}
+            className={`px-4 py-2 border rounded-xl text-xs font-mono transition-colors disabled:opacity-50 ${resetConfirmArmed ? 'bg-red-600 text-white border-red-700 hover:bg-red-700' : 'border-red-200 text-red-500 bg-red-50 hover:bg-red-100'}`}
+          >
+            {isResettingToday ? "Sıfırlanıyor..." : (resetConfirmArmed ? "Emin misin? Tekrar tıkla" : "[DEBUG] Bugünü Sıfırla")}
+          </button>
         </div>
       )}
     </motion.div>

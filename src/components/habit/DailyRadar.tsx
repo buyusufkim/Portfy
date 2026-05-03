@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Sparkles, CheckCircle2, ArrowRight, Sun, Phone, Calendar, Briefcase, Plus, X } from 'lucide-react';
+import { Sparkles, CheckCircle2, ArrowRight, Sun, Phone, Calendar, Briefcase, Plus, X, Target } from 'lucide-react';
 import { DailyPlan } from '../../types';
 
 interface DailyRadarProps {
@@ -8,14 +8,15 @@ interface DailyRadarProps {
   insight: string;
   onComplete: (data: Partial<DailyPlan>) => void;
   isPending?: boolean;
+  initialFocus?: string;
 }
 
-export const DailyRadar: React.FC<DailyRadarProps> = ({ tasks, insight, onComplete, isPending }) => {
+export const DailyRadar: React.FC<DailyRadarProps> = ({ tasks, insight, onComplete, isPending, initialFocus }) => {
   const [step, setStep] = useState(1);
   const [plannedCalls, setPlannedCalls] = useState(5);
   const [plannedFollowups, setPlannedFollowups] = useState(3);
   const [plannedPortfolioActions, setPlannedPortfolioActions] = useState(2);
-  const [top3, setTop3] = useState(['', '', '']);
+  const [top3, setTop3] = useState([initialFocus || '', '', '']);
 
   const handleNext = () => {
     if (step === 1) setStep(2);
@@ -114,7 +115,7 @@ export const DailyRadar: React.FC<DailyRadarProps> = ({ tasks, insight, onComple
                 {[
                   { label: 'Arama', value: plannedCalls, setter: setPlannedCalls, icon: Phone, color: 'text-blue-400' },
                   { label: 'Takip', value: plannedFollowups, setter: setPlannedFollowups, icon: Calendar, color: 'text-emerald-400' },
-                  { label: 'Portföy', value: plannedPortfolioActions, setter: setPlannedPortfolioActions, icon: Briefcase, color: 'text-purple-400' }
+                  { label: 'Ziyaret', value: plannedPortfolioActions, setter: setPlannedPortfolioActions, icon: Briefcase, color: 'text-purple-400' }
                 ].map((item, i) => (
                   <div key={i} className="bg-slate-800/50 border border-slate-700 p-4 rounded-3xl text-center space-y-2">
                     <item.icon size={16} className={`mx-auto ${item.color}`} />
@@ -129,28 +130,22 @@ export const DailyRadar: React.FC<DailyRadarProps> = ({ tasks, insight, onComple
               </div>
 
               <div className="space-y-4">
-                <div className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Bugünün En Önemli 3 Odağı</div>
-                {top3.map((goal, i) => (
-                  <div key={i} className="relative">
-                    <div className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 bg-orange-500/20 text-orange-500 rounded-lg flex items-center justify-center text-xs font-bold">{i + 1}</div>
-                    <input 
-                      type="text" 
-                      value={goal}
-                      onChange={(e) => {
-                        const newTop3 = [...top3];
-                        newTop3[i] = e.target.value;
-                        setTop3(newTop3);
-                      }}
-                      placeholder={i === 0 ? "Örn: Ahmet Bey'in satış kapaması" : i === 1 ? "Örn: Bölge taraması" : "Örn: 3 yeni FSBO girişi"}
-                      className="w-full bg-slate-800/50 border border-slate-700 rounded-2xl pl-12 pr-4 py-4 text-white text-sm font-medium focus:border-orange-500 outline-none transition-colors"
-                    />
-                  </div>
-                ))}
+                <div className="text-xs font-bold text-slate-500 uppercase tracking-widest ml-1">Bugünün Ana Odak Noktası</div>
+                <div className="relative">
+                  <div className="absolute left-4 top-1/2 -translate-y-1/2 w-6 h-6 bg-orange-500/20 text-orange-500 rounded-lg flex items-center justify-center text-xs font-bold"><Target size={14} /></div>
+                  <input 
+                    type="text" 
+                    value={top3[0] || ''}
+                    onChange={(e) => setTop3([e.target.value])}
+                    placeholder="Bugün tek bir şeyi başaracak olsan, bu ne olurdu?"
+                    className="w-full bg-slate-800/50 border border-slate-700 rounded-2xl pl-12 pr-4 py-4 text-white text-sm font-medium focus:border-orange-500 outline-none transition-colors"
+                  />
+                </div>
               </div>
 
               <button
                 onClick={handleNext}
-                disabled={isPending || top3.every(t => t.trim() === '')}
+                disabled={isPending || !top3[0]?.trim()}
                 className="w-full py-5 bg-orange-600 text-white rounded-3xl font-bold text-lg flex items-center justify-center gap-3 hover:bg-orange-700 transition-colors shadow-2xl shadow-orange-600/30 active:scale-95 disabled:opacity-50"
               >
                 {isPending ? 'Hazırlanıyor...' : 'Sahaya İniyorum'} <ArrowRight size={20} />

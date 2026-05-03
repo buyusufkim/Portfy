@@ -186,7 +186,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
       });
       if (response.ok) {
         const data = await response.json();
-        setUsers(data as UserProfile[]);
+        // Support both old array structure and new paginated structure { data, count, page, pageSize }
+        const usersArray = Array.isArray(data) ? data : (data.data || []);
+        setUsers(usersArray as UserProfile[]);
       }
     } catch (e) {
       console.error("Kullanıcılar çekilirken hata:", e);

@@ -13,6 +13,7 @@ import {
   handleAdminUpdateUser, 
   handleAdminDeleteUser, 
   handleAdminResetToken,
+  handleAdminResetToday,
   handleAdminGetUsers, 
   handleAdminGetSettings, 
   handleUpdateGlobalSettings, 
@@ -157,6 +158,7 @@ app.get("/api/ai/admin/settings", authenticate, requireAdmin, handleAdminGetSett
 app.post("/api/ai/admin/update-user", authenticate, requireAdmin, handleAdminUpdateUser);
 app.post("/api/ai/admin/delete-user", authenticate, requireAdmin, handleAdminDeleteUser);
 app.post("/api/ai/admin/reset-token", authenticate, requireAdmin, handleAdminResetToken);
+app.post("/api/ai/admin/reset-today", authenticate, requireAdmin, handleAdminResetToday);
 app.post("/api/ai/admin/update-settings", authenticate, requireAdmin, handleUpdateGlobalSettings);
 
 // Admin V3 Endpoints

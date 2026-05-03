@@ -81,6 +81,7 @@ function MainApp() {
   const [showAddVisit, setShowAddVisit] = useState(false);
   const [showWhatsAppImport, setShowWhatsAppImport] = useState(false);
   const [showDailyRadar, setShowDailyRadar] = useState(false);
+  const [pendingEarlyStartReason, setPendingEarlyStartReason] = useState<string | undefined>();
   const [showDayCloser, setShowDayCloser] = useState(false);
   const [showIntegrationModal, setShowIntegrationModal] = useState(false);
   const [showExternalListings, setShowExternalListings] = useState(false);
@@ -294,6 +295,7 @@ function MainApp() {
     rescueSession,
     missedOpportunities,
     setShowDailyRadar,
+    setPendingEarlyStartReason,
     setShowDayCloser,
     setShowMissedOpportunities,
     setToast,

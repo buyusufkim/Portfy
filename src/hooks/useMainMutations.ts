@@ -99,17 +99,38 @@ export function useMainMutations({
   });
 
   const completeMorningRitualMutation = useMutation({
-    mutationFn: async (variables: Partial<DailyPlan>) => {
+    mutationFn: async (variables: Partial<DailyPlan> & { early_start_reason?: string }) => {
+      // Create a micro goal from the top3 focus, if it exists
+      if (variables.top3 && variables.top3.length > 0 && variables.top3[0]?.trim()) {
+         try {
+           await api.momentumOs.setDailyFocus(variables.top3[0], new Date().toISOString(), 'day_start_focus');
+         } catch (e) {
+           console.error("Failed to add today's MicroGoal", e);
+         }
+      }
       await api.momentumOs.saveDailyPlan(variables);
-      return api.startDay();
+      return api.startDay({ early_start_reason: variables.early_start_reason });
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.MOMENTUM_DAILY_PLAN],
       });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PROFILE],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PROFILE, profileId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profileId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.MICRO_GOALS, profileId]
+      });
       setShowDailyRadar(false);
+      const xpMessage = data?.xp_awarded ? ` +${data.xp_awarded} XP!` : "!";
       setToast({
-        message: "Güne harika bir başlangıç yaptın!",
+        message: `Güne harika bir başlangıç yaptın${xpMessage}`,
         type: "success",
       });
     },
@@ -121,16 +142,44 @@ export function useMainMutations({
 
   const completeEveningRitualMutation = useMutation({
     mutationFn: async (variables: Partial<DayClosure>) => {
+      // Create tomorrow's micro goal from tomorrow_top3 focus, if it exists
+      if (variables.tomorrow_top3 && variables.tomorrow_top3.length > 0 && variables.tomorrow_top3[0]?.trim()) {
+         try {
+           const tomorrow = new Date();
+           tomorrow.setDate(tomorrow.getDate() + 1);
+           await api.momentumOs.setDailyFocus(variables.tomorrow_top3[0], tomorrow.toISOString(), 'day_close_tomorrow_focus');
+         } catch (e) {
+           console.error("Failed to add tomorrow's MicroGoal", e);
+         }
+      }
       await api.momentumOs.saveDayClosure(variables);
       return api.endDay(variables);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.MOMENTUM_DAY_CLOSURE],
       });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PROFILE],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PROFILE, profileId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profileId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.MICRO_GOALS, profileId]
+      });
+      if (profileId) {
+        // Fallback for immediate UI update: store locally using current local date which usually overlaps enough with TR date.
+        const todayStr = new Date().toISOString().split("T")[0];
+        localStorage.setItem(`day_ended_${profileId}_${todayStr}`, "true");
+      }
       setShowDayCloser(false);
+      const xpMessage = data?.xp_awarded ? ` +${data.xp_awarded} XP!` : "!";
       setToast({
-        message: "Günü başarıyla kapattın. İyi dinlenmeler!",
+        message: `Günü başarıyla kapattın. İyi dinlenmeler${xpMessage}`,
         type: "success",
       });
       confetti();

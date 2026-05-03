@@ -180,29 +180,15 @@ export const tokenTrackerMiddleware = (
       (async () => {
         if (!supabaseAdmin) return;
         try {
-          const { data: profile, error: fetchError } = await supabaseAdmin
-            .from("profiles")
-            .select("ai_tokens_used")
-            .eq("id", userId)
-            .single();
+          const { error: rpcError } = await supabaseAdmin.rpc("increment_ai_tokens", { 
+            p_user_id: userId, 
+            p_tokens: totalTokens 
+          });
 
-          if (fetchError && fetchError.code !== "PGRST116") {
-            // Not found harici hatalar
-            throw fetchError;
-          }
-
-          const currentTokens = profile?.ai_tokens_used || 0;
-          const newTotal = currentTokens + totalTokens;
-
-          const { error: updateError } = await supabaseAdmin
-            .from("profiles")
-            .update({ ai_tokens_used: newTotal })
-            .eq("id", userId);
-
-          if (updateError) throw updateError;
+          if (rpcError) throw rpcError;
 
           console.log(
-            `[Token Muhasebe] Danışman ID: ${userId} | Harcanan: ${totalTokens} | Toplam: ${newTotal}`,
+            `[Token Muhasebe] Danışman ID: ${userId} | Harcanan (Atomic): ${totalTokens}`,
           );
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);
@@ -642,18 +628,98 @@ export const handleAdminResetToken = async (
   }
 };
 
+export const handleAdminResetToday = async (
+  req: AuthRequest,
+  res: Response,
+) => {
+  try {
+    if (!supabaseAdmin)
+      return res.status(503).json({ error: "Privileged service unavailable" });
+
+    // Endpoint must ONLY use the authenticated admin's own ID
+    const userId = req.user?.id;
+    if (!userId) {
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+
+    const todayStr = getTurkeyTodayISO(new Date());
+
+    // 1. Reset profiles.last_day_started_at, last_ritual_completed_at, etc
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .update({
+        last_day_started_at: null,
+        last_ritual_completed_at: null,
+        last_morning_ritual_xp_at: null,
+        last_evening_ritual_xp_at: null,
+        last_end_day_xp_at: null,
+        // Optional: you can decrement streak later if needed, but not required yet
+      })
+      .eq("id", userId);
+
+    if (profileError) throw profileError;
+
+    // 2. Delete today's daily plan
+    const { error: planError } = await supabaseAdmin
+      .from("daily_plan")
+      .delete()
+      .eq("user_id", userId)
+      .eq("plan_date", todayStr);
+
+    if (planError) throw planError;
+
+    // 3. Delete today's day closure
+    const { error: closureError } = await supabaseAdmin
+      .from("day_closure")
+      .delete()
+      .eq("user_id", userId)
+      .eq("closure_date", todayStr);
+
+    if (closureError) throw closureError;
+
+    // 4. Delete today's ritual-related micro_goals (day_start_focus, day_close_tomorrow_focus, daily_focus)
+    const todayObj = new Date(todayStr); // Parses as UTC standard time e.g. '2026-05-03' defaults to Midnight UTC
+    const tomorrowObj = new Date(todayObj);
+    tomorrowObj.setDate(tomorrowObj.getDate() + 1);
+
+    const { error: mgError } = await supabaseAdmin
+      .from("micro_goals")
+      .delete()
+      .eq("user_id", userId)
+      .in("target_metric", ["day_start_focus", "day_close_tomorrow_focus", "daily_focus"])
+      .gte("deadline", todayObj.toISOString())
+      .lt("deadline", tomorrowObj.toISOString());
+
+    if (mgError) throw mgError;
+
+    await logAdminAudit(userId, userId, 'RESET_TODAY_DEBUG', { action: `Reset daily logs for ${todayStr}` });
+
+    res.json({ success: true, message: `Bugünkü (${todayStr}) test kayıtlarınız temizlendi.` });
+  } catch (error: unknown) {
+    console.error("Admin Reset Today Error:", error);
+    res.status(500).json({ error: safeErrorMessage(error, "Bugünü sıfırlama hatası") });
+  }
+};
+
 export const handleAdminGetUsers = async (req: AuthRequest, res: Response) => {
   try {
     if (!supabaseAdmin)
       return res.status(503).json({ error: "Privileged service unavailable" });
-    const { data, error } = await supabaseAdmin
+
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const pageSize = Math.min(100, Math.max(1, parseInt(req.query.pageSize as string) || 50));
+    const from = (page - 1) * pageSize;
+    const to = from + pageSize - 1;
+
+    const { data, error, count } = await supabaseAdmin
       .from("profiles")
-      .select("*")
-      .order("created_at", { ascending: false });
+      .select("id, email, display_name, phone, role, subscription_type, subscription_end_date, tier, broker_level, city, district, region, is_active, ai_tokens_used, ai_token_limit, created_at, updated_at", { count: 'exact' })
+      .order("created_at", { ascending: false })
+      .range(from, to);
 
     if (error) throw error;
 
-    res.json(data);
+    res.json({ data, page, pageSize, count });
   } catch (error: unknown) {
     console.error("Admin Get Users Error:", error);
     res
@@ -1094,69 +1160,116 @@ export const handleEarnXP = async (req: AuthRequest, res: Response) => {
       return getTurkeyTodayISO(d);
     };
 
-    if (actionType === 'START_DAY') {
-      const { data: profile } = await supabaseAdmin.from('profiles').select('last_day_started_at, last_ritual_completed_at, work_start_time, total_xp').eq('id', userId).single();
-      
-      if (profile) {
+    if (actionType === 'START_DAY' || actionType === 'END_DAY') {
+      const { data: profile } = await supabaseAdmin.from('profiles').select('*').eq('id', userId).single();
+      if (!profile) return res.status(404).json({ error: "Profile not found" });
+
+      if (actionType === 'START_DAY') {
         const lastStartedDate = getTurkeyDateFromTimestamp(profile.last_day_started_at);
-
-        // Idempotency check: if already started today, just return success
-        if (lastStartedDate === today) {
-          return res.json({ success: true, message: 'Güne zaten başlandı.' });
-        }
-
-        // If there's a reason for early start, log it
+        if (lastStartedDate === today) return res.json({ success: true, message: 'Day already started today', xp_awarded: 0 });
+        
         if (safeStats.early_start_reason) {
           await supabaseAdmin.from('work_discipline_logs').insert({
-            user_id: userId,
-            log_date: today,
-            type: 'early_start',
-            scheduled_time: profile.work_start_time,
-            actual_time: now,
-            reason: safeStats.early_start_reason
+            user_id: userId, log_date: today, type: 'early_start', scheduled_time: profile.work_start_time, actual_time: now, reason: safeStats.early_start_reason
           });
         }
         
-        // Missed close penalty logic
         const lastClosedDate = getTurkeyDateFromTimestamp(profile.last_ritual_completed_at);
-        
         if (lastStartedDate && lastStartedDate < today) {
-          // Started on a previous day. Was it closed?
           const wasClosed = lastClosedDate === lastStartedDate;
           if (!wasClosed) {
-            // Not closed. Try to insert a penalty log to ensure idempotency.
             const { error: logError } = await supabaseAdmin.from('work_discipline_logs').insert({
-              user_id: userId,
-              log_date: lastStartedDate, // Applied to the day that was missed
-              type: 'missed_close_penalty',
-              actual_time: now,
-              reason: 'Önceki gün kapatılmadan yeni gün başlatıldı',
-              xp_delta: -50
+              user_id: userId, log_date: lastStartedDate, type: 'missed_close_penalty', actual_time: now, reason: 'Önceki gün kapatılmadan yeni gün başlatıldı', xp_delta: -50
             });
-            
             if (!logError) {
-              // Deduct -50 XP if successfully inserted
-              await supabaseAdmin.from('profiles').update({
-                total_xp: Math.max(0, (profile.total_xp || 0) - 50)
-              }).eq('id', userId);
-              
+              profile.total_xp = Math.max(0, (profile.total_xp || 0) - 50);
               safeStats.missed_penalty_applied = true;
             }
           }
         }
+      } else if (actionType === 'END_DAY') {
+        if (getTurkeyDateFromTimestamp(profile.last_end_day_xp_at) === today) {
+          return res.json({ success: true, message: 'End day XP already awarded for today', xp_awarded: 0 });
+        }
+        
+        if (safeStats.early_close_reason) {
+          await supabaseAdmin.from('work_discipline_logs').insert({
+            user_id: userId, log_date: today, type: 'early_close', scheduled_time: profile.work_end_time, actual_time: now, reason: safeStats.early_close_reason
+          });
+        }
       }
-    } else if (actionType === 'END_DAY') {
-      if (safeStats.early_close_reason) {
-        const { data: profile } = await supabaseAdmin.from('profiles').select('work_end_time').eq('id', userId).single();
-        await supabaseAdmin.from('work_discipline_logs').insert({
+
+      const v_amount = actionType === 'START_DAY' ? 50 : (actionType === 'END_DAY' ? 150 : 0);
+      const v_new_xp = (profile.total_xp || 0) + v_amount;
+      let v_new_level = 1;
+      if (v_new_xp >= 15000) v_new_level = 4;
+      else if (v_new_xp >= 5000) v_new_level = 3;
+      else if (v_new_xp >= 1000) v_new_level = 2;
+
+      let v_new_streak = profile.current_streak || 0;
+      if (actionType === 'END_DAY') {
+        const lastRitualTz = getTurkeyDateFromTimestamp(profile.last_ritual_completed_at);
+        if (!lastRitualTz || lastRitualTz !== today) {
+          const yesterdayObj = new Date(nowObj);
+          yesterdayObj.setDate(yesterdayObj.getDate() - 1);
+          const yesterdayStr = getTurkeyTodayISO(yesterdayObj);
+          
+          if (lastRitualTz && lastRitualTz === yesterdayStr) {
+            v_new_streak += 1;
+          } else {
+            v_new_streak = 1;
+          }
+        }
+      }
+
+      // Update Profile
+      await supabaseAdmin.from('profiles').update({
+        total_xp: v_new_xp,
+        broker_level: v_new_level,
+        current_streak: v_new_streak,
+        longest_streak: Math.max(v_new_streak, profile.longest_streak || 0),
+        last_active_date: actionType === 'END_DAY' ? today : profile.last_active_date,
+        last_day_started_at: actionType === 'START_DAY' ? now : profile.last_day_started_at,
+        last_morning_ritual_xp_at: actionType === 'START_DAY' ? now : profile.last_morning_ritual_xp_at,
+        last_ritual_completed_at: actionType === 'END_DAY' ? now : profile.last_ritual_completed_at,
+        last_end_day_xp_at: actionType === 'END_DAY' ? now : profile.last_end_day_xp_at,
+        updated_at: now
+      }).eq('id', userId);
+
+      // Update User Stats
+      const { data: userStatsStr } = await supabaseAdmin.from('user_stats').select('*').eq('user_id', userId).eq('date', today).maybeSingle();
+      if (userStatsStr) {
+        await supabaseAdmin.from('user_stats').update({
+          xp_earned: (userStatsStr.xp_earned || 0) + v_amount,
+          day_started_at: actionType === 'START_DAY' && !userStatsStr.day_started_at ? now : userStatsStr.day_started_at,
+          day_ended_at: actionType === 'END_DAY' ? now : userStatsStr.day_ended_at,
+          tasks_completed: Math.max(userStatsStr.tasks_completed || 0, parseInt(safeStats.tasks_completed) || 0),
+          calls_made: Math.max(userStatsStr.calls_made || 0, parseInt(safeStats.calls_made) || 0),
+          visits_made: Math.max(userStatsStr.visits_made || 0, parseInt(safeStats.visits_made) || 0),
+          potential_revenue_handled: Math.max(userStatsStr.potential_revenue_handled || 0, parseFloat(safeStats.potential_revenue_handled) || 0),
+          updated_at: now
+        }).eq('id', userStatsStr.id);
+      } else {
+        await supabaseAdmin.from('user_stats').insert({
           user_id: userId,
-          log_date: today,
-          type: 'early_close',
-          scheduled_time: profile?.work_end_time,
-          actual_time: now,
-          reason: safeStats.early_close_reason
+          date: today,
+          xp_earned: v_amount,
+          day_started_at: actionType === 'START_DAY' ? now : null,
+          day_ended_at: actionType === 'END_DAY' ? now : null,
+          tasks_completed: parseInt(safeStats.tasks_completed) || 0,
+          calls_made: parseInt(safeStats.calls_made) || 0,
+          visits_made: parseInt(safeStats.visits_made) || 0,
+          potential_revenue_handled: parseFloat(safeStats.potential_revenue_handled) || 0,
         });
       }
+
+      return res.json({
+        success: true,
+        xp_awarded: v_amount,
+        new_total: v_new_xp,
+        new_level: v_new_level,
+        new_streak: v_new_streak
+      });
     }
 
     const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc(
@@ -1174,6 +1287,14 @@ export const handleEarnXP = async (req: AuthRequest, res: Response) => {
     if (rpcError) throw rpcError;
 
     if (!rpcResult.success) {
+      console.error("handleEarnXP failed:", rpcResult);
+      if (rpcResult.error && rpcResult.error.includes("already awarded")) {
+        return res.json({
+          success: true,
+          message: rpcResult.error,
+          xp_awarded: 0,
+        });
+      }
       return res
         .status(400)
         .json({ error: rpcResult.error || "XP kazanılamadı" });
@@ -1269,9 +1390,26 @@ export const handleAdminDeleteUserNote = async (req: AuthRequest, res: Response)
   try {
     if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
     const { id } = req.params;
+    const adminId = req.user?.id;
+
+    // First fetch the note to check ownership
+    const { data: note, error: fetchError } = await supabaseAdmin
+      .from("admin_user_notes")
+      .select("admin_id, user_id")
+      .eq("id", id)
+      .single();
+
+    if (fetchError || !note) {
+      return res.status(404).json({ error: "Not found or already deleted" });
+    }
+
+    if (note.admin_id !== adminId) {
+      return res.status(403).json({ error: "Only the creator can delete this note." });
+    }
+
     const { error } = await supabaseAdmin.from("admin_user_notes").delete().eq("id", id);
     if (error) throw error;
-    await logAdminAudit(req.user?.id || '', null, 'USER_NOTE_DELETED', { noteId: id });
+    await logAdminAudit(adminId || '', note.user_id, 'USER_NOTE_DELETED', { noteId: id });
     res.json({ success: true });
   } catch (error: unknown) {
     res.status(500).json({ error: safeErrorMessage(error, "Error deleting note") });

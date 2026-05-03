@@ -41,7 +41,7 @@ export const AICoachPanel: React.FC<{ setActiveTab?: (tab: string) => void }> = 
   const [chatHistory, setChatHistory] = useState<ChatMessage[]>(() => [
     {
       role: "ai",
-      content: `Günaydın${profile?.display_name ? ` ${profile.display_name.split(' ')[0]}` : ''}! Bugüne net bir planla başlamak başarıyı katlar. Verilerini analiz ederek odaklanman gereken alanları bulabilirim.\n\nHadi bugünü güçlü kapatalım! Nereden başlamak istersin?`,
+      content: "Bugüne net bir planla başlayalım. Verilerini analiz edip en doğru odağı çıkarabilirim.",
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
     }
   ]);
@@ -104,52 +104,61 @@ export const AICoachPanel: React.FC<{ setActiveTab?: (tab: string) => void }> = 
       {/* SOL KOLON: AI ETKİLEŞİM ALANI */}
       <div className="xl:col-span-7 space-y-6 flex flex-col">
         
-        {/* Başlık ve Ton */}
-        <div className="flex items-start justify-between flex-col md:flex-row gap-4 md:gap-0">
-          <div>
-            <h1 className="text-2xl font-black text-slate-900 tracking-tight mb-1">Portfy AI Koç</h1>
-            <p className="text-sm font-medium text-slate-500">Günlük, haftalık ve aylık verilerini analiz ederek sana net aksiyon planı çıkarır.</p>
-          </div>
-          <div className="flex flex-col items-start md:items-end gap-1">
-            <div className="flex items-center gap-2 bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full text-sm font-semibold">
-              <MessageSquare size={14} />
+        {/* PREMIUM HERO / HEADER */}
+        <div className="bg-gradient-to-br from-[#061A32] via-[#082B55] to-[#061A32] rounded-[32px] p-8 text-white relative overflow-hidden shadow-xl border-none">
+          <div className="absolute top-0 right-0 w-64 h-64 bg-[#00D2B4]/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
+          
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div>
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles size={20} className="text-[#00D2B4]" />
+                <span className="text-[#00D2B4] text-[11px] font-black tracking-widest uppercase">Portfy AI Koç</span>
+              </div>
+              <h1 className="text-3xl font-black tracking-tight mb-2">
+                {profile?.display_name ? `Hazır mısın, ${profile.display_name.split(' ')[0]}?` : 'Performans Odaklı AI Koç'}
+              </h1>
+              <p className="text-sm font-medium text-white/70 max-w-md leading-relaxed">
+                Bugüne net bir planla başlayalım. Verilerini analiz edip en doğru odağı çıkarabilirim.
+              </p>
+            </div>
+            <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm border border-white/20 text-white/90 px-4 py-2 rounded-2xl text-sm font-bold shrink-0">
+              <MessageSquare size={16} />
               Ton: {currentTone}
             </div>
-            <span className="text-[10px] text-slate-400 font-medium md:mr-2">Profilim'den yönetilir</span>
           </div>
         </div>
 
         {/* AI Sohbet/Çıktı Alanı */}
-        <div className="flex-1 bg-white border border-slate-200 rounded-[32px] p-6 min-h-[400px] max-h-[600px] overflow-y-auto flex flex-col shadow-sm gap-6">
+        <div className="flex-1 bg-white border border-slate-100 rounded-[32px] p-6 lg:p-8 min-h-[400px] max-h-[600px] overflow-y-auto flex flex-col shadow-sm gap-6 custom-scrollbar">
           {chatHistory.map((msg, idx) => (
             <div key={idx} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               
               {msg.role === 'ai' && (
-                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 shrink-0 mt-1">
-                  <Sparkles size={20} className="text-orange-500" />
+                <div className="w-10 h-10 bg-slate-900 rounded-full flex items-center justify-center text-white shrink-0 mt-1 shadow-md">
+                  <Sparkles size={18} className="text-[#00D2B4]" />
                 </div>
               )}
 
-              <div className={`max-w-[80%] flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
-                <div className="flex items-center gap-2 mb-1 px-1">
-                  <span className="text-xs font-semibold text-slate-700">{msg.role === 'ai' ? 'AI Koç' : (profile?.display_name || 'Sen')}</span>
-                  {msg.time && <span className="text-xs text-slate-400">{msg.time}</span>}
+              <div className={`max-w-[85%] flex flex-col ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                <div className="flex items-center gap-3 mb-1.5 px-1">
+                  <span className="text-xs font-bold text-slate-900">{msg.role === 'ai' ? 'Portfy AI' : (profile?.display_name || 'Sen')}</span>
+                  {msg.time && <span className="text-[10px] font-medium text-slate-400">{msg.time}</span>}
                 </div>
-                <div className={`p-4 rounded-2xl whitespace-pre-wrap text-sm leading-relaxed ${
+                <div className={`p-4 md:p-5 rounded-2xl md:rounded-3xl whitespace-pre-wrap text-sm leading-relaxed shadow-sm ${
                   msg.role === 'user' 
-                    ? 'bg-slate-100 text-slate-800 rounded-tr-sm' 
-                    : 'bg-slate-50 text-slate-800 rounded-tl-sm border border-slate-100'
+                    ? 'bg-[#061A32] text-white rounded-tr-md' 
+                    : 'bg-slate-50 text-slate-800 rounded-tl-md border border-slate-200/60'
                 }`}>
                   {msg.content}
                 </div>
               </div>
 
               {msg.role === 'user' && (
-                <div className="w-10 h-10 bg-slate-200 rounded-full flex items-center justify-center overflow-hidden shrink-0 mt-1">
+                <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center overflow-hidden shrink-0 mt-1 ring-2 ring-white shadow-sm">
                   {profile?.avatar_url ? (
                     <img src={profile.avatar_url} alt="User" className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full bg-slate-300 flex items-center justify-center text-slate-600 font-bold">
+                    <div className="w-full h-full bg-slate-200 flex items-center justify-center text-slate-500 font-bold text-sm">
                        {profile?.display_name?.charAt(0) || 'S'}
                     </div>
                   )}
@@ -161,20 +170,22 @@ export const AICoachPanel: React.FC<{ setActiveTab?: (tab: string) => void }> = 
 
           {isLoading && (
             <div className="flex gap-4">
-              <div className="w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-600 shrink-0 mt-1">
-                 <Sparkles size={20} className="text-orange-500 animate-pulse" />
+              <div className="w-10 h-10 bg-slate-900 rounded-full flex items-center justify-center text-white shrink-0 mt-1 shadow-md">
+                 <Sparkles size={18} className="text-[#00D2B4] animate-pulse" />
               </div>
-              <div className="bg-slate-50 border border-slate-100 rounded-2xl rounded-tl-sm p-4 w-16 flex items-center justify-center gap-1.5">
-                 <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce"></div>
-                 <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
-                 <div className="w-1.5 h-1.5 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
+              <div className="bg-slate-50 border border-slate-200/60 rounded-3xl rounded-tl-md p-5 w-20 flex items-center justify-center gap-1.5 shadow-sm">
+                 <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce"></div>
+                 <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0.15s' }}></div>
+                 <div className="w-2 h-2 bg-slate-300 rounded-full animate-bounce" style={{ animationDelay: '0.3s' }}></div>
               </div>
             </div>
           )}
 
           {error && (
-            <div className="text-center p-4">
-                <p className="text-sm text-red-500 font-medium bg-red-50 py-2 px-4 rounded-lg inline-block">AI Koç şu an yanıt üretemedi. Biraz sonra tekrar dene.</p>
+            <div className="text-center p-6 bg-red-50/50 rounded-3xl border border-red-100/50 my-2">
+                <ShieldAlert size={24} className="text-red-400 mx-auto mb-2" />
+                <h4 className="text-sm font-bold text-red-900 mb-1">Şu an analiz edemiyorum</h4>
+                <p className="text-xs font-medium text-red-600/80 max-w-sm mx-auto">Yoğunluk nedeniyle kısa bir duraksama yaşadık. Merak etme, verilerin güvende. Birkaç saniye sonra tekrar deneyebilirsin.</p>
             </div>
           )}
         </div>
@@ -186,39 +197,49 @@ export const AICoachPanel: React.FC<{ setActiveTab?: (tab: string) => void }> = 
             value={message}
             onChange={(e) => setMessage(e.target.value)}
             disabled={isLoading}
-            placeholder="AI Koç'a bugün neyi netleştirmek istediğini yaz..."
-            className="w-full bg-white border border-slate-200 rounded-2xl py-4 pl-4 pr-14 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500/50 focus:border-orange-500 transition-all shadow-sm disabled:opacity-50"
+            placeholder="AI Koç'a neye odaklanmak istediğini yaz..."
+            className="w-full bg-white border border-slate-200 rounded-2xl md:rounded-3xl py-4 md:py-5 pl-5 pr-14 text-sm font-medium focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all shadow-sm disabled:opacity-50 placeholder:text-slate-400"
           />
           <button 
             type="submit" 
             disabled={!message.trim() || isLoading}
-            className="absolute right-2 top-2 p-2 bg-slate-900 text-white rounded-xl hover:bg-orange-600 transition-colors disabled:opacity-50 disabled:hover:bg-slate-900"
+            className="absolute right-2.5 top-2.5 p-2.5 md:p-3 bg-[#061A32] text-white rounded-xl md:rounded-2xl hover:bg-blue-600 transition-colors disabled:opacity-50 disabled:hover:bg-[#061A32] shadow-sm flex items-center justify-center"
           >
-            <Send size={18} />
+            <Send size={18} className="ml-0.5" />
           </button>
         </form>
 
         {/* Hızlı Çözümler */}
-        <div className="grid grid-cols-2 lg:grid-cols-3 gap-2">
-          <button onClick={() => handleAction("analyze")} disabled={isLoading} className="flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl hover:border-orange-300 hover:shadow-sm text-xs font-semibold text-slate-700 transition-all text-left">
-            <BarChart size={14} className="text-blue-500 shrink-0" />
-            <span className="truncate">Verilerimi analiz et</span>
+        <div className="grid grid-cols-2 lg:grid-cols-3 gap-3">
+          <button onClick={() => handleAction("analyze")} disabled={isLoading} className="flex flex-col items-start gap-2 p-4 bg-white border border-slate-200 rounded-2xl hover:border-blue-300 hover:shadow-md transition-all text-left group">
+            <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <BarChart size={16} className="text-blue-600" />
+            </div>
+            <span className="text-xs font-bold text-slate-700 leading-tight">Verilerimi<br/>analiz et</span>
           </button>
-          <button onClick={() => handleAction("priorities")} disabled={isLoading} className="flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl hover:border-orange-300 hover:shadow-sm text-xs font-semibold text-slate-700 transition-all text-left">
-            <Target size={14} className="text-orange-500 shrink-0" />
-            <span className="truncate">Önceliklerimi belirle</span>
+          <button onClick={() => handleAction("priorities")} disabled={isLoading} className="flex flex-col items-start gap-2 p-4 bg-white border border-slate-200 rounded-2xl hover:border-orange-300 hover:shadow-md transition-all text-left group">
+            <div className="w-8 h-8 rounded-full bg-orange-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Target size={16} className="text-orange-600" />
+            </div>
+            <span className="text-xs font-bold text-slate-700 leading-tight">Önceliklerimi<br/>belirle</span>
           </button>
-          <button onClick={() => handleAction("risks")} disabled={isLoading} className="flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl hover:border-orange-300 hover:shadow-sm text-xs font-semibold text-slate-700 transition-all text-left">
-            <ShieldAlert size={14} className="text-red-500 shrink-0" />
-            <span className="truncate">Takip risklerimi göster</span>
+          <button onClick={() => handleAction("risks")} disabled={isLoading} className="flex flex-col items-start gap-2 p-4 bg-white border border-slate-200 rounded-2xl hover:border-red-300 hover:shadow-md transition-all text-left group">
+            <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <ShieldAlert size={16} className="text-red-600" />
+            </div>
+            <span className="text-xs font-bold text-slate-700 leading-tight">Takip risklerimi<br/>göster</span>
           </button>
-          <button onClick={() => handleAction("region")} disabled={isLoading} className="flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl hover:border-orange-300 hover:shadow-sm text-xs font-semibold text-slate-700 transition-all text-left">
-            <Map size={14} className="text-green-500 shrink-0" />
-            <span className="truncate">Bölge stratejisi öner</span>
+          <button onClick={() => handleAction("region")} disabled={isLoading} className="flex flex-col items-start gap-2 p-4 bg-white border border-slate-200 rounded-2xl hover:border-emerald-300 hover:shadow-md transition-all text-left group">
+            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Map size={16} className="text-emerald-600" />
+            </div>
+            <span className="text-xs font-bold text-slate-700 leading-tight">Bölge stratejisi<br/>öner</span>
           </button>
-          <button onClick={() => handleAction("portfolio")} disabled={isLoading} className="flex items-center gap-2 px-3 py-2.5 bg-white border border-slate-200 rounded-xl hover:border-orange-300 hover:shadow-sm text-xs font-semibold text-slate-700 transition-all text-left col-span-2 lg:col-span-1">
-            <Briefcase size={14} className="text-purple-500 shrink-0" />
-            <span className="truncate">Portföy fırsatlarını çıkar</span>
+          <button onClick={() => handleAction("portfolio")} disabled={isLoading} className="flex flex-col items-start gap-2 p-4 bg-white border border-slate-200 rounded-2xl hover:border-purple-300 hover:shadow-md transition-all text-left group col-span-2 lg:col-span-1">
+            <div className="w-8 h-8 rounded-full bg-purple-50 flex items-center justify-center group-hover:scale-110 transition-transform">
+              <Briefcase size={16} className="text-purple-600" />
+            </div>
+            <span className="text-xs font-bold text-slate-700 leading-tight">Portföy<br/>fırsatları</span>
           </button>
         </div>
 

@@ -67,6 +67,56 @@ export const momentumOsService = {
     return (data || []) as MicroGoal[];
   },
 
+  setDailyFocus: async (title: string, dateISO: string, source: 'day_start_focus' | 'day_close_tomorrow_focus' | 'daily_focus' = 'daily_focus'): Promise<MicroGoal> => {
+    const userId = await getUserId();
+    const datePrefix = dateISO.split('T')[0];
+    
+    // Check if there is an existing daily focus for this date using gte/lt
+    const startDate = new Date(datePrefix);
+    const endDate = new Date(startDate);
+    endDate.setDate(endDate.getDate() + 1);
+
+    const { data: existing, error: searchError } = await supabase
+      .from('micro_goals')
+      .select('id')
+      .eq('user_id', userId)
+      .eq('target_metric', source)
+      .gte('deadline', startDate.toISOString())
+      .lt('deadline', endDate.toISOString())
+      .limit(1);
+
+    if (searchError) throw searchError;
+
+    if (existing && existing.length > 0) {
+      // Update
+      const { data, error } = await supabase
+        .from('micro_goals')
+        .update({ title, updated_at: new Date().toISOString() })
+        .eq('id', existing[0].id)
+        .select()
+        .single();
+      if (error) throw error;
+      return data as MicroGoal;
+    } else {
+      // Insert
+      const { data, error } = await supabase
+        .from('micro_goals')
+        .insert([{
+          user_id: userId,
+          title,
+          status: 'pending',
+          deadline: dateISO,
+          target_metric: source,
+          target_value: 1,
+          current_value: 0
+        }])
+        .select()
+        .single();
+      if (error) throw error;
+      return data as MicroGoal;
+    }
+  },
+
   addMicroGoal: async (goal: Partial<MicroGoal>): Promise<MicroGoal> => {
     const userId = await getUserId();
     const { data, error } = await supabase

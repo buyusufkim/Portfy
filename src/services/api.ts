@@ -521,5 +521,18 @@ export const api = {
       headers: { "Authorization": `Bearer ${session?.access_token || ''}` },
     });
     if (!response.ok) throw new Error(await response.text());
+  },
+  adminResetToday: async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const response = await fetch(`${API_URL}/api/ai/admin/reset-today`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${session?.access_token || ''}` },
+      body: JSON.stringify({}),
+    });
+    if (!response.ok) {
+       const err = await response.json().catch(() => ({error: "Sıfırlama işlemi başarısız"}));
+       throw new Error(err.error || err.message || "Sıfırlama işlemi başarısız");
+    }
+    return response.json();
   }
 };

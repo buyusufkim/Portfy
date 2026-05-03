@@ -15,6 +15,14 @@ const getSupabaseAdmin = () => {
   return createClient(url, key);
 };
 
+const sanitizeText = (text: string | null | undefined, maxLen: number): string => {
+  if (!text) return "";
+  const cleanStr = String(text)
+    .replace(/[<>]/g, '') // Remove obvious HTML brackets
+    .trim();
+  return cleanStr.length > maxLen ? cleanStr.substring(0, maxLen) : cleanStr;
+};
+
 // Instagram API: Yoruma herkese açık (Public) yanıt verme
 const sendPublicReply = async (commentId: string, message: string) => {
   const token = process.env.META_ACCESS_TOKEN;
@@ -120,53 +128,84 @@ export const handleMetaWebhookPost = async (req: CustomRequest, res: Response) =
 
         for (const change of entry.changes) {
           if (change.field === 'comments') {
-            const commentText = change.value.text;
-            const username = change.value.from.username;
-            const senderId = change.value.from.id;
-            const commentId = change.value.id; 
+            const commentText = sanitizeText(change.value?.text, 700);
+            const username = sanitizeText(change.value?.from?.username, 80);
+            const senderId = change.value?.from?.id;
+            const commentId = change.value?.id; 
 
             // Sistemin kendi kendine attığı yanıtlara (DM gönderdim vs) cevap vermesini engelliyoruz
             if (senderId === pageId) continue;
 
             if (ai && supabaseAdmin) {
-              const prompt = `Sen üst düzey bir emlak satış uzmanısın. Instagram'da gelen şu yorumu analiz et: "${commentText}". 
-              Müşteri portföy hakkında fiyat, konum, detay öğrenmek veya iletişim kurmak mı istiyor? 
-              Eğer bu sadece bir tebrik (Örn: "Hayırlı işler", "Harika ev") veya alakasız bir yorumsa isLead: false yap. 
-              Eğer bilgi almak istiyorsa (Örn: "Fiyat nedir?", "Konum neresi?", "Kaç para") isLead: true yap. 
-              Sadece geçerli JSON dön: {"isLead": boolean, "intent": "Niyetin 3 kelimelik özeti"}`;
-
-              const response = await ai.models.generateContent({
-                model: "gemini-2.0-flash",
-                contents: prompt,
-                config: { responseMimeType: "application/json" }
+              // Webhook Idempotency Check
+              const { error: idempotencyErr } = await supabaseAdmin.from('webhook_events').insert({
+                provider: 'meta',
+                event_id: commentId
               });
 
-              let cleanJson = response.text || "{}";
-              cleanJson = cleanJson.replace(/```json/g, "").replace(/```/g, "").trim();
-              let result = { isLead: false, intent: "" };
-              try { result = JSON.parse(cleanJson); } catch (e) { console.error("Parse Hatası", e); }
+              if (idempotencyErr) {
+                // Ignore if it's already processed, just continue to next event (200 is already sent)
+                console.log(`[Meta API] Duplicate event skipped: ${commentId}`);
+                continue;
+              }
 
-              if (result.isLead) {
-                // 1. LEAD EKLEME (Sıfır Temaslı CRM)
-                const defaultUserId = process.env.META_DEFAULT_USER_ID;
-                if (!defaultUserId) {
-                  console.log("[Meta API] META_DEFAULT_USER_ID missing, lead skipped");
-                } else {
-                  await supabaseAdmin.from('leads').insert({
-                    user_id: defaultUserId,
-                    name: `@${username} (Instagram)`,
-                    status: 'Sıcak',
-                    type: 'Alıcı',
-                    notes: `Sistem Yakaladı.\nYorum: "${commentText}"\nNiyet: ${result.intent}`,
-                  });
+              let aiSuccess = false;
+              try {
+                const prompt = `Sen üst düzey bir emlak satış uzmanısın. Instagram'da gelen şu yorumu analiz et: "${commentText}". 
+                Müşteri portföy hakkında fiyat, konum, detay öğrenmek veya iletişim kurmak mı istiyor? 
+                Eğer bu sadece bir tebrik (Örn: "Hayırlı işler", "Harika ev") veya alakasız bir yorumsa isLead: false yap. 
+                Eğer bilgi almak istiyorsa (Örn: "Fiyat nedir?", "Konum neresi?", "Kaç para") isLead: true yap. 
+                Sadece geçerli JSON dön: {"isLead": boolean, "intent": "Niyetin 3 kelimelik özeti"}`;
+
+                const response = await ai.models.generateContent({
+                  model: "gemini-2.0-flash",
+                  contents: prompt,
+                  config: { responseMimeType: "application/json" }
+                });
+
+                let cleanJson = response.text || "{}";
+                cleanJson = cleanJson.replace(/```json/g, "").replace(/```/g, "").trim();
+                let result = { isLead: false, intent: "" };
+                try { result = JSON.parse(cleanJson); } catch (e) { console.error("Parse Hatası", e); }
+                
+                result.intent = sanitizeText(result.intent, 80);
+
+                if (result.isLead) {
+                  // 1. LEAD EKLEME (Sıfır Temaslı CRM)
+                  const defaultUserId = process.env.META_DEFAULT_USER_ID;
+                  if (!defaultUserId) {
+                    console.log("[Meta API] META_DEFAULT_USER_ID missing, lead skipped");
+                  } else {
+                    await supabaseAdmin.from('leads').insert({
+                      user_id: defaultUserId,
+                      name: `@${username} (Instagram)`,
+                      status: 'Sıcak',
+                      type: 'Alıcı',
+                      notes: `Sistem Yakaladı.\nYorum: "${commentText}"\nNiyet: ${result.intent}`,
+                    });
+                  }
+
+                  // 2. YORUMA HERKESE AÇIK YANIT
+                  await sendPublicReply(commentId, `Harika bir tercih @${username}! 🏡 Detaylı sunum dosyasını ve fiyat bilgisini DM kutunuza gönderdim. 🤝`);
+
+                  // 3. MÜŞTERİYE ÖZEL DM VE SUNUM LİNKİ GÖNDERİMİ
+                  const dmMessage = `Merhaba @${username}! 🎉\n\nİlgilendiğiniz portföyün tüm detaylarına, konumuna ve yüksek çözünürlüklü fotoğraflarına Portfy üzerinden ulaşabilirsiniz:\n\n👉 https://portfy.tr/p/demo-portfoy\n\nDetaylı bilgi almak isterseniz veya yerinde görmek isterseniz, bu mesaja yanıt vermeniz yeterli!`;
+                  await sendPrivateDM(commentId, dmMessage);
                 }
+                aiSuccess = true;
+              } catch (innerError) {
+                console.error("[Meta API] Processing error:", innerError);
+                await supabaseAdmin.from('webhook_events')
+                  .update({ status: 'error', error: sanitizeText(String(innerError), 200) })
+                  .eq('provider', 'meta')
+                  .eq('event_id', commentId);
+              }
 
-                // 2. YORUMA HERKESE AÇIK YANIT
-                await sendPublicReply(commentId, `Harika bir tercih @${username}! 🏡 Detaylı sunum dosyasını ve fiyat bilgisini DM kutunuza gönderdim. 🤝`);
-
-                // 3. MÜŞTERİYE ÖZEL DM VE SUNUM LİNKİ GÖNDERİMİ
-                const dmMessage = `Merhaba @${username}! 🎉\n\nİlgilendiğiniz portföyün tüm detaylarına, konumuna ve yüksek çözünürlüklü fotoğraflarına Portfy üzerinden ulaşabilirsiniz:\n\n👉 https://portfy.tr/p/demo-portfoy\n\nDetaylı bilgi almak isterseniz veya yerinde görmek isterseniz, bu mesaja yanıt vermeniz yeterli!`;
-                await sendPrivateDM(commentId, dmMessage);
+              if (aiSuccess) {
+                await supabaseAdmin.from('webhook_events')
+                  .update({ status: 'processed', processed_at: new Date().toISOString() })
+                  .eq('provider', 'meta')
+                  .eq('event_id', commentId);
               }
             }
           }

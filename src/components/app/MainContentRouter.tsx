@@ -1,5 +1,5 @@
 import React from 'react';
-import { AnimatePresence } from 'motion/react';
+import { AnimatePresence, motion } from 'motion/react';
 import { DashboardPage } from '../../pages/DashboardPage';
 import { TasksPage } from '../../pages/TasksPage';
 import { PortfoliosPage } from '../../pages/PortfoliosPage';
@@ -114,9 +114,10 @@ export interface UtilityProps {
   gamifiedTasks: GamifiedTask[];
   personalTasks: PersonalTask[];
   setShowDailyRadar: (val: boolean) => void;
+  setPendingEarlyStartReason?: (val: string) => void;
   setShowDayCloser: (val: boolean) => void;
   setToast: (toast: { message: string, type: 'success' | 'error' | 'info' } | null) => void;
-  completeMorningRitualMutation: MutationResult<{ success: boolean; }, Partial<DailyPlan>>;
+  completeMorningRitualMutation: MutationResult<{ success: boolean; }, Partial<DailyPlan> & { early_start_reason?: string }>;
   tasksLoading: boolean;
   tasksError: boolean;
   showVoiceQuickAdd: boolean;
@@ -159,95 +160,103 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
 
   return (
     <AnimatePresence mode="wait">
-      {navigation.activeTab === 'dashboard' && (
-        <DashboardPage 
-          profile={navigation.profile}
-          properties={portfolios.properties || []}
-          gamifiedTasks={utilities.gamifiedTasks || []}
-          isGamifiedTasksLoading={utilities.tasksLoading}
-          isGamifiedTasksError={utilities.tasksError}
-          personalTasks={utilities.personalTasks || []}
-          tasks={utilities.tasks || []}
-          rescueSession={utilities.rescueSession}
-          missedOpportunities={utilities.missedOpportunities || []}
-          setActiveTab={navigation.setActiveTab}
-          setShowAdminPanel={navigation.setShowAdminPanel}
-          setShowDailyRadar={utilities.setShowDailyRadar}
-          setShowDayCloser={utilities.setShowDayCloser}
-          setShowMissedOpportunities={utilities.setShowMissedOpportunities}
-          setToast={utilities.setToast}
-          completeMorningRitualMutation={utilities.completeMorningRitualMutation}
-          setSelectedLead={leads.setSelectedLead}
-          setSelectedProperty={portfolios.setSelectedProperty}
-        />
-      )}
-      {navigation.activeTab === 'tasks' && (
-        <TasksPage 
-          profile={navigation.profile}
-          tasks={utilities.tasks || []}
-          personalTasks={utilities.personalTasks || []}
-          setShowAddTask={utilities.setShowAddTask}
-        />
-      )}
-      {navigation.activeTab === 'bolgem' && (
-        <React.Suspense fallback={<LoadingFallback />}>
-          <BolgemView 
-            profile={navigation.profile} 
+      <motion.div
+        key={navigation.activeTab}
+        initial={{ opacity: 0, y: 10 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: -10 }}
+        transition={{ duration: 0.2 }}
+        className="h-full"
+      >
+        {navigation.activeTab === 'dashboard' && (
+          <DashboardPage 
+            profile={navigation.profile}
+            properties={portfolios.properties || []}
+            gamifiedTasks={utilities.gamifiedTasks || []}
+            isGamifiedTasksLoading={utilities.tasksLoading}
+            isGamifiedTasksError={utilities.tasksError}
+            personalTasks={utilities.personalTasks || []}
+            tasks={utilities.tasks || []}
+            rescueSession={utilities.rescueSession}
+            missedOpportunities={utilities.missedOpportunities || []}
+            setActiveTab={navigation.setActiveTab}
+            setShowAdminPanel={navigation.setShowAdminPanel}
+            setShowDailyRadar={utilities.setShowDailyRadar}
+            setShowDayCloser={utilities.setShowDayCloser}
+            setShowMissedOpportunities={utilities.setShowMissedOpportunities}
             setToast={utilities.setToast}
+            completeMorningRitualMutation={utilities.completeMorningRitualMutation}
+            setSelectedLead={leads.setSelectedLead}
+            setSelectedProperty={portfolios.setSelectedProperty}
           />
-        </React.Suspense>
-      )}
-      {navigation.activeTab === 'portfoyler' && (
-        <PortfoliosPage 
-          properties={portfolios.properties || []}
-          selectedDistrict={portfolios.selectedDistrict}
-          setSelectedDistrict={portfolios.setSelectedDistrict}
-          viewMode={portfolios.viewMode}
-          setViewMode={portfolios.setViewMode}
-          setShowImportUrlModal={portfolios.setShowImportUrlModal}
-          regionScores={portfolios.regionScores || []}
-          propertiesLoading={portfolios.propertiesLoading}
-          setSelectedProperty={portfolios.setSelectedProperty}
-        />
-      )}
-      {navigation.activeTab === 'crm' && (
-        <CRMPage 
-          profile={navigation.profile}
-          leads={leads.leads || []}
-          leadsLoading={leads.leadsLoading}
-          categories={leads.categories || []}
-          setShowWhatsAppImport={leads.setShowWhatsAppImport}
-          setShowAddLead={leads.setShowAddLead}
-          setIsAnalyzingLeads={leads.setIsAnalyzingLeads}
-          analyzeLeadsMutation={leads.analyzeLeadsMutation}
-          leadAnalysis={leads.leadAnalysis}
-          isAnalyzingLeads={leads.isAnalyzingLeads}
-          properties={portfolios.properties || []}
-          selectedLead={leads.selectedLead}
-          setSelectedLead={leads.setSelectedLead}
-        />
-      )}
-      {navigation.activeTab === 'profil' && (
-        <ProfilView 
-          profile={navigation.profile}
-          setShowAdminPanel={navigation.setShowAdminPanel}
-          brokerAccount={portfolios.brokerAccount}
-          setShowExternalListings={portfolios.setShowExternalListings}
-          setShowIntegrationModal={portfolios.setShowIntegrationModal}
-          syncListingsMutation={portfolios.syncListingsMutation}
-          updateProfileMutation={navigation.updateProfileMutation}
-          setShowRegionSetup={portfolios.setShowRegionSetup}
-          logout={navigation.logout}
-        />
-      )}
-      
-      {/* 🔥 AI KOÇ SAYFASI KİLİTLENDİ 🔥 */}
-      {navigation.activeTab === 'koc' && (
-        <PremiumGate featureKey="ai_coach">
-          <CoachView setActiveTab={navigation.setActiveTab} />
-        </PremiumGate>
-      )}
-
+        )}
+        {navigation.activeTab === 'tasks' && (
+          <TasksPage 
+            profile={navigation.profile}
+            tasks={utilities.tasks || []}
+            personalTasks={utilities.personalTasks || []}
+            setShowAddTask={utilities.setShowAddTask}
+          />
+        )}
+        {navigation.activeTab === 'bolgem' && (
+          <React.Suspense fallback={<LoadingFallback />}>
+            <BolgemView 
+              profile={navigation.profile} 
+              setToast={utilities.setToast}
+            />
+          </React.Suspense>
+        )}
+        {navigation.activeTab === 'portfoyler' && (
+          <PortfoliosPage 
+            properties={portfolios.properties || []}
+            selectedDistrict={portfolios.selectedDistrict}
+            setSelectedDistrict={portfolios.setSelectedDistrict}
+            viewMode={portfolios.viewMode}
+            setViewMode={portfolios.setViewMode}
+            setShowImportUrlModal={portfolios.setShowImportUrlModal}
+            regionScores={portfolios.regionScores || []}
+            propertiesLoading={portfolios.propertiesLoading}
+            setSelectedProperty={portfolios.setSelectedProperty}
+          />
+        )}
+        {navigation.activeTab === 'crm' && (
+          <CRMPage 
+            profile={navigation.profile}
+            leads={leads.leads || []}
+            leadsLoading={leads.leadsLoading}
+            categories={leads.categories || []}
+            setShowWhatsAppImport={leads.setShowWhatsAppImport}
+            setShowAddLead={leads.setShowAddLead}
+            setIsAnalyzingLeads={leads.setIsAnalyzingLeads}
+            analyzeLeadsMutation={leads.analyzeLeadsMutation}
+            leadAnalysis={leads.leadAnalysis}
+            isAnalyzingLeads={leads.isAnalyzingLeads}
+            properties={portfolios.properties || []}
+            selectedLead={leads.selectedLead}
+            setSelectedLead={leads.setSelectedLead}
+          />
+        )}
+        {navigation.activeTab === 'profil' && (
+          <ProfilView 
+            profile={navigation.profile}
+            setShowAdminPanel={navigation.setShowAdminPanel}
+            brokerAccount={portfolios.brokerAccount}
+            setShowExternalListings={portfolios.setShowExternalListings}
+            setShowIntegrationModal={portfolios.setShowIntegrationModal}
+            syncListingsMutation={portfolios.syncListingsMutation}
+            updateProfileMutation={navigation.updateProfileMutation}
+            setShowRegionSetup={portfolios.setShowRegionSetup}
+            logout={navigation.logout}
+          />
+        )}
+        
+        {/* 🔥 AI KOÇ SAYFASI KİLİTLENDİ 🔥 */}
+        {navigation.activeTab === 'koc' && (
+          <PremiumGate featureKey="ai_coach">
+            <CoachView setActiveTab={navigation.setActiveTab} />
+          </PremiumGate>
+        )}
+      </motion.div>
     </AnimatePresence>
   );
 };

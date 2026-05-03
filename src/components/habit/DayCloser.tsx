@@ -16,13 +16,14 @@ interface DayCloserProps {
   onComplete: (data: Partial<DayClosure> & { early_close_reason?: string }) => void;
   isPending?: boolean;
   onClose?: () => void;
+  initialFocus?: string;
 }
 
-export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete, isPending, onClose }) => {
+export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete, isPending, onClose, initialFocus }) => {
   const [step, setStep] = useState(1);
   const [wins, setWins] = useState('');
   const [blockers, setBlockers] = useState('');
-  const [tomorrowTop3, setTomorrowTop3] = useState(['', '', '']);
+  const [tomorrowTop3, setTomorrowTop3] = useState([initialFocus || '', '', '']);
   const [earlyCloseReason, setEarlyCloseReason] = useState('');
   const { timeLabel } = useTurkeyClock();
 
@@ -150,25 +151,16 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete
                 </div>
 
                 <div>
-                  <div className="flex items-center gap-2 text-amber-400 text-xs font-bold uppercase tracking-widest mb-3">
-                    <Target size={14} /> Yarın İçin En Önemli 3 Odak
+                  <div className="flex items-center gap-2 text-rose-400 text-xs font-bold uppercase tracking-widest mb-3">
+                    <Target size={14} /> Yarın İçin Ana Odak Noktan
                   </div>
-                  <div className="space-y-3">
-                    {tomorrowTop3.map((goal, i) => (
-                      <input 
-                        key={i}
-                        type="text" 
-                        value={goal}
-                        onChange={(e) => {
-                          const newTop3 = [...tomorrowTop3];
-                          newTop3[i] = e.target.value;
-                          setTomorrowTop3(newTop3);
-                        }}
-                        placeholder={`Hedef ${i + 1}`}
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-3 text-white/90 text-sm focus:border-amber-500 outline-none transition-colors"
-                      />
-                    ))}
-                  </div>
+                  <input 
+                    type="text" 
+                    value={tomorrowTop3[0] || ''}
+                    onChange={(e) => setTomorrowTop3([e.target.value])}
+                    placeholder="Yarın tek bir şeye odaklanacak olsan, bu ne olurdu?"
+                    className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white/90 text-sm focus:border-rose-500 outline-none transition-colors"
+                  />
                 </div>
               </div>
 

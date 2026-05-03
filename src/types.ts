@@ -102,7 +102,7 @@ export interface UserProfile {
   district?: string;
   subscription_type: 'none' | 'trial' | '1-month' | '3-month' | '6-month' | '12-month';
   subscription_end_date: string | null;
-  role: 'agent' | 'admin';
+  role: 'agent' | 'admin' | 'super_admin';
   notification_settings?: {
     push: boolean;
     email: boolean;

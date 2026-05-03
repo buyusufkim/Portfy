@@ -79,9 +79,8 @@ export const profileService = {
     if (!userId) throw new Error('Not authenticated');
 
     // Use server-side START_DAY action to update timestamps securely
-    await gamificationService.earnXP('START_DAY', undefined, stats);
-    
-    return { success: true };
+    const res = await gamificationService.earnXP('START_DAY', undefined, stats);
+    return res;
   },
 
   endDay: async (stats: Partial<DayClosure> & { early_close_reason?: string }) => {
@@ -89,7 +88,7 @@ export const profileService = {
     if (!userId) throw new Error('Not authenticated');
 
     // Use server-side END_DAY action to update timestamps, stats, and award XP securely
-    await gamificationService.earnXP('END_DAY', undefined, {
+    const res = await gamificationService.earnXP('END_DAY', undefined, {
       tasks_completed: stats.completed_calls || 0,
       calls_made: stats.completed_calls || 0,
       visits_made: stats.completed_portfolio_actions || 0,
@@ -97,6 +96,6 @@ export const profileService = {
       early_close_reason: stats.early_close_reason
     });
 
-    return { success: true };
+    return res;
   }
 };
