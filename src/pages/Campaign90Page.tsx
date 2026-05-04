@@ -57,6 +57,12 @@ export const Campaign90Page: React.FC = () => {
         enabled: !!user?.id
     });
 
+    const { data: advisorProfile } = useQuery({
+        queryKey: ['advisor_professional_profile', user?.id],
+        queryFn: () => advisorProfileService.getAdvisorProfessionalProfile(user!.id),
+        enabled: !!user?.id
+    });
+
     const { data: campaign, isLoading: isLoadingCampaign } = useQuery({
         queryKey: ['campaign90_active', user?.id],
         queryFn: () => campaign90Service.getActiveCampaign(user!.id),
@@ -200,7 +206,7 @@ export const Campaign90Page: React.FC = () => {
 
     const currentDayTemplate = CAMPAIGN_90_DAYS.find(d => d.day_number === campaign.current_day);
     const glossary = getGlossaryForDay(campaign.current_day);
-    const curriculum = getCurriculumForDay(campaign.current_day);
+    const curriculum = getCurriculumForDay(campaign.current_day, advisorProfile?.experience_level);
 
     const handleCompleteTask = (taskId: string) => completeTaskMutation.mutate(taskId);
     const handleSkipTask = (taskId: string) => skipTaskMutation.mutate(taskId);

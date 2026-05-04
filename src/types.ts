@@ -759,9 +759,27 @@ export type CampaignTaskStatus = 'pending' | 'completed' | 'skipped';
 export type CampaignTaskType = 'prospecting' | 'crm' | 'field' | 'content' | 'learning' | 'portfolio' | 'followup' | 'review' | 'gpa';
 export type GpaBucket = 'G' | 'P' | 'A';
 
+export type AdvisorExperienceLevel = 'new' | 'experienced';
+export type TaxIdentityType = 'none' | 'tc' | 'vkn';
+export type WorkIntensity = 'light' | 'standard' | 'intense';
+
+export interface AdvisorReportIdentity {
+  display_name: string | null;
+  professional_title: string | null;
+  office_name: string | null;
+  office_brand: string | null;
+  myk_level: string | null;
+  myk_certificate_no: string | null;
+  public_phone: string | null;
+  public_email: string | null;
+  region: string | null;
+  niche: string | null;
+  tax_identity_masked: string | null;
+}
+
 export interface AdvisorProfessionalProfile {
   user_id: string;
-  experience_level: 'new' | 'experienced';
+  experience_level: AdvisorExperienceLevel;
   experience_years?: number | null;
   profession_start_date?: string | null;
   campaign_start_reason?: string | null;
@@ -783,7 +801,7 @@ export interface AdvisorProfessionalProfile {
   office_phone?: string | null;
   office_address?: string | null;
   has_tax_registration: boolean;
-  tax_identity_type?: 'tc' | 'vkn' | 'none' | null;
+  tax_identity_type?: TaxIdentityType | null;
   tax_identity_masked?: string | null;
   tax_identity_last4?: string | null;
   display_name?: string | null;
@@ -794,7 +812,7 @@ export interface AdvisorProfessionalProfile {
   region?: string | null;
   niche?: string | null;
   daily_available_hours?: number | null;
-  preferred_work_intensity?: 'light' | 'standard' | 'intense' | null;
+  preferred_work_intensity?: WorkIntensity | null;
   weekly_contact_target?: number | null;
   daily_contact_target?: number | null;
   onboarding_completed: boolean;

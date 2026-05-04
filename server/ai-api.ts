@@ -1,5 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
-import { rateLimit } from "express-rate-limit";
+import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import { User } from "@supabase/supabase-js";
 import { Request, Response, NextFunction } from "express";
 import { getEffectiveAiTokenLimit } from "../src/config/subscriptionLimits";
@@ -68,11 +68,17 @@ const ALLOWED_MODELS = [
   "gemini-1.5-pro-latest",
 ];
 
+function getRateLimitKey(req: Request): string {
+  const userId = (req as AuthRequest).user?.id;
+  if (userId) return `user:${userId}`;
+  return ipKeyGenerator(req.ip || "unknown");
+}
+
 // Rate Limiting Middleware
 export const aiLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
   max: 100, // Limit each IP/User to 100 requests per window
-  keyGenerator: (req: AuthRequest) => req.user?.id || req.ip || "unknown",
+  keyGenerator: getRateLimitKey,
   message: { error: "Rate limit exceeded. Please try again later." },
   standardHeaders: true,
   legacyHeaders: false,
@@ -81,7 +87,7 @@ export const aiLimiter = rateLimit({
 export const xpLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 5,
-  keyGenerator: (req: AuthRequest) => req.user?.id || req.ip || "unknown",
+  keyGenerator: getRateLimitKey,
   message: { error: "XP kazanım limitine ulaşıldı." },
   standardHeaders: true,
   legacyHeaders: false,

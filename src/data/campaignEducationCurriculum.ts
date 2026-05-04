@@ -149,7 +149,58 @@ const customDays: Record<number, CampaignCurriculumDay> = {
   }
 };
 
-export function getCurriculumForDay(dayNumber: number): CampaignCurriculumDay {
+export function getCurriculumForDay(dayNumber: number, expLevel?: 'new' | 'experienced' | null | string): CampaignCurriculumDay {
+  if (expLevel === 'new') {
+      if (dayNumber === 1) {
+          return {
+            module_title: "Modül 1: Zemin ve Güvenli Başlangıç",
+            lesson_title: "1. Gün: Mesleki Kimlik ve Güvenli Başlangıç",
+            learning_goals: ["Resmi sınırları anlamak", "Doğru ofis/mentor seçimi", "Profesyonel imza"],
+            lesson_body: "Gayrimenkul danışmanlığı sadece ilan paylaşmak değildir. Yeni başlayan kişi önce hangi yetkiyle, hangi ofis/kurum çatısı altında, hangi evraklarla ve hangi sorumluluklarla çalışacağını bilmelidir. İlk günün amacı satış yapmak değil, mesleğe güvenli giriş zeminini kurmaktır. Herkese ilan atmadan önce hukuki ve teknik donanımınızı tamamlamalısınız. Mevzuat, ofis politikası ve resmi süreçler değişebilir. Kendi ofisin, bağlı olduğun oda/kurum ve resmi kaynaklarla doğrula.",
+            field_example: "MYK ve Taşınmaz Ticareti Yetki Belgesi mevzuatını öğrenerek, çalışma modelini (bağımsız / marka altı) netleştirmek.",
+            common_mistake: "Sistemi ve mevzuatı anlamadan etrafa 'Ben emlakçı oldum, evinizi satayım' diye sahte vaatlerde bulunmak.",
+            pro_tip: "Gerçek uzmanlık, neyi bilmediğini bilmekle başlar. Soru sormaktan ve resmi kurumları araştırmaktan çekinmeyin.",
+            script_example: "Merhabalar, gayrimenkul sektöründe yeni ve profesyonel bir başlangıç yapıyorum. İlk hedefim yasal ve mesleki yeterliliklerimi tamamlayarak sizlere en şeffaf hizmeti sunmak.",
+            mini_quiz: [
+              { question: "Yeni başlayan birinin ilk gün hedefi ne olmalıdır?", options: ["Hemen ilan girmek", "Mesleki ve hukuki sınırları öğrenerek güvenli giriş zeminini kurmak", "Afiş asmak"], correctAnswer: 1, explanation: "Satıştan önce yasal ve etik zemin şarttır." }
+            ],
+            practice_assignment: "Sektörde başarılı bulduğun 3 danışmanın online profillerini (imza, iletişim, unvan) incele."
+          };
+      }
+      if (dayNumber === 2) {
+          return {
+            module_title: "Modül 1: Zemin ve Güvenli Başlangıç",
+            lesson_title: "2. Gün: MYK, Eğitim ve Ofis Hazırlığı",
+            learning_goals: ["MYK seviyelerini bilmek", "Ofis altyapısı", "Hazırlık denetimi"],
+            lesson_body: "Yeni danışman için ilk risk bilgisizliktir. MYK, eğitim, ofis bağlantısı ve yetki süreçlerini anlamadan müşteri/mülk sahibiyle profesyonel ilişki kurmak ileride sorun çıkarabilir. MYK Seviye 4 mü yoksa Seviye 5 (Sorumlu Emlak Danışmanı) mi olmanız gerektiğini, hangi eğitim saatlerini tamamlamanız gerektiğini araştırın. Mevzuat, ofis politikası ve resmi süreçler değişebilir. Kendi ofisin, bağlı olduğun oda/kurum ve resmi kaynaklarla daima çift kontrol yapın.",
+            field_example: "Bağlı çalışacağın ofisin sağladığı CRM, ilan portalı limitleri ve hukuki destek detaylarını brokerınla netleştirmek.",
+            common_mistake: "Tüm eğitimleri erteleyip sadece sahaya odaklanmak ve yasal bir ceza veya iptal riskiyle karşılaşmak.",
+            pro_tip: "Ofisin senin iş ortağındır; ona sadece oran/pay üzerinden değil, sana sunduğu pazar payı ve koruma kalkanı üzerinden değer biç.",
+            script_example: "(Ofisle/Mentorla Görüşme) 'Sizin çatınız altında çalışırken kullanabileceğim sözleşme taslakları ve portföy paylaşım kuralları nelerdir?'",
+            mini_quiz: [
+              { question: "Müşteriyle profesyonel bir portföy ilişkisi kurmadan önce ne netleştirilmelidir?", options: ["Sadece komisyon tutarı", "MYK, yetki yapısı ve ofis sözleşme altyapısı", "Portföyün kaç paraya satılacağı"], correctAnswer: 1, explanation: "Güvenli zemin olmadan portföy alınmaz." }
+            ],
+            practice_assignment: "Eğer ofis/mentor arayışındaysan bölgedeki 3 kurumsal ofisin avantajlarını not et."
+          };
+      }
+      if (dayNumber === 3) {
+          return {
+            module_title: "Modül 1: Zemin ve Güvenli Başlangıç",
+            lesson_title: "3. Gün: Sözleşme, KVKK, Yer Gösterme ve Komisyon Güvenliği",
+            learning_goals: ["Yer gösterme formları", "Komisyon/hizmet sınırları", "Mevzuat ve KVKK"],
+            lesson_body: "Yeni başlayan danışman en çok sözlü anlaşma, yetkisiz ilan, belgesiz yer gösterme, komisyon belirsizliği ve KVKK farkındalığı eksikliğinden zarar görür. Sahaya çıkmadan önce temel evrak ve süreçleri bilmelisin. Yetkisiz ilan girmenin suç olduğunu, izinsiz kopya fotoğraflarla çalışmanın itibarını bitireceğini unutma. Mevzuat, ofis politikası ve resmi süreçler değişebilir. Kendi ofisin, bağlı olduğun oda/kurum ve resmi kaynaklarla doğrula.",
+            field_example: "Kendi kullandığın cihazlarda müşteri numaralarını nasıl kaydettiğini, KVKK metni hazırlığını ve yer gösterme belgelerini fiziken/dijital olarak yanında bulundurmak.",
+            common_mistake: "'Müşteri kaçmasın' korkusuyla yer gösterme belgesini imzalatmamak veya 'komisyonu sonra hallederiz' diyerek yola çıkmak.",
+            pro_tip: "Baştan dürüst ve net olan kurallar, işlemin sonunda kriz çıkmasını engeller. Çekinmeden prosedürü işletin.",
+            script_example: "'Ali Bey, size evi göstermekten memnuniyet duyarım. Ancak yasal prosedürümüz gereği, gayrimenkulü gördüğünüze dair standart yer gösterme formumuzu imzalamanızı rica edeceğim.'",
+            mini_quiz: [
+              { question: "Danışman komisyonunu nasıl korur?", options: ["Sözüne güvenerek", "Yazılı hizmet/komisyon sözleşmesi ve yer gösterme belgesi ile", "Kapora almayarak"], correctAnswer: 1, explanation: "Söz uçar, yazılı sözleşme ve hukuki formlar hakkı korur." }
+            ],
+            practice_assignment: "Kullanacağın standart yer gösterme ve hizmet sözleşmesi taslağını bul, birer boş kopyasını incele."
+          };
+      }
+  }
+
   if (customDays[dayNumber]) {
     return customDays[dayNumber];
   }

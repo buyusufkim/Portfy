@@ -1,7 +1,9 @@
 import { supabase } from '../lib/supabase';
 import { AdvisorCampaign, CampaignTask } from '../types';
 import { getTodayStr } from './core/utils';
-import { CAMPAIGN_90_DAYS, DEFAULT_CAMPAIGN_TASKS } from '../data/campaign90Template';
+import { CAMPAIGN_90_DAYS, DEFAULT_CAMPAIGN_TASKS, CampaignTemplateTask } from '../data/campaign90Template';
+import { advisorProfileService } from './advisorProfileService';
+import { getPersonalizedDayTasks } from '../data/campaignPersonalizedStart';
 
 export const campaign90Service = {
   getActiveCampaign: async (userId: string): Promise<AdvisorCampaign | null> => {
@@ -94,14 +96,11 @@ export const campaign90Service = {
         campaign.current_week = current_week;
     }
     
-    let templateTasks: any[] = [];
+    let templateTasks: CampaignTemplateTask[] = [];
     const dayTemplate = CAMPAIGN_90_DAYS.find(d => d.day_number === current_day);
 
     if (dayTemplate && dayTemplate.tasks.length > 0) {
-       templateTasks = dayTemplate.tasks.map(t => ({
-           ...t,
-           task_key: `campaign90_day_${current_day}_${t.task_key}`,
-       }));
+       templateTasks = [...dayTemplate.tasks];
     } else {
        // Complete with default tasks
        templateTasks = DEFAULT_CAMPAIGN_TASKS.map((t, index) => ({
@@ -119,6 +118,20 @@ export const campaign90Service = {
            xp_reward: 20
        });
     }
+
+    // Load profile and apply personalization
+    try {
+        const profile = await advisorProfileService.getAdvisorProfessionalProfile(campaign.user_id);
+        const expLevel = profile?.experience_level || 'experienced'; // fallback
+        templateTasks = getPersonalizedDayTasks(current_day, expLevel, templateTasks);
+    } catch (err) {
+        console.warn('Could not load profile for personalization, using defaults', err);
+    }
+
+    templateTasks = templateTasks.map(t => ({
+        ...t,
+        task_key: t.task_key.startsWith('campaign90_day_') || t.task_key.startsWith('n_') || t.task_key.startsWith('e_') ? t.task_key : `campaign90_day_${current_day}_${t.task_key}`,
+    }));
 
     // Remap buckets to be safe with DB if they are 'Edu' or 'Review'
     const finalDailyTasks = templateTasks.map(t => {

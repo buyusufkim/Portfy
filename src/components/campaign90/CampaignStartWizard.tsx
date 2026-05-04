@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Card } from '../UI';
 import { motion, AnimatePresence } from 'motion/react';
 import { Briefcase, Building, MapPin, Target, Activity, ShieldCheck, Award, ChevronRight, ChevronLeft } from 'lucide-react';
-import { AdvisorProfessionalProfile } from '../../types';
+import { AdvisorProfessionalProfile, AdvisorExperienceLevel, TaxIdentityType, WorkIntensity } from '../../types';
 import { useAuth } from '../../AuthContext';
 import { supabase } from '../../lib/supabase';
 import { maskIdentity } from '../../services/advisorProfileService';
@@ -17,7 +17,7 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
     const [step, setStep] = useState(1);
     
     // Step 1
-    const [experience_level, setExperienceLevel] = useState<'new' | 'experienced'>('new');
+    const [experience_level, setExperienceLevel] = useState<AdvisorExperienceLevel>('new');
     const [current_role, setCurrentRole] = useState('');
     const [experience_years, setExperienceYears] = useState('');
     const [profession_start_date, setProfessionStartDate] = useState('');
@@ -30,13 +30,15 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
     const [myk_renewal_date, setMykRenewalDate] = useState('');
     const [has_real_estate_authorization, setHasRealEstateAuthorization] = useState<boolean>(false);
     const [authorization_no, setAuthorizationNo] = useState('');
+    const [authorization_issue_date, setAuthorizationIssueDate] = useState('');
+    const [authorization_renewal_date, setAuthorizationRenewalDate] = useState('');
 
     // Step 3
     const [has_office, setHasOffice] = useState<boolean>(false);
     const [office_name, setOfficeName] = useState('');
     const [office_brand, setOfficeBrand] = useState('');
     const [office_role, setOfficeRole] = useState('');
-    const [tax_identity_type, setTaxIdentityType] = useState<'none' | 'tc' | 'vkn'>('none');
+    const [tax_identity_type, setTaxIdentityType] = useState<TaxIdentityType>('none');
     const [taxIdentityRaw, setTaxIdentityRaw] = useState('');
 
     // Step 4
@@ -45,7 +47,24 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
 
     // Step 5
     const [daily_available_hours, setDailyAvailableHours] = useState('full');
-    const [preferred_work_intensity, setPreferredWorkIntensity] = useState<'light' | 'standard' | 'intense'>('standard');
+    const [preferred_work_intensity, setPreferredWorkIntensity] = useState<WorkIntensity>('standard');
+
+    const experienceOptions: { id: AdvisorExperienceLevel; label: string }[] = [
+        { id: 'new', label: 'Yeni başlıyorum' },
+        { id: 'experienced', label: 'Tecrübeliyim' },
+    ];
+
+    const taxOptions: { id: TaxIdentityType; label: string }[] = [
+        { id: 'none', label: 'Girmek İstemiyorum' },
+        { id: 'tc', label: 'TC Kimlik No' },
+        { id: 'vkn', label: 'Vergi Kimlik No' },
+    ];
+
+    const intensityOptions: { id: WorkIntensity; label: string; sub: string; w: number }[] = [
+        { id: 'light', label: 'Hafif', sub: 'Günde ~10 Temas', w: 50 },
+        { id: 'standard', label: 'Standart', sub: 'Günde ~20 Temas', w: 100 },
+        { id: 'intense', label: 'Yoğun', sub: 'Günde ~35 Temas', w: 175 },
+    ];
 
     useEffect(() => {
         if (user?.id) {
@@ -77,6 +96,8 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
             myk_renewal_date: has_myk ? myk_renewal_date : null,
             has_real_estate_authorization,
             authorization_no: has_real_estate_authorization ? authorization_no : null,
+            authorization_issue_date: has_real_estate_authorization ? authorization_issue_date : null,
+            authorization_renewal_date: has_real_estate_authorization ? authorization_renewal_date : null,
             has_office,
             office_name: has_office ? office_name : null,
             office_brand: has_office ? office_brand : null,
@@ -99,7 +120,9 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
     };
 
     const isStep1Valid = experience_level === 'new' || !!experience_years || !!profession_start_date;
-    const isStep2Valid = true; 
+    const isStep2Valid = 
+        (!has_myk || (!!myk_level && !!myk_certificate_no)) && 
+        (!has_real_estate_authorization || !!authorization_no);
     const isStep3Valid = !has_office || !!office_name;
     const isStep4Valid = !!region && !!niche;
 
@@ -133,13 +156,10 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
                                     <div>
                                         <label className="block text-sm font-bold text-slate-700 mb-3">Gayrimenkul danışmanlığında şu an hangi durumdasın?</label>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                            {[
-                                                { id: 'new', label: 'Yeni başlıyorum' },
-                                                { id: 'experienced', label: 'Tecrübeliyim' },
-                                            ].map(opt => (
+                                            {experienceOptions.map(opt => (
                                                 <div 
                                                     key={opt.id} 
-                                                    onClick={() => setExperienceLevel(opt.id as any)}
+                                                    onClick={() => setExperienceLevel(opt.id)}
                                                     className={`cursor-pointer rounded-xl border-2 p-4 flex items-center justify-between transition-all ${experience_level === opt.id ? 'border-indigo-500 bg-indigo-50 text-indigo-700' : 'border-slate-200 hover:border-indigo-200'}`}
                                                 >
                                                     <span className="font-bold text-sm">{opt.label}</span>
@@ -152,8 +172,11 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
                                     </div>
 
                                     {experience_level === 'new' && (
-                                        <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100">
-                                            <p className="text-sm text-indigo-700 font-medium">Bu kamp senin temel saha disiplinini kuracak ve doğru alışkanlıkları kazanmanı sağlayacak.</p>
+                                        <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 mb-4">
+                                            <p className="text-sm text-indigo-700 font-medium whitespace-pre-line">
+                                                İlk 3 gün seni doğrudan sahaya sürmeyeceğiz. Önce evrak, ofis, MYK, yetki ve güvenli çalışma zeminini kuracağız.
+                                                Bu kamp senin temel saha disiplinini kuracak ve doğru alışkanlıkları kazanmanı sağlayacak.
+                                            </p>
                                         </div>
                                     )}
 
@@ -223,18 +246,30 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
 
                                     {has_myk && (
                                         <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl space-y-4">
-                                            <div>
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">MYK Seviyesi</label>
-                                                <select value={myk_level} onChange={e => setMykLevel(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 focus:outline-none focus:border-indigo-500">
-                                                    <option value="">Seçiniz</option>
-                                                    <option value="4">Seviye 4</option>
-                                                    <option value="5">Seviye 5 (Sorumlu Emlak Danışmanı)</option>
-                                                    <option value="unknown">Emin Değilim</option>
-                                                </select>
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-bold text-slate-700 mb-2">MYK Seviyesi*</label>
+                                                    <select value={myk_level} onChange={e => setMykLevel(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 focus:outline-none focus:border-indigo-500">
+                                                        <option value="">Seçiniz</option>
+                                                        <option value="4">Seviye 4</option>
+                                                        <option value="5">Seviye 5 (Sorumlu Emlak Danışmanı)</option>
+                                                        <option value="unknown">Emin Değilim</option>
+                                                    </select>
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-bold text-slate-700 mb-2">Belge No*</label>
+                                                    <input type="text" value={myk_certificate_no} onChange={e => setMykCertificateNo(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 focus:outline-none focus:border-indigo-500" />
+                                                </div>
                                             </div>
-                                            <div>
-                                                <label className="block text-sm font-bold text-slate-700 mb-2">Belge No (Opsiyonel)</label>
-                                                <input type="text" value={myk_certificate_no} onChange={e => setMykCertificateNo(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 focus:outline-none focus:border-indigo-500" />
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-bold text-slate-700 mb-2">Veriliş / Başlangıç Tarihi (Opsiyonel)</label>
+                                                    <input type="date" value={myk_issue_date} onChange={e => setMykIssueDate(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 focus:outline-none focus:border-indigo-500" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-bold text-slate-700 mb-2">Yenileme / Geçerlilik Tarihi (Opsiyonel)</label>
+                                                    <input type="date" value={myk_renewal_date} onChange={e => setMykRenewalDate(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 focus:outline-none focus:border-indigo-500" />
+                                                </div>
                                             </div>
                                         </div>
                                     )}
@@ -245,9 +280,21 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
                                     </label>
 
                                     {has_real_estate_authorization && (
-                                        <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl">
-                                             <label className="block text-sm font-bold text-slate-700 mb-2">Yetki No (Opsiyonel)</label>
-                                             <input type="text" value={authorization_no} onChange={e => setAuthorizationNo(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 focus:outline-none focus:border-indigo-500" />
+                                        <div className="p-4 bg-slate-50 border border-slate-100 rounded-xl space-y-4">
+                                             <div>
+                                                 <label className="block text-sm font-bold text-slate-700 mb-2">Yetki No*</label>
+                                                 <input type="text" value={authorization_no} onChange={e => setAuthorizationNo(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 focus:outline-none focus:border-indigo-500" />
+                                             </div>
+                                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                                <div>
+                                                    <label className="block text-sm font-bold text-slate-700 mb-2">Yetki Veriliş Tarihi (Opsiyonel)</label>
+                                                    <input type="date" value={authorization_issue_date} onChange={e => setAuthorizationIssueDate(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 focus:outline-none focus:border-indigo-500" />
+                                                </div>
+                                                <div>
+                                                    <label className="block text-sm font-bold text-slate-700 mb-2">Yetki Yenileme Tarihi (Opsiyonel)</label>
+                                                    <input type="date" value={authorization_renewal_date} onChange={e => setAuthorizationRenewalDate(e.target.value)} className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 focus:outline-none focus:border-indigo-500" />
+                                                </div>
+                                             </div>
                                         </div>
                                     )}
 
@@ -290,14 +337,10 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
                                         <label className="block text-sm font-bold text-slate-700 mb-3">Vergi/Kimlik Bilgisi</label>
                                         <p className="text-xs text-red-500 font-bold mb-3">Bu bilgi müşteri raporlarında açık gösterilmez ve şifrelenir.</p>
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
-                                            {[
-                                                { id: 'none', label: 'Girmek İstemiyorum' },
-                                                { id: 'tc', label: 'TC Kimlik No' },
-                                                { id: 'vkn', label: 'Vergi Kimlik No' },
-                                            ].map(opt => (
+                                            {taxOptions.map(opt => (
                                                 <div 
                                                     key={opt.id} 
-                                                    onClick={() => setTaxIdentityType(opt.id as any)}
+                                                    onClick={() => setTaxIdentityType(opt.id)}
                                                     className={`cursor-pointer rounded-xl border p-3 text-center transition-all ${tax_identity_type === opt.id ? 'border-indigo-500 bg-indigo-50 text-indigo-700 font-bold' : 'border-slate-200 hover:border-indigo-200 text-slate-600 font-medium'}`}
                                                 >
                                                     <span className="text-sm">{opt.label}</span>
@@ -396,14 +439,10 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
                                     <div className="pt-2">
                                         <label className="block text-sm font-bold text-slate-700 mb-3">Günlük Kamp Hedefi / Temposu</label>
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                                            {[
-                                                { id: 'light', label: 'Hafif', sub: 'Günde ~10 Temas', w: 50 },
-                                                { id: 'standard', label: 'Standart', sub: 'Günde ~20 Temas', w: 100 },
-                                                { id: 'intense', label: 'Yoğun', sub: 'Günde ~35 Temas', w: 175 },
-                                            ].map(opt => (
+                                            {intensityOptions.map(opt => (
                                                 <div 
                                                     key={opt.id} 
-                                                    onClick={() => setPreferredWorkIntensity(opt.id as any)}
+                                                    onClick={() => setPreferredWorkIntensity(opt.id)}
                                                     className={`cursor-pointer rounded-xl border-2 p-4 text-center transition-all ${preferred_work_intensity === opt.id ? 'border-indigo-500 bg-indigo-50' : 'border-slate-200 hover:border-indigo-200'}`}
                                                 >
                                                     <div className={`font-black mb-1 ${preferred_work_intensity === opt.id ? 'text-indigo-700' : 'text-slate-700'}`}>{opt.label}</div>

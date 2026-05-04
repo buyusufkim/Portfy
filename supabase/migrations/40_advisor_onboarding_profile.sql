@@ -47,19 +47,23 @@ CREATE TABLE IF NOT EXISTS public.advisor_professional_profiles (
 ALTER TABLE public.advisor_professional_profiles ENABLE ROW LEVEL SECURITY;
 
 -- Policies
+DROP POLICY IF EXISTS "Users can view own profile" ON public.advisor_professional_profiles;
 CREATE POLICY "Users can view own profile"
     ON public.advisor_professional_profiles FOR SELECT
     USING (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.advisor_professional_profiles;
 CREATE POLICY "Users can insert own profile"
     ON public.advisor_professional_profiles FOR INSERT
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can update own profile" ON public.advisor_professional_profiles;
 CREATE POLICY "Users can update own profile"
     ON public.advisor_professional_profiles FOR UPDATE
     USING (auth.uid() = user_id)
     WITH CHECK (auth.uid() = user_id);
 
+DROP POLICY IF EXISTS "Users can delete own profile" ON public.advisor_professional_profiles;
 CREATE POLICY "Users can delete own profile"
     ON public.advisor_professional_profiles FOR DELETE
     USING (auth.uid() = user_id);
@@ -78,6 +82,7 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql;
 
+DROP TRIGGER IF EXISTS trg_advisor_professional_profiles_updated_at ON public.advisor_professional_profiles;
 CREATE TRIGGER trg_advisor_professional_profiles_updated_at
 BEFORE UPDATE ON public.advisor_professional_profiles
 FOR EACH ROW

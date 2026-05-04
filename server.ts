@@ -42,7 +42,7 @@ import {
   handleSaveDayClosure,
   handleGetDailyGamifiedTasks
 } from "./server/ai-api.js";
-import { rateLimit } from 'express-rate-limit';
+import { rateLimit, ipKeyGenerator } from 'express-rate-limit';
 import { fetchMarketData } from "./server/marketScraper.js";
 
 // Meta Webhook İşleyicileri İçeri Aktarılıyor
@@ -189,7 +189,11 @@ app.post("/api/portal/revoke", authenticate, handleRevokePortalTokens);
 const marketLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
   max: 15,
-  keyGenerator: (req: AuthRequest) => req.user?.id || req.ip || 'unknown',
+  keyGenerator: (req: Request) => {
+    const userId = (req as AuthRequest).user?.id;
+    if (userId) return `user:${userId}`;
+    return ipKeyGenerator(req.ip || 'unknown');
+  },
   message: { error: "Piyasa analizi için kullanım limitine ulaştınız. Lütfen daha sonra tekrar deneyin." },
   standardHeaders: true,
   legacyHeaders: false,

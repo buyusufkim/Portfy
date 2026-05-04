@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { AdvisorProfessionalProfile } from '../types';
+import { AdvisorProfessionalProfile, AdvisorReportIdentity } from '../types';
 
 export const maskIdentity = (value: string | undefined | null, type: 'tc' | 'vkn' | 'none'): string | null => {
     if (!value || type === 'none') return null;
@@ -49,7 +49,7 @@ export const advisorProfileService = {
         return data;
     },
 
-    getAdvisorReportIdentity: async (userId: string): Promise<any> => {
+    getAdvisorReportIdentity: async (userId: string): Promise<AdvisorReportIdentity | null> => {
         const { data, error } = await supabase
             .from('advisor_professional_profiles')
             .select('*')
