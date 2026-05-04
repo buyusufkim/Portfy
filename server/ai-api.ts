@@ -13,7 +13,16 @@ const AI_TOKEN_LIMITS = {
   none: 1000
 };
 
-const normalizeTier = (profile: any): string => {
+export type ProfileForTokenLimit = {
+  role?: string;
+  tier?: string;
+  subscription_type?: string;
+  subscription_end_date?: string | null;
+  ai_token_limit?: number | string | null;
+  [key: string]: unknown;
+};
+
+const normalizeTier = (profile: ProfileForTokenLimit | null | undefined): string => {
   if (profile?.role === 'admin') return 'admin';
   if (profile?.tier === 'master' || profile?.subscription_type?.includes('master')) return 'master';
   if (profile?.tier === 'elite') return 'elite';
@@ -24,7 +33,7 @@ const normalizeTier = (profile: any): string => {
   return 'free';
 };
 
-const isTrialActive = (profile: any): boolean => {
+const isTrialActive = (profile: ProfileForTokenLimit | null | undefined): boolean => {
   const tier = normalizeTier(profile);
   if (tier !== 'trial') return false;
 
@@ -37,7 +46,7 @@ const isTrialActive = (profile: any): boolean => {
   return true;
 };
 
-const getDefaultAiTokenLimit = (profile: any): number => {
+const getDefaultAiTokenLimit = (profile: ProfileForTokenLimit | null | undefined): number => {
   const tier = normalizeTier(profile);
   
   if (tier === 'admin') return AI_TOKEN_LIMITS.admin;
@@ -58,7 +67,7 @@ const getDefaultAiTokenLimit = (profile: any): number => {
   return AI_TOKEN_LIMITS.free;
 };
 
-export const getEffectiveAiTokenLimit = (profile: any): number => {
+export const getEffectiveAiTokenLimit = (profile: ProfileForTokenLimit | null | undefined): number => {
   if (profile?.ai_token_limit !== undefined && profile?.ai_token_limit !== null) {
     const limitNum = Number(profile.ai_token_limit);
     if (!isNaN(limitNum) && limitNum > 0) {
@@ -84,26 +93,26 @@ import { getTurkeyTodayISO } from "./time.js";
 dotenv.config({ override: true });
 
 function getGenerativeAI() {
-  const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
+  const GEMINI_API_KEY = process.env.GEMINI_SV_KEY || process.env.GEMINI_API_KEY;
   if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("your-gemini-key")) {
-    console.warn("WARNING: GEMINI_API_KEY is not defined or invalid.");
+    console.warn("WARNING: GEMINI_SV_KEY and GEMINI_API_KEY are not defined or invalid.");
     return null;
   }
   return new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 }
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://missing.supabase.co";
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || "missing";
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
+const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || "";
 
-if (!process.env.VITE_SUPABASE_URL) {
+if (!SUPABASE_URL) {
   console.error(
-    "CRITICAL: VITE_SUPABASE_URL is not defined in environment variables.",
+    "CRITICAL: SUPABASE_URL or VITE_SUPABASE_URL is not defined in environment variables.",
   );
 }
-if (!process.env.VITE_SUPABASE_ANON_KEY) {
+if (!SUPABASE_ANON_KEY) {
   console.error(
-    "CRITICAL: VITE_SUPABASE_ANON_KEY is not defined in environment variables.",
+    "CRITICAL: SUPABASE_ANON_KEY or VITE_SUPABASE_ANON_KEY is not defined in environment variables.",
   );
 }
 if (!SUPABASE_SERVICE_ROLE_KEY) {
@@ -118,10 +127,10 @@ if (!SUPABASE_SERVICE_ROLE_KEY) {
   }
 }
 
-const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabase = (SUPABASE_URL && SUPABASE_ANON_KEY) ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
 // Admin client for privileged operations - NO FALLBACK
-const supabaseAdmin = SUPABASE_SERVICE_ROLE_KEY
+const supabaseAdmin = (SUPABASE_URL && SUPABASE_SERVICE_ROLE_KEY)
   ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
   : null;
 
@@ -168,6 +177,10 @@ export const authenticate = async (
   next: NextFunction,
 ) => {
   try {
+    if (!supabase) {
+      return res.status(503).json({ error: "Supabase client not configured" });
+    }
+
     const authHeader = req.headers.authorization;
     if (!authHeader?.startsWith("Bearer ")) {
       return res.status(401).json({ error: "Authentication required" });
@@ -346,7 +359,7 @@ export const handleAIGeneration = async (req: AuthRequest, res: Response) => {
     const genAi = getGenerativeAI();
     if (!genAi) {
       return res
-        .status(500)
+        .status(503)
         .json({ error: "Yapay zeka servisi yapılandırılmamış." });
     }
 
@@ -368,7 +381,7 @@ export const handleAIGeneration = async (req: AuthRequest, res: Response) => {
       .replace(/```/g, "")
       .trim();
       
-    let parsedData: any = {};
+    let parsedData: Record<string, unknown> | unknown[] = {};
     try {
       if (cleanJson) {
         parsedData = JSON.parse(cleanJson);
@@ -446,8 +459,9 @@ export const handleUpdateProfile = async (req: AuthRequest, res: Response) => {
       return res.status(400).json({ error: "No valid fields to update" });
     }
 
-    const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "";
-    const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || "";
+    if (!SUPABASE_URL || !SUPABASE_ANON_KEY) {
+      return res.status(503).json({ error: "Supabase client not configured" });
+    }
 
     const userSupabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
       global: { headers: { Authorization: `Bearer ${req.accessToken}` } },
