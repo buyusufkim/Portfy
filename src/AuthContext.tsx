@@ -116,7 +116,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       });
 
-      supabase.auth.getSession().then(({ data: { session } }) => {
+      supabase.auth.getSession().then(({ data: { session }, error }) => {
+        if (error && (error.message.includes('Refresh Token') || error.message.includes('refresh_token'))) {
+            supabase.auth.signOut();
+        }
         if (session) handlePopupAuth(session);
       });
       
@@ -131,6 +134,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         queryClient.clear();
         setUser(null);
         setLoading(false);
+      }
+    });
+
+    supabase.auth.getSession().then(({ error }) => {
+      if (error && (error.message.includes('Refresh Token') || error.message.includes('refresh_token') || error.message.includes('Invalid'))) {
+          supabase.auth.signOut();
       }
     });
 

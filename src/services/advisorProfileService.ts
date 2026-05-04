@@ -23,10 +23,9 @@ export const advisorProfileService = {
             .from('advisor_professional_profiles')
             .select('*')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
 
         if (error) {
-            if (error.code === 'PGRST116') return null; // not found
             console.error('Error fetching advisor professional profile:', error);
             throw error;
         }
@@ -54,10 +53,9 @@ export const advisorProfileService = {
             .from('advisor_professional_profiles')
             .select('*')
             .eq('user_id', userId)
-            .single();
+            .maybeSingle();
 
         if (error) {
-             if (error.code === 'PGRST116') return null;
              console.error('Error fetching advisor report identity:', error);
              throw error;
         }

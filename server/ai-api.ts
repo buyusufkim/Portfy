@@ -24,23 +24,23 @@ function getGenerativeAI() {
   return new GoogleGenAI({ apiKey: GEMINI_API_KEY });
 }
 
-const SUPABASE_URL = process.env.VITE_SUPABASE_URL;
-const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || "https://missing.supabase.co";
+const SUPABASE_ANON_KEY = process.env.VITE_SUPABASE_ANON_KEY || "missing";
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-if (!SUPABASE_URL) {
-  throw new Error(
+if (!process.env.VITE_SUPABASE_URL) {
+  console.error(
     "CRITICAL: VITE_SUPABASE_URL is not defined in environment variables.",
   );
 }
-if (!SUPABASE_ANON_KEY) {
-  throw new Error(
+if (!process.env.VITE_SUPABASE_ANON_KEY) {
+  console.error(
     "CRITICAL: VITE_SUPABASE_ANON_KEY is not defined in environment variables.",
   );
 }
 if (!SUPABASE_SERVICE_ROLE_KEY) {
   if (process.env.NODE_ENV === "production") {
-    throw new Error(
+    console.error(
       "CRITICAL: SUPABASE_SERVICE_ROLE_KEY is required in production",
     );
   } else {

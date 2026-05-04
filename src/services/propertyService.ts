@@ -130,15 +130,36 @@ export const propertyService = {
     }
 
     const scores = propertyService.calculatePropertyScores(property);
-    const { error } = await supabase
-      .from('properties')
-      .update({
+    
+    // Normalize jsonb fields
+    const safeParse = (val: any) => {
+        if (typeof val === 'string') {
+            try { return JSON.parse(val); } catch (e) { return val; }
+        }
+        return val;
+    };
+    const updatePayload = {
         ...property,
         ...scores,
+        market_analysis: property.market_analysis ? safeParse(property.market_analysis) : undefined,
+        details: property.details ? safeParse(property.details) : undefined,
+        address: property.address ? safeParse(property.address) : undefined,
+        owner: property.owner ? safeParse(property.owner) : undefined,
         updated_at: new Date().toISOString()
-      })
-      .eq('id', id);
-    if (error) throw error;
+    };
+    // Remove undefined keys
+    Object.keys(updatePayload).forEach(key => updatePayload[key as keyof typeof updatePayload] === undefined && delete updatePayload[key as keyof typeof updatePayload]);
+
+    try {
+      const { error } = await supabase
+        .from('properties')
+        .update(updatePayload)
+        .eq('id', id);
+      if (error) throw error;
+    } catch (e: any) {
+      console.error('Property Update Error:', e.message || 'Bilinmeyen Hata');
+      throw new Error(`Portföy güncellenemedi: ${e.message || 'Format hatası olabilir'}`);
+    }
   },
 
   deleteProperty: async (id: string) => {

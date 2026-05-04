@@ -227,7 +227,10 @@ export async function getCampaignTaskProgress(userId: string, tasks: CampaignTas
          if (progressTypesToFetch.has('cma_analysis_done')) {
            counts['cma_analysis_done'] = data.filter(d => {
              const isUpdatedToday = d.updated_at && new Date(d.updated_at) >= startOfDay;
-             return isUpdatedToday && d.market_analysis && d.market_analysis.trim().length > 0;
+             if (!isUpdatedToday || !d.market_analysis) return false;
+             if (typeof d.market_analysis === 'string') return d.market_analysis.trim().length > 0;
+             if (typeof d.market_analysis === 'object') return Object.keys(d.market_analysis).length > 0;
+             return false;
            }).length;
          }
        }
@@ -263,14 +266,30 @@ export async function getCampaignTaskProgress(userId: string, tasks: CampaignTas
  if (progressTypesToFetch.has('drip_tasks_completed') || progressTypesToFetch.has('followup_actions') || progressTypesToFetch.has('post_showing_followups')) {
     promises.push((async () => {
       try {
-        const { data, error } = await supabase
+        let { data, error }: { data: any, error: any } = await supabase
           .from('tasks')
-          .select('id, lead_id, is_drip, drip_type, title, notes')
+          .select('id, lead_id, is_drip, drip_type, title, notes, completed_at, updated_at')
           .eq('user_id', userId)
           .eq('completed', true)
           .gte('completed_at', startIso)
           .lte('completed_at', endIso);
-        if (!error && data) {
+
+        // Fallback for missing completed_at column error
+        if (error && (error.code === 'PGRST204' || error.message?.includes('completed_at'))) {
+           const fallbackCall = await supabase
+              .from('tasks')
+              .select('id, lead_id, is_drip, drip_type, title, notes, updated_at')
+              .eq('user_id', userId)
+              .eq('completed', true)
+              .gte('updated_at', startIso)
+              .lte('updated_at', endIso);
+           data = fallbackCall.data;
+           error = fallbackCall.error;
+        }
+
+        if (error) {
+            console.error('Error fetching tasks progress fallback:', error.message);
+        } else if (data) {
           if (progressTypesToFetch.has('drip_tasks_completed')) {
             counts['drip_tasks_completed'] = data.filter(d => d.is_drip || d.drip_type).length;
           }

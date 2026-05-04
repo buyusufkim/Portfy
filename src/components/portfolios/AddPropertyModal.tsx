@@ -534,24 +534,32 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                     Harita üzerinde portföyün tam bulunduğu sokağa/binaya dokunarak pin ekleyin.
                   </p>
                   <div className="w-full h-[280px] rounded-2xl overflow-hidden border-2 border-slate-100 relative">
-                    {isLoaded ? (
-                      <GoogleMap
-                        mapContainerStyle={{ width: '100%', height: '100%' }}
-                        center={
-                          formData.address.lat && formData.address.lng 
-                            ? { lat: formData.address.lat, lng: formData.address.lng } 
-                            : { lat: 38.7205, lng: 35.4826 }
-                        }
-                        zoom={formData.address.lat ? 16 : 13}
-                        onClick={handleMapClick}
-                        options={{ disableDefaultUI: true, zoomControl: true }}
-                      >
-                        {formData.address.lat && formData.address.lng && (
-                          <Marker position={{ lat: formData.address.lat, lng: formData.address.lng }} />
-                        )}
-                      </GoogleMap>
+                    {import.meta.env.VITE_GOOGLE_MAPS_API_KEY ? (
+                      isLoaded ? (
+                        <GoogleMap
+                          mapContainerStyle={{ width: '100%', height: '100%' }}
+                          center={
+                            formData.address.lat && formData.address.lng 
+                              ? { lat: formData.address.lat, lng: formData.address.lng } 
+                              : { lat: 38.7205, lng: 35.4826 }
+                          }
+                          zoom={formData.address.lat ? 16 : 13}
+                          onClick={handleMapClick}
+                          options={{ disableDefaultUI: true, zoomControl: true }}
+                        >
+                          {formData.address.lat && formData.address.lng && (
+                            <Marker position={{ lat: formData.address.lat, lng: formData.address.lng }} />
+                          )}
+                        </GoogleMap>
+                      ) : (
+                        <div className="flex items-center justify-center w-full h-full bg-slate-50 text-slate-400 text-sm">Harita yükleniyor...</div>
+                      )
                     ) : (
-                      <div className="flex items-center justify-center w-full h-full bg-slate-50 text-slate-400 text-sm">Harita yükleniyor...</div>
+                      <div className="flex flex-col items-center justify-center w-full h-full bg-slate-50 text-slate-400 text-sm p-4 text-center">
+                        <MapPin className="text-slate-300 w-8 h-8 mb-2" />
+                        <span>Google Maps API key yapılandırılmadı.</span>
+                        <span className="text-xs mt-1 text-slate-400">Ayarlardan Maps API Key ekleyerek harita özelliğini aktifleştirebilirsiniz. Şimdilik bu adımı atlayabilirsiniz.</span>
+                      </div>
                     )}
                   </div>
                   {!formData.address.lat && (

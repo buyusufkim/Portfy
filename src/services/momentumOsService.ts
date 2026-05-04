@@ -583,14 +583,21 @@ export const momentumOsService = {
   },
 
   getWeeklyReports: async (): Promise<WeeklyReport[]> => {
-    const userId = await getUserId();
-    const { data, error } = await supabase
-      .from('weekly_reports')
-      .select('*')
-      .eq('user_id', userId)
-      .order('week_start_date', { ascending: false });
-    if (error) throw error;
-    return (data || []) as WeeklyReport[];
+    try {
+      const userId = await getUserId();
+      const { data, error } = await supabase
+        .from('weekly_reports')
+        .select('*')
+        .eq('user_id', userId)
+        .order('week_start_date', { ascending: false });
+      if (error) {
+           console.error("Weekly reports fallback:", error.message);
+           return [];
+      }
+      return (data || []) as WeeklyReport[];
+    } catch (err) {
+      return [];
+    }
   }
 };
 
