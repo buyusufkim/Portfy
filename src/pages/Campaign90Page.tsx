@@ -3,19 +3,40 @@ import toast from 'react-hot-toast';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '../lib/supabase';
 import { campaign90Service } from '../services/campaign90Service';
-import { Card } from '../components/UI';
-import { Trophy, CheckCircle2, Play, Activity, Check, Circle, X, MapPin, Briefcase } from 'lucide-react';
-import { motion, AnimatePresence } from 'motion/react';
+import { getCampaignTaskProgress } from '../services/campaignProgressService';
+import { getGlossaryForDay } from '../data/campaignDayExpansions';
+import { getCurriculumForDay } from '../data/campaignEducationCurriculum';
 import { getTodayStr } from '../services/core/utils';
 import { CampaignTask, UserProfile } from '../types';
+import { CAMPAIGN_90_DAYS } from '../data/campaign90Template';
+
+import { useCampaign90Stats } from '../hooks/useCampaign90Stats';
+import { useCampaign90Report } from '../hooks/useCampaign90Report';
+import { getCampaignCoachMessage } from '../utils/campaign90Coach';
+import { CampaignTaskGroup } from '../components/campaign90/CampaignTaskGroup';
+import { CampaignStartWizard } from '../components/campaign90/CampaignStartWizard';
+import { CampaignMentorCard } from '../components/campaign90/CampaignMentorCard';
+import { advisorProfileService } from '../services/advisorProfileService';
+import { AdvisorProfessionalProfile } from '../types';
+import { CampaignTodayFlowCard } from '../components/campaign90/CampaignTodayFlowCard';
+import { CampaignEducationCard } from '../components/campaign90/CampaignEducationCard';
+import { CampaignGlossaryCard } from '../components/campaign90/CampaignGlossaryCard';
+import { CampaignStatsSidebar } from '../components/campaign90/CampaignStatsSidebar';
+import { CampaignReportCard } from '../components/campaign90/CampaignReportCard';
+import { BookOpen, Target, Briefcase, Compass, Award } from 'lucide-react';
+
+
+const getPhaseName = (week: number) => {
+    if (week === 1) return "Sünger Modu";
+    if (week <= 4) return "Saha ve Portföy Temelleri";
+    if (week <= 8) return "Hızlanma";
+    return "Master Seviye";
+};
+
+const getErrorMessage = (error: unknown, fallback: string) => error instanceof Error ? error.message : fallback;
 
 export const Campaign90Page: React.FC = () => {
     const queryClient = useQueryClient();
-    const [isStarting, setIsStarting] = useState(false);
-    
-    // For form
-    const [region, setRegion] = useState('');
-    const [niche, setNiche] = useState('');
     
     // Auth user
     const { data: user } = useQuery({
@@ -36,19 +57,6 @@ export const Campaign90Page: React.FC = () => {
         enabled: !!user?.id
     });
 
-    useEffect(() => {
-        if (profile) {
-            if (!region) {
-                const reg = profile.region?.district || profile.district;
-                if (reg) setRegion(reg);
-            }
-            if (!niche) {
-                const exp = profile.expertise_areas?.filter(Boolean).join(', ');
-                if (exp) setNiche(exp);
-            }
-        }
-    }, [profile]);
-
     const { data: campaign, isLoading: isLoadingCampaign } = useQuery({
         queryKey: ['campaign90_active', user?.id],
         queryFn: () => campaign90Service.getActiveCampaign(user!.id),
@@ -63,32 +71,55 @@ export const Campaign90Page: React.FC = () => {
         enabled: !!campaign?.id && !!user?.id
     });
 
+    const { data: taskProgressMap } = useQuery({
+        queryKey: ['campaign_task_progress', user?.id, todayStr, tasks ? tasks.length : 0],
+        queryFn: () => getCampaignTaskProgress(user!.id, tasks || [], new Date()),
+        enabled: !!user?.id && !!tasks && tasks.length > 0
+    });
+
     const { data: progress } = useQuery({
         queryKey: ['campaign90_progress', campaign?.id],
         queryFn: () => campaign90Service.getCampaignProgress(campaign!.id),
         enabled: !!campaign?.id
     });
 
+    const { data: crmStats } = useCampaign90Stats(user?.id);
+    const { data: campaignReport } = useCampaign90Report(user?.id, campaign);
+
     const startMutation = useMutation({
-        mutationFn: async () => {
-            // Also update profile if they changed it
-            if (profile?.id && region && region !== profile.district && region !== profile.region?.district) {
-                await supabase.from('profiles').update({ district: region }).eq('id', profile.id);
+        mutationFn: async (payload: Partial<AdvisorProfessionalProfile>) => {
+            if (!user?.id) throw new Error("No user");
+            
+            // Upsert profile
+            await advisorProfileService.upsertAdvisorProfessionalProfile({
+                ...payload,
+                user_id: user.id
+            });
+
+            // Update main profile district if changed
+            if (profile?.id && payload.region) {
+                await supabase.from('profiles').update({ 
+                    district: payload.region,
+                    expertise_areas: payload.niche ? [payload.niche] : profile.expertise_areas
+                }).eq('id', profile.id);
             }
-            return campaign90Service.startCampaign({ region, niche });
+
+            // Start campaign
+            return campaign90Service.startCampaign({ 
+                region: payload.region || undefined, 
+                niche: payload.niche || undefined,
+                daily_contact_target: payload.daily_contact_target || undefined,
+                weekly_contact_target: payload.weekly_contact_target || undefined
+            });
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['campaign90_active'] });
             toast.success("Kamp başarıyla başlatıldı!");
         },
-        onError: (err: any) => {
+        onError: (err: unknown) => {
             console.error("Start campaign error:", err);
-            const msg = err.message || "Kamp başlatılırken bir hata oluştu.";
-            if (msg.includes('PGRST205')) {
-                toast.error("90 Gün Kampı tabloları veritabanında yok. Lütfen Supabase'de migration uygulayın.", { duration: 5000 });
-            } else {
-                toast.error(msg);
-            }
+            const msg = getErrorMessage(err, "Kamp başlatılırken bir hata oluştu.");
+            toast.error(msg);
         }
     });
 
@@ -99,9 +130,9 @@ export const Campaign90Page: React.FC = () => {
             queryClient.invalidateQueries({ queryKey: ['campaign90_progress'] });
             toast.success("Görev başarıyla tamamlandı!");
         },
-        onError: (err: any) => {
+        onError: (err: unknown) => {
             console.error("Complete task error:", err);
-            toast.error(err.message || "Görev tamamlanırken bir hata oluştu.");
+            toast.error(getErrorMessage(err, "Görev tamamlanırken bir hata oluştu."));
         }
     });
 
@@ -112,9 +143,9 @@ export const Campaign90Page: React.FC = () => {
             queryClient.invalidateQueries({ queryKey: ['campaign90_progress'] });
             toast.success("Görev atlandı.");
         },
-        onError: (err: any) => {
+        onError: (err: unknown) => {
             console.error("Skip task error:", err);
-            toast.error(err.message || "Görev atlanırken bir hata oluştu.");
+            toast.error(getErrorMessage(err, "Görev atlanırken bir hata oluştu."));
         }
     });
 
@@ -124,212 +155,166 @@ export const Campaign90Page: React.FC = () => {
 
     if (!campaign) {
         return (
-            <div className="max-w-xl mx-auto p-4 md:p-8 pb-32">
-                <Card className="p-6 md:p-10 bg-gradient-to-br from-[#061A32] to-[#041A33] text-white rounded-3xl relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-8 opacity-10 blur-xl">
-                       <Trophy size={200} />
-                    </div>
-                    
-                    <div className="relative z-10">
-                        <div className="w-16 h-16 bg-white/10 rounded-2xl flex items-center justify-center mb-6">
-                            <Trophy size={32} className="text-[#00D2B4]" />
-                        </div>
-                        <h1 className="text-3xl md:text-4xl font-black mb-4">Portfy 90 Günlük Danışman Kampı</h1>
-                        <p className="text-xl font-bold text-[#FF6B1A] mb-4">"İlk 90 gün, önümüzdeki 10 yılın temelini atar."</p>
-                        <p className="text-slate-300 mb-8 leading-relaxed">
-                            Portfy sana sadece boş bir CRM vermez. Her gün ne yapacağını söyleyen,
-                            yaptığını ölçen ve seni gerçek bir gayrimenkul profesyoneline dönüştüren dijital bir mentor sistemi sunar.
-                        </p>
-
-                        {!isStarting ? (
-                            <button 
-                                onClick={() => setIsStarting(true)}
-                                className="w-full bg-[#00D2B4] hover:bg-[#00e3c5] text-[#061A32] font-black text-lg py-4 rounded-xl transition-colors shadow-lg shadow-[#00D2B4]/20 flex items-center justify-center gap-2"
-                            >
-                                Kampa Başla <Play size={20} className="fill-current" />
-                            </button>
-                        ) : (
-                            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4">
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-300 mb-2">Uzmanlık Bölgen</label>
-                                    <div className="relative">
-                                      <MapPin size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                      <input 
-                                        type="text" 
-                                        value={region}
-                                        onChange={(e) => setRegion(e.target.value)}
-                                        placeholder="Örn: Talas, Mevlana" 
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-slate-500 focus:outline-none focus:border-[#00D2B4]"
-                                      />
-                                    </div>
-                                </div>
-                                <div>
-                                    <label className="block text-sm font-bold text-slate-300 mb-2">Uzmanlık Alanın</label>
-                                    <div className="relative">
-                                      <Briefcase size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
-                                      <input 
-                                        type="text" 
-                                        value={niche}
-                                        onChange={(e) => setNiche(e.target.value)}
-                                        placeholder="Örn: Satılık Daire, Kiralık Daire, Arsa, Ticari" 
-                                        className="w-full bg-white/5 border border-white/10 rounded-xl py-3 pl-10 pr-4 text-white placeholder-slate-500 focus:outline-none focus:border-[#00D2B4]"
-                                      />
-                                    </div>
-                                </div>
-                                <div className="pt-4 pb-2">
-                                    <button 
-                                        onClick={() => startMutation.mutate()}
-                                        disabled={startMutation.isPending || !region || !niche}
-                                        className="w-full bg-[#FF6B1A] hover:bg-[#ff803d] text-white font-black text-lg py-4 rounded-xl transition-colors disabled:opacity-50 flex items-center justify-center gap-2 relative z-50 mb-12 lg:mb-0"
-                                    >
-                                        {startMutation.isPending ? 'Başlatılıyor...' : 'Hedefi Onayla ve Başla!'}
-                                    </button>
-                                </div>
-                            </motion.div>
-                        )}
-                    </div>
-                </Card>
-            </div>
+            <CampaignStartWizard
+                isPending={startMutation.isPending}
+                onComplete={(payload) => startMutation.mutate(payload)}
+            />
         );
     }
 
-    const completedPercent = progress?.total ? Math.round((progress.completed / progress.total) * 100) : 0;
+    const todayTasks = tasks || [];
+    const todayG = todayTasks.filter((t: CampaignTask) => t.gpa_bucket === 'G' && t.status === 'completed').length || 0;
+    const todayP = todayTasks.filter((t: CampaignTask) => t.gpa_bucket === 'P' && t.status === 'completed').length || 0;
+    const todayA = todayTasks.filter((t: CampaignTask) => t.gpa_bucket === 'A' && t.status === 'completed').length || 0;
+    const todayCompleted = todayTasks.filter((t: CampaignTask) => t.status === 'completed').length || 0;
+    const todayTotal = todayTasks.length;
+    const todayScore = (todayG * 3) + (todayP * 5) + (todayA * 2);
 
-    // AI Coach Insight mock based on rules
-    let coachMessage = "Bugün sistem çalıştı. Yarın aynı disiplini tekrar et.";
-    if (progress) {
-        if (progress.g < 2 && progress.a >= 2) coachMessage = "Bilgi topluyorsun ama insanla konuşmuyorsun. Gelir getirici aktivite olmadan portföy gelmez.";
-        else if (progress.p < 1 && progress.g >= 2) coachMessage = "Temas var ama portföy üretimi zayıf. Değer analizi ve yetki görüşmesine odaklan.";
-        else if (progress.a < 1 && progress.g >= 2) coachMessage = "Saha yapıyorsun ama bölge uzmanlığı eksik. Bölgeni bilmeden güven veremezsin.";
-    }
+    const completedPercent = progress?.total ? Math.round((progress.completed / progress.total) * 100) : 0;
+    const phaseName = getPhaseName(campaign.current_week);
+
+    // Group tasks
+    const eduTasks = todayTasks.filter((t: CampaignTask) => t.task_key.includes('_edu'));
+    const gTasks = todayTasks.filter((t: CampaignTask) => t.gpa_bucket === 'G' && !t.task_key.includes('_edu') && t.task_type !== 'review');
+    const pTasks = todayTasks.filter((t: CampaignTask) => t.gpa_bucket === 'P' && !t.task_key.includes('_edu') && t.task_type !== 'review');
+    const aTasks = todayTasks.filter((t: CampaignTask) => t.gpa_bucket === 'A' && !t.task_key.includes('_edu') && t.task_type !== 'review' && !t.task_key.includes('_rev'));
+    const reviewTasks = todayTasks.filter((t: CampaignTask) => t.task_type === 'review' || t.task_key.includes('_rev'));
+
+    const coachMessage = getCampaignCoachMessage({
+        todayTotal,
+        todayCompleted,
+        todayG,
+        todayP,
+        todayA,
+        currentDay: campaign.current_day,
+        taskProgressMap,
+        todayTasks,
+        crmStats
+    });
+
+    const verifiedPendingCount = todayTasks.filter(t => {
+        if (t.status === 'completed') return false;
+        const p = taskProgressMap?.[t.id];
+        return p && p.current >= p.target;
+    }).length;
+
+    const currentDayTemplate = CAMPAIGN_90_DAYS.find(d => d.day_number === campaign.current_day);
+    const glossary = getGlossaryForDay(campaign.current_day);
+    const curriculum = getCurriculumForDay(campaign.current_day);
+
+    const handleCompleteTask = (taskId: string) => completeTaskMutation.mutate(taskId);
+    const handleSkipTask = (taskId: string) => skipTaskMutation.mutate(taskId);
 
     return (
-        <div className="max-w-4xl mx-auto p-4 md:p-8 space-y-6">
-            
-            {/* Header Area */}
-            <div className="flex flex-col md:flex-row gap-6">
-                <Card className="p-6 bg-[#061A32] text-white flex-1 rounded-3xl relative overflow-hidden">
-                    <div className="relative z-10">
-                        <div className="flex items-center gap-3 mb-6">
-                           <div className="w-10 h-10 bg-white/10 rounded-xl flex items-center justify-center">
-                              <Trophy size={20} className="text-[#00D2B4]" />
-                           </div>
-                           <div>
-                               <h2 className="font-bold">Hafta {campaign.current_week}/13</h2>
-                               <p className="text-xs text-slate-400">Gün {campaign.current_day}/90 Devam Ediyor</p>
-                           </div>
-                        </div>
-
-                        <div className="mb-4">
-                            <div className="flex justify-between text-sm font-bold mb-2">
-                                <span>Haftalık Tamamlanma</span>
-                                <span>{completedPercent}%</span>
-                            </div>
-                            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden">
-                                <div className="h-full bg-[#00D2B4] rounded-full transition-all duration-1000" style={{ width: `${completedPercent}%` }} />
-                            </div>
-                        </div>
-                    </div>
-                </Card>
-
-                <Card className="p-6 bg-white flex-1 rounded-3xl border border-slate-100 shadow-sm">
-                    <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2">
-                        <Activity size={18} className="text-emerald-500" /> 
-                        GPA Kümülatif Skor
-                    </h3>
-                    
-                    <div className="grid grid-cols-3 gap-4">
-                        <div className="text-center">
-                            <div className="w-full h-12 bg-blue-50 rounded-xl flex items-center justify-center mb-2">
-                                <span className="font-black text-blue-600 text-xl">{progress?.g || 0}</span>
-                            </div>
-                            <div className="text-[10px] font-bold text-slate-500">G: Aktivite</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="w-full h-12 bg-purple-50 rounded-xl flex items-center justify-center mb-2">
-                                <span className="font-black text-purple-600 text-xl">{progress?.p || 0}</span>
-                            </div>
-                            <div className="text-[10px] font-bold text-slate-500">P: Portföy</div>
-                        </div>
-                        <div className="text-center">
-                            <div className="w-full h-12 bg-orange-50 rounded-xl flex items-center justify-center mb-2">
-                                <span className="font-black text-orange-600 text-xl">{progress?.a || 0}</span>
-                            </div>
-                            <div className="text-[10px] font-bold text-slate-500">A: Uzmanlık</div>
-                        </div>
-                    </div>
-                    <div className="mt-4 pt-4 border-t border-slate-100 text-center">
-                        <span className="text-xs font-medium text-slate-500">Toplam Skor: </span>
-                        <span className="font-black text-slate-800 text-lg">{progress?.gpaScore || 0} Puan</span>
-                    </div>
-                </Card>
-            </div>
-
-            <Card className="p-4 bg-orange-50 border-orange-100 text-orange-800 rounded-2xl flex gap-3 items-center">
-                <div className="w-10 h-10 bg-orange-100 rounded-xl flex items-center justify-center shrink-0">
-                   <Play size={18} className="fill-orange-500 text-orange-500" />
-                </div>
+        <div className="w-full max-w-[1300px] mx-auto p-4 md:p-8 pb-32 min-w-0 overflow-x-hidden">
+            <div className="flex items-end gap-3 mb-8">
                 <div>
-                   <h4 className="text-sm font-bold mb-0.5">Saha Koçu İçgörüsü</h4>
-                   <p className="text-xs font-medium opacity-80">{coachMessage}</p>
-                </div>
-            </Card>
-
-            {/* Tasks Area */}
-            <div>
-                <h3 className="text-lg font-black text-slate-900 mb-4">Haftanın Kamp Görevleri</h3>
-                <div className="space-y-3">
-                    {isLoadingTasks ? (
-                        <div className="py-8 text-center text-slate-500">Görevler yükleniyor...</div>
-                    ) : tasks && tasks.length > 0 ? (
-                        tasks.map((task: CampaignTask) => (
-                            <Card key={task.id} className={`p-4 border ${task.status === 'completed' ? 'border-emerald-200 bg-emerald-50' : 'border-slate-100 bg-white'} rounded-2xl shadow-sm transition-all`}>
-                                <div className="flex gap-4 items-start">
-                                    <button 
-                                        onClick={() => task.status !== 'completed' && completeTaskMutation.mutate(task.id)}
-                                        className={`w-6 h-6 shrink-0 rounded-full border-2 flex items-center justify-center mt-0.5 transition-colors ${
-                                            task.status === 'completed' ? 'bg-emerald-500 border-emerald-500 text-white' : 'border-slate-300 text-transparent hover:border-emerald-500'
-                                        }`}
-                                    >
-                                        <Check size={14} strokeWidth={3} />
-                                    </button>
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-center gap-2 mb-1">
-                                            <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
-                                                task.gpa_bucket === 'G' ? 'bg-blue-100 text-blue-700' :
-                                                task.gpa_bucket === 'P' ? 'bg-purple-100 text-purple-700' :
-                                                'bg-orange-100 text-orange-700'
-                                            }`}>
-                                                {task.gpa_bucket}
-                                            </span>
-                                            <h4 className={`text-sm font-bold ${task.status === 'completed' ? 'text-slate-500 line-through' : 'text-slate-800'}`}>
-                                                {task.title}
-                                            </h4>
-                                        </div>
-                                        <p className="text-xs text-slate-500 font-medium">{task.description}</p>
-                                    </div>
-                                    <div className="shrink-0 flex flex-col items-end gap-2">
-                                        <div className="text-[10px] font-bold text-indigo-600 bg-indigo-50 px-2 py-1 rounded-lg">
-                                            +{task.xp_reward} XP
-                                        </div>
-                                        {task.status !== 'completed' && task.status !== 'skipped' && (
-                                            <button 
-                                                onClick={() => skipTaskMutation.mutate(task.id)}
-                                                className="text-[10px] text-slate-400 hover:text-red-500 font-medium flex items-center gap-1"
-                                            >
-                                                <X size={12} /> Atla
-                                            </button>
-                                        )}
-                                    </div>
-                                </div>
-                            </Card>
-                        ))
-                    ) : (
-                        <div className="text-center py-8 text-slate-500">Şu an gösterilecek görev yok.</div>
-                    )}
+                    <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+                        {currentDayTemplate ? currentDayTemplate.day_title : `Gün ${campaign.current_day} Görevleri`}
+                    </h1>
+                    <p className="text-sm font-bold text-slate-500 mt-1">Hafta {campaign.current_week}: {currentDayTemplate?.phase_title || phaseName}</p>
                 </div>
             </div>
 
+            <div className="flex flex-col 2xl:flex-row gap-6 lg:gap-8 min-w-0">
+                {/* Sol Kolon: Görevler & Insight */}
+                <div className="flex-1 min-w-0 space-y-6">
+                    <CampaignMentorCard message={coachMessage} />
+
+                    <CampaignTodayFlowCard 
+                        requiredTotal={todayTotal - reviewTasks.length}
+                        requiredCompleted={todayCompleted - reviewTasks.filter(t => t.status === 'completed').length}
+                        verifiedPendingCount={verifiedPendingCount}
+                    />
+
+                    {campaignReport && (
+                        <CampaignReportCard report={campaignReport} crmStats={crmStats} />
+                    )}
+
+                    {/* Günün Eğitimi + Sözlük */}
+                    {currentDayTemplate && (
+                        <div className="flex flex-col gap-4">
+                            <CampaignEducationCard curriculum={curriculum} />
+                            <CampaignGlossaryCard glossary={glossary} />
+                        </div>
+                    )}
+
+                    {/* Görevler */}
+                    <div className="pt-2">
+                        {isLoadingTasks ? (
+                            <div className="py-8 text-center text-slate-500 font-medium">Görevler yükleniyor...</div>
+                        ) : tasks && tasks.length > 0 ? (
+                            <>
+                                <CampaignTaskGroup 
+                                    title="Günün Dersi & Hazırlık" 
+                                    icon={BookOpen} 
+                                    tasks={eduTasks} 
+                                    onComplete={handleCompleteTask} 
+                                    onSkip={handleSkipTask} 
+                                    colorClass="bg-slate-100 text-slate-600" 
+                                    progressMap={taskProgressMap} 
+                                />
+                                <CampaignTaskGroup 
+                                    title="Gelir Getirici Aktiviteler" 
+                                    icon={Target} 
+                                    tasks={gTasks} 
+                                    onComplete={handleCompleteTask} 
+                                    onSkip={handleSkipTask} 
+                                    colorClass="bg-blue-100 text-blue-600" 
+                                    progressMap={taskProgressMap} 
+                                />
+                                <CampaignTaskGroup 
+                                    title="Portföy Üretimi" 
+                                    icon={Briefcase} 
+                                    tasks={pTasks} 
+                                    onComplete={handleCompleteTask} 
+                                    onSkip={handleSkipTask} 
+                                    colorClass="bg-purple-100 text-purple-600" 
+                                    progressMap={taskProgressMap} 
+                                />
+                                <CampaignTaskGroup 
+                                    title="Alan Uzmanlığı" 
+                                    icon={Compass} 
+                                    tasks={aTasks} 
+                                    onComplete={handleCompleteTask} 
+                                    onSkip={handleSkipTask} 
+                                    defaultOpen={false} 
+                                    colorClass="bg-orange-100 text-orange-600" 
+                                    progressMap={taskProgressMap} 
+                                />
+                                <CampaignTaskGroup 
+                                    title="Gün Sonu Kapanışı" 
+                                    icon={Award} 
+                                    tasks={reviewTasks} 
+                                    onComplete={handleCompleteTask} 
+                                    onSkip={handleSkipTask} 
+                                    defaultOpen={false} 
+                                    colorClass="bg-emerald-100 text-emerald-600" 
+                                    progressMap={taskProgressMap} 
+                                />
+                            </>
+                        ) : (
+                            <div className="text-center py-12 text-slate-500 font-medium bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                                Bugün için bir görev atanmamış.
+                            </div>
+                        )}
+                    </div>
+                </div>
+
+                {/* Sağ Kolon: Progress & Kamp Özeti */}
+                <CampaignStatsSidebar 
+                    currentDay={campaign.current_day}
+                    completedPercent={completedPercent}
+                    todayCompleted={todayCompleted}
+                    todayTotal={todayTotal}
+                    todayG={todayG}
+                    todayP={todayP}
+                    todayA={todayA}
+                    todayScore={todayScore}
+                    cumulativeScore={progress?.gpaScore || 0}
+                    crmStats={crmStats}
+                />
+            </div>
         </div>
     );
 };

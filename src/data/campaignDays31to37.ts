@@ -1,0 +1,163 @@
+export const days31to37 = [
+  {
+    day_number: 31,
+    week_number: 5,
+    phase_title: 'Takip Zinciri ve Alıcı Havuzu',
+    day_title: 'Sistematik Takip Başlıyor',
+    day_lesson_title: 'Satış İlk Görüşmede Değil, Takipte Kapanır',
+    day_lesson_body: 'Müşterilerin büyük bir kısmı hazır olmadıkları için "hayır" derler. Hazır olduklarında akıllarına gelen ilk kişi olmak için 1-3-7-14-30 takip zincirine ihtiyacın var.',
+    video_lesson_title: 'Takip Frekansı ve Stratejisi',
+    video_lesson_placeholder: 'İzlenecek ders: 1-3-7-14-30 Takip Sistemi (yakında)',
+    main_objective: 'Geçmiş adaylara dönüş yaparak takip zincirini hissettirmek.',
+    tasks: [
+      { task_key: 'd31_edu', task_type: 'learning', title: '1-3-7-14-30 takip zinciri şablonunu yaz', description: 'Hangi gün ne söyleyeceğini standartlaştır.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 20 },
+      { task_key: 'd31_g1', task_type: 'followup', title: '15 takip araması/mesajı yap', description: 'Uzun süredir aramadığın veri tabanına dokun.', gpa_bucket: 'G', difficulty: 'required', xp_reward: 20 },
+      { task_key: 'd31_g2', task_type: 'followup', title: '5 sıcak adayı yeniden aktive et', description: 'Duraklayan konuşmaları tekrar canlandır.', gpa_bucket: 'G', difficulty: 'required', xp_reward: 15 },
+      { task_key: 'd31_g3', task_type: 'crm', title: '5 yeni alıcı/kiracı kaydı oluştur', description: 'Portaldan veya çevreden duyduklarını CRM e ekle.', gpa_bucket: 'G', difficulty: 'recommended', xp_reward: 10 },
+      { task_key: 'd31_p1', task_type: 'followup', title: '3 mülk sahibi adayına değer analizi takibi yap', description: 'Rapor gönderdiklerine "İnceleyebildiniz mi?" de.', gpa_bucket: 'P', difficulty: 'required', xp_reward: 15 },
+      { task_key: 'd31_p2', task_type: 'networking', title: '1 yetki görüşmesi randevusu hedefle', description: 'Takip aramalarından birini masaya çek.', gpa_bucket: 'P', difficulty: 'recommended', xp_reward: 15 },
+      { task_key: 'd31_p3', task_type: 'portfolio', title: '1 portföy adayı için motivasyon/aciliyet notu yaz', description: 'Mal sahibi neden satıyor, sorusunun cevabını dosyala.', gpa_bucket: 'P', difficulty: 'bonus', xp_reward: 10 },
+      { task_key: 'd31_a1', task_type: 'learning', title: '10 ilan fiyat hareketi kontrol et', description: 'Favorilerinde fiyatı düşen/artan var mı incele.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 10 },
+      { task_key: 'd31_a2', task_type: 'learning', title: '3 rakip ilan değişimini not et', description: 'Rakipler başlığı/fotoyu değiştirmiş mi bak.', gpa_bucket: 'A', difficulty: 'bonus', xp_reward: 5 },
+      { task_key: 'd31_rev', task_type: 'review', title: 'En kritik takip adayı kim?', description: 'Takip edilmezse kaybedilecek en değerli adayı yaz ve günü bitir.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 20 }
+    ]
+  },
+  {
+    day_number: 32,
+    week_number: 5,
+    phase_title: 'Takip Zinciri ve Alıcı Havuzu',
+    day_title: 'Alıcı Segmentasyonu',
+    day_lesson_title: 'A/B/C Alıcı Segmenti Zamanını Korur',
+    day_lesson_body: 'Her arayan alıcı gerçek alıcı değildir. Hazır, bütçeli ve kararlı alıcılara (A Sınıfı) zaman ayır. Diğerlerini otomatik takibe al.',
+    video_lesson_title: 'Gerçek Alıcıyı Filtrelemek',
+    video_lesson_placeholder: 'İzlenecek ders: Alıcı kalifikasyon soruları (yakında)',
+    main_objective: 'Alıcı havuzunu kaliteye göre tasnif etmek.',
+    tasks: [
+      { task_key: 'd32_edu', task_type: 'learning', title: 'Alıcı itiraz/soru çalışması', description: '"Bu mülkü almazsanız sebep ne olur?" sorusunu satır arası çalış.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 20 },
+      { task_key: 'd32_g1', task_type: 'prospecting', title: '10 alıcı/kiracı ile iletişim kur', description: 'Alıcı segmentine girip durumlarını teyit et.', gpa_bucket: 'G', difficulty: 'required', xp_reward: 20 },
+      { task_key: 'd32_g2', task_type: 'crm', title: '5 alıcı kartını güncelle', description: 'Piyasa değiştikçe beklentileri değişti mi not al.', gpa_bucket: 'G', difficulty: 'recommended', xp_reward: 10 },
+      { task_key: 'd32_g3', task_type: 'crm', title: '3 A kalite alıcı adayı belirle', description: 'En kısa sürede kapanışa gidecek 3 kişiyi yıldızla.', gpa_bucket: 'G', difficulty: 'required', xp_reward: 15 },
+      { task_key: 'd32_p1', task_type: 'portfolio', title: 'A alıcılara uygun 3 ilan eşleştir', description: 'Kendi portföyün yoksa paylaşım yapabileceğin ilanları bul.', gpa_bucket: 'P', difficulty: 'required', xp_reward: 15 },
+      { task_key: 'd32_p2', task_type: 'prospecting', title: '1 mülk sahibiyle alıcı havuzu üzerinden görüş', description: '"Elimde buna benzer arayan bir müşterim var" diyerek mal sahibini ara.', gpa_bucket: 'P', difficulty: 'recommended', xp_reward: 15 },
+      { task_key: 'd32_p3', task_type: 'portfolio', title: '1 portföy adayı için hedef alıcı profili yaz', description: 'Bu mülkü kim alır? Beyaz yakalı mı, emekli mi?', gpa_bucket: 'P', difficulty: 'bonus', xp_reward: 10 },
+      { task_key: 'd32_a1', task_type: 'learning', title: '10 uygun ilanı alıcı profiline göre değerlendir', description: 'Portalı gezerken müşteri gözlüğü tak.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 10 },
+      { task_key: 'd32_a2', task_type: 'learning', title: '3 bölge fiyat notu ekle', description: 'Hangi projenin fiyatı şişkin tespit et.', gpa_bucket: 'A', difficulty: 'bonus', xp_reward: 5 },
+      { task_key: 'd32_rev', task_type: 'review', title: 'En sıcak A alıcı kim?', description: 'Ne bekliyor, ne eksiği var? Bunu çözmeye odaklan.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 20 }
+    ]
+  },
+  {
+    day_number: 33,
+    week_number: 5,
+    phase_title: 'Takip Zinciri ve Alıcı Havuzu',
+    day_title: 'Sessiz Adayları Uyandırmak',
+    day_lesson_title: 'Sessiz Aday Alarmı Para Kurtarır',
+    day_lesson_body: 'Günlerdir sesten seda çıkmayan satıcı veya alıcılar aslında tam karar aşamasındadır ya da başkasıyla anlaşıyordur. Uyandırma mesajı at.',
+    video_lesson_title: 'Pasif Adayları Canlandırma Teknikleri',
+    video_lesson_placeholder: 'İzlenecek ders: Kayıp lead yönetimi (yakında)',
+    main_objective: 'İletişimi koparan adayları yeniden masaya çekmek.',
+    tasks: [
+      { task_key: 'd33_edu', task_type: 'learning', title: 'Sessiz aday uyandırma mesajı yaz', description: '"Son görüşmemizden bu yana planlarınız değişti mi?" minvalinde vurucu bir metin hazırla.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 15 },
+      { task_key: 'd33_g1', task_type: 'followup', title: '14+ gündür konuşmadığın 10 adaya mesaj at', description: 'Draft ettiğin mesajı sessiz listene gönder.', gpa_bucket: 'G', difficulty: 'required', xp_reward: 25 },
+      { task_key: 'd33_g2', task_type: 'prospecting', title: '5 sıcak satıcıyı ara', description: 'İletişimde kopukluk olmasın diye düzenli aramalarını yap.', gpa_bucket: 'G', difficulty: 'required', xp_reward: 15 },
+      { task_key: 'd33_g3', task_type: 'prospecting', title: '5 eski alıcı/kiracı adayını yeniden uyandır', description: 'Eski talepleri tarayıp kontrol at.', gpa_bucket: 'G', difficulty: 'recommended', xp_reward: 10 },
+      { task_key: 'd33_p1', task_type: 'crm', title: '3 portföy adayı için takip tarihi güncelle', description: 'Görüşme bitiminde bir sonraki adımı unutma.', gpa_bucket: 'P', difficulty: 'required', xp_reward: 10 },
+      { task_key: 'd33_p2', task_type: 'followup', title: '1 fiyat revizyon ihtimali olan satıcıyı belirle', description: 'Kendi satamadığı için burnu sürtünen bir satıcı bul.', gpa_bucket: 'P', difficulty: 'recommended', xp_reward: 15 },
+      { task_key: 'd33_p3', task_type: 'portfolio', title: '1 değer analizi teklifini tekrar aç', description: 'Reddedilen CMA lardan birine "Piyasa güncellendi" de.', gpa_bucket: 'P', difficulty: 'bonus', xp_reward: 10 },
+      { task_key: 'd33_a1', task_type: 'learning', title: '10 uzun süredir yayında ilan incele', description: 'Kaç günlük ilanlar, fiyat ne kadar düşmüş?', gpa_bucket: 'A', difficulty: 'required', xp_reward: 15 },
+      { task_key: 'd33_a2', task_type: 'field', title: '1 "bayat ilan" fırsatı yaz', description: 'Danışmanın ilgilenmediği, mal sahibinin şişirdiği bir ilanın analizini çıkar.', gpa_bucket: 'A', difficulty: 'bonus', xp_reward: 10 },
+      { task_key: 'd33_rev', task_type: 'review', title: 'Sessizlikten kaybedilme riski', description: 'Kimi boşladın ve rakibe gitmek üzere? Dürüstçe not al.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 20 }
+    ]
+  },
+  {
+    day_number: 34,
+    week_number: 5,
+    phase_title: 'Takip Zinciri ve Alıcı Havuzu',
+    day_title: 'Haftalık Rapor Disiplini',
+    day_lesson_title: 'Rapor Güven İnşa Eder',
+    day_lesson_body: 'Daha mülkünü almadan satıcıya raporlama yapan bir danışman %100 fark yaratır. Veriyi profesyonellikle sun.',
+    video_lesson_title: 'Mal Sahibi Yönetimi (Vendor Management)',
+    video_lesson_placeholder: 'İzlenecek ders: Analitik sunum yapma (yakında)',
+    main_objective: 'Portföy almayı kesinleştirecek rapor şablonunu kullanıma sokmak.',
+    tasks: [
+      { task_key: 'd34_edu', task_type: 'learning', title: 'Haftalık mal sahibi mesaj şablonu yaz', description: 'İlan tıklamaları, arama sayılarını Whatsapp veya Mail ile nasıl atarsın?', gpa_bucket: 'A', difficulty: 'required', xp_reward: 15 },
+      { task_key: 'd34_g1', task_type: 'followup', title: '5 mülk sahibiyle rapor amaçlı temas kur', description: '"Sizin ilana benzeyen yerlerde şöyle bir hareket var" diyerek ara.', gpa_bucket: 'G', difficulty: 'required', xp_reward: 20 },
+      { task_key: 'd34_g2', task_type: 'followup', title: '10 genel takip mesajı gönder', description: 'Datanı taze tut.', gpa_bucket: 'G', difficulty: 'recommended', xp_reward: 15 },
+      { task_key: 'd34_g3', task_type: 'prospecting', title: '5 yeni temas oluştur', description: 'Havuzu daraltmamak için her gün yeni kan.', gpa_bucket: 'G', difficulty: 'required', xp_reward: 15 },
+      { task_key: 'd34_p1', task_type: 'portfolio', title: '1 örnek haftalık mal sahibi raporu hazırla', description: 'Görsel bir PDF veya temiz bir text oluştur.', gpa_bucket: 'P', difficulty: 'required', xp_reward: 20 },
+      { task_key: 'd34_p2', task_type: 'learning', title: '3 portföy adayı için rakip ilan karşılaştırması yap', description: 'Pazara yeni düşen rakipleri kontrol et.', gpa_bucket: 'P', difficulty: 'recommended', xp_reward: 10 },
+      { task_key: 'd34_p3', task_type: 'followup', title: '1 fiyat revizyon konuşması için veri topla', description: 'Kendi satmaya çalışan inatçı satıcıya indirim gerçeğini kanıtlayacak veri bul.', gpa_bucket: 'P', difficulty: 'bonus', xp_reward: 10 },
+      { task_key: 'd34_a1', task_type: 'learning', title: '10 rakip ilanı görüntülenme/fiyat açısından incele', description: 'Hangi ilanlar daha çok tıklanıyor?', gpa_bucket: 'A', difficulty: 'required', xp_reward: 10 },
+      { task_key: 'd34_a2', task_type: 'content', title: '3 güçlü ilan başlığı not et', description: 'Etkileşim alan başlık stillerini kopyala.', gpa_bucket: 'A', difficulty: 'bonus', xp_reward: 5 },
+      { task_key: 'd34_rev', task_type: 'review', title: 'Bu hafta hangi veriyi göstereceksin?', description: 'Satıcıların en çok ikna olacağı piyasa verisini yaz.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 20 }
+    ]
+  },
+  {
+    day_number: 35,
+    week_number: 5,
+    phase_title: 'Takip Zinciri ve Alıcı Havuzu',
+    day_title: 'Açık Ev ve Lead Toplama',
+    day_lesson_title: 'Open House Etkinliği',
+    day_lesson_body: 'Açık ev sadece o evi satmak için değil, o mahalleden yeni satıcılar bulmak ve alıcı veritabanı kurmak için yapılan bir pazarlama gösterisidir.',
+    video_lesson_title: 'Açık Ev (Open House) Kurgusu',
+    video_lesson_placeholder: 'İzlenecek ders: Mükemmel Open House (yakında)',
+    main_objective: 'Bir gösterim etkinliğini potansiyel müşteri üretecine çevirmek.',
+    tasks: [
+      { task_key: 'd35_edu', task_type: 'learning', title: 'Açık ev ziyaretçi karşılama scripti yaz', description: 'Gelen komşulara "Siz de mi satmayı düşünüyorsunuz?" diye sorabilme taktikleri.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 20 },
+      { task_key: 'd35_g1', task_type: 'prospecting', title: '10 kişiye açık ev / toplu gösterim daveti taslağı hazırla', description: 'Varsayımsal bir portföy için çevrene "Bu pazara özel davet" metni at.', gpa_bucket: 'G', difficulty: 'required', xp_reward: 20 },
+      { task_key: 'd35_g2', task_type: 'followup', title: '5 alıcı adayına uygun portföy sor', description: '"Böyle bir yer listelense gezer miydiniz?"', gpa_bucket: 'G', difficulty: 'recommended', xp_reward: 10 },
+      { task_key: 'd35_g3', task_type: 'networking', title: '5 network kişisinden yönlendirme iste', description: 'Referans ağını her fırsatta sula.', gpa_bucket: 'G', difficulty: 'bonus', xp_reward: 10 },
+      { task_key: 'd35_p1', task_type: 'learning', title: '1 açık ev checklist’i hazırla', description: 'Tabela, galoş, koku, müzik, broşür, ziyaretçi defteri.', gpa_bucket: 'P', difficulty: 'required', xp_reward: 20 },
+      { task_key: 'd35_p2', task_type: 'portfolio', title: '1 portföy adayını açık ev için uygunluk açısından değerlendir', description: 'Sahibinden satıcısına "Bana verin hafta sonu Open House yapayım" de.', gpa_bucket: 'P', difficulty: 'recommended', xp_reward: 15 },
+      { task_key: 'd35_p3', task_type: 'crm', title: '1 ziyaretçi formu taslağı oluştur', description: 'Alıcı bilgilerini toplayacağın bir form kağıdı hazırla.', gpa_bucket: 'P', difficulty: 'bonus', xp_reward: 10 },
+      { task_key: 'd35_a1', task_type: 'field', title: '5 açık ev yapılabilecek portföy notu çıkar', description: 'Bölgede bu stile uyan en güzel villaları/daireleri gez.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 10 },
+      { task_key: 'd35_a2', task_type: 'content', title: '1 açık ev tanıtım içeriği fikri üret', description: 'Sosyal Medya duyurusu için teaser (ön gösterim) videosu tasarla.', gpa_bucket: 'A', difficulty: 'bonus', xp_reward: 5 },
+      { task_key: 'd35_rev', task_type: 'review', title: 'Açık evden toplanacak en iyi 3 veri?', description: 'Komşuların datası, yeni alıcı talepleri, bölge fiyat tepkisi. Gün sonu analizini yap.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 20 }
+    ]
+  },
+  {
+    day_number: 36,
+    week_number: 6,
+    phase_title: 'Takip Zinciri ve Alıcı Havuzu',
+    day_title: 'Değer Katan Takip',
+    day_lesson_title: 'Beni Neden Aradın?',
+    day_lesson_body: '"Karar verdiniz mi?" sorusu müşteriyi sıkar. "Sizin sattığınız apartmanda dün bir daire daha ilana girdi, bilginiz olsun" demek ise sizi danışman yapar.',
+    video_lesson_title: 'İçerik Odaklı Takip Taktikleri',
+    video_lesson_placeholder: 'İzlenecek ders: Malsahibine sürekli değer verme (yakında)',
+    main_objective: 'Boş aramaları bırakıp piyasa verisiyle takip yapmak.',
+    tasks: [
+      { task_key: 'd36_edu', task_type: 'learning', title: 'Değer katan takip mesajı/scripti yaz', description: 'Salt takip yerine bilgi veren bir giriş cümlesi kur.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 15 },
+      { task_key: 'd36_g1', task_type: 'followup', title: '15 değer katan takip mesajı/araması gönder', description: 'Yukarıdaki scripti 15 adaya uygula.', gpa_bucket: 'G', difficulty: 'required', xp_reward: 20 },
+      { task_key: 'd36_g2', task_type: 'prospecting', title: '5 alıcıya yeni alternatif sun', description: 'Havzundaki taleplere piyasaya yeni düşen bir yer at.', gpa_bucket: 'G', difficulty: 'recommended', xp_reward: 15 },
+      { task_key: 'd36_g3', task_type: 'prospecting', title: '5 satıcıya piyasa notu ilet', description: '"Kredi faizlerinde şöyle bir beklenti var, fiyatları etkileyebilir" de.', gpa_bucket: 'G', difficulty: 'recommended', xp_reward: 10 },
+      { task_key: 'd36_p1', task_type: 'followup', title: '2 değer analizi görüşmesini takip et', description: 'Sunulan raporların geri dönüşünü sıkıla.', gpa_bucket: 'P', difficulty: 'required', xp_reward: 15 },
+      { task_key: 'd36_p2', task_type: 'networking', title: '1 yetki görüşmesi için ikinci temas yap', description: 'Güven tazelemek için görüşmeden sonraki 48 saat kuralını uygula.', gpa_bucket: 'P', difficulty: 'recommended', xp_reward: 10 },
+      { task_key: 'd36_p3', task_type: 'portfolio', title: '1 portföy adayına rakip ilan ekran görüntüsü hazırla', description: 'Rakiplerinin fiyat kırdığını belgeyle göster.', gpa_bucket: 'P', difficulty: 'bonus', xp_reward: 10 },
+      { task_key: 'd36_a1', task_type: 'learning', title: '10 yeni/fiyatı değişen ilanı incele', description: 'Bölgenin ritmini tutmaya devam et.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 15 },
+      { task_key: 'd36_a2', task_type: 'content', title: '1 piyasa mini bülteni taslağı çıkar', description: 'Aylık hazırlayabileceğin pazar raporu şablonuna başla.', gpa_bucket: 'A', difficulty: 'bonus', xp_reward: 10 },
+      { task_key: 'd36_rev', task_type: 'review', title: 'Hangi mesaj faydalı oldu?', description: 'Müşteriler bugün gönderdiğin hangi bilgiden etkilendi? Yaz.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 20 }
+    ]
+  },
+  {
+    day_number: 37,
+    week_number: 6,
+    phase_title: 'Takip Zinciri ve Alıcı Havuzu',
+    day_title: '2. Ay 1. Hafta Değerlendirmesi',
+    day_lesson_title: 'Amatörlükten Sıyrıl',
+    day_lesson_body: 'Datalar artık kabarık. Kimin ne zaman aranacağını ezberden bilemezsin. Takip yazılımı ve CRM tam aktif olmazsa işi kaybedersin.',
+    video_lesson_title: 'CRM Raporlaması',
+    video_lesson_placeholder: 'İzlenecek ders: Kişisel verimlilik analizi (yakında)',
+    main_objective: 'Takip zincirini temizleyip yeni haftaya hazırlık.',
+    tasks: [
+      { task_key: 'd37_edu', task_type: 'learning', title: '2. ay 1. hafta takip raporunu hazırla', description: 'Bu hafta kaç portföy, kaç takip, kaç aday erittin.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 20 },
+      { task_key: 'd37_g1', task_type: 'followup', title: '10 haftalık takip araması yap', description: 'Cuma/Hafta sonu ritüeli olarak aranacaklar listesini bitir.', gpa_bucket: 'G', difficulty: 'required', xp_reward: 20 },
+      { task_key: 'd37_g2', task_type: 'crm', title: '5 sıcak alıcı/satıcıyı güncelle', description: 'Durumlarını son kez teyit et.', gpa_bucket: 'G', difficulty: 'recommended', xp_reward: 10 },
+      { task_key: 'd37_g3', task_type: 'networking', title: '3 referans isteği yap', description: 'Kapasiteni dolduracak yeni kaynaklar ara.', gpa_bucket: 'G', difficulty: 'bonus', xp_reward: 10 },
+      { task_key: 'd37_p1', task_type: 'crm', title: 'Portföy adaylarını sıcak/ılık/soğuk ayır', description: 'Listeni yeniden derecelendir.', gpa_bucket: 'P', difficulty: 'required', xp_reward: 15 },
+      { task_key: 'd37_p2', task_type: 'portfolio', title: '1 yetki görüşmesi hedefi belirle', description: 'Haftaya pazartesi/salı kimi masaya oturtacaksın netleştir.', gpa_bucket: 'P', difficulty: 'recommended', xp_reward: 15 },
+      { task_key: 'd37_p3', task_type: 'portfolio', title: '1 satıcı için CMA güncelle', description: 'Fiyat algısını değiştirmek için güncel veriyi hazırla.', gpa_bucket: 'P', difficulty: 'bonus', xp_reward: 10 },
+      { task_key: 'd37_a1', task_type: 'learning', title: 'Haftanın 20 ilan notunu özetle', description: 'Fiyatlar artıyor mu, düşüyor mu?', gpa_bucket: 'A', difficulty: 'required', xp_reward: 15 },
+      { task_key: 'd37_a2', task_type: 'field', title: 'En zayıf fiyatlı 3 ilanı not et', description: 'Acil satıcıları tespit etmiş oluyorsun.', gpa_bucket: 'A', difficulty: 'bonus', xp_reward: 5 },
+      { task_key: 'd37_rev', task_type: 'review', title: 'Takip sisteminde en büyük açık?', description: 'Kimi nerede unutuyorsun? Sistemindeki o tek açığı tespit et.', gpa_bucket: 'A', difficulty: 'required', xp_reward: 20 }
+    ]
+  }
+];

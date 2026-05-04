@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { AdvisorCampaign, CampaignTask } from '../types';
 import { getTodayStr } from './core/utils';
-import { CAMPAIGN_90_TEMPLATE } from '../data/campaign90Template';
+import { CAMPAIGN_90_DAYS, DEFAULT_CAMPAIGN_TASKS } from '../data/campaign90Template';
 
 export const campaign90Service = {
   getActiveCampaign: async (userId: string): Promise<AdvisorCampaign | null> => {
@@ -78,7 +78,6 @@ export const campaign90Service = {
     const todayDate = new Date(todayStr);
     const startDate = new Date(campaign.start_date);
     
-    // Safety clamp
     let diffTime = todayDate.getTime() - startDate.getTime();
     if (diffTime < 0) diffTime = 0;
     
@@ -95,47 +94,43 @@ export const campaign90Service = {
         campaign.current_week = current_week;
     }
     
-    const weekData = CAMPAIGN_90_TEMPLATE.find(w => w.week_number === current_week);
-    if (!weekData) return;
-    
-    const targetDayInWeek = ((current_day - 1) % 7);
-    let t = weekData.daily_tasks[targetDayInWeek];
-    
-    if (!t) {
-       t = {
-           task_key: `w${current_week}_rest_${targetDayInWeek}`,
+    let templateTasks: any[] = [];
+    const dayTemplate = CAMPAIGN_90_DAYS.find(d => d.day_number === current_day);
+
+    if (dayTemplate && dayTemplate.tasks.length > 0) {
+       templateTasks = dayTemplate.tasks.map(t => ({
+           ...t,
+           task_key: `campaign90_day_${current_day}_${t.task_key}`,
+       }));
+    } else {
+       // Complete with default tasks
+       templateTasks = DEFAULT_CAMPAIGN_TASKS.map((t, index) => ({
+           ...t,
+           task_key: `campaign90_day_${current_day}_def_${index}`,
+       }));
+       // Add a default learning day task
+       templateTasks.unshift({
+           task_key: `campaign90_day_${current_day}_edu_def`,
            task_type: 'learning',
-           title: 'Bugün için planlama yap',
-           description: 'Hafta sonu veya planlanmamış gün değerlendirmesi.',
+           title: `Gün ${current_day} Rutin Eğitimi`,
+           description: 'Bugünün planlamasını yap ve sektör trendlerini oku.',
            gpa_bucket: 'A',
-           xp_reward: 10
-       };
+           difficulty: 'required',
+           xp_reward: 20
+       });
     }
 
-    const dailyTasks = [
-      {
-        ...t,
-        task_key: `campaign90_day_${current_day}_main`
-      },
-      {
-        task_key: `campaign90_day_${current_day}_g_activity`,
-        task_type: 'prospecting',
-        title: 'Bugünün gelir getirici aktivitesini tamamla',
-        description: 'En az 5 yeni kişiyle iletişim kur.',
-        gpa_bucket: 'G' as const,
-        xp_reward: 20
-      },
-      {
-        task_key: `campaign90_day_${current_day}_gpa_close`,
-        task_type: 'gpa',
-        title: 'Bugünün GPA kapanışını yap',
-        description: 'Aktivitelerini CRM üzerine kaydet ve değerlendir.',
-        gpa_bucket: 'A' as const,
-        xp_reward: 20
-      }
-    ];
+    // Remap buckets to be safe with DB if they are 'Edu' or 'Review'
+    const finalDailyTasks = templateTasks.map(t => {
+       let bucket = t.gpa_bucket;
+       if (bucket === 'Edu' || bucket === 'Review') bucket = 'A'; // DB constraint fallback
+       return {
+           ...t,
+           gpa_bucket: bucket
+       };
+    });
 
-    for (const dTask of dailyTasks) {
+    for (const dTask of finalDailyTasks) {
       const { data: existing } = await supabase
           .from('campaign_tasks')
           .select('id')
@@ -154,7 +149,7 @@ export const campaign90Service = {
               task_type: dTask.task_type,
               title: dTask.title,
               description: dTask.description,
-              gpa_bucket: dTask.gpa_bucket,
+              gpa_bucket: dTask.gpa_bucket || 'A',
               xp_reward: dTask.xp_reward,
               status: 'pending',
               due_date: todayStr

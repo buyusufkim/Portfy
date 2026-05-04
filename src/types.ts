@@ -759,6 +759,51 @@ export type CampaignTaskStatus = 'pending' | 'completed' | 'skipped';
 export type CampaignTaskType = 'prospecting' | 'crm' | 'field' | 'content' | 'learning' | 'portfolio' | 'followup' | 'review' | 'gpa';
 export type GpaBucket = 'G' | 'P' | 'A';
 
+export interface AdvisorProfessionalProfile {
+  user_id: string;
+  experience_level: 'new' | 'experienced';
+  experience_years?: number | null;
+  profession_start_date?: string | null;
+  campaign_start_reason?: string | null;
+  current_role?: string | null;
+  has_myk: boolean;
+  myk_level?: string | null;
+  myk_certificate_no?: string | null;
+  myk_issue_date?: string | null;
+  myk_renewal_date?: string | null;
+  myk_reminder_enabled: boolean;
+  has_real_estate_authorization: boolean;
+  authorization_no?: string | null;
+  authorization_issue_date?: string | null;
+  authorization_renewal_date?: string | null;
+  has_office: boolean;
+  office_name?: string | null;
+  office_brand?: string | null;
+  office_role?: string | null;
+  office_phone?: string | null;
+  office_address?: string | null;
+  has_tax_registration: boolean;
+  tax_identity_type?: 'tc' | 'vkn' | 'none' | null;
+  tax_identity_masked?: string | null;
+  tax_identity_last4?: string | null;
+  display_name?: string | null;
+  professional_title?: string | null;
+  report_signature_title?: string | null;
+  public_phone?: string | null;
+  public_email?: string | null;
+  region?: string | null;
+  niche?: string | null;
+  daily_available_hours?: number | null;
+  preferred_work_intensity?: 'light' | 'standard' | 'intense' | null;
+  weekly_contact_target?: number | null;
+  daily_contact_target?: number | null;
+  onboarding_completed: boolean;
+  onboarding_completed_at?: string | null;
+  metadata?: Record<string, unknown>;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface AdvisorCampaign {
   id: string;
   user_id: string;
