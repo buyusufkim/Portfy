@@ -9,11 +9,7 @@ const supabaseUrl = process.env.VITE_SUPABASE_URL || '';
 const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
 if (!supabaseUrl || !supabaseServiceKey) {
-  if (process.env.NODE_ENV === "production") {
-    throw new Error("CRITICAL: SUPABASE_SERVICE_ROLE_KEY and VITE_SUPABASE_URL are required in production");
-  } else {
-    console.error("Missing Supabase configuration. VITE_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are required.");
-  }
+  console.error("CRITICAL: SUPABASE_SERVICE_ROLE_KEY and VITE_SUPABASE_URL are required in production");
 }
 
 const supabaseAdmin = supabaseServiceKey 

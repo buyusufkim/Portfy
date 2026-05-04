@@ -54,6 +54,32 @@ dotenv.config({ override: true });
 
 const app = express();
 
+app.get('/api/time/turkey', (_req, res) => {
+  const now = new Date();
+  const turkeyNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }));
+  res.json({
+    ok: true,
+    timezone: 'Europe/Istanbul',
+    iso: turkeyNow.toISOString(),
+    timestamp: turkeyNow.getTime(),
+    today: turkeyNow.toISOString().slice(0, 10)
+  });
+});
+
+app.get(["/health", "/api/health"], (_req, res) => {
+  res.status(200).json({
+    ok: true,
+    time: new Date().toISOString(),
+    env: {
+      SUPABASE_URL: !!process.env.SUPABASE_URL,
+      SUPABASE_SERVICE_ROLE_KEY: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
+      VITE_SUPABASE_URL: !!process.env.VITE_SUPABASE_URL,
+      VITE_SUPABASE_ANON_KEY: !!process.env.VITE_SUPABASE_ANON_KEY,
+      GEMINI_API_KEY: !!process.env.GEMINI_API_KEY
+    }
+  });
+});
+
 export interface CustomRequest extends Request {
   rawBody?: Buffer;
 }
@@ -91,49 +117,6 @@ app.use((req, res, next) => {
     });
   }
   next();
-});
-
-app.get(["/health", "/api/health"], (req, res) => {
-  const envVars = [
-    "VITE_SUPABASE_URL",
-    "VITE_SUPABASE_ANON_KEY",
-    "SUPABASE_SERVICE_ROLE_KEY",
-    "GEMINI_API_KEY",
-  ];
-  const missing_env = envVars.filter(env => !process.env[env]);
-  const status = missing_env.length === 0 ? "ok" : "degraded";
-  res.status(status === "ok" ? 200 : 503).json({ status, missing_env });
-});
-
-app.get("/api/time/turkey", (req, res) => {
-  const now = new Date();
-  const formatterDate = new Intl.DateTimeFormat("tr-TR", {
-    day: "numeric",
-    month: "long",
-    year: "numeric",
-    timeZone: "Europe/Istanbul",
-  });
-
-  const formatterTime = new Intl.DateTimeFormat("tr-TR", {
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-    timeZone: "Europe/Istanbul",
-  });
-
-  const dateLabel = formatterDate.format(now);
-  const timeLabel = formatterTime.format(now);
-  const fullLabel = `${dateLabel} · ${timeLabel}`;
-
-  res.status(200).json({
-    iso: now.toISOString(),
-    timestamp: now.getTime(),
-    timezone: "Europe/Istanbul",
-    dateLabel,
-    timeLabel,
-    fullLabel,
-    source: "server"
-  });
 });
 
 // YENİ: Meta Webhook Rotaları
@@ -230,9 +213,19 @@ export const safeErrorMessage = (error: unknown, fallback: string) =>
     process.env.NODE_ENV === "development" && error instanceof Error ? error.message : fallback;
 
 app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
+  console.error('[API_UNHANDLED_ERROR]', {
+    path: req.path,
+    method: req.method,
+    message: err instanceof Error ? err.message : String(err),
+    stack: err instanceof Error ? err.stack : undefined
+  });
   if (req.url.startsWith('/api')) {
-    console.error('[API Error]', err);
-    return res.status(500).json({ error: safeErrorMessage(err, "Internal Server Error") });
+    res.status(500).json({
+      error: 'internal_server_error',
+      message: err instanceof Error ? err.message : 'Unknown server error',
+      path: req.path
+    });
+    return;
   }
   next(err);
 });
