@@ -550,6 +550,9 @@ function MainApp() {
           personalTasks={personalTasks}
           properties={properties}
           tasks={tasks}
+          advisorProfile={advisorProfile}
+          activeCampaign={activeCampaign}
+          campaignLoading={campaignLoading}
         />
         <DesktopSidebar
           activeTab={activeTab}

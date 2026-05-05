@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { DailyRadar } from '../habit/DailyRadar';
 import { DayCloser } from '../habit/DayCloser';
-import { GamifiedTask, PersonalTask, Property, Task, DailyPlan, DayClosure, UserProfile } from '../../types';
+import { GamifiedTask, PersonalTask, Property, Task, DailyPlan, DayClosure, UserProfile, AdvisorProfessionalProfile, AdvisorCampaign } from '../../types';
 import { useQuery, UseMutationResult } from '@tanstack/react-query';
 import { QUERY_KEYS } from '../../constants/queryKeys';
 import { api } from '../../services/api';
@@ -23,6 +23,9 @@ interface RitualOverlaysProps {
   properties: Property[];
   tasks: Task[];
   pendingEarlyStartReason?: string;
+  advisorProfile?: AdvisorProfessionalProfile | null;
+  activeCampaign?: AdvisorCampaign | null;
+  campaignLoading?: boolean;
 }
 
 export const RitualOverlays = ({ 
@@ -38,7 +41,10 @@ export const RitualOverlays = ({
   personalTasks, 
   properties, 
   tasks,
-  pendingEarlyStartReason
+  pendingEarlyStartReason,
+  advisorProfile,
+  activeCampaign,
+  campaignLoading
 }: RitualOverlaysProps) => {
 
   // MİKRO HEDEFLER
@@ -108,6 +114,32 @@ export const RitualOverlays = ({
       });
     }, 2000);
   };
+
+  const isCampaignUser = Boolean(advisorProfile?.experience_level === 'new' && activeCampaign?.id && activeCampaign?.status === 'active');
+  const campaignDay = activeCampaign?.current_day || 1;
+
+  let radarTasks = dailyRadarData?.tasks || [];
+  let radarInsight = dailyRadarData?.insight || '';
+  let finalIsCampaignUser = dailyRadarData?.isCampaignUser || isCampaignUser;
+
+  if (isCampaignUser) {
+    finalIsCampaignUser = true;
+    if (campaignDay <= 3) {
+      radarTasks = [
+        "Bugünün eğitimini dikkatle oku.",
+        "MYK, ofis, yetki ve güvenli çalışma hazırlığını kontrol et.",
+        "Bugünkü kamp görevlerini sırayla tamamla."
+      ];
+      radarInsight = "Bugün satış baskısı yok. Önce öğren, sonra bugünkü kamp görevlerini sırayla tamamla.";
+    } else {
+      radarTasks = [
+        "Bugünün eğitimini dikkatle oku.",
+        "Bugünkü kamp görevlerinden ilk 3 adımı tamamla.",
+        "Gün sonunda kamp ilerlemeni kontrol et."
+      ];
+      radarInsight = "Bugün kamp akışına odaklan. Önce eğitim, sonra görev, en son gün kapanışı.";
+    }
+  }
 
   // Akşam Ritüeli Tamamlanma Senaryosu
   const handleEveningComplete = (payload: Partial<DayClosure>) => {
@@ -184,12 +216,12 @@ export const RitualOverlays = ({
 
         {/* Sabah Ritüeli (Daily Radar) */}
         {showDailyRadar && (
-          dailyRadarData ? (
+          (!campaignLoading && (dailyRadarData || isCampaignUser)) ? (
             <DailyRadar 
               key="radar_overlay"
-              tasks={dailyRadarData.tasks}
-              insight={dailyRadarData.insight}
-              isCampaignUser={dailyRadarData.isCampaignUser}
+              tasks={radarTasks}
+              insight={radarInsight}
+              isCampaignUser={finalIsCampaignUser}
               onComplete={handleMorningComplete}
               isPending={completeMorningRitualMutation.isPending || showReward}
               initialFocus={activeMicroGoal?.title}

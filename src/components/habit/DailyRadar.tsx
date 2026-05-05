@@ -70,8 +70,12 @@ export const DailyRadar: React.FC<DailyRadarProps> = ({ tasks, insight, isCampai
                 >
                   <Sun size={40} />
                 </motion.div>
-                <h1 className="text-3xl font-bold text-white tracking-tight">Günaydın Şampiyon!</h1>
-                <p className="text-slate-400 text-lg">Bugün senin günün. İşte radarındaki kritik hamleler:</p>
+                <h1 className="text-3xl font-bold text-white tracking-tight">
+                  {isCampaignUser ? "Günaydın, kamp günün başlıyor" : "Günaydın Şampiyon!"}
+                </h1>
+                <p className="text-slate-400 text-lg">
+                  {isCampaignUser ? "Eğitim ve hedeflerine odaklan, bugün sağlam temeller atıyoruz." : "Bugün senin günün. İşte radarındaki kritik hamleler:"}
+                </p>
               </div>
 
               <div className="space-y-4">
