@@ -10,7 +10,7 @@ import toast from 'react-hot-toast';
 
 interface Props {
     isPending: boolean;
-    onComplete: (data: Partial<AdvisorProfessionalProfile>) => void;
+    onComplete: (data: Partial<AdvisorProfessionalProfile> & { package_action?: 'free' | 'trial' | 'pro_request' }) => void;
     mode?: 'profile_onboarding' | 'campaign_start';
 }
 
@@ -85,8 +85,8 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete, mo
     const handleNext = () => setStep(prev => prev + 1);
     const handlePrev = () => setStep(prev => Math.max(1, prev - 1));
 
-    const handleSubmit = () => {
-        const payload: Partial<AdvisorProfessionalProfile> = {
+    const handleSubmit = (package_action?: 'free' | 'trial' | 'pro_request') => {
+        const payload: Partial<AdvisorProfessionalProfile> & { package_action?: 'free' | 'trial' | 'pro_request' } = {
             experience_level,
             current_role: current_role || null,
             experience_years: experience_years ? parseInt(experience_years, 10) : null,
@@ -115,7 +115,8 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete, mo
             daily_contact_target: preferred_work_intensity === 'light' ? 10 : preferred_work_intensity === 'intense' ? 35 : 20,
             weekly_contact_target: (preferred_work_intensity === 'light' ? 10 : preferred_work_intensity === 'intense' ? 35 : 20) * 5,
             onboarding_completed: true,
-            onboarding_completed_at: new Date().toISOString()
+            onboarding_completed_at: new Date().toISOString(),
+            package_action
         };
 
         onComplete(payload);
@@ -509,7 +510,7 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete, mo
                                         <ChevronLeft size={18} /> Geri
                                     </button>
                                     <button 
-                                        onClick={mode === 'profile_onboarding' ? () => setStep(7) : handleSubmit} 
+                                        onClick={mode === 'profile_onboarding' ? () => setStep(7) : () => handleSubmit()} 
                                         disabled={isPending}
                                         className="bg-emerald-500 hover:bg-emerald-600 text-white font-black py-4 px-8 rounded-xl transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50"
                                     >
@@ -527,9 +528,7 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete, mo
                                 
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
                                     {/* Free */}
-                                    <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 flex flex-col items-center text-center shadow-lg hover:border-slate-300 transition-all cursor-pointer" onClick={async () => {
-                                        handleSubmit();
-                                    }}>
+                                    <div className="bg-white border-2 border-slate-200 rounded-3xl p-6 flex flex-col items-center text-center shadow-lg hover:border-slate-300 transition-all cursor-pointer" onClick={() => handleSubmit('free')}>
                                         <h4 className="text-xl font-bold text-slate-800 mb-2">Ücretsiz Başlangıç</h4>
                                         <p className="text-sm text-slate-500 font-medium mb-6">Portfy’yi temel özelliklerle kullanmaya devam et.</p>
                                         <ul className="text-left space-y-3 mb-8 text-sm text-slate-600 font-medium w-full flex-grow">
@@ -545,16 +544,7 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete, mo
                                     </div>
 
                                     {/* Trial */}
-                                    <div className="bg-indigo-50 border-2 border-indigo-200 rounded-3xl p-6 flex flex-col items-center text-center shadow-lg hover:border-indigo-300 transition-all cursor-pointer relative" onClick={async () => {
-                                        if (profile?.subscription_type === 'trial' || (profile?.subscription_type && profile.subscription_type !== 'none')) {
-                                            toast.error("Deneme süren daha önce kullanılmış veya aktif paketiniz var. Ücretsiz paketten başlatıyoruz.");
-                                            handleSubmit();
-                                        } else {
-                                            const res = await subscribe('trial');
-                                            if (res) toast.success("7 Günlük Deneme süreniz başladı!");
-                                            handleSubmit();
-                                        }
-                                    }}>
+                                    <div className="bg-indigo-50 border-2 border-indigo-200 rounded-3xl p-6 flex flex-col items-center text-center shadow-lg hover:border-indigo-300 transition-all cursor-pointer relative" onClick={() => handleSubmit('trial')}>
                                         <div className="absolute top-0 right-0 bg-indigo-500 text-white text-[10px] uppercase font-black tracking-widest px-3 py-1 rounded-bl-xl rounded-tr-xl">
                                             Tavsiye Edilen
                                         </div>
@@ -573,23 +563,7 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete, mo
                                     </div>
 
                                     {/* Pro */}
-                                    <div className="bg-slate-900 border-2 border-slate-800 rounded-3xl p-6 flex flex-col items-center text-center shadow-2xl hover:border-slate-700 transition-all cursor-pointer" onClick={async () => {
-                                        // Save a request using support_tickets
-                                        await supabase.from('support_tickets').insert({
-                                            user_id: user?.id,
-                                            subject: "Portfy Pro Paket Talebi",
-                                            message: `E-posta: ${user?.email || 'Yok'}\nDeneyim: ${experience_level}\nBölge: ${region}\nUzmanlık: ${niche}`,
-                                            category: 'billing'
-                                        });
-
-                                        if (profile?.subscription_type === 'none') {
-                                            await subscribe('trial');
-                                            toast.success("Talebin alındı. 7 günlük deneme süren başladı. Aktivasyon tamamlanmazsa ücretsiz paketten devam edersin.");
-                                        } else {
-                                            toast.success("Talebin alındı. Ekibimiz seninle iletişime geçecek.");
-                                        }
-                                        handleSubmit();
-                                    }}>
+                                    <div className="bg-slate-900 border-2 border-slate-800 rounded-3xl p-6 flex flex-col items-center text-center shadow-2xl hover:border-slate-700 transition-all cursor-pointer" onClick={() => handleSubmit('pro_request')}>
                                         <h4 className="text-xl font-bold text-white mb-2">Portfy Pro</h4>
                                         <p className="text-sm text-slate-400 font-medium mb-6">Trial sonrası tam erişim ve gelişmiş takip sistemiyle devam et.</p>
                                         <ul className="text-left space-y-3 mb-8 text-sm text-slate-300 font-medium w-full flex-grow">

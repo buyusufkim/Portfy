@@ -64,7 +64,7 @@ const queryClient = new QueryClient({
 
 function MainApp() {
   const queryClient = useQueryClient();
-  const { profile, logout, completeTour, subscribe } = useAuth();
+  const { profile, logout, completeTour, subscribe, updateProfileData } = useAuth();
   const { categories } = useCategories();
   const { isFree } = useFeatureAccess();
 
@@ -97,28 +97,84 @@ function MainApp() {
 
   const startCampaignMutation = useMutation({
     mutationFn: async (payload: Partial<AdvisorProfessionalProfile>) => {
+      let isSubscribedToPro = profile?.subscription_type && profile.subscription_type !== 'none';
+      if (!isSubscribedToPro) {
+          const res = await subscribe('trial');
+          if (res) {
+              isSubscribedToPro = true;
+          } else {
+             // If subscribe('trial') returned false or failed, and user still has no subscription (already used trial)
+              throw new Error("trial_ended");
+          }
+      }
+      
       const res = await campaign90Service.startCampaign({
           region: payload.region,
           niche: payload.niche,
           daily_contact_target: payload.daily_contact_target,
           weekly_contact_target: payload.weekly_contact_target
       });
-      if (!profile?.subscription_type || profile.subscription_type === 'none') {
-         await subscribe('trial');
-      }
       return res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaign90_active'] });
       setShowCampaignPromo(false);
       setActiveTab("campaign-90");
+    },
+    onError: (err: Error | unknown) => {
+        if (err instanceof Error && err.message === 'trial_ended') {
+            setToast({ message: "Kampı başlatmak için Pro pakete geçmen gerekiyor.", type: 'error' });
+        } else {
+            setToast({ message: "Kamp başlatılırken bir hata oluştu.", type: 'error' });
+        }
     }
   });
 
   const upsertAdvisorProfileMutation = useMutation({
-    mutationFn: async (payload: Partial<AdvisorProfessionalProfile>) => {
+    mutationFn: async (payload: Partial<AdvisorProfessionalProfile> & { package_action?: 'free' | 'trial' | 'pro_request' }) => {
       if (!profile?.id) throw new Error("No user");
-      return advisorProfileService.upsertAdvisorProfessionalProfile({ ...payload, user_id: profile.id });
+      
+      if (payload.region || payload.niche) {
+          const profileUpdate: Partial<UserProfile> = {};
+          if (payload.region) {
+              profileUpdate.district = payload.region;
+              profileUpdate.region = { district: payload.region, city: '', neighborhoods: [] };
+          }
+          if (payload.niche) {
+              profileUpdate.expertise_areas = payload.niche.split(',').map((x: string) => x.trim());
+          }
+          await updateProfileData(profileUpdate);
+      }
+
+      if (payload.package_action === 'pro_request') {
+          try {
+              const { supabase } = await import('./lib/supabase');
+              await supabase.from('support_tickets').insert({
+                  user_id: profile?.id,
+                  subject: "Portfy Pro Paket Talebi",
+                  message: `E-posta: ${profile?.email || 'Yok'}\nDeneyim: ${payload.experience_level}\nBölge: ${payload.region}\nUzmanlık: ${payload.niche}`,
+                  category: 'billing'
+              });
+          } catch(e) {
+              console.error("Support ticket error", e);
+          }
+      }
+
+      if (payload.package_action === 'trial' || (payload.package_action === 'pro_request' && profile?.subscription_type === 'none')) {
+          if (!profile?.subscription_type || profile.subscription_type === 'none') {
+              const res = await subscribe('trial');
+              if (res) {
+                 if (payload.package_action === 'trial') setToast({ message: "7 Günlük Deneme süreniz başladı!", type: 'success' });
+                 if (payload.package_action === 'pro_request') setToast({ message: "Talebin alındı. 7 günlük deneme süren başladı. Aktivasyon tamamlanmazsa ücretsiz paketten devam edersin.", type: 'success' });
+              }
+          } else {
+             if (payload.package_action === 'trial') setToast({ message: "Deneme süren daha önce kullanılmış veya aktif paketiniz var. Ücretsiz paketten başlatıyoruz.", type: 'error' });
+             if (payload.package_action === 'pro_request') setToast({ message: "Talebin alındı. Ekibimiz seninle iletişime geçecek.", type: 'success' });
+          }
+      }
+      
+      const { package_action, ...basePayload } = payload;
+      return advisorProfileService.upsertAdvisorProfessionalProfile({ ...basePayload, user_id: profile.id });
     },
     onSuccess: (updatedProfile, variables) => {
       queryClient.invalidateQueries({ queryKey: ['advisor_professional_profile', profile?.id] });
@@ -168,7 +224,6 @@ function MainApp() {
     setShowExternalListings(false);
     setShowImportUrlModal(false);
     setShowMissedOpportunities(false);
-    setShowRegionSetup(false);
     setShowAddTask(false);
     setShowDocumentAutomation(false);
     setShowRegionSetup(false);
@@ -456,8 +511,9 @@ function MainApp() {
         </div>
       )}
 
-      {(profile && (!profile.region || !profile.region.city)) ||
-      showRegionSetup ? (
+
+
+      {showRegionSetup ? (
         <RegionSetupModal
           profile={profile!}
           onComplete={() => {
@@ -586,7 +642,7 @@ function MainApp() {
         }}
         onAdminClick={() => setShowAdminPanel(true)}
       />
-      {profile && !profile.has_seen_tour && activeTab === "dashboard" && (
+      {profile && !profile.has_seen_tour && activeTab === "dashboard" && advisorProfile?.onboarding_completed && !showOnboarding && !showCampaignPromo && (
         <AppTour onComplete={() => completeTour()} />
       )}
 

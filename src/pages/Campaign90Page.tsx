@@ -99,6 +99,16 @@ export const Campaign90Page: React.FC = () => {
         mutationFn: async (payload: Partial<AdvisorProfessionalProfile>) => {
             if (!user?.id) throw new Error("No user");
             
+            let isSubscribedToPro = profile?.subscription_type && profile.subscription_type !== 'none';
+            if (!isSubscribedToPro) {
+                const res = await subscribe('trial');
+                if (res) {
+                    isSubscribedToPro = true;
+                } else {
+                   throw new Error("trial_ended");
+                }
+            }
+
             // Upsert profile
             await advisorProfileService.upsertAdvisorProfessionalProfile({
                 ...payload,
@@ -121,21 +131,19 @@ export const Campaign90Page: React.FC = () => {
                 weekly_contact_target: payload.weekly_contact_target || undefined
             });
 
-            // Start trial if user is free
-            if (!profile?.subscription_type || profile.subscription_type === 'none') {
-                 await subscribe('trial');
-            }
-
             return res;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['campaign90_active'] });
             toast.success("Kamp başarıyla başlatıldı!");
         },
-        onError: (err: unknown) => {
+        onError: (err: Error | unknown) => {
             console.error("Start campaign error:", err);
-            const msg = getErrorMessage(err, "Kamp başlatılırken bir hata oluştu.");
-            toast.error(msg);
+            if (err instanceof Error && err.message === 'trial_ended') {
+                toast.error("Kampı başlatmak için Pro pakete geçmen gerekiyor.", { duration: 4000 });
+            } else {
+                toast.error(getErrorMessage(err, "Kamp başlatılırken bir hata oluştu."));
+            }
         }
     });
 
