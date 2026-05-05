@@ -12,7 +12,7 @@ import { getTodayStrFromDate } from '../../services/core/utils';
 interface RitualOverlaysProps {
   profile?: UserProfile | null;
   showDailyRadar: boolean;
-  dailyRadarData: { tasks: string[], insight: string } | null;
+  dailyRadarData: { tasks: string[], insight: string, isCampaignUser?: boolean } | null;
   setShowDailyRadar: (val: boolean) => void;
   showDayCloser: boolean;
   setShowDayCloser: (val: boolean) => void;
@@ -189,6 +189,7 @@ export const RitualOverlays = ({
               key="radar_overlay"
               tasks={dailyRadarData.tasks}
               insight={dailyRadarData.insight}
+              isCampaignUser={dailyRadarData.isCampaignUser}
               onComplete={handleMorningComplete}
               isPending={completeMorningRitualMutation.isPending || showReward}
               initialFocus={activeMicroGoal?.title}

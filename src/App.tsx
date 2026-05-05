@@ -138,7 +138,13 @@ function MainApp() {
           const profileUpdate: Partial<UserProfile> = {};
           if (payload.region) {
               profileUpdate.district = payload.region;
-              profileUpdate.region = { district: payload.region, city: '', neighborhoods: [] };
+              // format is usually "City / District / N1, N2"
+              const parts = payload.region.split('/').map(p => p.trim());
+              profileUpdate.region = { 
+                  city: parts[0] || '', 
+                  district: parts[1] || payload.region, 
+                  neighborhoods: parts[2] ? parts[2].split(',').map(n => n.trim()) : [] 
+              };
           }
           if (payload.niche) {
               profileUpdate.expertise_areas = payload.niche.split(',').map((x: string) => x.trim());
@@ -315,17 +321,22 @@ function MainApp() {
     };
     const handleOpenQuickAdd = () => setShowQuickAdd(true);
     const handleOpenUpgrade = () => setShowUpgradeModal(true);
+    const handleSwitchTab = (e: CustomEvent<string>) => {
+      setActiveTab(e.detail);
+    };
 
     window.addEventListener("open-add-task", handleOpenTask);
     window.addEventListener("open-add-lead", handleOpenLead);
     window.addEventListener("open-quick-add", handleOpenQuickAdd);
     window.addEventListener("open-upgrade-modal", handleOpenUpgrade);
+    window.addEventListener("switch-tab", handleSwitchTab as EventListener);
 
     return () => {
       window.removeEventListener("open-add-task", handleOpenTask);
       window.removeEventListener("open-add-lead", handleOpenLead);
       window.removeEventListener("open-quick-add", handleOpenQuickAdd);
       window.removeEventListener("open-upgrade-modal", handleOpenUpgrade);
+      window.removeEventListener("switch-tab", handleSwitchTab as EventListener);
     };
   }, [isFree, leads.length]);
 

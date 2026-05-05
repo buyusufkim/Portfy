@@ -6,12 +6,13 @@ import { DailyPlan } from '../../types';
 interface DailyRadarProps {
   tasks: string[];
   insight: string;
+  isCampaignUser?: boolean;
   onComplete: (data: Partial<DailyPlan>) => void;
   isPending?: boolean;
   initialFocus?: string;
 }
 
-export const DailyRadar: React.FC<DailyRadarProps> = ({ tasks, insight, onComplete, isPending, initialFocus }) => {
+export const DailyRadar: React.FC<DailyRadarProps> = ({ tasks, insight, isCampaignUser, onComplete, isPending, initialFocus }) => {
   const [step, setStep] = useState(1);
   const [plannedCalls, setPlannedCalls] = useState(5);
   const [plannedFollowups, setPlannedFollowups] = useState(3);
@@ -19,7 +20,21 @@ export const DailyRadar: React.FC<DailyRadarProps> = ({ tasks, insight, onComple
   const [top3, setTop3] = useState([initialFocus || '', '', '']);
 
   const handleNext = () => {
-    if (step === 1) setStep(2);
+    if (step === 1) {
+       if (isCampaignUser) {
+         // Auto complete default plan for campaign users and bypass detailed planning
+         onComplete({
+           planned_calls: 0,
+           planned_followups: 0,
+           planned_portfolio_actions: 0,
+           top3: ["90 Gün Kampı Görevleri"]
+         });
+         // Trigger a custom event to switch tabs to 'campaign-90'
+         window.dispatchEvent(new CustomEvent('switch-tab', { detail: 'campaign-90' }));
+       } else {
+         setStep(2);
+       }
+    }
     else {
       onComplete({
         planned_calls: plannedCalls,
@@ -93,9 +108,10 @@ export const DailyRadar: React.FC<DailyRadarProps> = ({ tasks, insight, onComple
 
               <button
                 onClick={handleNext}
-                className="w-full py-5 bg-white text-slate-900 rounded-3xl font-bold text-lg flex items-center justify-center gap-3 hover:bg-slate-100 transition-colors"
+                disabled={isPending && isCampaignUser}
+                className="w-full py-5 bg-white text-slate-900 rounded-3xl font-bold text-lg flex items-center justify-center gap-3 hover:bg-slate-100 transition-colors disabled:opacity-50"
               >
-                Planlamaya Geç <ArrowRight size={20} />
+                {isPending && isCampaignUser ? 'Hazırlanıyor...' : isCampaignUser ? 'Kamp Akışına Geç' : 'Planlamaya Geç'} <ArrowRight size={20} />
               </button>
             </motion.div>
           ) : (

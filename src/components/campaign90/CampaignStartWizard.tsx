@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Card } from '../UI';
 import { motion, AnimatePresence } from 'motion/react';
-import { Briefcase, Building, MapPin, Target, Activity, ShieldCheck, Award, ChevronRight, ChevronLeft, Check } from 'lucide-react';
+import { Briefcase, Building, MapPin, Target, Activity, ShieldCheck, Award, ChevronRight, ChevronLeft, Check, X } from 'lucide-react';
 import { AdvisorProfessionalProfile, AdvisorExperienceLevel, TaxIdentityType, WorkIntensity } from '../../types';
 import { useAuth } from '../../AuthContext';
 import { supabase } from '../../lib/supabase';
 import { maskIdentity } from '../../services/advisorProfileService';
+import { locationService } from '../../services/locationService';
 import toast from 'react-hot-toast';
 
 interface Props {
@@ -44,8 +45,11 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete, mo
     const [taxIdentityRaw, setTaxIdentityRaw] = useState('');
 
     // Step 4
-    const [region, setRegion] = useState('');
-    const [niche, setNiche] = useState('');
+    const [city, setCity] = useState('');
+    const [district, setDistrict] = useState('');
+    const [neighborhoods, setNeighborhoods] = useState<string[]>([]);
+    const [selectedNiches, setSelectedNiches] = useState<string[]>([]);
+    const nicheOptions = ['Daire', 'Arsa', 'Lüks Konut', 'Ticari'];
 
     // Step 5
     const [daily_available_hours, setDailyAvailableHours] = useState('full');
@@ -73,10 +77,15 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete, mo
             supabase.from('profiles').select('district, region, expertise_areas').eq('id', user.id).single()
                 .then(({ data }) => {
                     if (data) {
-                        const dist = data.district || data.region?.district || '';
-                        if (dist) setRegion(dist);
-                        const exp = data.expertise_areas?.join(', ') || '';
-                        if (exp) setNiche(exp);
+                        if (data.region?.city) setCity(data.region.city);
+                        if (data.region?.district) setDistrict(data.region.district);
+                        if (data.region?.neighborhoods) setNeighborhoods(data.region.neighborhoods || []);
+                        if (data.expertise_areas) setSelectedNiches(data.expertise_areas);
+                        else if (data.district || data.region?.district) {
+                            // backward compatibility fallback
+                            const dist = data.district || data.region?.district || '';
+                            setDistrict(dist);
+                        }
                     }
                 });
         }
@@ -86,6 +95,9 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete, mo
     const handlePrev = () => setStep(prev => Math.max(1, prev - 1));
 
     const handleSubmit = (package_action?: 'free' | 'trial' | 'pro_request') => {
+        const payloadRegion = `${city} / ${district}${neighborhoods.length > 0 ? ` / ${neighborhoods.join(', ')}` : ''}`;
+        const payloadNiche = selectedNiches.join(', ');
+
         const payload: Partial<AdvisorProfessionalProfile> & { package_action?: 'free' | 'trial' | 'pro_request' } = {
             experience_level,
             current_role: current_role || null,
@@ -108,8 +120,8 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete, mo
             tax_identity_type: tax_identity_type !== 'none' ? tax_identity_type : null,
             tax_identity_masked: maskIdentity(taxIdentityRaw, tax_identity_type),
             tax_identity_last4: taxIdentityRaw ? taxIdentityRaw.slice(-4) : null,
-            region,
-            niche,
+            region: payloadRegion,
+            niche: payloadNiche,
             preferred_work_intensity,
             daily_available_hours: daily_available_hours === 'full' ? 8 : parseInt(daily_available_hours, 10),
             daily_contact_target: preferred_work_intensity === 'light' ? 10 : preferred_work_intensity === 'intense' ? 35 : 20,
@@ -127,7 +139,7 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete, mo
         (!has_myk || (!!myk_level && !!myk_certificate_no)) && 
         (!has_real_estate_authorization || !!authorization_no);
     const isStep3Valid = !has_office || !!office_name;
-    const isStep4Valid = !!region && !!niche;
+    const isStep4Valid = !!city && !!district && neighborhoods.length > 0 && neighborhoods.length <= 3 && selectedNiches.length > 0 && selectedNiches.length <= 2;
 
     return (
         <div className="max-w-2xl mx-auto py-8">
@@ -382,30 +394,109 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete, mo
                                 <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2"><MapPin className="text-indigo-500" /> Uzmanlık Bölgesi ve Alanı</h3>
 
                                 <div className="space-y-6">
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Uzmanlık Bölgen*</label>
-                                        <input 
-                                            type="text" 
-                                            value={region} 
-                                            onChange={e => setRegion(e.target.value)} 
-                                            placeholder="Örn: Talas, Yenidoğan, Çankaya" 
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 focus:outline-none focus:border-indigo-500"
-                                        />
-                                        <p className="text-xs text-slate-500 mt-2 font-medium">İlk 90 gün tek mikro bölgeye odaklanmak başarı şansını artırır.</p>
+                                    <div className="space-y-4">
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <div>
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">İl*</label>
+                                                <select 
+                                                    value={city}
+                                                    onChange={(e) => { 
+                                                        setCity(e.target.value); 
+                                                        setDistrict(''); 
+                                                        setNeighborhoods([]);
+                                                    }}
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 focus:outline-none focus:border-indigo-500"
+                                                >
+                                                    <option value="" disabled>İl Seçiniz</option>
+                                                    {locationService.getCities().map(c => <option key={c} value={c}>{c}</option>)}
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">İlçe*</label>
+                                                <select 
+                                                    value={district}
+                                                    onChange={(e) => { 
+                                                        setDistrict(e.target.value); 
+                                                        setNeighborhoods([]);
+                                                    }}
+                                                    disabled={!city}
+                                                    className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 focus:outline-none focus:border-indigo-500 disabled:opacity-50"
+                                                >
+                                                    <option value="" disabled>İlçe Seçiniz</option>
+                                                    {city && locationService.getDistricts(city).map(d => <option key={d} value={d}>{d}</option>)}
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        {district && (
+                                            <div className="bg-slate-50 p-4 border border-slate-100 rounded-2xl">
+                                                <label className="block text-sm font-bold text-slate-700 mb-2">Mahalleler (En fazla 3)*</label>
+                                                <select 
+                                                    onChange={(e) => {
+                                                        const val = e.target.value;
+                                                        if (val && !neighborhoods.includes(val)) {
+                                                            if (neighborhoods.length >= 3) {
+                                                                toast.error("En fazla 3 mahalle seçebilirsin.");
+                                                            } else {
+                                                                setNeighborhoods([...neighborhoods, val]);
+                                                            }
+                                                        }
+                                                        e.target.value = "";
+                                                    }}
+                                                    value=""
+                                                    disabled={neighborhoods.length >= 3}
+                                                    className="w-full bg-white border border-slate-200 rounded-xl py-2 px-3 focus:outline-none focus:border-indigo-500 disabled:opacity-50 mb-3 text-sm"
+                                                >
+                                                    <option value="">+ Mahalle Ekle</option>
+                                                    {locationService.getNeighborhoods(city, district).filter(n => !neighborhoods.includes(n)).map(n => <option key={n} value={n}>{n}</option>)}
+                                                </select>
+
+                                                {neighborhoods.length > 0 && (
+                                                    <div className="flex flex-wrap gap-2">
+                                                        {neighborhoods.map(n => (
+                                                            <span key={n} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-100 text-indigo-700 text-sm font-bold rounded-full">
+                                                                {n}
+                                                                <button onClick={() => setNeighborhoods(neighborhoods.filter(x => x !== n))} className="hover:opacity-70 transition-opacity">
+                                                                    <X size={14} />
+                                                                </button>
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                                <p className="text-xs text-slate-500 mt-2 font-medium">İlk 90 gün tek mikro bölgeye odaklanmak başarı şansını artırır.</p>
+                                            </div>
+                                        )}
                                     </div>
 
-                                    <div>
-                                        <label className="block text-sm font-bold text-slate-700 mb-2">Uzmanlık Alanın*</label>
-                                        <input 
-                                            type="text" 
-                                            value={niche} 
-                                            onChange={e => setNiche(e.target.value)} 
-                                            placeholder="Örn: Satılık Daire, Lüks Konut, Ticari" 
-                                            className="w-full bg-slate-50 border border-slate-200 rounded-xl py-3 px-4 focus:outline-none focus:border-indigo-500"
-                                        />
+                                    <div className="pt-2 border-t border-slate-100">
+                                        <label className="block text-sm font-bold text-slate-700 mb-3">Uzmanlık Alanın (En fazla 2)*</label>
+                                        <div className="flex flex-wrap gap-3">
+                                            {nicheOptions.map(opt => {
+                                                const isSelected = selectedNiches.includes(opt);
+                                                return (
+                                                    <button
+                                                        key={opt}
+                                                        onClick={() => {
+                                                            if (isSelected) {
+                                                                setSelectedNiches(selectedNiches.filter(x => x !== opt));
+                                                            } else {
+                                                                if (selectedNiches.length >= 2) {
+                                                                    toast.error("En fazla 2 uzmanlık alanı seçebilirsin.");
+                                                                } else {
+                                                                    setSelectedNiches([...selectedNiches, opt]);
+                                                                }
+                                                            }
+                                                        }}
+                                                        className={`px-5 py-2.5 rounded-xl text-sm font-bold transition-all border ${isSelected ? 'bg-teal-500 text-white border-teal-500 shadow-md ring-2 ring-teal-500/20' : 'bg-slate-50 text-slate-600 border-slate-200 hover:border-teal-300 hover:bg-teal-50/50'}`}
+                                                    >
+                                                        {opt}
+                                                    </button>
+                                                )
+                                            })}
+                                        </div>
                                     </div>
 
-                                    <div className="flex justify-between pt-4">
+                                    <div className="flex justify-between pt-4 mt-6">
                                         <button onClick={handlePrev} className="text-slate-600 hover:text-slate-800 font-bold py-3 px-6 transition-colors flex items-center gap-2">
                                             <ChevronLeft size={18} /> Geri
                                         </button>
@@ -491,11 +582,11 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete, mo
                                     </div>
                                     <div className="flex justify-between items-center py-2 border-b border-slate-200">
                                         <span className="text-sm font-bold text-slate-500">Odak Bölge</span>
-                                        <span className="text-sm font-black text-indigo-600">{region}</span>
+                                        <span className="text-sm font-black text-indigo-600 truncate max-w-[200px] text-right" title={`${city} / ${district}${neighborhoods.length ? ' / ' + neighborhoods.join(', ') : ''}`}>{`${city} / ${district}${neighborhoods.length ? ' / ' + neighborhoods.join(', ') : ''}`}</span>
                                     </div>
                                     <div className="flex justify-between items-center py-2 border-b border-slate-200">
                                         <span className="text-sm font-bold text-slate-500">Odak Alan</span>
-                                        <span className="text-sm font-black text-indigo-600">{niche}</span>
+                                        <span className="text-sm font-black text-indigo-600 truncate max-w-[200px] text-right" title={selectedNiches.join(', ')}>{selectedNiches.join(', ')}</span>
                                     </div>
                                     <div className="flex justify-between items-center py-2">
                                         <span className="text-sm font-bold text-slate-500">Günlük Temas Hedefi</span>

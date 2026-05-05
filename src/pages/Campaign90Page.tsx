@@ -116,11 +116,21 @@ export const Campaign90Page: React.FC = () => {
             });
 
             // Update main profile district if changed
-            if (profile?.id && payload.region) {
-                await supabase.from('profiles').update({ 
-                    district: payload.region,
-                    expertise_areas: payload.niche ? [payload.niche] : profile.expertise_areas
-                }).eq('id', profile.id);
+            if (profile?.id && (payload.region || payload.niche)) {
+                const targetUpdate: any = {};
+                if (payload.region) {
+                    const parts = payload.region.split('/').map(p => p.trim());
+                    targetUpdate.district = payload.region;
+                    targetUpdate.region = { 
+                        city: parts[0] || '', 
+                        district: parts[1] || payload.region, 
+                        neighborhoods: parts[2] ? parts[2].split(',').map(n => n.trim()) : [] 
+                    };
+                }
+                if (payload.niche) {
+                    targetUpdate.expertise_areas = payload.niche.split(',').map(x => x.trim());
+                }
+                await supabase.from('profiles').update(targetUpdate).eq('id', profile.id);
             }
 
             // Start campaign

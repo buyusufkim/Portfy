@@ -81,19 +81,48 @@ export const aiService = {
     }
   },
   
-  getDailyRadar: async (): Promise<{ tasks: string[], insight: string }> => {
+  getDailyRadar: async (): Promise<{ tasks: string[], insight: string, isCampaignUser?: boolean }> => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
-    const [profile, tasks, leads, properties] = await Promise.all([
+    const [profile, tasks, leads, properties, { data: advProfile }, { data: activeCampaign }] = await Promise.all([
       profileService.getProfile(),
       taskService.getTasks(),
       leadService.getLeads(),
-      propertyService.getProperties()
+      propertyService.getProperties(),
+      supabase.from('advisor_professional_profiles').select('*').eq('user_id', user.id).single(),
+      supabase.from('campaign_90_status').select('*').eq('user_id', user.id).eq('status', 'active').single()
     ]);
     
+    const isNewBeginnerCampaign = advProfile?.experience_level === 'new' && activeCampaign;
+    const campaignDay = activeCampaign?.current_day || 1;
+
     const tone = normalizeAiCoachTone(profile?.ai_coach_tone);
     const toneInstruction = getAiCoachToneInstruction(tone);
+
+    if (isNewBeginnerCampaign) {
+        if (campaignDay <= 3) {
+            return {
+                tasks: [
+                    "Bugünün eğitimini dikkatle oku.",
+                    "Mesleki evrak / ofis / yetki hazırlığını kontrol et.",
+                    "Bugünkü kamp görevlerini sırayla tamamla."
+                ],
+                insight: "Bugün satış baskısı yok. Önce güvenli çalışma zeminini ve ofis hazırlığını kuruyoruz.",
+                isCampaignUser: true
+            };
+        } else {
+            return {
+                tasks: [
+                    "Bugünün eğitimini dikkatle oku.",
+                    "Bugünkü kamp görevlerinden ilk 3 görevi tamamla.",
+                    "Gün sonunda kamp ilerlemeni mutlaka kontrol et."
+                ],
+                insight: "Bugün kamp akışına odaklan. Eğitimlerini al, görevlerini yap ve momentumu koru!",
+                isCampaignUser: true
+            };
+        }
+    }
 
     const prompt = `
       Sen bir emlak danışmanı koçusun. Danışmanın verileri:
