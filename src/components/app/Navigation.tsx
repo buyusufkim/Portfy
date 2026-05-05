@@ -41,9 +41,10 @@ export function NavButton({ icon, active, onClick, id }: { icon: React.ReactNode
   );
 }
 
-export function SidebarLink({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) {
+export function SidebarLink({ icon, label, active, onClick, id }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void, id?: string }) {
   return (
     <button 
+      id={id}
       onClick={onClick}
       className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl transition-all ${
         active 
@@ -70,13 +71,13 @@ export const DesktopSidebar = ({
     </div>
     
     <div className="space-y-1 flex-1">
-      <SidebarLink icon={<LayoutDashboard size={20} />} label="Dashboard" active={activeTab === 'dashboard' && !showAdminPanel} onClick={() => onTabChange('dashboard')} />
-      <SidebarLink icon={<CheckSquare size={20} />} label="Günlük Akış" active={activeTab === 'tasks' && !showAdminPanel} onClick={() => onTabChange('tasks')} />
-      <SidebarLink icon={<MapIcon size={20} />} label="Bölgem" active={activeTab === 'bolgem' && !showAdminPanel} onClick={() => onTabChange('bolgem')} />
-      <SidebarLink icon={<Briefcase size={20} />} label="Portföyler" active={activeTab === 'portfoyler' && !showAdminPanel} onClick={() => onTabChange('portfoyler')} />
-      <SidebarLink icon={<Users size={20} />} label="CRM" active={activeTab === 'crm' && !showAdminPanel} onClick={() => onTabChange('crm')} />
-      <SidebarLink icon={<Brain size={20} />} label="AI Koç" active={activeTab === 'koc' && !showAdminPanel} onClick={() => onTabChange('koc')} />
-      <SidebarLink icon={<CheckSquare size={20} />} label="90 Gün Kampı" active={activeTab === 'campaign-90' && !showAdminPanel} onClick={() => onTabChange('campaign-90')} />
+      <SidebarLink id="tour-d-dashboard" icon={<LayoutDashboard size={20} />} label="Dashboard" active={activeTab === 'dashboard' && !showAdminPanel} onClick={() => onTabChange('dashboard')} />
+      <SidebarLink id="tour-d-tasks" icon={<CheckSquare size={20} />} label="Günlük Akış" active={activeTab === 'tasks' && !showAdminPanel} onClick={() => onTabChange('tasks')} />
+      <SidebarLink id="tour-d-bolgem" icon={<MapIcon size={20} />} label="Bölgem" active={activeTab === 'bolgem' && !showAdminPanel} onClick={() => onTabChange('bolgem')} />
+      <SidebarLink id="tour-d-portfoyler" icon={<Briefcase size={20} />} label="Portföyler" active={activeTab === 'portfoyler' && !showAdminPanel} onClick={() => onTabChange('portfoyler')} />
+      <SidebarLink id="tour-d-crm" icon={<Users size={20} />} label="CRM" active={activeTab === 'crm' && !showAdminPanel} onClick={() => onTabChange('crm')} />
+      <SidebarLink id="tour-d-koc" icon={<Brain size={20} />} label="AI Koç" active={activeTab === 'koc' && !showAdminPanel} onClick={() => onTabChange('koc')} />
+      <SidebarLink id="tour-d-campaign" icon={<CheckSquare size={20} />} label="90 Gün Kampı" active={activeTab === 'campaign-90' && !showAdminPanel} onClick={() => onTabChange('campaign-90')} />
     </div>
 
     <div className="pt-6 mt-4 border-t border-slate-100 flex flex-col space-y-1">
@@ -185,6 +186,7 @@ export const MobileNav = ({
 
       <nav id="bottom-nav" className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-100 flex justify-between items-center z-30 px-3 pb-[calc(1rem+env(safe-area-inset-bottom))] pt-2">
         <button 
+          id="tour-m-dashboard"
           onClick={() => { setShowModules(false); onTabChange('dashboard'); }}
           className={`flex-1 flex flex-col items-center py-2 gap-1 transition-colors ${activeTab === 'dashboard' && !showAdminPanel ? 'text-[#061A32]' : 'text-slate-400'}`}
         >
@@ -192,6 +194,7 @@ export const MobileNav = ({
           <span className="text-[10px] font-bold">Dashboard</span>
         </button>
         <button 
+          id="tour-m-tasks"
           onClick={() => { setShowModules(false); onTabChange('tasks'); }}
           className={`flex-1 flex flex-col items-center py-2 gap-1 transition-colors ${activeTab === 'tasks' && !showAdminPanel ? 'text-[#061A32]' : 'text-slate-400'}`}
         >
@@ -199,6 +202,7 @@ export const MobileNav = ({
           <span className="text-[10px] font-bold">Günlük Akış</span>
         </button>
         <button 
+          id="tour-m-bolgem"
           onClick={() => { setShowModules(false); onTabChange('bolgem'); }}
           className={`flex-1 flex flex-col items-center py-2 gap-1 transition-colors ${activeTab === 'bolgem' && !showAdminPanel ? 'text-[#061A32]' : 'text-slate-400'}`}
         >
@@ -206,6 +210,7 @@ export const MobileNav = ({
           <span className="text-[10px] font-bold">Bölgem</span>
         </button>
         <button 
+          id="tour-m-portfoyler"
           onClick={() => { setShowModules(false); onTabChange('portfoyler'); }}
           className={`flex-1 flex flex-col items-center py-2 gap-1 transition-colors ${activeTab === 'portfoyler' && !showAdminPanel ? 'text-[#061A32]' : 'text-slate-400'}`}
         >
@@ -214,6 +219,7 @@ export const MobileNav = ({
         </button>
 
         <button 
+          id="tour-m-more"
           onClick={handleModulesClick}
           className={`flex-1 flex flex-col items-center py-2 gap-1 transition-colors ${(activeTab !== 'dashboard' && activeTab !== 'tasks' && activeTab !== 'bolgem' && activeTab !== 'portfoyler' || showAdminPanel) && !showModules ? 'text-[#061A32]' : 'text-slate-400'}`}
         >

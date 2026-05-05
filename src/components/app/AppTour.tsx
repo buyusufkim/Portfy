@@ -10,42 +10,44 @@ export const AppTour = ({ onComplete }: AppTourProps) => {
   const [step, setStep] = useState(0);
   const [targetPos, setTargetPos] = useState({ top: 0, left: 0, width: 0, height: 0 });
 
+  const isDesktop = window.innerWidth >= 1024;
+
   const tourSteps = [
     {
-      id: 'momentum-card',
-      title: 'Momentum ve AI Koç',
-      desc: 'Buradan günlük performansınızı ve yapay zeka destekli koç önerilerinizi takip edebilirsiniz.',
-      position: 'bottom'
+      id: isDesktop ? 'tour-d-dashboard' : 'tour-m-dashboard',
+      title: 'Dashboard / Öncelikler',
+      desc: 'Güne buradan başlarsın. Sistem, bugün odaklanman gereken en kritik işleri burada toplar.',
+      position: isDesktop ? 'right' : 'top'
     },
     {
-      id: 'points-card',
-      title: 'Puan ve Seviye',
-      desc: 'Tamamladığınız her görev size puan kazandırır ve seviyenizi yükseltir.',
-      position: 'bottom'
+      id: isDesktop ? 'tour-d-tasks' : 'tour-m-tasks',
+      title: 'Günlük Akış',
+      desc: 'Görevlerini, takiplerini ve kişisel akışını tek listede görürsün. Dağınıklığı azaltır, günü kontrol altına alırsın.',
+      position: isDesktop ? 'right' : 'top'
     },
     {
-      id: 'streak-card',
-      title: 'Peş Peşe Seri',
-      desc: 'Her gün giriş yaparak serinizi bozmayın ve ekstra çarpanlar kazanın!',
-      position: 'bottom'
+      id: isDesktop ? 'tour-d-crm' : 'tour-m-more',
+      title: 'CRM Disiplini',
+      desc: 'Lead’lerini sadece kaydetmezsin; sıcaklık, sessizlik ve takip disiplinini de yönetirsin.',
+      position: isDesktop ? 'right' : 'top'
     },
     {
-      id: 'daily-tasks',
-      title: 'Günlük Görevler',
-      desc: 'Sizin için özel hazırlanan ana ve akıllı görevleri buradan yönetin.',
-      position: 'top'
+      id: isDesktop ? 'tour-d-portfoyler' : 'tour-m-portfoyler',
+      title: 'Portföy Sağlığı',
+      desc: 'Portföylerini ekler, zayıf yanlarını izler ve pazarlanabilir ilanları ayırırsın.',
+      position: isDesktop ? 'right' : 'top'
     },
     {
-      id: 'quick-add-fab',
-      title: 'Hızlı Ekleme',
-      desc: 'Yeni mülk, müşteri veya ziyaret kaydını buradan saniyeler içinde yapın.',
-      position: 'left'
+      id: isDesktop ? 'tour-d-campaign' : 'tour-m-more',
+      title: '90 Gün Kampı',
+      desc: 'Yeniysen sistemi kurar, tecrübeliysen disiplinini güçlendirirsin. Her gün görev ve saha ritmi sunar.',
+      position: isDesktop ? 'right' : 'top'
     },
     {
-      id: window.innerWidth >= 768 ? 'desktop-sidebar' : 'bottom-nav',
-      title: 'Navigasyon',
-      desc: 'Dashboard, CRM, Harita ve Portföy arasında buradan geçiş yapın.',
-      position: window.innerWidth >= 768 ? 'right' : 'top'
+      id: isDesktop ? 'tour-d-koc' : 'tour-m-more',
+      title: 'AI Koç',
+      desc: 'Performansına bakar, seni uyarır ve odak kaybını azaltır.',
+      position: isDesktop ? 'right' : 'top'
     }
   ];
 
@@ -70,9 +72,8 @@ export const AppTour = ({ onComplete }: AppTourProps) => {
 
     updatePosition();
     window.addEventListener('resize', updatePosition);
-    window.addEventListener('scroll', updatePosition, true); // true for capturing phase to catch all scrolls
+    window.addEventListener('scroll', updatePosition, true);
     
-    // Also update position periodically in case layout shifts (e.g. images loading)
     const interval = setInterval(updatePosition, 500);
     
     return () => {
@@ -93,54 +94,54 @@ export const AppTour = ({ onComplete }: AppTourProps) => {
   return (
     <div className="fixed inset-0 z-[100] pointer-events-none">
       {/* Overlay with hole */}
-      <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] transition-all duration-500" style={{
+      <div className="absolute inset-0 bg-[#061A32]/70 backdrop-blur-[2px] transition-all duration-500" style={{
         clipPath: `polygon(0% 0%, 0% 100%, ${targetPos.left}px 100%, ${targetPos.left}px ${targetPos.top}px, ${targetPos.left + targetPos.width}px ${targetPos.top}px, ${targetPos.left + targetPos.width}px ${targetPos.top + targetPos.height}px, ${targetPos.left}px ${targetPos.top + targetPos.height}px, ${targetPos.left}px 100%, 100% 100%, 100% 0%)`
       }} />
 
       {/* Tooltip Bubble */}
       <motion.div
         key={step}
-        initial={{ opacity: 0, scale: 0.9, y: 10 }}
+        initial={{ opacity: 0, scale: 0.95, y: 10 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="absolute bg-white rounded-3xl p-6 shadow-2xl border border-slate-100 max-w-[280px] pointer-events-auto"
+        className="absolute bg-white rounded-2xl p-5 shadow-[0_20px_40px_-15px_rgba(0,0,0,0.5)] border border-slate-100/50 max-w-[300px] pointer-events-auto"
         style={{
-          top: tourSteps[step].position === 'bottom' ? targetPos.top + targetPos.height + 20 : 
+          top: tourSteps[step].position === 'bottom' ? targetPos.top + targetPos.height + 16 : 
                tourSteps[step].position === 'top' ? targetPos.top - 180 : 
-               targetPos.top + targetPos.height / 2 - 90,
+               targetPos.top + targetPos.height / 2 - 80,
           left: window.innerWidth < 640 ? 20 : (
-                tourSteps[step].position === 'left' ? targetPos.left - 300 : 
-                tourSteps[step].position === 'right' ? targetPos.left + targetPos.width + 20 :
-                Math.max(20, Math.min(window.innerWidth - 300, targetPos.left + targetPos.width / 2 - 140))
+                tourSteps[step].position === 'left' ? targetPos.left - 320 : 
+                tourSteps[step].position === 'right' ? targetPos.left + targetPos.width + 16 :
+                Math.max(20, Math.min(window.innerWidth - 320, targetPos.left + targetPos.width / 2 - 150))
           ),
-          width: window.innerWidth < 640 ? window.innerWidth - 40 : 280
+          width: window.innerWidth < 640 ? window.innerWidth - 40 : 300
         }}
       >
         <button 
           onClick={onComplete}
           className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 transition-colors"
         >
-          <X size={16} />
+          <X size={18} />
         </button>
-        <div className="flex items-center gap-2 mb-3">
-          <div className="w-8 h-8 bg-orange-100 rounded-xl flex items-center justify-center text-orange-600 font-bold text-sm">
+        <div className="flex items-center gap-3 mb-3">
+          <div className="w-8 h-8 bg-blue-50 rounded-lg flex items-center justify-center text-blue-600 font-bold text-sm shrink-0">
             {step + 1}
           </div>
-          <h3 className="font-bold text-slate-900 pr-4">{tourSteps[step].title}</h3>
+          <h3 className="font-bold text-[#061A32] pr-4 leading-tight">{tourSteps[step].title}</h3>
         </div>
-        <p className="text-slate-500 text-sm leading-relaxed mb-6">
+        <p className="text-slate-500 text-sm leading-relaxed mb-5 font-medium">
           {tourSteps[step].desc}
         </p>
         <div className="flex justify-between items-center">
-          <div className="flex gap-1">
+          <div className="flex gap-1.5 flex-1 mr-4">
             {tourSteps.map((_, i) => (
-              <div key={i} className={`h-1 rounded-full transition-all ${i === step ? 'w-4 bg-orange-500' : 'w-1 bg-slate-200'}`} />
+              <div key={i} className={`h-1.5 rounded-full transition-all ${i === step ? 'w-6 bg-blue-600' : 'w-2 bg-slate-200'}`} />
             ))}
           </div>
           <button 
             onClick={nextStep}
-            className="px-6 py-2 bg-slate-900 text-white rounded-xl text-xs font-bold active:scale-95 transition-all shadow-lg shadow-slate-200"
+            className="px-5 py-2 bg-[#061A32] text-white rounded-xl text-xs font-bold active:scale-95 transition-all shadow-md shadow-[#061A32]/20 shrink-0"
           >
-            {step === tourSteps.length - 1 ? 'Anladım!' : 'Sıradaki'}
+            {step === tourSteps.length - 1 ? 'Portfy\'yi Başlat' : 'Sıradaki'}
           </button>
         </div>
       </motion.div>
@@ -148,12 +149,12 @@ export const AppTour = ({ onComplete }: AppTourProps) => {
       {/* Highlight Border */}
       <motion.div 
         animate={{ 
-          top: targetPos.top - 4, 
-          left: targetPos.left - 4, 
-          width: targetPos.width + 8, 
-          height: targetPos.height + 8 
+          top: targetPos.top - 6, 
+          left: targetPos.left - 6, 
+          width: targetPos.width + 12, 
+          height: targetPos.height + 12 
         }}
-        className="absolute border-2 border-orange-500 rounded-[32px] shadow-[0_0_20px_rgba(249,115,22,0.4)] pointer-events-none"
+        className="absolute border-[3px] border-blue-500 rounded-3xl shadow-[0_0_20px_rgba(59,130,246,0.3)] pointer-events-none"
       />
     </div>
   );
