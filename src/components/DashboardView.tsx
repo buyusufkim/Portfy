@@ -110,7 +110,7 @@ interface DashboardViewProps {
   setActiveTab: (tab: string) => void;
   setShowDayCloser: (show: boolean) => void;
   queryClient: QueryClient;
-  startDayMutation: MutationResult<boolean, any>;
+  startDayMutation: MutationResult<unknown, { early_start_reason?: string } | void>;
   completeMorningRitualMutation: MutationResult<
     { success: boolean },
     Partial<DailyPlan>
@@ -131,6 +131,8 @@ interface DashboardViewProps {
 }
 
 import { Campaign90MiniCard } from "./habit/Campaign90MiniCard";
+import { advisorProfileService } from "../services/advisorProfileService";
+import { campaign90Service } from "../services/campaign90Service";
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   profile,
@@ -163,6 +165,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const [resetConfirmArmed, setResetConfirmArmed] = useState(false);
 
   const { todayISO, timeLabel } = useTurkeyClock();
+
+  const { data: advisorProfile } = useQuery({
+    queryKey: ['advisor_professional_profile', profile?.id],
+    queryFn: () => advisorProfileService.getAdvisorProfessionalProfile(profile!.id),
+    enabled: !!profile?.id
+  });
+
+  const { data: activeCampaign } = useQuery({
+    queryKey: ['campaign90_active', profile?.id],
+    queryFn: () => campaign90Service.getActiveCampaign(profile!.id),
+    enabled: !!profile?.id
+  });
+
+  const isNewUserCampaignActive = advisorProfile?.experience_level === 'new' && !!activeCampaign;
 
   const [selectedGoalDate, setSelectedGoalDate] = useState<string>(todayISO);
 
@@ -281,7 +297,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }));
 
   const gamifiedItems: TopActionItem[] = (gamifiedTasks || [])
-    .filter((gt) => !gt.is_completed)
+    .filter((gt) => {
+      if (gt.is_completed) return false;
+      if (isNewUserCampaignActive) {
+        // Hide aggressive sales gamified tasks during 90 Day Campaign's onboarding phase
+        const lower = gt.title.toLowerCase();
+        if (lower.includes("lead") || lower.includes("portföy") || lower.includes("arama")) {
+          return false;
+        }
+        // In fact, the prompt says hide classical gamified task cards. 
+        return false; // Safest to just hide them from dashboard priority list if they are a new user?
+      }
+      return true;
+    })
     .map((gt) => ({
       type: "gamified" as const,
       originalItem: gt,
@@ -574,6 +602,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           Günaydın {profile?.display_name?.split(' ')[0] || 'Danışman'} 👋
         </h1>
       </div>
+
+      {advisorProfile?.experience_level === 'new' && !activeCampaign && advisorProfile?.onboarding_completed && (
+        <Card className="mb-6 bg-indigo-600 border border-indigo-500 rounded-2xl overflow-hidden relative shadow-lg shadow-indigo-600/10 text-white p-5 cursor-pointer hover:bg-indigo-700 transition" onClick={() => setActiveTab("campaign-90")}>
+           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
+           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+             <div>
+                <h3 className="text-base sm:text-lg font-black mb-1 flex items-center gap-2">90 Gün Kampı seni adım adım mesleğe hazırlar.</h3>
+                <p className="text-xs sm:text-sm text-indigo-100 font-medium">İlk 3 gün satış baskısı yok; MYK, ofis, yetki ve güvenli çalışma zeminini kurarsın.</p>
+             </div>
+             <button onClick={(e) => { e.stopPropagation(); setActiveTab("campaign-90") }} className="shrink-0 bg-white text-indigo-700 font-bold px-5 py-2.5 rounded-xl text-sm hover:bg-indigo-50 transition w-full md:w-auto mt-2 md:mt-0">
+               90 Gün Kampı'nı İncele
+             </button>
+           </div>
+        </Card>
+      )}
 
       <TokenUsageAlert />
 
@@ -878,6 +921,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </section>
 
           {/* 3. GÜNLÜK PLAN MİNİ GÖSTERGELERİ */}
+          {!isNewUserCampaignActive && (
           <section className="order-4">
               <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
                 <div className="flex items-center gap-3 mb-4">
@@ -921,6 +965,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </Card>
           </section>
+          )}
 
           {/* 90 DAY CAMPAIGN MINI CARD */}
           <section className="order-4">
@@ -974,6 +1019,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
 
           {/* 7. RESCUE / GÜNÜN ÖZETİ */}
+          {!isNewUserCampaignActive && (
           <section className="order-8">
               <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
                 <div className="flex items-center gap-3 mb-4">
@@ -1006,6 +1052,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </Card>
           </section>
+          )}
 
           {/* 8. GÜNÜ KAPAT */}
           <section className="order-9">
@@ -1050,6 +1097,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         <div className="contents lg:flex lg:flex-col lg:col-span-1 lg:gap-6 mt-4 lg:mt-0">
           
           {/* 6. AKSİYON MERKEZİ */}
+          {!isNewUserCampaignActive && (
           <section className="order-7">
             <Card className="p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
              <div className="flex items-center justify-between mb-4">
@@ -1108,8 +1156,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
              </button>
           </Card>
           </section>
+          )}
 
           {/* 9. GELİR ÖZETİ */}
+          {!isNewUserCampaignActive && (
           <section className="order-10">
             <Card className="p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
              <div className="flex items-center justify-between mb-4">
@@ -1173,8 +1223,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
              </button>
           </Card>
           </section>
+          )}
 
           {/* 5. AI İÇGÖRÜ */}
+          {!isNewUserCampaignActive && (
           <section className="order-6">
             <Card
               onClick={() => {
@@ -1211,8 +1263,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                </button>
             </Card>
           </section>
+          )}
 
           {/* 10. HAFTALIK MOMENTUM */}
+          {!isNewUserCampaignActive && (
           <section className="order-11 mb-8 lg:mb-0">
             <Card className="p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
              <div className="flex items-center justify-between mb-4">
@@ -1294,6 +1348,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
              )}
           </Card>
           </section>
+          )}
 
         </div>
       </div>

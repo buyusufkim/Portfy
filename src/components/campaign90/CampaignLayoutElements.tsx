@@ -13,6 +13,7 @@ interface StatsProps {
     todayA: number;
     todayScore: number;
     cumulativeScore: number;
+    dayStatus?: 'active' | 'closed' | 'not_started';
 }
 
 export const CampaignTopStats: React.FC<StatsProps> = ({
@@ -24,7 +25,8 @@ export const CampaignTopStats: React.FC<StatsProps> = ({
     todayP,
     todayA,
     todayScore,
-    cumulativeScore
+    cumulativeScore,
+    dayStatus = 'not_started'
 }) => {
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-w-0">
@@ -45,18 +47,22 @@ export const CampaignTopStats: React.FC<StatsProps> = ({
                     </div>
 
                     <div className="flex justify-between items-end mb-2">
-                        <div className="text-sm font-bold text-white/80">Gün {currentDay}/90</div>
+                        <div className="text-sm font-bold text-white/80">Gün {currentDay} / 90</div>
                         <div className="text-sm font-black text-white">{completedPercent}% Toplam</div>
                     </div>
                     <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mb-6">
                         <div className="h-full bg-[#00D2B4] rounded-full transition-all duration-1000" style={{ width: `${completedPercent}%` }} />
                     </div>
 
-                    <div className="bg-white/10 p-4 rounded-2xl border border-white/20 flex flex-row items-center justify-between">
-                        <div className="text-[11px] font-bold text-[#00D2B4] tracking-wide mb-1">BUGÜNÜN GÖREVLERİ</div>
-                        <div className="flex items-end gap-1">
-                            <span className="text-2xl font-black text-white">{todayCompleted}</span>
-                            <span className="text-sm font-bold text-white/60 mb-0.5">/ {todayTotal}</span>
+                    <div className="bg-white/10 p-4 rounded-2xl border border-white/20 flex flex-col gap-3">
+                        <div className="flex flex-row items-center justify-between">
+                            <div className="text-[11px] font-bold text-[#00D2B4] tracking-wide">
+                                ÇALIŞMA GÜNÜ: {dayStatus === 'not_started' ? 'BAŞLAMADI' : dayStatus === 'active' ? 'AKTİF' : 'KAPANDI'}
+                            </div>
+                            <div className="flex items-end gap-1">
+                                <span className="text-lg font-black text-white">{todayCompleted}</span>
+                                <span className="text-sm font-bold text-white/60 mb-0.5">/ {todayTotal} bitti</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -113,8 +119,8 @@ export const CampaignTopStats: React.FC<StatsProps> = ({
 
 export const CampaignProfessionalGuides: React.FC = () => {
     return (
-        <details className="mt-8 group [&_summary::-webkit-details-marker]:hidden bg-white border border-slate-200 rounded-[32px] shadow-sm">
-            <summary className="p-6 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors rounded-[32px]">
+        <details className="group [&_summary::-webkit-details-marker]:hidden bg-white border border-slate-200 rounded-[32px] shadow-sm">
+            <summary className="p-5 md:px-6 md:py-5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors rounded-[32px]">
                 <div className="flex flex-col gap-1">
                     <h2 className="text-xl font-black text-slate-900 flex items-center gap-2">
                         <BookOpen size={20} className="text-indigo-500" /> Mesleki Rehberler

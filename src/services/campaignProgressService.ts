@@ -168,7 +168,7 @@ export async function getCampaignTaskProgress(userId: string, tasks: CampaignTas
           }
         }
       } catch (e) {
-        console.error('Error fetching leads progress:', e);
+        if (process.env.NODE_ENV === 'development') console.warn('Error fetching leads progress:', e);
       }
     })());
   }
@@ -184,7 +184,7 @@ export async function getCampaignTaskProgress(userId: string, tasks: CampaignTas
           .lte('created_at', endIso);
         if (!error) counts['map_pins'] = count || 0;
       } catch (e) {
-        console.error('Error fetching map_pins progress:', e);
+        if (process.env.NODE_ENV === 'development') console.warn('Error fetching map_pins progress:', e);
       }
      })());
   }
@@ -200,7 +200,7 @@ export async function getCampaignTaskProgress(userId: string, tasks: CampaignTas
          .lte('created_at', endIso);
        if (!error) counts['field_visits'] = count || 0;
      } catch (e) {
-       console.error('Error fetching field_visits progress:', e);
+       if (process.env.NODE_ENV === 'development') console.warn('Error fetching field_visits progress:', e);
      }
     })());
  }
@@ -235,7 +235,7 @@ export async function getCampaignTaskProgress(userId: string, tasks: CampaignTas
          }
        }
      } catch (e) {
-       console.error('Error fetching properties progress:', e);
+       if (process.env.NODE_ENV === 'development') console.warn('Error fetching properties progress:', e);
      }
     })());
  }
@@ -258,7 +258,7 @@ export async function getCampaignTaskProgress(userId: string, tasks: CampaignTas
           }
         }
       } catch (e) {
-        console.error('Error fetching lead_activity_log progress:', e);
+        if (process.env.NODE_ENV === 'development') console.warn('Error fetching lead_activity_log progress:', e);
       }
     })());
  }
@@ -266,7 +266,7 @@ export async function getCampaignTaskProgress(userId: string, tasks: CampaignTas
  if (progressTypesToFetch.has('drip_tasks_completed') || progressTypesToFetch.has('followup_actions') || progressTypesToFetch.has('post_showing_followups')) {
     promises.push((async () => {
       try {
-        let { data, error }: { data: any, error: any } = await supabase
+        let result = await supabase
           .from('tasks')
           .select('id, lead_id, is_drip, drip_type, title, notes, completed_at, updated_at')
           .eq('user_id', userId)
@@ -274,22 +274,24 @@ export async function getCampaignTaskProgress(userId: string, tasks: CampaignTas
           .gte('completed_at', startIso)
           .lte('completed_at', endIso);
 
-        // Fallback for missing completed_at column error
-        if (error && (error.code === 'PGRST204' || error.message?.includes('completed_at'))) {
+        // Fallback for missing columns (could be completed_at or updated_at)
+        if (result.error) {
            const fallbackCall = await supabase
               .from('tasks')
-              .select('id, lead_id, is_drip, drip_type, title, notes, updated_at')
+              .select('id, lead_id, is_drip, drip_type, title, notes, created_at')
               .eq('user_id', userId)
               .eq('completed', true)
-              .gte('updated_at', startIso)
-              .lte('updated_at', endIso);
-           data = fallbackCall.data;
-           error = fallbackCall.error;
+              .gte('created_at', startIso)
+              .lte('created_at', endIso);
+           result = fallbackCall as unknown as typeof result;
+           if (result.error && process.env.NODE_ENV === 'development') {
+              console.warn('Error fetching tasks progress fallback:', result.error.message);
+           }
         }
 
-        if (error) {
-            console.error('Error fetching tasks progress fallback:', error.message);
-        } else if (data) {
+        const { data, error } = result;
+
+        if (!error && data) {
           if (progressTypesToFetch.has('drip_tasks_completed')) {
             counts['drip_tasks_completed'] = data.filter(d => d.is_drip || d.drip_type).length;
           }
@@ -305,7 +307,7 @@ export async function getCampaignTaskProgress(userId: string, tasks: CampaignTas
           }
         }
       } catch(e) {
-        console.error('Error fetching tasks progress:', e);
+        if (process.env.NODE_ENV === 'development') console.warn('Error fetching tasks progress:', e);
       }
     })());
  }
@@ -359,7 +361,7 @@ export async function getCampaignTaskProgress(userId: string, tasks: CampaignTas
           }
         }
       } catch (e) {
-        console.error('Error fetching leads updates progress:', e);
+        if (process.env.NODE_ENV === 'development') console.warn('Error fetching leads updates progress:', e);
       }
     })());
  }
@@ -376,7 +378,7 @@ export async function getCampaignTaskProgress(userId: string, tasks: CampaignTas
            counts['open_lead_alerts_reviewed'] = data.length;
         }
       } catch(e) {
-        console.error('Error fetching lead_alerts progress:', e);
+        if (process.env.NODE_ENV === 'development') console.warn('Error fetching lead_alerts progress:', e);
       }
     })());
  }

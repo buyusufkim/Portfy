@@ -10,9 +10,10 @@ import { maskIdentity } from '../../services/advisorProfileService';
 interface Props {
     isPending: boolean;
     onComplete: (data: Partial<AdvisorProfessionalProfile>) => void;
+    mode?: 'profile_onboarding' | 'campaign_start';
 }
 
-export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) => {
+export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete, mode = 'campaign_start' }) => {
     const { user } = useAuth();
     const [step, setStep] = useState(1);
     
@@ -134,8 +135,12 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
                         <Award size={160} />
                     </div>
                     <div className="relative z-10">
-                        <h2 className="text-2xl font-black mb-2">90 Gün Kampı Başlangıç Ayarı</h2>
-                        <p className="text-slate-300 font-medium text-sm">Portfy önce seni tanır, sonra sana doğru kampı verir.</p>
+                        <h2 className="text-2xl font-black mb-2">
+                            {mode === 'profile_onboarding' ? 'Profesyonel Profilini Oluşturalım' : '90 Gün Kampı Başlangıç Ayarı'}
+                        </h2>
+                        <p className="text-slate-300 font-medium text-sm">
+                            {mode === 'profile_onboarding' ? 'Portfy seni doğru yönlendirebilmek için mesleki durumunu, uzmanlık bölgeni ve çalışma düzenini tanır.' : 'Portfy önce seni tanır, sonra sana doğru kamp ritmini verir.'}
+                        </p>
                     </div>
 
                     <div className="flex gap-2 mt-8 relative z-10">
@@ -175,14 +180,14 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
                                         <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 mb-4">
                                             <p className="text-sm text-indigo-700 font-medium whitespace-pre-line">
                                                 İlk 3 gün seni doğrudan sahaya sürmeyeceğiz. Önce evrak, ofis, MYK, yetki ve güvenli çalışma zeminini kuracağız.
-                                                Bu kamp senin temel saha disiplinini kuracak ve doğru alışkanlıkları kazanmanı sağlayacak.
+                                                {mode === 'profile_onboarding' ? 'Bu başlangıç aşaması senin temel saha disiplinini kuracak ve doğru alışkanlıkları kazanmanı sağlayacak.' : 'Bu kamp senin temel saha disiplinini kuracak ve doğru alışkanlıkları kazanmanı sağlayacak.'}
                                             </p>
                                         </div>
                                     )}
 
                                     {experience_level === 'experienced' && (
                                         <div className="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 mb-4">
-                                            <p className="text-sm text-indigo-700 font-medium">Kamp mevcut alışkanlıklarını ölçüp, sistemleştirerek bir üst seviyeye taşımanı sağlayacak.</p>
+                                            <p className="text-sm text-indigo-700 font-medium">{mode === 'profile_onboarding' ? 'Profilin mevcut alışkanlıklarını ölçüp, sistemleştirerek seni bir üst seviyeye taşımamızı sağlayacak.' : 'Kamp mevcut alışkanlıklarını ölçüp, sistemleştirerek bir üst seviyeye taşımanı sağlayacak.'}</p>
                                         </div>
                                     )}
 
@@ -412,7 +417,7 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
 
                         {step === 5 && (
                             <motion.div key="step5" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                                <h3 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2"><Activity className="text-indigo-500" /> Çalışma Kapasitesi</h3>
+                                <h3 className="text-lg font-black text-slate-800 mb-2 flex items-center gap-2"><Activity className="text-indigo-500" /> {mode === 'profile_onboarding' ? 'Çalışma Kapasiten' : 'Çalışma Kapasitesi'}</h3>
                                 <p className="text-xs text-slate-500 font-medium mb-6">Motivasyon değil, sürdürülebilir tempo kazandırır.</p>
 
                                 <div className="space-y-6">
@@ -437,7 +442,7 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
                                     </div>
 
                                     <div className="pt-2">
-                                        <label className="block text-sm font-bold text-slate-700 mb-3">Günlük Kamp Hedefi / Temposu</label>
+                                        <label className="block text-sm font-bold text-slate-700 mb-3">{mode === 'profile_onboarding' ? 'Günlük Temas Hedefi / Temposu' : 'Günlük Kamp Hedefi / Temposu'}</label>
                                         <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                                             {intensityOptions.map(opt => (
                                                 <div 
@@ -467,7 +472,7 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
 
                         {step === 6 && (
                             <motion.div key="step6" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                                <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2"><Target className="text-indigo-500" /> Özet ve Başlat</h3>
+                                <h3 className="text-lg font-black text-slate-800 mb-6 flex items-center gap-2"><Target className="text-indigo-500" /> {mode === 'profile_onboarding' ? 'Profesyonel profilin hazır' : 'Kamp hedeflerin hazır'}</h3>
 
                                 <div className="bg-slate-50 border border-slate-200 rounded-2xl p-5 space-y-4 mb-8">
                                     <div className="flex justify-between items-center py-2 border-b border-slate-200">
@@ -507,7 +512,7 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete }) 
                                         disabled={isPending}
                                         className="bg-emerald-500 hover:bg-emerald-600 text-white font-black py-4 px-8 rounded-xl transition-colors shadow-lg shadow-emerald-500/20 disabled:opacity-50"
                                     >
-                                        {isPending ? 'Başlatılıyor...' : 'Hedefi Onayla ve Başla'}
+                                        {isPending ? (mode === 'profile_onboarding' ? 'Kaydediliyor...' : 'Başlatılıyor...') : (mode === 'profile_onboarding' ? 'Profilimi Tamamla' : 'Hedefi Onayla ve Kampı Başlat')}
                                     </button>
                                 </div>
                             </motion.div>

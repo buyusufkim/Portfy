@@ -34,9 +34,21 @@ export const advisorProfileService = {
     },
 
     upsertAdvisorProfessionalProfile: async (payload: Partial<AdvisorProfessionalProfile> & { user_id: string }): Promise<AdvisorProfessionalProfile> => {
+        const normalizeDate = (value?: string | null) => {
+            if (!value || value.trim() === '') return null;
+            return value;
+        };
+
+        const sanitizedPayload = { ...payload };
+        if ('profession_start_date' in sanitizedPayload) sanitizedPayload.profession_start_date = normalizeDate(sanitizedPayload.profession_start_date);
+        if ('myk_issue_date' in sanitizedPayload) sanitizedPayload.myk_issue_date = normalizeDate(sanitizedPayload.myk_issue_date);
+        if ('myk_renewal_date' in sanitizedPayload) sanitizedPayload.myk_renewal_date = normalizeDate(sanitizedPayload.myk_renewal_date);
+        if ('authorization_issue_date' in sanitizedPayload) sanitizedPayload.authorization_issue_date = normalizeDate(sanitizedPayload.authorization_issue_date);
+        if ('authorization_renewal_date' in sanitizedPayload) sanitizedPayload.authorization_renewal_date = normalizeDate(sanitizedPayload.authorization_renewal_date);
+
         const { data, error } = await supabase
             .from('advisor_professional_profiles')
-            .upsert(payload, { onConflict: 'user_id' })
+            .upsert(sanitizedPayload, { onConflict: 'user_id' })
             .select()
             .single();
 

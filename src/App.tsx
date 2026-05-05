@@ -23,6 +23,8 @@ import { LoginScreen } from "./components/app/LoginScreen";
 import { NotificationCenter } from "./components/app/NotificationCenter";
 import { IntroSequence } from "./components/app/IntroSequence";
 import { AppTour } from "./components/app/AppTour";
+import { ArrowRight } from "lucide-react";
+import { Card } from "./components/UI";
 import { QuickAddMenu } from "./components/app/QuickAddMenu";
 import { RitualOverlays } from "./components/app/RitualOverlays";
 import { DesktopSidebar, MobileNav } from "./components/app/Navigation";
@@ -51,6 +53,10 @@ import { PublicPresentation } from "./pages/PublicPresentation";
 import { ClientPortalPage } from "./pages/ClientPortalPage";
 import { LeadEntryMethodModal } from "./components/crm/LeadEntryMethodModal";
 import { BusinessCardScannerModal } from "./components/crm/BusinessCardScannerModal";
+import { advisorProfileService } from "./services/advisorProfileService";
+import { campaign90Service } from "./services/campaign90Service";
+import { CampaignStartWizard } from "./components/campaign90/CampaignStartWizard";
+import { AdvisorProfessionalProfile } from "./types";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 2, staleTime: 1000 * 60 * 5 } },
@@ -73,6 +79,55 @@ function MainApp() {
     task: GamifiedTask | PersonalTask;
     type: "personal" | "gamified";
   } | null>(null);
+
+  const { data: advisorProfile, isLoading: advProfileLoading, isError: advProfileError, refetch: refetchAdvProfile } = useQuery({
+    queryKey: ['advisor_professional_profile', profile?.id],
+    queryFn: () => advisorProfileService.getAdvisorProfessionalProfile(profile!.id),
+    enabled: !!profile?.id
+  });
+
+  const { data: activeCampaign, isLoading: campaignLoading } = useQuery({
+    queryKey: ['campaign90_active', profile?.id],
+    queryFn: () => campaign90Service.getActiveCampaign(profile!.id),
+    enabled: !!profile?.id
+  });
+
+  const [showCampaignPromo, setShowCampaignPromo] = useState(false);
+  const [promoPayload, setPromoPayload] = useState<Partial<AdvisorProfessionalProfile> | null>(null);
+
+  const startCampaignMutation = useMutation({
+    mutationFn: async (payload: Partial<AdvisorProfessionalProfile>) => {
+      return await campaign90Service.startCampaign({
+          region: payload.region,
+          niche: payload.niche,
+          daily_contact_target: payload.daily_contact_target,
+          weekly_contact_target: payload.weekly_contact_target
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['campaign90_active'] });
+      setShowCampaignPromo(false);
+      setActiveTab("campaign-90");
+    }
+  });
+
+  const upsertAdvisorProfileMutation = useMutation({
+    mutationFn: async (payload: Partial<AdvisorProfessionalProfile>) => {
+      if (!profile?.id) throw new Error("No user");
+      return advisorProfileService.upsertAdvisorProfessionalProfile({ ...payload, user_id: profile.id });
+    },
+    onSuccess: (updatedProfile, variables) => {
+      queryClient.invalidateQueries({ queryKey: ['advisor_professional_profile', profile?.id] });
+      
+      if (variables.experience_level === 'new') {
+        setPromoPayload(variables);
+        setShowCampaignPromo(true);
+      }
+    },
+    onError: (err: unknown) => {
+        console.error("Profile update error:", err);
+    }
+  });
 
   const [showQuickAdd, setShowQuickAdd] = useState(false);
   const [showVoiceQuickAdd, setShowVoiceQuickAdd] = useState(false);
@@ -332,9 +387,71 @@ function MainApp() {
   };
   const [showLeadMethodModal, setShowLeadMethodModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [bypassAdvProfileError, setBypassAdvProfileError] = useState(false);
+
+  const showOnboarding = profile && !advProfileLoading && !advProfileError && (!advisorProfile || !advisorProfile.onboarding_completed) && !showCampaignPromo && !bypassAdvProfileError;
 
   return (
     <div className="min-h-screen bg-slate-50 pb-[calc(8rem+env(safe-area-inset-bottom))] lg:pb-0 font-sans text-slate-900 overflow-x-hidden">
+      
+      {advProfileLoading && !bypassAdvProfileError && profile && (
+        <div className="fixed inset-0 z-50 bg-slate-50 w-full h-full flex items-center justify-center">
+            <div className="flex flex-col items-center gap-3 text-slate-400">
+                <div className="w-8 h-8 border-4 border-indigo-200 border-t-indigo-600 rounded-full animate-spin"></div>
+                <div className="font-medium text-sm">Profil bilgileri kontrol ediliyor...</div>
+            </div>
+        </div>
+      )}
+
+      {advProfileError && !bypassAdvProfileError && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-50 w-full h-full p-4 flex items-center justify-center">
+            <Card className="max-w-md w-full p-6 text-center shadow-xl">
+                <h2 className="text-xl font-bold mb-3">Profesyonel profil bilgileri alınamadı.</h2>
+                <p className="text-slate-500 mb-6 text-sm">Sunucuya bağlanırken bir sorun oluştu. Daha sonra tekrar deneyebilir veya Dashboard'a geçebilirsiniz.</p>
+                <div className="flex gap-3 justify-center">
+                    <button onClick={() => refetchAdvProfile()} className="px-4 py-2 bg-[#00D2B4] text-slate-900 rounded-xl font-bold hover:bg-[#00e3c5] transition">Tekrar Dene</button>
+                    <button onClick={() => setBypassAdvProfileError(true)} className="px-4 py-2 bg-slate-100 text-slate-700 rounded-xl font-bold hover:bg-slate-200 transition">Dashboard'a Devam Et</button>
+                </div>
+            </Card>
+        </div>
+      )}
+
+      {showOnboarding && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-50 w-full h-full p-4">
+          <CampaignStartWizard 
+            mode="profile_onboarding"
+            isPending={upsertAdvisorProfileMutation.isPending} 
+            onComplete={payload => upsertAdvisorProfileMutation.mutate(payload)} 
+          />
+        </div>
+      )}
+
+      {showCampaignPromo && (
+        <div className="fixed inset-0 z-50 overflow-y-auto bg-slate-900/50 backdrop-blur-sm w-full h-full p-4 flex items-center justify-center">
+             <Card className="bg-white border-2 border-[#00D2B4] rounded-3xl p-6 sm:p-8 max-w-lg w-full shadow-2xl relative shadow-[#00D2B4]/20">
+                 <h2 className="text-2xl font-black text-slate-900 mb-4">Yeni danışmanlar için 90 Gün Kampı hazır</h2>
+                 <p className="text-slate-600 font-medium mb-6">
+                    İlk 90 gün, önümüzdeki 10 yılın temelini atar. Portfy 90 Gün Kampı seni ilk günlerde sahaya kontrolsüz sürmez; önce MYK, ofis, yetki, sözleşme ve güvenli çalışma zeminini kurar. Sonra günlük eğitim, görev ve takip disipliniyle ilerletir.
+                 </p>
+                 <div className="flex flex-col gap-3">
+                    <button 
+                       onClick={() => promoPayload && startCampaignMutation.mutate(promoPayload)}
+                       disabled={startCampaignMutation.isPending}
+                       className="w-full bg-[#00D2B4] hover:bg-[#00e3c5] text-slate-900 font-black py-4 rounded-2xl flex items-center justify-center gap-2 transition-colors disabled:opacity-50"
+                    >
+                       {startCampaignMutation.isPending ? 'Başlatılıyor...' : '90 Gün Kampı\'na Başla'} <ArrowRight size={18} />
+                    </button>
+                    <button 
+                       onClick={() => setShowCampaignPromo(false)}
+                       className="w-full bg-slate-100 hover:bg-slate-200 text-slate-600 font-bold py-3 rounded-2xl transition-colors"
+                    >
+                       Şimdilik Geç
+                    </button>
+                 </div>
+             </Card>
+        </div>
+      )}
+
       {(profile && (!profile.region || !profile.region.city)) ||
       showRegionSetup ? (
         <RegionSetupModal

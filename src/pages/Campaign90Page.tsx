@@ -6,7 +6,7 @@ import { campaign90Service } from '../services/campaign90Service';
 import { getCampaignTaskProgress } from '../services/campaignProgressService';
 import { getGlossaryForDay } from '../data/campaignDayExpansions';
 import { getCurriculumForDay } from '../data/campaignEducationCurriculum';
-import { getTodayStr } from '../services/core/utils';
+import { getTodayStr, getTodayStrFromDate } from '../services/core/utils';
 import { CampaignTask, UserProfile } from '../types';
 import { CAMPAIGN_90_DAYS } from '../data/campaign90Template';
 
@@ -16,6 +16,7 @@ import { getCampaignCoachMessage } from '../utils/campaign90Coach';
 import { CampaignTaskGroup } from '../components/campaign90/CampaignTaskGroup';
 import { CampaignStartWizard } from '../components/campaign90/CampaignStartWizard';
 import { CampaignMentorCard } from '../components/campaign90/CampaignMentorCard';
+import { Campaign90Tour } from '../components/campaign90/Campaign90Tour';
 import { advisorProfileService } from '../services/advisorProfileService';
 import { AdvisorProfessionalProfile } from '../types';
 import { CampaignTodayFlowCard } from '../components/campaign90/CampaignTodayFlowCard';
@@ -162,11 +163,19 @@ export const Campaign90Page: React.FC = () => {
     if (!campaign) {
         return (
             <CampaignStartWizard
+                mode="campaign_start"
                 isPending={startMutation.isPending}
                 onComplete={(payload) => startMutation.mutate(payload)}
             />
         );
     }
+
+    const todayISO = getTodayStrFromDate(new Date());
+    const dayStartTimestamp = profile?.last_day_started_at || '';
+    const isDayStarted = profile?.last_day_started_at && getTodayStrFromDate(new Date(profile.last_day_started_at)) === todayISO;
+    const isDayClosed = !!(profile?.last_ritual_completed_at && getTodayStrFromDate(new Date(profile.last_ritual_completed_at)) === todayISO && profile.last_ritual_completed_at > dayStartTimestamp);
+    
+    const dayStatus = !isDayStarted ? 'not_started' : isDayClosed ? 'closed' : 'active';
 
     const todayTasks = tasks || [];
     const todayG = todayTasks.filter((t: CampaignTask) => t.gpa_bucket === 'G' && t.status === 'completed').length || 0;
@@ -195,7 +204,8 @@ export const Campaign90Page: React.FC = () => {
         currentDay: campaign.current_day,
         taskProgressMap,
         todayTasks,
-        crmStats
+        crmStats,
+        dayStatus
     });
 
     const verifiedPendingCount = todayTasks.filter(t => {
@@ -213,7 +223,7 @@ export const Campaign90Page: React.FC = () => {
 
     return (
         <div className="w-full max-w-[1300px] mx-auto p-4 md:p-8 pb-32 min-w-0 overflow-x-hidden">
-            <div className="flex items-end gap-3 mb-8">
+            <div className="flex items-end gap-3 mb-5">
                 <div>
                     <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
                         {currentDayTemplate ? currentDayTemplate.day_title : `Gün ${campaign.current_day} Görevleri`}
@@ -222,43 +232,55 @@ export const Campaign90Page: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex flex-col gap-8 min-w-0">
+            <div className="flex flex-col gap-5 min-w-0">
                 {/* 1. Top Summary: Campaign Progress + Today's GPA */}
-                <CampaignTopStats 
-                    currentDay={campaign.current_day}
-                    completedPercent={completedPercent}
-                    todayCompleted={todayCompleted}
-                    todayTotal={todayTotal}
-                    todayG={todayG}
-                    todayP={todayP}
-                    todayA={todayA}
-                    todayScore={todayScore}
-                    cumulativeScore={progress?.gpaScore || 0}
-                />
+                <div data-tour="campaign-progress">
+                    <CampaignTopStats 
+                        currentDay={campaign.current_day}
+                        completedPercent={completedPercent}
+                        todayCompleted={todayCompleted}
+                        todayTotal={todayTotal}
+                        todayG={todayG}
+                        todayP={todayP}
+                        todayA={todayA}
+                        todayScore={todayScore}
+                        cumulativeScore={progress?.gpaScore || 0}
+                        dayStatus={dayStatus as 'active' | 'closed' | 'not_started'}
+                    />
+                </div>
 
                 {/* 2. Portfy Mentor / Field Coach Message */}
-                <CampaignMentorCard message={coachMessage} />
+                <div data-tour="campaign-mentor">
+                    <CampaignMentorCard message={coachMessage} />
+                </div>
 
                 {/* 3. Today's Rank */}
-                <CampaignTodayFlowCard 
-                    requiredTotal={todayTotal - reviewTasks.length}
-                    requiredCompleted={todayCompleted - reviewTasks.filter(t => t.status === 'completed').length}
-                    verifiedPendingCount={verifiedPendingCount}
-                />
+                <div data-tour="campaign-today-flow">
+                    <CampaignTodayFlowCard 
+                        requiredTotal={todayTotal - reviewTasks.length}
+                        requiredCompleted={todayCompleted - reviewTasks.filter(t => t.status === 'completed').length}
+                        verifiedPendingCount={verifiedPendingCount}
+                        dayStatus={dayStatus as 'active' | 'closed' | 'not_started'}
+                    />
+                </div>
 
                 {/* 4. Daily Education */}
                 {currentDayTemplate && (
-                    <CampaignEducationCard curriculum={curriculum} />
+                    <div data-tour="campaign-education">
+                        <CampaignEducationCard curriculum={curriculum} />
+                    </div>
                 )}
 
                 {/* 5. Glossary */}
                 {currentDayTemplate && (
-                    <CampaignGlossaryCard glossary={glossary} />
+                    <div data-tour="campaign-glossary">
+                        <CampaignGlossaryCard glossary={glossary} />
+                    </div>
                 )}
 
                 {/* 6. Daily Campaign Tasks */}
-                <div className="pt-2 flex flex-col gap-4">
-                    <h2 className="text-xl font-black text-slate-900 mb-2">Bugünün Kamp Görevleri</h2>
+                <div className="pt-0 flex flex-col gap-3" data-tour="campaign-tasks">
+                    <h2 className="text-xl font-black text-slate-900 mb-1 mt-2">Bugünün Kamp Görevleri</h2>
                     {isLoadingTasks ? (
                         <div className="py-8 text-center text-slate-500 font-medium">Görevler yükleniyor...</div>
                     ) : tasks && tasks.length > 0 ? (
@@ -319,13 +341,19 @@ export const Campaign90Page: React.FC = () => {
                 </div>
 
                 {/* 7. Campaign Development Report */}
-                {campaignReport && (
-                    <CampaignReportCard report={campaignReport} crmStats={crmStats} />
-                )}
+                <div data-tour="campaign-report-guides" className="flex flex-col gap-5">
+                    {campaignReport && (
+                        <CampaignReportCard report={campaignReport} crmStats={crmStats} />
+                    )}
 
-                {/* 8. Professional Guides accordion */}
-                <CampaignProfessionalGuides />
+                    {/* 8. Professional Guides accordion */}
+                    <CampaignProfessionalGuides />
+                </div>
             </div>
+            
+            {user?.id && campaign?.id && (
+                <Campaign90Tour userId={user.id} campaignId={campaign.id} />
+            )}
         </div>
     );
 };

@@ -834,6 +834,7 @@ export interface AdvisorCampaign {
   niche?: string;
   daily_contact_target: number;
   weekly_contact_target: number;
+  metadata?: Record<string, any>;
   created_at: string;
   updated_at: string;
 }

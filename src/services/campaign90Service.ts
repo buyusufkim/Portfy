@@ -83,7 +83,7 @@ export const campaign90Service = {
     let diffTime = todayDate.getTime() - startDate.getTime();
     if (diffTime < 0) diffTime = 0;
     
-    let current_day = Math.floor(diffTime / (1000 * 60 * 60 * 24)) + 1;
+    let current_day = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
     if (current_day < 1) current_day = 1;
     if (current_day > 90) current_day = 90;
     

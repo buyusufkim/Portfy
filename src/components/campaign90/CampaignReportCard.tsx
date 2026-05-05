@@ -43,7 +43,7 @@ Sonraki Hedef: ${report.reportType === 'day90' ? report.nextFocus : report.mento
         <Card className={`overflow-hidden transition-all duration-300 ${isMajorMilestone && isOpen ? 'ring-2 ring-indigo-500 shadow-lg shadow-indigo-500/10' : 'border border-slate-200 shadow-sm'}`}>
             <button 
                 onClick={() => setIsOpen(!isOpen)}
-                className={`w-full flex items-center justify-between p-5 md:p-6 transition-colors ${isOpen ? 'bg-gradient-to-r from-indigo-50/50 to-purple-50/50' : 'bg-white hover:bg-slate-50'}`}
+                className={`w-full flex items-center justify-between p-4 md:px-5 md:py-4 transition-colors ${isOpen ? 'bg-gradient-to-r from-indigo-50/50 to-purple-50/50' : 'bg-white hover:bg-slate-50'}`}
             >
                 <div className="flex items-center gap-4">
                     <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shadow-sm ${isMajorMilestone ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
@@ -74,7 +74,7 @@ Sonraki Hedef: ${report.reportType === 'day90' ? report.nextFocus : report.mento
                         exit={{ height: 0, opacity: 0 }}
                         className="overflow-hidden bg-white border-t border-slate-100"
                     >
-                        <div className="p-5 md:p-6 space-y-6">
+                        <div className="p-4 md:px-5 md:py-4 space-y-5">
                             
                             {/* Overall Progress */}
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">

@@ -37,7 +37,7 @@ export const CampaignTaskGroup: React.FC<TaskGroupProps> = ({
     }).length;
 
     return (
-        <div className="mb-4">
+        <div className="flex flex-col">
             <button 
                 onClick={() => setIsOpen(!isOpen)}
                 className={`w-full flex items-center justify-between p-4 transition-colors focus:outline-none ${

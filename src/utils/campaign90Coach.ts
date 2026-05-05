@@ -12,6 +12,7 @@ interface CoachParams {
     taskProgressMap?: Record<string, CampaignTaskProgress>;
     todayTasks: CampaignTask[];
     crmStats?: Campaign90Stats | null;
+    dayStatus?: 'active' | 'closed' | 'not_started';
 }
 
 export function getCampaignCoachMessage(params: CoachParams): string {
@@ -24,10 +25,19 @@ export function getCampaignCoachMessage(params: CoachParams): string {
         currentDay,
         taskProgressMap,
         todayTasks,
-        crmStats
+        crmStats,
+        dayStatus
     } = params;
 
-    let coachMessage = "Bugün kamp disiplini aktif.";
+    if (dayStatus === 'not_started') {
+        return "Önce çalışma gününü başlat. Bugünün kamp akışına dağılmadan gir.";
+    }
+
+    if (dayStatus === 'closed') {
+        return "Bugün kapandı. Yarın kaldığın yerden devam edeceksin.";
+    }
+
+    let coachMessage = "Bugünkü kamp akışın aktif. Önce eğitim, sonra görevler, en son gün kapanışı.";
 
     if (todayTotal > 0) {
         if (todayCompleted === 0 && currentDay <= 14) coachMessage = "Bugünün dersini okumadan arama yapma; yanlış script güven kaybettirir.";

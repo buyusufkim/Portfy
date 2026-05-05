@@ -6,12 +6,14 @@ interface Props {
     requiredTotal: number;
     requiredCompleted: number;
     verifiedPendingCount: number;
+    dayStatus?: 'active' | 'closed' | 'not_started';
 }
 
 export const CampaignTodayFlowCard: React.FC<Props> = ({
     requiredTotal,
     requiredCompleted,
-    verifiedPendingCount
+    verifiedPendingCount,
+    dayStatus = 'not_started'
 }) => {
     return (
         <Card className="p-5 bg-white border border-slate-200 rounded-2xl shadow-sm">
@@ -41,7 +43,9 @@ export const CampaignTodayFlowCard: React.FC<Props> = ({
             <div className="flex flex-col md:flex-row md:flex-wrap 2xl:flex-nowrap md:items-center justify-between gap-3 text-xs md:text-[11px] lg:text-xs text-slate-600 font-bold min-w-0">
                 <div className="flex items-center gap-2 min-w-0">
                     <span className="w-5 h-5 flex-shrink-0 bg-indigo-50 text-indigo-600 rounded-full flex items-center justify-center text-[10px]">1</span>
-                    <span className="whitespace-normal break-words leading-tight">Günün eğitimini oku</span>
+                    <span className="whitespace-normal break-words leading-tight">
+                        {dayStatus === 'not_started' ? "Çalışma gününü başlat" : dayStatus === 'closed' ? "Yarınki güne hazırlan" : "Günün eğitimini oku"}
+                    </span>
                 </div>
                 <div className="hidden md:block w-4 h-px bg-slate-200 shrink-0"></div>
                 
