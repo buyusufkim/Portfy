@@ -18,12 +18,13 @@ import {
   ChevronRight,
   MapPin,
   Play,
-  X
+  X,
+  ArrowRight
 } from "lucide-react";
 import { useQueryClient, useQuery, useMutation } from "@tanstack/react-query";
 import { api } from "../services/api";
 import { QUERY_KEYS } from "../constants/queryKeys";
-import { Task, PersonalTask, UserProfile } from "../types";
+import { Task, PersonalTask, UserProfile, CampaignTask } from "../types";
 import toast from "react-hot-toast";
 import { getTodayStr } from "../services/core/utils";
 import { AddTaskModal } from "../components/app/modals/AddTaskModal";
@@ -94,17 +95,17 @@ export interface TasksPageProps {
 
 type FlowItem = {
   id: string;
-  source: "task" | "personal";
+  source: "task" | "personal" | "campaign";
   title: string;
   notes?: string;
   typeLabel: string;
-  sourceLabel: "İş" | "CRM" | "Portföy" | "Bölgem" | "Kişisel" | "İçerik" | "Takip";
+  sourceLabel: "İş" | "CRM" | "Portföy" | "Bölgem" | "Kişisel" | "İçerik" | "Takip" | "Kampanya";
   dueDate?: string;
   reminderTime?: string;
   priority?: "low" | "medium" | "high" | string;
   completed: boolean;
   completedAt?: string;
-  raw: Task | PersonalTask;
+  raw: Task | PersonalTask | CampaignTask;
 };
 
 // --- Minimal TaskDetailModal Component ---
@@ -207,7 +208,8 @@ type FlowTypeFilter =
   | "crm"
   | "bolgem"
   | "content"
-  | "personal";
+  | "personal"
+  | "campaign";
 
 export const TasksPage: React.FC<TasksPageProps> = ({
   profile,
@@ -223,6 +225,22 @@ export const TasksPage: React.FC<TasksPageProps> = ({
   const [showInternalAddTask, setShowInternalAddTask] = useState(false);
   const [internalAddTaskMode, setInternalAddTaskMode] = useState<"work"| "followup"| "personal"| "activity"| "content">("work");
   const [selectedTaskDetails, setSelectedTaskDetails] = useState<FlowItem | null>(null);
+
+  const { data: campaign } = useQuery({
+    queryKey: ['campaign90_active', profile?.id],
+    queryFn: () => campaign90Service.getActiveCampaign(profile!.id),
+    enabled: !!profile?.id,
+  });
+
+  const todayStr = getTodayStr();
+
+  const { data: campaignTasks } = useQuery({
+      queryKey: ['campaign90_tasks', campaign?.id, todayStr],
+      queryFn: () => campaign90Service.getTodayCampaignTasks(profile!.id, todayStr),
+      enabled: !!campaign?.id && !!profile?.id
+  });
+
+  const isCampaignRestricted = campaign && campaign.current_day >= 8 && (!profile?.subscription_end_date || new Date(profile.subscription_end_date) < new Date()) && profile?.tier !== 'master' && profile?.tier !== 'pro' && profile?.tier !== 'elite';
 
   const handleFlowFilterChange = (val: "today" | "overdue" | "upcoming" | "all") => {
     setFlowFilter(val);
@@ -288,8 +306,25 @@ export const TasksPage: React.FC<TasksPageProps> = ({
       raw: t,
     }));
 
-    return [...mappedTasks, ...mappedPersonal];
-  }, [tasks, personalTasks]);
+    const mappedCampaign: FlowItem[] = (campaignTasks || []).filter(t => t.status !== 'skipped').map((t) => {
+      const isLocked = isCampaignRestricted;
+      return {
+        id: t.id,
+        source: "campaign",
+        title: isLocked ? "Pro Özellik Kilidi Aç" : t.title,
+        notes: isLocked ? "Paketi aktif et" : t.description,
+        typeLabel: "90 Gün Kampı",
+        sourceLabel: "Kampanya",
+        dueDate: todayStr,
+        priority: "high",
+        completed: t.status === 'completed',
+        completedAt: t.completed_at,
+        raw: t,
+      };
+    });
+
+    return [...mappedTasks, ...mappedPersonal, ...mappedCampaign];
+  }, [tasks, personalTasks, campaignTasks, todayStr]);
 
   const { filteredItems, stats, overviews, flowNotes, focusBlock } = useMemo(() => {
     const todayISO = getTodayStr();
@@ -407,6 +442,7 @@ export const TasksPage: React.FC<TasksPageProps> = ({
       // 2. apply typeFilter
       if (typeFilter !== "all") {
         if (typeFilter === "personal" && item.source !== "personal") return false;
+        if (typeFilter === "campaign" && item.source !== "campaign") return false;
         if (typeFilter === "content" && item.sourceLabel !== "İçerik") return false;
         if (typeFilter === "crm" && item.sourceLabel !== "CRM") return false;
         if (typeFilter === "portfolio" && item.sourceLabel !== "Portföy") return false;
@@ -453,7 +489,10 @@ export const TasksPage: React.FC<TasksPageProps> = ({
     e.stopPropagation();
     try {
       const newStatus = !item.completed;
-      if (item.source === "task") {
+      if (item.source === "campaign" && setActiveTab) {
+         setActiveTab('campaign-90');
+         return;
+      } else if (item.source === "task") {
         await api.updateTaskStatus(item.id, newStatus);
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS, profile?.id] });
       } else {
@@ -467,6 +506,10 @@ export const TasksPage: React.FC<TasksPageProps> = ({
   };
 
   const handleRowClick = (item: FlowItem) => {
+    if (item.source === "campaign" && setActiveTab) {
+       setActiveTab('campaign-90');
+       return;
+    }
     setSelectedTaskDetails(item);
   };
 
@@ -484,6 +527,7 @@ export const TasksPage: React.FC<TasksPageProps> = ({
       case "Bölgem": return { bg: "bg-violet-50", text: "text-violet-700", icon: <MapPin size={14}/> };
       case "İçerik": return { bg: "bg-teal-50", text: "text-teal-700", icon: <Play size={14}/> };
       case "Kişisel": return { bg: "bg-rose-50", text: "text-rose-700", icon: <UserIcon size={14}/> };
+      case "Kampanya": return { bg: "bg-[#00D2B4]/10", text: "text-[#00D2B4]", icon: <Target size={14}/> };
       default: return { bg: "bg-slate-100", text: "text-slate-600", icon: <CheckSquare size={14}/> };
     }
   };
@@ -601,6 +645,7 @@ export const TasksPage: React.FC<TasksPageProps> = ({
             {(
               [
                 { id: "all", label: "Tümü" },
+                { id: "campaign", label: "Kampanya" },
                 { id: "work", label: "İş" },
                 { id: "followup", label: "Takip" },
                 { id: "portfolio", label: "Portföy" },
@@ -647,14 +692,28 @@ export const TasksPage: React.FC<TasksPageProps> = ({
                   onClick={() => handleRowClick(item)}
                   className="group bg-white p-4 rounded-3xl border border-slate-100 hover:border-[#0f172a]/20 hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)] transition-all flex items-start sm:items-center gap-4 cursor-pointer"
                 >
-                  <div 
-                    onClick={(e) => handleToggle(e, item)}
-                    className="shrink-0 mt-0.5 sm:mt-0 text-slate-300 hover:text-emerald-500 transition-colors"
-                  >
-                    <div className="w-[22px] h-[22px] rounded-lg border-2 flex items-center justify-center border-current bg-white transition-all group-hover:border-emerald-500/50">
-                      {item.completed && <CheckCircle2 size={16} className="text-emerald-500 fill-current bg-white rounded-full" />}
+                  {item.source === 'campaign' ? (
+                    <div
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (setActiveTab) setActiveTab('campaign-90');
+                      }}
+                      className="shrink-0 mt-0.5 sm:mt-0"
+                    >
+                      <div className="px-2.5 py-1 text-[10px] font-bold rounded-md bg-[#00D2B4]/10 text-[#00D2B4] hover:bg-[#00D2B4]/20 transition-colors cursor-pointer border border-[#00D2B4]/30 flex items-center gap-1">
+                        Kampa Git <ArrowRight size={10} />
+                      </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div 
+                      onClick={(e) => handleToggle(e, item)}
+                      className="shrink-0 mt-0.5 sm:mt-0 text-slate-300 hover:text-emerald-500 transition-colors"
+                    >
+                      <div className="w-[22px] h-[22px] rounded-lg border-2 flex items-center justify-center border-current bg-white transition-all group-hover:border-emerald-500/50">
+                        {item.completed && <CheckCircle2 size={16} className="text-emerald-500 fill-current bg-white rounded-full" />}
+                      </div>
+                    </div>
+                  )}
 
                   <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${srcStyle.bg} ${srcStyle.text}`}>
                      {srcStyle.icon}

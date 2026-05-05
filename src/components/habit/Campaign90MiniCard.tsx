@@ -1,12 +1,12 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card } from '../UI';
-import { Trophy, ArrowRight, Activity, Target } from 'lucide-react';
+import { Trophy, ArrowRight, Activity, Target, AlertTriangle } from 'lucide-react';
 import { campaign90Service } from '../../services/campaign90Service';
 import { getTodayStr } from '../../services/core/utils';
-import { CampaignTask } from '../../types';
+import { CampaignTask, UserProfile } from '../../types';
 
-export const Campaign90MiniCard: React.FC<{ userId: string; setActiveTab?: (tab: string) => void }> = ({ userId, setActiveTab }) => {
+export const Campaign90MiniCard: React.FC<{ userId: string; profile?: UserProfile; setActiveTab?: (tab: string) => void }> = ({ userId, profile, setActiveTab }) => {
   const { data: campaign } = useQuery({
     queryKey: ['campaign90_active', userId],
     queryFn: () => campaign90Service.getActiveCampaign(userId),
@@ -30,6 +30,28 @@ export const Campaign90MiniCard: React.FC<{ userId: string; setActiveTab?: (tab:
   const todayCompleted = todayTasks.filter((t: CampaignTask) => t.status === 'completed').length || 0;
   const todayTotal = todayTasks.length;
   const todayScore = (todayG * 3) + (todayP * 5) + (todayA * 2);
+
+  const isRestrictedDay8 = campaign.current_day >= 8 && (!profile?.subscription_end_date || new Date(profile.subscription_end_date) < new Date()) && profile?.tier !== 'master' && profile?.tier !== 'pro' && profile?.tier !== 'elite';
+
+  if (isRestrictedDay8) {
+      return (
+        <div className="p-5 bg-amber-50 border border-amber-200 shadow-sm rounded-[24px]">
+            <div className="flex items-center gap-3 mb-3 text-amber-700">
+                <AlertTriangle size={20} />
+                <h3 className="font-bold">Deneme Süren Bitti</h3>
+            </div>
+            <p className="text-sm font-medium text-amber-800 mb-4">
+                7 günlük deneme süren bitti. 90 Gün Kampı’na devam etmek için paketini aktif et.
+            </p>
+            <button 
+                onClick={() => setActiveTab?.('campaign-90')}
+                className="w-full bg-amber-500 hover:bg-amber-600 text-white font-black text-sm py-3 rounded-2xl transition-colors"
+            >
+                Paketi Aktif Et
+            </button>
+        </div>
+      );
+  }
 
   return (
     <div className="p-4 bg-slate-900 border-none shadow-xl overflow-hidden rounded-[24px] relative group">

@@ -22,6 +22,7 @@ import { AdvisorProfessionalProfile } from '../types';
 import { CampaignTodayFlowCard } from '../components/campaign90/CampaignTodayFlowCard';
 import { CampaignEducationCard } from '../components/campaign90/CampaignEducationCard';
 import { CampaignGlossaryCard } from '../components/campaign90/CampaignGlossaryCard';
+import { useAuth } from '../AuthContext';
 import { CampaignTopStats, CampaignProfessionalGuides } from '../components/campaign90/CampaignLayoutElements';
 import { CampaignReportCard } from '../components/campaign90/CampaignReportCard';
 import { BookOpen, Target, Briefcase, Compass, Award } from 'lucide-react';
@@ -38,6 +39,7 @@ const getErrorMessage = (error: unknown, fallback: string) => error instanceof E
 
 export const Campaign90Page: React.FC = () => {
     const queryClient = useQueryClient();
+    const { subscribe } = useAuth();
     
     // Auth user
     const { data: user } = useQuery({
@@ -112,12 +114,19 @@ export const Campaign90Page: React.FC = () => {
             }
 
             // Start campaign
-            return campaign90Service.startCampaign({ 
+            const res = await campaign90Service.startCampaign({ 
                 region: payload.region || undefined, 
                 niche: payload.niche || undefined,
                 daily_contact_target: payload.daily_contact_target || undefined,
                 weekly_contact_target: payload.weekly_contact_target || undefined
             });
+
+            // Start trial if user is free
+            if (!profile?.subscription_type || profile.subscription_type === 'none') {
+                 await subscribe('trial');
+            }
+
+            return res;
         },
         onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['campaign90_active'] });
@@ -220,6 +229,56 @@ export const Campaign90Page: React.FC = () => {
 
     const handleCompleteTask = (taskId: string) => completeTaskMutation.mutate(taskId);
     const handleSkipTask = (taskId: string) => skipTaskMutation.mutate(taskId);
+
+    const isRestrictedDay8 = campaign.current_day >= 8 && (!profile?.subscription_end_date || new Date(profile.subscription_end_date) < new Date()) && profile?.tier !== 'master' && profile?.tier !== 'pro' && profile?.tier !== 'elite';
+
+    const handleUpgradeRequest = async () => {
+        try {
+            await supabase.from('webhook_events').insert({
+                type: 'pro_package_request',
+                payload: { user_id: user?.id, email: user?.email, source: 'campaign90_day8_lock' }
+            });
+            toast.success("Talebiniz alındı! Ekibimiz size ulaşacak.");
+        } catch(e) {}
+    }
+
+    if (isRestrictedDay8) {
+        return (
+            <div className="w-full max-w-[1300px] mx-auto p-4 md:p-8 pb-32 min-w-0 overflow-x-hidden">
+                <CampaignTopStats 
+                    currentDay={campaign.current_day}
+                    completedPercent={completedPercent}
+                    todayCompleted={todayCompleted}
+                    todayTotal={todayTotal}
+                    todayG={todayG}
+                    todayP={todayP}
+                    todayA={todayA}
+                    todayScore={todayScore}
+                    cumulativeScore={progress?.gpaScore || 0}
+                />
+                <div className="mt-8 bg-slate-900 border border-slate-800 rounded-3xl p-10 flex flex-col items-center text-center shadow-2xl relative overflow-hidden">
+                    <div className="absolute right-0 top-0 opacity-10 pointer-events-none -mt-10 -mr-10">
+                        <Award size={240} className="text-amber-500" />
+                    </div>
+                    <div className="relative z-10 max-w-lg">
+                        <div className="w-16 h-16 bg-amber-500/20 text-amber-500 rounded-2xl flex items-center justify-center mx-auto mb-6">
+                            <Briefcase size={32} />
+                        </div>
+                        <h2 className="text-3xl font-black text-white mb-4">7 Günlük Deneme Süren Bitti</h2>
+                        <p className="text-slate-300 font-medium mb-8 text-lg">
+                            Harika gidiyorsun! 90 Gün Kampı'nın 8. günü ve sonrasına devam etmek, gelişmiş kamp raporlarına ve Portfy Pro özelliklerine erişmek için paketini aktif et.
+                        </p>
+                        <button 
+                            onClick={handleUpgradeRequest}
+                            className="bg-[#00D2B4] hover:bg-[#00e3c5] text-slate-900 font-black py-4 px-8 rounded-xl transition-colors shadow-lg shadow-[#00D2B4]/20"
+                        >
+                            Pro Paket Talebi Gönder
+                        </button>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="w-full max-w-[1300px] mx-auto p-4 md:p-8 pb-32 min-w-0 overflow-x-hidden">

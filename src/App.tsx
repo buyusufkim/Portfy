@@ -64,7 +64,7 @@ const queryClient = new QueryClient({
 
 function MainApp() {
   const queryClient = useQueryClient();
-  const { profile, logout, completeTour } = useAuth();
+  const { profile, logout, completeTour, subscribe } = useAuth();
   const { categories } = useCategories();
   const { isFree } = useFeatureAccess();
 
@@ -97,12 +97,16 @@ function MainApp() {
 
   const startCampaignMutation = useMutation({
     mutationFn: async (payload: Partial<AdvisorProfessionalProfile>) => {
-      return await campaign90Service.startCampaign({
+      const res = await campaign90Service.startCampaign({
           region: payload.region,
           niche: payload.niche,
           daily_contact_target: payload.daily_contact_target,
           weekly_contact_target: payload.weekly_contact_target
       });
+      if (!profile?.subscription_type || profile.subscription_type === 'none') {
+         await subscribe('trial');
+      }
+      return res;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['campaign90_active'] });

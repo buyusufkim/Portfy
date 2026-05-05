@@ -51,6 +51,7 @@ import {
   LeadAlert,
   Lead,
   MicroGoal,
+  CampaignTask
 } from "../types";
 import { RevenueStats } from "../types/revenue";
 import { QueryClient, useMutation, useQuery } from "@tanstack/react-query";
@@ -75,6 +76,7 @@ type TopActionItem = BaseActionItem &
     | { type: "gamified"; originalItem: GamifiedTask }
     | { type: "daily"; originalItem: Task }
     | { type: "personal"; originalItem: PersonalTask }
+    | { type: "campaign"; originalItem: CampaignTask }
   );
 
 import { useFeatureAccess } from "../hooks/useFeatureAccess";
@@ -176,6 +178,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     queryKey: ['campaign90_active', profile?.id],
     queryFn: () => campaign90Service.getActiveCampaign(profile!.id),
     enabled: !!profile?.id
+  });
+
+  const { data: campaignTasks } = useQuery({
+    queryKey: ['campaign90_tasks', activeCampaign?.id, todayISO],
+    queryFn: () => campaign90Service.getTodayCampaignTasks(profile!.id, todayISO),
+    enabled: !!activeCampaign?.id && !!profile?.id
   });
 
   const isNewUserCampaignActive = advisorProfile?.experience_level === 'new' && !!activeCampaign;
@@ -339,7 +347,28 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       };
     });
 
+  const isCampaignRestricted = activeCampaign && activeCampaign.current_day >= 8 && (!profile?.subscription_end_date || new Date(profile.subscription_end_date) < new Date()) && profile?.tier !== 'master' && profile?.tier !== 'pro' && profile?.tier !== 'elite';
+
+  const campaignItems: TopActionItem[] = (campaignTasks || [])
+    .filter((ct) => ct.status !== 'completed' && ct.status !== 'skipped')
+    .map((ct) => {
+      const isLocked = isCampaignRestricted;
+      return {
+        type: "campaign" as const,
+        originalItem: ct,
+        id: `campaign-${ct.id}`,
+        title: isLocked ? "Pro Özellik Kilidi Aç" : ct.title,
+        subtitle: isLocked ? "Kamp Görevi" : "Kamp Görevi",
+        desc: isLocked ? "Paketi aktif et" : `${ct.xp_reward || 0} XP Kazandırır`,
+        icon: isLocked ? Target : Target, // wait we need Lock icon if we want? Let's assume LucideIcon Target is fine or we can omit. Let's just use Target for now since we don't have Lock imported yet maybe.
+        colorClass: isLocked ? "text-amber-500 bg-amber-500/10" : "text-[#00D2B4] bg-[#00D2B4]/10",
+        ringClass: isLocked ? "hover:ring-amber-500/30" : "hover:ring-[#00D2B4]/30",
+      };
+    })
+    .slice(0, 3);
+
   const remainingItems = [
+    ...campaignItems,
     ...dailyItems,
     ...gamifiedItems,
     ...personalItems,
@@ -735,9 +764,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                         onClick={() => {
                           if (item.type === "gamified" && completeTaskMutation) {
                             completeTaskMutation.mutate({ task: item.originalItem });
+                          } else if (item.type === "campaign" && setActiveTab) {
+                            setActiveTab("campaign-90");
                           }
                         }}
-                        className={`flex items-center justify-between p-2.5 hover:bg-slate-50 transition-colors rounded-xl border border-transparent hover:border-slate-100 group min-h-[64px] ${item.type === "gamified" ? "cursor-pointer" : ""}`}
+                        className={`flex items-center justify-between p-2.5 hover:bg-slate-50 transition-colors rounded-xl border border-transparent hover:border-slate-100 group min-h-[64px] ${(item.type === "gamified" || item.type === "campaign") ? "cursor-pointer" : ""}`}
                       >
                         <div className="flex items-center gap-4 min-w-0 pr-2">
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.colorClass} saturate-[0.8] shadow-sm`}>
@@ -761,6 +792,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                               item.type === "daily" ? "bg-blue-50 text-blue-700" :
                               item.type === "personal" ? "bg-rose-50 text-rose-700" :
                               item.type === "gamified" ? "bg-indigo-50 text-indigo-700" :
+                              item.type === "campaign" ? "bg-emerald-50 text-emerald-700" :
                               "bg-slate-50 text-slate-600"
                             }`}>
                             {item.type === "alert" ? "Kritik Aksiyon" :
@@ -769,11 +801,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                              item.type === "daily" ? "Planlı Görev" :
                              item.type === "personal" ? "Kişisel" :
                              item.type === "gamified" ? "Gelişim" :
+                             item.type === "campaign" ? "90 Gün Kampı" :
                              "Planlı Görev"}
                             </div>
                         </div>
                       </div>
                     ))}
+                    
+                    {campaignTasks && campaignTasks.length > 0 && (
+                      <button 
+                        onClick={() => setActiveTab && setActiveTab('campaign-90')}
+                        className="w-full text-center text-[11px] font-bold text-[#00D2B4] hover:text-[#00e3c5] py-2.5 mt-2 transition-colors border border-[#00D2B4]/20 rounded-xl hover:bg-[#00D2B4]/5 bg-[#00D2B4]/5"
+                      >
+                        Tüm Kamp Görevlerini Gör
+                      </button>
+                    )}
+
                     {todaysPriorities.length > 5 && (
                       <button 
                         onClick={() => {
@@ -969,7 +1012,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* 90 DAY CAMPAIGN MINI CARD */}
           <section className="order-4">
-             {profile?.id && <Campaign90MiniCard userId={profile.id} setActiveTab={setActiveTab} />}
+             {profile?.id && <Campaign90MiniCard userId={profile.id} profile={profile} setActiveTab={setActiveTab} />}
           </section>
 
           {/* 4. GÜNÜN NOTLARI / AKIŞ NOTLARI */}
