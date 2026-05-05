@@ -149,65 +149,121 @@ const customDays: Record<number, CampaignCurriculumDay> = {
   }
 };
 
+const phase1QuizPool: QuizQuestion[] = [
+  { question: "Yeni başlayan birinin ilk gün hedefi ne olmalıdır?", options: ["Hemen ilan girmek", "Mesleki ve hukuki sınırları öğrenerek güvenli giriş zeminini kurmak", "Afiş asmak"], correctAnswer: 1, explanation: "Satıştan önce yasal ve etik zemin şarttır." },
+  { question: "Müşteriyle profesyonel bir portföy ilişkisi kurmadan önce ne netleştirilmelidir?", options: ["Sadece komisyon tutarı", "MYK, yetki yapısı ve ofis sözleşme altyapısı", "Portföyün kaç paraya satılacağı"], correctAnswer: 1, explanation: "Güvenli zemin olmadan portföy alınmaz." },
+  { question: "Danışman komisyonunu nasıl korur?", options: ["Sözüne güvenerek", "Yazılı hizmet/komisyon sözleşmesi ve yer gösterme belgesi ile", "Kapora almayarak"], correctAnswer: 1, explanation: "Söz uçar, yazılı sözleşme ve hukuki formlar hakkı korur." },
+  { question: "Yetki belgesi almadan ilan girmek hangi sonucu doğurur?", options: ["Portföyü hızlı satmayı", "Yasal ceza ve itibar kaybını", "Müşteri nezdinde güven artışını"], correctAnswer: 1, explanation: "Yetkisiz işlem yasalara aykırıdır." },
+  { question: "KVKK metni neden gereklidir?", options: ["Müşteri datalarını güvenli ve yasal işlemek için", "Daha profesyonel görünmek için", "Sözleşmeyi kalabalık göstermek için"], correctAnswer: 0, explanation: "Veri güvenliği hukuki bir zorunluluktur." }
+];
+
+const phase2QuizPool: QuizQuestion[] = [
+  { question: "Temel alışkanlık neden önemlidir?", options: ["Patrona hoş görünmek", "İstikrarla güven inşası yapmak", "Zaman geçirmek"], correctAnswer: 1, explanation: "Gayrimenkul maraton işidir, sprint değil." },
+  { question: "Gelişim için sahada en değerli olan şey nedir?", options: ["Broşür", "Güncel ve gerçekleşmiş piyasa verisi", "Yaka kartı"], correctAnswer: 1, explanation: "Sahibinin hisleri değil, piyasa verileri satışı doğrular." },
+  { question: "CRM'in temel amacı nedir?", options: ["Sadece isimleri listelemek", "Müşteri yolculuğunu ve takip süreçlerini profesyonelce yönetmek", "Ofis kurallarına uymak"], correctAnswer: 1, explanation: "Takipte kopukluğu engelleyen tek sistem CRM'dir." },
+  { question: "Bölge uzmanı ne demektir?", options: ["Sadece o bölgede oturan kişi", "Bölgedeki rayiçleri, demografik yapıyı ve satış hızını verilerle bilen kişi", "En çok portföyü olan kişi"], correctAnswer: 1, explanation: "Veri, uzmanlığı doğrular." },
+  { question: "Follow-up özünde nedir?", options: ["Sürekli ürün itmek", "Değerli bilgi damlasıyla güveni canlı tutmak", "Geçiştirmek"], correctAnswer: 1, explanation: "Müşteri güvendiği kişiyle hareket eder." }
+];
+
+const phase3QuizPool: QuizQuestion[] = [
+  { question: "Değer Analizi (CMA) sunarken en önemli unsur nedir?", options: ["Sadece yüksek fiyat vermek", "Satılabilir fiyat bandını emsaller ve piyasa verisiyle açıklamak", "Satıcının istediği rakamı onaylamak"], correctAnswer: 1, explanation: "Gerçek veri satıcı beklentisini rasyonelleştirir." },
+  { question: "Kapanışta müzakere nasıl güvenceye alınır?", options: ["Bağırarak", "Yazılı imzalı bağlayıcı (kaporalı) formlarla", "Geçiştirerek"], correctAnswer: 1, explanation: "Belge, niyetin en samimi halidir." },
+  { question: "Fiyatı haddinden yüksek belirlemenin sonu ne olur?", options: ["Çabuk satılır", "Satılmaz, markanıza leke sürer ve piyasa kirliliği yaratır", "Zararsızdır"], correctAnswer: 1, explanation: "Yanlış fiyat itibar kaybıdır." },
+  { question: "Mal sahibi bilgilendirme raporu ne işe yarar?", options: ["Portföy sahibine bahaneler sunmak", "Aktiviteyi belgeleyerek süreci şeffaf ve güvenilir tutmak", "Fiyatı düşürmek için baskı kurmak"], correctAnswer: 1, explanation: "Görünmeyen çalışma yok sayılır." },
+  { question: "Teklif aşamasında en güvenli iletişim nasıldır?", options: ["Sözlü arama ile", "Yazılı, süresi belli ve kapora destekli bir 'Satınalma Teklif Formu' ile", "Mesaj atarak"], correctAnswer: 1, explanation: "Yazılı teklif karşı tarafın ciddiyetini test eder." }
+];
+
+const phase4QuizPool: QuizQuestion[] = [
+  { question: "Gerçek A Sınıfı alıcı kimdir?", options: ["Çok para soran", "Ev bakan rastgele biri", "Kredibiletisi/Bütçesi hazır teste tabi olan ve zaman aciliyeti olan kişi"], correctAnswer: 2, explanation: "Aciliyet artı bütçe eşittir Alıcı." },
+  { question: "90 günlük kamp sonucunda elde etmeniz gereken en değerli kazanım nedir?", options: ["Sadece yüksek komisyon", "Alışkanlığa dönüşmüş bir sistem, pipeline ve sürdürülebilir iş modeli", "Çok fazla kartvizit dağıtmak"], correctAnswer: 1, explanation: "Sistem, sürdürülebilir başarının kalkanıdır." },
+  { question: "Segmentasyon neden önemlidir?", options: ["Herkesle eşit zaman geçirmemek ve enerjiyi sıcak adaylara odaklamak için", "Listeyi uzatmak için", "CRM'i doldurmak için"], correctAnswer: 0, explanation: "Zaman en değerli sermayedir." },
+  { question: "Kapanış yüzdesini artırmanın en temel yolu nedir?", options: ["Daha çok indirim istemek", "Doğru fiyatlı portföy ve finansal hazır alıcıyı bir araya getirmek", "Sürekli ilan girmek"], correctAnswer: 1, explanation: "Doğru fiyatlı mal zaten yarısı satılmış demektir." },
+  { question: "Bir sonraki 90 gün nasıl planlanmalıdır?", options: ["Tamamen doğaçlama", "Önceki 90 günün datasından en güçlü kasları büyütüp, verimli hedeflerle", "Aynı şeyleri aynen tekrarlayarak"], correctAnswer: 1, explanation: "Veri ile büyümek kör uçuşu engeller." }
+];
+
+function getPhaseQuizPool(dayNumber: number): QuizQuestion[] {
+  if (dayNumber <= 7) return phase1QuizPool;
+  if (dayNumber <= 30) return phase2QuizPool;
+  if (dayNumber <= 60) return phase3QuizPool;
+  return phase4QuizPool;
+}
+
+function ensureMinimumQuiz(curriculum: CampaignCurriculumDay, dayNumber: number): CampaignCurriculumDay {
+    const currentQuiz = curriculum.mini_quiz ? [...curriculum.mini_quiz] : [];
+    const questionsNeeded = 3 - currentQuiz.length;
+    
+    if (questionsNeeded > 0) {
+        const pool = getPhaseQuizPool(dayNumber);
+        const existingQs = currentQuiz.map(q => q.question);
+        let currIdx = dayNumber % pool.length;
+        
+        while (currentQuiz.length < 3) {
+            const q = pool[currIdx];
+            if (!existingQs.includes(q.question)) {
+                currentQuiz.push(q);
+                existingQs.push(q.question);
+            }
+            currIdx = (currIdx + 1) % pool.length;
+        }
+    } else if (currentQuiz.length > 5) {
+        return { ...curriculum, mini_quiz: currentQuiz.slice(0, 5) };
+    }
+    
+    return { ...curriculum, mini_quiz: currentQuiz };
+}
+
 export function getCurriculumForDay(dayNumber: number, expLevel?: 'new' | 'experienced' | null | string): CampaignCurriculumDay {
-  if (expLevel === 'new') {
-      if (dayNumber === 1) {
-          return {
-            module_title: "Modül 1: Zemin ve Güvenli Başlangıç",
-            lesson_title: "1. Gün: Mesleki Kimlik ve Güvenli Başlangıç",
-            learning_goals: ["Resmi sınırları anlamak", "Doğru ofis/mentor seçimi", "Profesyonel imza"],
-            lesson_body: "Gayrimenkul danışmanlığı sadece ilan paylaşmak değildir. Yeni başlayan kişi önce hangi yetkiyle, hangi ofis/kurum çatısı altında, hangi evraklarla ve hangi sorumluluklarla çalışacağını bilmelidir. İlk günün amacı satış yapmak değil, mesleğe güvenli giriş zeminini kurmaktır. Herkese ilan atmadan önce hukuki ve teknik donanımınızı tamamlamalısınız. Mevzuat, ofis politikası ve resmi süreçler değişebilir. Kendi ofisin, bağlı olduğun oda/kurum ve resmi kaynaklarla doğrula.",
-            field_example: "MYK ve Taşınmaz Ticareti Yetki Belgesi mevzuatını öğrenerek, çalışma modelini (bağımsız / marka altı) netleştirmek.",
-            common_mistake: "Sistemi ve mevzuatı anlamadan etrafa 'Ben emlakçı oldum, evinizi satayım' diye sahte vaatlerde bulunmak.",
-            pro_tip: "Gerçek uzmanlık, neyi bilmediğini bilmekle başlar. Soru sormaktan ve resmi kurumları araştırmaktan çekinmeyin.",
-            script_example: "Merhabalar, gayrimenkul sektöründe yeni ve profesyonel bir başlangıç yapıyorum. İlk hedefim yasal ve mesleki yeterliliklerimi tamamlayarak sizlere en şeffaf hizmeti sunmak.",
-            mini_quiz: [
-              { question: "Yeni başlayan birinin ilk gün hedefi ne olmalıdır?", options: ["Hemen ilan girmek", "Mesleki ve hukuki sınırları öğrenerek güvenli giriş zeminini kurmak", "Afiş asmak"], correctAnswer: 1, explanation: "Satıştan önce yasal ve etik zemin şarttır." }
-            ],
-            practice_assignment: "Sektörde başarılı bulduğun 3 danışmanın online profillerini (imza, iletişim, unvan) incele."
-          };
-      }
-      if (dayNumber === 2) {
-          return {
-            module_title: "Modül 1: Zemin ve Güvenli Başlangıç",
-            lesson_title: "2. Gün: MYK, Eğitim ve Ofis Hazırlığı",
-            learning_goals: ["MYK seviyelerini bilmek", "Ofis altyapısı", "Hazırlık denetimi"],
-            lesson_body: "Yeni danışman için ilk risk bilgisizliktir. MYK, eğitim, ofis bağlantısı ve yetki süreçlerini anlamadan müşteri/mülk sahibiyle profesyonel ilişki kurmak ileride sorun çıkarabilir. MYK Seviye 4 mü yoksa Seviye 5 (Sorumlu Emlak Danışmanı) mi olmanız gerektiğini, hangi eğitim saatlerini tamamlamanız gerektiğini araştırın. Mevzuat, ofis politikası ve resmi süreçler değişebilir. Kendi ofisin, bağlı olduğun oda/kurum ve resmi kaynaklarla daima çift kontrol yapın.",
-            field_example: "Bağlı çalışacağın ofisin sağladığı CRM, ilan portalı limitleri ve hukuki destek detaylarını brokerınla netleştirmek.",
-            common_mistake: "Tüm eğitimleri erteleyip sadece sahaya odaklanmak ve yasal bir ceza veya iptal riskiyle karşılaşmak.",
-            pro_tip: "Ofisin senin iş ortağındır; ona sadece oran/pay üzerinden değil, sana sunduğu pazar payı ve koruma kalkanı üzerinden değer biç.",
-            script_example: "(Ofisle/Mentorla Görüşme) 'Sizin çatınız altında çalışırken kullanabileceğim sözleşme taslakları ve portföy paylaşım kuralları nelerdir?'",
-            mini_quiz: [
-              { question: "Müşteriyle profesyonel bir portföy ilişkisi kurmadan önce ne netleştirilmelidir?", options: ["Sadece komisyon tutarı", "MYK, yetki yapısı ve ofis sözleşme altyapısı", "Portföyün kaç paraya satılacağı"], correctAnswer: 1, explanation: "Güvenli zemin olmadan portföy alınmaz." }
-            ],
-            practice_assignment: "Eğer ofis/mentor arayışındaysan bölgedeki 3 kurumsal ofisin avantajlarını not et."
-          };
-      }
-      if (dayNumber === 3) {
-          return {
-            module_title: "Modül 1: Zemin ve Güvenli Başlangıç",
-            lesson_title: "3. Gün: Sözleşme, KVKK, Yer Gösterme ve Komisyon Güvenliği",
-            learning_goals: ["Yer gösterme formları", "Komisyon/hizmet sınırları", "Mevzuat ve KVKK"],
-            lesson_body: "Yeni başlayan danışman en çok sözlü anlaşma, yetkisiz ilan, belgesiz yer gösterme, komisyon belirsizliği ve KVKK farkındalığı eksikliğinden zarar görür. Sahaya çıkmadan önce temel evrak ve süreçleri bilmelisin. Yetkisiz ilan girmenin suç olduğunu, izinsiz kopya fotoğraflarla çalışmanın itibarını bitireceğini unutma. Mevzuat, ofis politikası ve resmi süreçler değişebilir. Kendi ofisin, bağlı olduğun oda/kurum ve resmi kaynaklarla doğrula.",
-            field_example: "Kendi kullandığın cihazlarda müşteri numaralarını nasıl kaydettiğini, KVKK metni hazırlığını ve yer gösterme belgelerini fiziken/dijital olarak yanında bulundurmak.",
-            common_mistake: "'Müşteri kaçmasın' korkusuyla yer gösterme belgesini imzalatmamak veya 'komisyonu sonra hallederiz' diyerek yola çıkmak.",
-            pro_tip: "Baştan dürüst ve net olan kurallar, işlemin sonunda kriz çıkmasını engeller. Çekinmeden prosedürü işletin.",
-            script_example: "'Ali Bey, size evi göstermekten memnuniyet duyarım. Ancak yasal prosedürümüz gereği, gayrimenkulü gördüğünüze dair standart yer gösterme formumuzu imzalamanızı rica edeceğim.'",
-            mini_quiz: [
-              { question: "Danışman komisyonunu nasıl korur?", options: ["Sözüne güvenerek", "Yazılı hizmet/komisyon sözleşmesi ve yer gösterme belgesi ile", "Kapora almayarak"], correctAnswer: 1, explanation: "Söz uçar, yazılı sözleşme ve hukuki formlar hakkı korur." }
-            ],
-            practice_assignment: "Kullanacağın standart yer gösterme ve hizmet sözleşmesi taslağını bul, birer boş kopyasını incele."
-          };
-      }
-  }
+  let result: CampaignCurriculumDay;
 
-  if (customDays[dayNumber]) {
-    return customDays[dayNumber];
-  }
-
-  // Faz bazlı genel fallback (1,7,14,30,45,60,75,90 dışındaki günler)
-  if (dayNumber <= 7) {
-    return {
+  if (expLevel === 'new' && dayNumber === 1) {
+    result = {
+      module_title: "Modül 1: Zemin ve Güvenli Başlangıç",
+      lesson_title: "1. Gün: Mesleki Kimlik ve Güvenli Başlangıç",
+      learning_goals: ["Resmi sınırları anlamak", "Doğru ofis/mentor seçimi", "Profesyonel imza"],
+      lesson_body: "Gayrimenkul danışmanlığı sadece ilan paylaşmak değildir. Yeni başlayan kişi önce hangi yetkiyle, hangi ofis/kurum çatısı altında, hangi evraklarla ve hangi sorumluluklarla çalışacağını bilmelidir. İlk günün amacı satış yapmak değil, mesleğe güvenli giriş zeminini kurmaktır. Herkese ilan atmadan önce hukuki ve teknik donanımınızı tamamlamalısınız. Mevzuat, ofis politikası ve resmi süreçler değişebilir. Kendi ofisin, bağlı olduğun oda/kurum ve resmi kaynaklarla doğrula.",
+      field_example: "MYK ve Taşınmaz Ticareti Yetki Belgesi mevzuatını öğrenerek, çalışma modelini (bağımsız / marka altı) netleştirmek.",
+      common_mistake: "Sistemi ve mevzuatı anlamadan etrafa 'Ben emlakçı oldum, evinizi satayım' diye sahte vaatlerde bulunmak.",
+      pro_tip: "Gerçek uzmanlık, neyi bilmediğini bilmekle başlar. Soru sormaktan ve resmi kurumları araştırmaktan çekinmeyin.",
+      script_example: "Merhabalar, gayrimenkul sektöründe yeni ve profesyonel bir başlangıç yapıyorum. İlk hedefim yasal ve mesleki yeterliliklerimi tamamlayarak sizlere en şeffaf hizmeti sunmak.",
+      mini_quiz: [
+        { question: "Yeni başlayan birinin ilk gün hedefi ne olmalıdır?", options: ["Hemen ilan girmek", "Mesleki ve hukuki sınırları öğrenerek güvenli giriş zeminini kurmak", "Afiş asmak"], correctAnswer: 1, explanation: "Satıştan önce yasal ve etik zemin şarttır." }
+      ],
+      practice_assignment: "Sektörde başarılı bulduğun 3 danışmanın online profillerini (imza, iletişim, unvan) incele."
+    };
+  } else if (expLevel === 'new' && dayNumber === 2) {
+    result = {
+      module_title: "Modül 1: Zemin ve Güvenli Başlangıç",
+      lesson_title: "2. Gün: MYK, Eğitim ve Ofis Hazırlığı",
+      learning_goals: ["MYK seviyelerini bilmek", "Ofis altyapısı", "Hazırlık denetimi"],
+      lesson_body: "Yeni danışman için ilk risk bilgisizliktir. MYK, eğitim, ofis bağlantısı ve yetki süreçlerini anlamadan müşteri/mülk sahibiyle profesyonel ilişki kurmak ileride sorun çıkarabilir. MYK Seviye 4 mü yoksa Seviye 5 (Sorumlu Emlak Danışmanı) mi olmanız gerektiğini, hangi eğitim saatlerini tamamlamanız gerektiğini araştırın. Mevzuat, ofis politikası ve resmi süreçler değişebilir. Kendi ofisin, bağlı olduğun oda/kurum ve resmi kaynaklarla daima çift kontrol yapın.",
+      field_example: "Bağlı çalışacağın ofisin sağladığı CRM, ilan portalı limitleri ve hukuki destek detaylarını brokerınla netleştirmek.",
+      common_mistake: "Tüm eğitimleri erteleyip sadece sahaya odaklanmak ve yasal bir ceza veya iptal riskiyle karşılaşmak.",
+      pro_tip: "Ofisin senin iş ortağındır; ona sadece oran/pay üzerinden değil, sana sunduğu pazar payı ve koruma kalkanı üzerinden değer biç.",
+      script_example: "(Ofisle/Mentorla Görüşme) 'Sizin çatınız altında çalışırken kullanabileceğim sözleşme taslakları ve portföy paylaşım kuralları nelerdir?'",
+      mini_quiz: [
+        { question: "Müşteriyle profesyonel bir portföy ilişkisi kurmadan önce ne netleştirilmelidir?", options: ["Sadece komisyon tutarı", "MYK, yetki yapısı ve ofis sözleşme altyapısı", "Portföyün kaç paraya satılacağı"], correctAnswer: 1, explanation: "Güvenli zemin olmadan portföy alınmaz." }
+      ],
+      practice_assignment: "Eğer ofis/mentor arayışındaysan bölgedeki 3 kurumsal ofisin avantajlarını not et."
+    };
+  } else if (expLevel === 'new' && dayNumber === 3) {
+    result = {
+      module_title: "Modül 1: Zemin ve Güvenli Başlangıç",
+      lesson_title: "3. Gün: Sözleşme, KVKK, Yer Gösterme ve Komisyon Güvenliği",
+      learning_goals: ["Yer gösterme formları", "Komisyon/hizmet sınırları", "Mevzuat ve KVKK"],
+      lesson_body: "Yeni başlayan danışman en çok sözlü anlaşma, yetkisiz ilan, belgesiz yer gösterme, komisyon belirsizliği ve KVKK farkındalığı eksikliğinden zarar görür. Sahaya çıkmadan önce temel evrak ve süreçleri bilmelisin. Yetkisiz ilan girmenin suç olduğunu, izinsiz kopya fotoğraflarla çalışmanın itibarını bitireceğini unutma. Mevzuat, ofis politikası ve resmi süreçler değişebilir. Kendi ofisin, bağlı olduğun oda/kurum ve resmi kaynaklarla doğrula.",
+      field_example: "Kendi kullandığın cihazlarda müşteri numaralarını nasıl kaydettiğini, KVKK metni hazırlığını ve yer gösterme belgelerini fiziken/dijital olarak yanında bulundurmak.",
+      common_mistake: "'Müşteri kaçmasın' korkusuyla yer gösterme belgesini imzalatmamak veya 'komisyonu sonra hallederiz' diyerek yola çıkmak.",
+      pro_tip: "Baştan dürüst ve net olan kurallar, işlemin sonunda kriz çıkmasını engeller. Çekinmeden prosedürü işletin.",
+      script_example: "'Ali Bey, size evi göstermekten memnuniyet duyarım. Ancak yasal prosedürümüz gereği, gayrimenkulü gördüğünüze dair standart yer gösterme formumuzu imzalamanızı rica edeceğim.'",
+      mini_quiz: [
+        { question: "Danışman komisyonunu nasıl korur?", options: ["Sözüne güvenerek", "Yazılı hizmet/komisyon sözleşmesi ve yer gösterme belgesi ile", "Kapora almayarak"], correctAnswer: 1, explanation: "Söz uçar, yazılı sözleşme ve hukuki formlar hakkı korur." }
+      ],
+      practice_assignment: "Kullanacağın standart yer gösterme ve hizmet sözleşmesi taslağını bul, birer boş kopyasını incele."
+    };
+  } else if (customDays[dayNumber]) {
+    result = { ...customDays[dayNumber] };
+  } else if (dayNumber <= 7) {
+    result = {
       module_title: "Modül 1: Zihniyet",
       lesson_title: "Temel ve Kurallar (Ara Gün)",
       learning_goals: ["Disiplin", "Araştırma", "Planlama"],
@@ -222,7 +278,7 @@ export function getCurriculumForDay(dayNumber: number, expLevel?: 'new' | 'exper
       practice_assignment: "Zaman blokajı kavramını yarının ajandasına uygula."
     };
   } else if (dayNumber <= 30) {
-    return {
+    result = {
       module_title: "Modül 3: Sunum ve Gelişim",
       lesson_title: "Piyasa ve Karar (Ara Gün)",
       learning_goals: ["Trend takibi", "Rakip ilanı analizi", "Veri"],
@@ -237,7 +293,7 @@ export function getCurriculumForDay(dayNumber: number, expLevel?: 'new' | 'exper
       practice_assignment: "Sokak sokak dolaşıp, bugün en az 1 saat bölgeni zihninde haritalandır."
     };
   } else if (dayNumber <= 60) {
-    return {
+    result = {
       module_title: "Modül 5: Besleme ve Bekleme",
       lesson_title: "Sessizliği Yönetme (Ara Gün)",
       learning_goals: ["Damlama iletişim", "Segmentasyon", "Sabır"],
@@ -252,7 +308,7 @@ export function getCurriculumForDay(dayNumber: number, expLevel?: 'new' | 'exper
       practice_assignment: "Sessiz 3 potansiyel adaya değer katan birer mesaj at."
     };
   } else {
-    return {
+    result = {
       module_title: "Modül 7: Kapanışa Doğru",
       lesson_title: "Soğukkanlı Adımlar (Ara Gün)",
       learning_goals: ["Müzakere masası", "Kriz yönetimi", "Yazılı teklif"],
@@ -267,4 +323,6 @@ export function getCurriculumForDay(dayNumber: number, expLevel?: 'new' | 'exper
       practice_assignment: "Potansiyel kapanış adaylarıyla ilgili evrak eksiklerinizi (due diligence) kontrol edin."
     };
   }
+
+  return ensureMinimumQuiz(result, dayNumber);
 }

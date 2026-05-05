@@ -21,7 +21,7 @@ import { AdvisorProfessionalProfile } from '../types';
 import { CampaignTodayFlowCard } from '../components/campaign90/CampaignTodayFlowCard';
 import { CampaignEducationCard } from '../components/campaign90/CampaignEducationCard';
 import { CampaignGlossaryCard } from '../components/campaign90/CampaignGlossaryCard';
-import { CampaignStatsSidebar } from '../components/campaign90/CampaignStatsSidebar';
+import { CampaignTopStats, CampaignProfessionalGuides } from '../components/campaign90/CampaignLayoutElements';
 import { CampaignReportCard } from '../components/campaign90/CampaignReportCard';
 import { BookOpen, Target, Briefcase, Compass, Award } from 'lucide-react';
 
@@ -222,93 +222,9 @@ export const Campaign90Page: React.FC = () => {
                 </div>
             </div>
 
-            <div className="flex flex-col 2xl:flex-row gap-6 lg:gap-8 min-w-0">
-                {/* Sol Kolon: Görevler & Insight */}
-                <div className="flex-1 min-w-0 space-y-6">
-                    <CampaignMentorCard message={coachMessage} />
-
-                    <CampaignTodayFlowCard 
-                        requiredTotal={todayTotal - reviewTasks.length}
-                        requiredCompleted={todayCompleted - reviewTasks.filter(t => t.status === 'completed').length}
-                        verifiedPendingCount={verifiedPendingCount}
-                    />
-
-                    {campaignReport && (
-                        <CampaignReportCard report={campaignReport} crmStats={crmStats} />
-                    )}
-
-                    {/* Günün Eğitimi + Sözlük */}
-                    {currentDayTemplate && (
-                        <div className="flex flex-col gap-4">
-                            <CampaignEducationCard curriculum={curriculum} />
-                            <CampaignGlossaryCard glossary={glossary} />
-                        </div>
-                    )}
-
-                    {/* Görevler */}
-                    <div className="pt-2">
-                        {isLoadingTasks ? (
-                            <div className="py-8 text-center text-slate-500 font-medium">Görevler yükleniyor...</div>
-                        ) : tasks && tasks.length > 0 ? (
-                            <>
-                                <CampaignTaskGroup 
-                                    title="Günün Dersi & Hazırlık" 
-                                    icon={BookOpen} 
-                                    tasks={eduTasks} 
-                                    onComplete={handleCompleteTask} 
-                                    onSkip={handleSkipTask} 
-                                    colorClass="bg-slate-100 text-slate-600" 
-                                    progressMap={taskProgressMap} 
-                                />
-                                <CampaignTaskGroup 
-                                    title="Gelir Getirici Aktiviteler" 
-                                    icon={Target} 
-                                    tasks={gTasks} 
-                                    onComplete={handleCompleteTask} 
-                                    onSkip={handleSkipTask} 
-                                    colorClass="bg-blue-100 text-blue-600" 
-                                    progressMap={taskProgressMap} 
-                                />
-                                <CampaignTaskGroup 
-                                    title="Portföy Üretimi" 
-                                    icon={Briefcase} 
-                                    tasks={pTasks} 
-                                    onComplete={handleCompleteTask} 
-                                    onSkip={handleSkipTask} 
-                                    colorClass="bg-purple-100 text-purple-600" 
-                                    progressMap={taskProgressMap} 
-                                />
-                                <CampaignTaskGroup 
-                                    title="Alan Uzmanlığı" 
-                                    icon={Compass} 
-                                    tasks={aTasks} 
-                                    onComplete={handleCompleteTask} 
-                                    onSkip={handleSkipTask} 
-                                    defaultOpen={false} 
-                                    colorClass="bg-orange-100 text-orange-600" 
-                                    progressMap={taskProgressMap} 
-                                />
-                                <CampaignTaskGroup 
-                                    title="Gün Sonu Kapanışı" 
-                                    icon={Award} 
-                                    tasks={reviewTasks} 
-                                    onComplete={handleCompleteTask} 
-                                    onSkip={handleSkipTask} 
-                                    defaultOpen={false} 
-                                    colorClass="bg-emerald-100 text-emerald-600" 
-                                    progressMap={taskProgressMap} 
-                                />
-                            </>
-                        ) : (
-                            <div className="text-center py-12 text-slate-500 font-medium bg-slate-50 rounded-2xl border border-dashed border-slate-200">
-                                Bugün için bir görev atanmamış.
-                            </div>
-                        )}
-                    </div>
-                </div>
-
-                {/* Sağ Kolon: Progress & Kamp Özeti */}
-                <CampaignStatsSidebar 
+            <div className="flex flex-col gap-8 min-w-0">
+                {/* 1. Top Summary: Campaign Progress + Today's GPA */}
+                <CampaignTopStats 
                     currentDay={campaign.current_day}
                     completedPercent={completedPercent}
                     todayCompleted={todayCompleted}
@@ -318,8 +234,97 @@ export const Campaign90Page: React.FC = () => {
                     todayA={todayA}
                     todayScore={todayScore}
                     cumulativeScore={progress?.gpaScore || 0}
-                    crmStats={crmStats}
                 />
+
+                {/* 2. Portfy Mentor / Field Coach Message */}
+                <CampaignMentorCard message={coachMessage} />
+
+                {/* 3. Today's Rank */}
+                <CampaignTodayFlowCard 
+                    requiredTotal={todayTotal - reviewTasks.length}
+                    requiredCompleted={todayCompleted - reviewTasks.filter(t => t.status === 'completed').length}
+                    verifiedPendingCount={verifiedPendingCount}
+                />
+
+                {/* 4. Daily Education */}
+                {currentDayTemplate && (
+                    <CampaignEducationCard curriculum={curriculum} />
+                )}
+
+                {/* 5. Glossary */}
+                {currentDayTemplate && (
+                    <CampaignGlossaryCard glossary={glossary} />
+                )}
+
+                {/* 6. Daily Campaign Tasks */}
+                <div className="pt-2 flex flex-col gap-4">
+                    <h2 className="text-xl font-black text-slate-900 mb-2">Bugünün Kamp Görevleri</h2>
+                    {isLoadingTasks ? (
+                        <div className="py-8 text-center text-slate-500 font-medium">Görevler yükleniyor...</div>
+                    ) : tasks && tasks.length > 0 ? (
+                        <>
+                            <CampaignTaskGroup 
+                                title="Günün Dersi & Hazırlık" 
+                                icon={BookOpen} 
+                                tasks={eduTasks} 
+                                onComplete={handleCompleteTask} 
+                                onSkip={handleSkipTask} 
+                                colorClass="bg-slate-100 text-slate-600" 
+                                progressMap={taskProgressMap} 
+                            />
+                            <CampaignTaskGroup 
+                                title="Gelir Getirici Aktiviteler" 
+                                icon={Target} 
+                                tasks={gTasks} 
+                                onComplete={handleCompleteTask} 
+                                onSkip={handleSkipTask} 
+                                colorClass="bg-blue-100 text-blue-600" 
+                                progressMap={taskProgressMap} 
+                            />
+                            <CampaignTaskGroup 
+                                title="Portföy Üretimi" 
+                                icon={Briefcase} 
+                                tasks={pTasks} 
+                                onComplete={handleCompleteTask} 
+                                onSkip={handleSkipTask} 
+                                colorClass="bg-purple-100 text-purple-600" 
+                                progressMap={taskProgressMap} 
+                            />
+                            <CampaignTaskGroup 
+                                title="Alan Uzmanlığı" 
+                                icon={Compass} 
+                                tasks={aTasks} 
+                                onComplete={handleCompleteTask} 
+                                onSkip={handleSkipTask} 
+                                defaultOpen={false} 
+                                colorClass="bg-orange-100 text-orange-600" 
+                                progressMap={taskProgressMap} 
+                            />
+                            <CampaignTaskGroup 
+                                title="Gün Sonu Kapanışı" 
+                                icon={Award} 
+                                tasks={reviewTasks} 
+                                onComplete={handleCompleteTask} 
+                                onSkip={handleSkipTask} 
+                                defaultOpen={false} 
+                                colorClass="bg-emerald-100 text-emerald-600" 
+                                progressMap={taskProgressMap} 
+                            />
+                        </>
+                    ) : (
+                        <div className="text-center py-12 text-slate-500 font-medium bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                            Bugün için bir görev atanmamış.
+                        </div>
+                    )}
+                </div>
+
+                {/* 7. Campaign Development Report */}
+                {campaignReport && (
+                    <CampaignReportCard report={campaignReport} crmStats={crmStats} />
+                )}
+
+                {/* 8. Professional Guides accordion */}
+                <CampaignProfessionalGuides />
             </div>
         </div>
     );
