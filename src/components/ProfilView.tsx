@@ -45,6 +45,44 @@ interface ProfilViewProps {
   setShowRegionSetup: (show: boolean) => void;
 }
 
+export const formatPlanLabel = (plan?: string) => {
+  if (!plan) return 'Plan bilgisi yok';
+  const p = plan.toLowerCase();
+  switch (p) {
+    case 'free': return 'Ücretsiz';
+    case 'trial': return '7 Gün Deneme';
+    case '1-month':
+    case 'monthly': return 'Aylık';
+    case '3-month': return '3 Aylık';
+    case '6-month': return '6 Aylık';
+    case '12-month':
+    case 'twelve_month':
+    case 'annual':
+    case 'yearly': return '12 Aylık';
+    case 'pro': return 'Pro';
+    case 'elite': return 'Elite';
+    case 'master': return 'Master';
+    case 'none': return 'Süresi Doldu';
+    default: return plan.charAt(0).toUpperCase() + plan.slice(1);
+  }
+};
+
+export const formatStatusLabel = (status?: string) => {
+  if (!status) return '-';
+  const s = status.toLowerCase();
+  switch (s) {
+    case 'active': return 'Aktif';
+    case 'inactive': return 'Pasif';
+    case 'pending': return 'Bekliyor';
+    case 'expired': return 'Süresi Doldu';
+    case 'cancelled':
+    case 'canceled': return 'İptal Edildi';
+    case 'connected': return 'Bağlı';
+    case 'disconnected': return 'Bağlı Değil';
+    default: return status.charAt(0).toUpperCase() + status.slice(1);
+  }
+};
+
 export const ProfilView: React.FC<ProfilViewProps> = ({
   profile,
   brokerAccount,
@@ -63,11 +101,11 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
   if (profile?.subscription_type && profile.subscription_type !== "none") {
     if (isExpired) {
       planStatusText = "Süresi doldu";
-    } else if (profile.subscription_type === "trial") {
-      planStatusText = "Deneme";
     } else {
-      planStatusText = profile.subscription_type;
+      planStatusText = formatPlanLabel(profile.subscription_type);
     }
+  } else if (profile?.subscription_type === "none") {
+    planStatusText = "Süresi doldu";
   }
 
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreference[]>([]);
@@ -444,7 +482,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
           </button>
         </div>
 
-        {/* AI Kullanım */}
+        {/* Yapay Zeka Kullanımı */}
         <div className="bg-white p-4 sm:p-5 rounded-3xl border border-slate-100 flex flex-col items-start shadow-sm justify-between hover:border-indigo-100 transition-colors group">
           <div className="w-full">
             <div className="flex items-center gap-2 mb-3">
@@ -694,7 +732,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
           </Card>
         </div>
 
-        {/* AI Koç Tonu */}
+        {/* Yapay Zeka Koç Tonu */}
         <Card 
           onClick={() => setSelectedPanel("aiTone")}
           className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 relative cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors"
@@ -706,7 +744,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                   <Sparkles size={20} className="lg:w-4 lg:h-4" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-slate-900">AI Koç Tonu</h4>
+                  <h4 className="text-sm font-bold text-slate-900">Yapay Zeka Koç Tonu</h4>
                   <p className="text-[11px] text-slate-500 mt-0.5 lg:hidden line-clamp-1 pr-4">Asistanın iletişim dilini seçin.</p>
                   <p className="text-[10px] text-slate-400 lg:hidden line-clamp-1 pr-4 mt-0.5">
                     Aktif Ton: {
@@ -834,7 +872,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                    const labelMap: Record<string, string> = {
                      new_lead: 'Yeni Lead Bildirimleri',
                      price_revision: 'Fiyat Revizyonu Uyarıları',
-                     ai_recommendation: 'AI Önerileri',
+                     ai_recommendation: 'Yapay Zeka Önerileri',
                      market_report: 'Pazar & Bölge Raporları',
                      system_announcement: 'Sistem Duyuruları'
                    };
@@ -1174,24 +1212,24 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                     {selectedPanel === "profile" && "Profil Bilgileri"}
                     {selectedPanel === "expertise" && "Uzmanlık Alanları"}
                     {selectedPanel === "workingStyle" && "Çalışma Stili"}
-                    {selectedPanel === "aiTone" && "AI Koç Tonu"}
+                    {selectedPanel === "aiTone" && "Yapay Zeka Koç Tonu"}
                     {selectedPanel === "notifications" && "Bildirim Tercihleri"}
                     {selectedPanel === "integrations" && "Entegrasyonlar"}
                     {selectedPanel === "security" && "Hesap & Güvenlik"}
                     {selectedPanel === "plan" && "Plan Yönetimi"}
-                    {selectedPanel === "aiUsage" && "AI Kullanımı"}
+                    {selectedPanel === "aiUsage" && "Yapay Zeka Kullanımı"}
                     {selectedPanel === "completion" && "Profil Eksikleri"}
                   </h3>
                   <p className="text-[13px] text-slate-500 mt-1">
                     {selectedPanel === "profile" && "Kişisel bilgilerinizi güncelleyin."}
                     {selectedPanel === "expertise" && "Çalıştığınız alanları seçin."}
                     {selectedPanel === "workingStyle" && "Çalışma saatlerinizi belirleyin."}
-                    {selectedPanel === "aiTone" && "AI asistanınızın tonunu seçin."}
+                    {selectedPanel === "aiTone" && "Yapay zeka asistanınızın tonunu seçin."}
                     {selectedPanel === "notifications" && "Hangi konularda bildirim almak istediğinizi ayarlayın."}
                     {selectedPanel === "integrations" && "Bağlantılı araçlarınızı yönetin."}
                     {selectedPanel === "security" && "Giriş ve güvenlik ayarları."}
                     {selectedPanel === "plan" && "Abonelik planınızı görün."}
-                    {selectedPanel === "aiUsage" && "Token kullanım detaylarınız."}
+                    {selectedPanel === "aiUsage" && "Yapay zeka kullanım detaylarınız."}
                     {selectedPanel === "completion" && "Düzeltilmesi/eklenmesi gereken bilgiler."}
                   </p>
                 </div>
@@ -1425,7 +1463,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                           const labelMap: Record<string, string> = {
                             new_lead: 'Yeni Lead Bildirimleri',
                             price_revision: 'Fiyat Revizyonu Uyarıları',
-                            ai_recommendation: 'AI Önerileri',
+                            ai_recommendation: 'Yapay Zeka Önerileri',
                             market_report: 'Pazar & Bölge Raporları',
                             system_announcement: 'Sistem Duyuruları'
                           };
@@ -1593,7 +1631,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                       <div className="w-16 h-16 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-4">
                          <Sparkles size={32} />
                       </div>
-                      <h4 className="text-xl font-black text-slate-900">AI Kullanım Detayı</h4>
+                      <h4 className="text-xl font-black text-slate-900">Yapay Zeka Kullanım Detayı</h4>
                       {getEffectiveAiTokenLimit(profile) > 0 ? (
                          <div className="space-y-2 mt-6">
                             <div className="flex justify-between text-sm font-bold text-slate-700">
