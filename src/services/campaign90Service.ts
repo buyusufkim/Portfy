@@ -190,6 +190,18 @@ export const campaign90Service = {
     return data || [];
   },
   
+  getCampaignTasksByDay: async (campaignId: string, dayNumber: number): Promise<CampaignTask[]> => {
+    const { data, error } = await supabase
+      .from('campaign_tasks')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .eq('day_number', dayNumber)
+      .order('created_at', { ascending: true });
+      
+    if (error) throw error;
+    return data || [];
+  },
+  
   completeCampaignTask: async (taskId: string): Promise<void> => {
     const { data: sessionData } = await supabase.auth.getSession();
     const jwt = sessionData.session?.access_token;

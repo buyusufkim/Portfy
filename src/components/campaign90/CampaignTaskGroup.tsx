@@ -14,6 +14,7 @@ interface TaskGroupProps {
     defaultOpen?: boolean;
     colorClass: string;
     progressMap?: Record<string, CampaignTaskProgress>;
+    pendingTaskId?: string | null;
 }
 
 export const CampaignTaskGroup: React.FC<TaskGroupProps> = ({ 
@@ -24,7 +25,8 @@ export const CampaignTaskGroup: React.FC<TaskGroupProps> = ({
     onSkip, 
     defaultOpen = true, 
     colorClass, 
-    progressMap 
+    progressMap,
+    pendingTaskId 
 }) => {
     const [isOpen, setIsOpen] = useState(defaultOpen);
     if (!tasks || tasks.length === 0) return null;
@@ -144,18 +146,24 @@ export const CampaignTaskGroup: React.FC<TaskGroupProps> = ({
                                             <div className="flex flex-col items-end gap-1.5 mt-1">
                                                 <button 
                                                     onClick={() => onComplete(task.id)}
-                                                    className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+                                                    disabled={pendingTaskId === task.id || isCompleted}
+                                                    className={`text-[10px] font-bold px-3 py-1.5 rounded-lg transition-all flex items-center justify-center gap-1.5 disabled:opacity-50 ${
                                                         isVerified 
                                                             ? 'bg-[#00D2B4] text-white shadow-sm shadow-[#00D2B4]/20 hover:bg-[#00BFA5]' 
                                                             : 'bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200'
                                                     }`}
                                                 >
-                                                    <Check size={12} strokeWidth={3} />
-                                                    {isVerified ? "Onayla ve XP Al" : "Tamamla"}
+                                                    {pendingTaskId === task.id ? (
+                                                        <div className="w-3 h-3 border-2 border-slate-400 border-t-slate-600 rounded-full animate-spin" />
+                                                    ) : (
+                                                        <Check size={12} strokeWidth={3} />
+                                                    )}
+                                                    {pendingTaskId === task.id ? "Kaydediliyor..." : isVerified ? "Onayla ve XP Al" : "Bilgi Gir ve Tamamla"}
                                                 </button>
                                                 <button 
                                                     onClick={() => onSkip(task.id)}
-                                                    className="text-[10px] text-slate-400 hover:text-slate-600 font-bold transition-colors px-2 py-1"
+                                                    disabled={pendingTaskId === task.id}
+                                                    className="text-[10px] text-slate-400 hover:text-slate-600 font-bold transition-colors px-2 py-1 disabled:opacity-50"
                                                 >
                                                     Atla
                                                 </button>

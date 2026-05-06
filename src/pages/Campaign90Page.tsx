@@ -26,6 +26,7 @@ import { useAuth } from '../AuthContext';
 import { CampaignTopStats, CampaignProfessionalGuides } from '../components/campaign90/CampaignLayoutElements';
 import { CampaignReportCard } from '../components/campaign90/CampaignReportCard';
 import { BookOpen, Target, Briefcase, Compass, Award } from 'lucide-react';
+import { CampaignTaskCompletionModal, getCampaignTaskCompletionMode, CampaignTaskCompletionMode } from '../components/campaign90/CampaignTaskCompletionModal';
 
 
 const getPhaseName = (week: number) => {
@@ -41,6 +42,10 @@ export const Campaign90Page: React.FC = () => {
     const queryClient = useQueryClient();
     const { subscribe } = useAuth();
     
+    const [selectedTaskForModal, setSelectedTaskForModal] = useState<{task: CampaignTask, mode: CampaignTaskCompletionMode} | null>(null);
+    const [isCompletingWithModal, setIsCompletingWithModal] = useState(false);
+    const [selectedDayState, setSelectedDayState] = useState<number | null>(null);
+
     // Auth user
     const { data: user } = useQuery({
        queryKey: ['auth_user'],
@@ -72,17 +77,29 @@ export const Campaign90Page: React.FC = () => {
         enabled: !!user?.id
     });
 
+    const currentCampaignDay = campaign?.current_day || 1;
+    const selectedDay = selectedDayState ?? currentCampaignDay;
+
     const todayStr = getTodayStr(new Date());
 
+    const targetDate = React.useMemo(() => {
+        if (!campaign?.start_date) return new Date();
+        const start = new Date(campaign.start_date);
+        start.setDate(start.getDate() + (selectedDay - 1));
+        return start;
+    }, [campaign?.start_date, selectedDay]);
+
+    const targetDateStr = getTodayStr(targetDate);
+
     const { data: tasks, isLoading: isLoadingTasks } = useQuery({
-        queryKey: ['campaign90_tasks', campaign?.id, todayStr],
-        queryFn: () => campaign90Service.getTodayCampaignTasks(user!.id, todayStr),
+        queryKey: ['campaign90_tasks', campaign?.id, selectedDay],
+        queryFn: () => selectedDay === currentCampaignDay ? campaign90Service.getTodayCampaignTasks(user!.id, todayStr) : campaign90Service.getCampaignTasksByDay(campaign!.id, selectedDay),
         enabled: !!campaign?.id && !!user?.id
     });
 
     const { data: taskProgressMap } = useQuery({
-        queryKey: ['campaign_task_progress', user?.id, todayStr, tasks ? tasks.length : 0],
-        queryFn: () => getCampaignTaskProgress(user!.id, tasks || [], new Date()),
+        queryKey: ['campaign_task_progress', user?.id, targetDateStr, tasks ? tasks.length : 0],
+        queryFn: () => getCampaignTaskProgress(user!.id, tasks || [], targetDate),
         enabled: !!user?.id && !!tasks && tasks.length > 0
     });
 
@@ -241,14 +258,97 @@ export const Campaign90Page: React.FC = () => {
         return p && p.current >= p.target;
     }).length;
 
-    const currentDayTemplate = CAMPAIGN_90_DAYS.find(d => d.day_number === campaign.current_day);
-    const glossary = getGlossaryForDay(campaign.current_day);
-    const curriculum = getCurriculumForDay(campaign.current_day, advisorProfile?.experience_level);
+    const currentDayTemplate = CAMPAIGN_90_DAYS.find(d => d.day_number === selectedDay);
+    const glossary = getGlossaryForDay(selectedDay);
+    const curriculum = getCurriculumForDay(selectedDay, advisorProfile?.experience_level);
 
-    const handleCompleteTask = (taskId: string) => completeTaskMutation.mutate(taskId);
-    const handleSkipTask = (taskId: string) => skipTaskMutation.mutate(taskId);
+    const handleCompleteTask = (taskId: string) => {
+        if (selectedDay < currentCampaignDay) {
+            toast.error("Geçmiş günlerde görev tamamlayamazsın.");
+            return;
+        }
 
-    const isRestrictedDay8 = campaign.current_day >= 8 && (!profile?.subscription_end_date || new Date(profile.subscription_end_date) < new Date()) && profile?.tier !== 'master' && profile?.tier !== 'pro' && profile?.tier !== 'elite';
+        const task = tasks?.find((t: CampaignTask) => t.id === taskId);
+        if (!task) return;
+        
+        const mode = getCampaignTaskCompletionMode(task);
+        if (mode === 'instant') {
+            completeTaskMutation.mutate(taskId);
+        } else {
+            setSelectedTaskForModal({ task, mode });
+        }
+    };
+
+    const handleModalSubmit = async (formData: Record<string, any>) => {
+        if (!selectedTaskForModal) return;
+        if (selectedDay < currentCampaignDay) {
+            toast.error("Geçmiş günlerde bilgi girişi yapılamaz.");
+            return;
+        }
+        const task = selectedTaskForModal.task;
+        setIsCompletingWithModal(true);
+
+        try {
+            // Save evidence to advisor profile metadata
+            if (advisorProfile) {
+                const currentMeta = (typeof advisorProfile.metadata === 'object' && advisorProfile.metadata) ? advisorProfile.metadata : {};
+                const currentEvidence = currentMeta.campaign_task_evidence && typeof currentMeta.campaign_task_evidence === 'object' ? currentMeta.campaign_task_evidence : {};
+                const newEvidence = { ...currentEvidence } as Record<string, any>;
+                
+                newEvidence[task.task_key] = {
+                    ...formData,
+                    completedAt: new Date().toISOString()
+                };
+
+                const updatePayload: Partial<AdvisorProfessionalProfile> = {
+                    metadata: { ...currentMeta, campaign_task_evidence: newEvidence }
+                };
+
+                // Update specific office/myk fields if applicable
+                if (selectedTaskForModal.mode === 'office_info_required') {
+                    updatePayload.office_name = formData.officeName;
+                    if (formData.brand) updatePayload.office_brand = formData.brand;
+                }
+
+                if (selectedTaskForModal.mode === 'document_info_required') {
+                    if (formData.documentType === 'MYK' && formData.status === 'Tamamlandi') {
+                        updatePayload.has_myk = true;
+                    } else if (formData.documentType === 'Yetki' && formData.status === 'Tamamlandi') {
+                        updatePayload.has_real_estate_authorization = true;
+                    }
+                }
+
+                await advisorProfileService.upsertAdvisorProfessionalProfile({
+                    ...advisorProfile,
+                    ...updatePayload
+                });
+            }
+
+            // Now complete the task
+            await campaign90Service.completeCampaignTask(task.id);
+            
+            queryClient.invalidateQueries({ queryKey: ['campaign90_tasks'] });
+            queryClient.invalidateQueries({ queryKey: ['campaign90_progress'] });
+            queryClient.invalidateQueries({ queryKey: ['advisor_professional_profile'] });
+            toast.success("Görev başarıyla kaydedildi ve tamamlandı!");
+            setSelectedTaskForModal(null);
+        } catch (err) {
+            console.error("Modal submit error:", err);
+            toast.error(getErrorMessage(err, "Görev kaydedilirken bir hata oluştu."));
+        } finally {
+            setIsCompletingWithModal(false);
+        }
+    };
+
+    const handleSkipTask = (taskId: string) => {
+        if (selectedDay < currentCampaignDay) {
+            toast.error("Geçmiş günlerde görev atlayamazsın.");
+            return;
+        }
+        skipTaskMutation.mutate(taskId);
+    };
+
+    const isRestrictedDay8 = selectedDay >= 8 && (!profile?.subscription_end_date || new Date(profile.subscription_end_date) < new Date()) && profile?.tier !== 'master' && profile?.tier !== 'pro' && profile?.tier !== 'elite';
 
     const handleUpgradeRequest = async () => {
         try {
@@ -273,6 +373,8 @@ export const Campaign90Page: React.FC = () => {
                     todayA={todayA}
                     todayScore={todayScore}
                     cumulativeScore={progress?.gpaScore || 0}
+                    selectedDay={selectedDay}
+                    onSelectDay={setSelectedDayState}
                 />
                 <div className="mt-8 bg-slate-900 border border-slate-800 rounded-3xl p-10 flex flex-col items-center text-center shadow-2xl relative overflow-hidden">
                     <div className="absolute right-0 top-0 opacity-10 pointer-events-none -mt-10 -mr-10">
@@ -323,8 +425,16 @@ export const Campaign90Page: React.FC = () => {
                         todayScore={todayScore}
                         cumulativeScore={progress?.gpaScore || 0}
                         dayStatus={dayStatus as 'active' | 'closed' | 'not_started'}
+                        selectedDay={selectedDay}
+                        onSelectDay={setSelectedDayState}
                     />
                 </div>
+
+                {selectedDay < currentCampaignDay && (
+                    <div className="bg-amber-50 border border-amber-200 text-amber-700 px-4 py-3 rounded-xl text-sm font-medium flex items-center justify-center">
+                        Geçmiş gün görüntüleniyor. Bu alanda değişiklik yapılamaz.
+                    </div>
+                )}
 
                 {/* 2. Portfy Mentor / Field Coach Message */}
                 <div data-tour="campaign-mentor">
@@ -344,7 +454,7 @@ export const Campaign90Page: React.FC = () => {
                 {/* 4. Daily Education */}
                 {currentDayTemplate && (
                     <div data-tour="campaign-education">
-                        <CampaignEducationCard curriculum={curriculum} />
+                        <CampaignEducationCard curriculum={curriculum} readOnly={selectedDay < currentCampaignDay} />
                     </div>
                 )}
 
@@ -370,6 +480,7 @@ export const Campaign90Page: React.FC = () => {
                                 onSkip={handleSkipTask} 
                                 colorClass="bg-slate-100 text-slate-600" 
                                 progressMap={taskProgressMap} 
+                                pendingTaskId={completeTaskMutation.isPending && typeof completeTaskMutation.variables === 'string' ? completeTaskMutation.variables : selectedTaskForModal?.task?.id || null}
                             />
                             <CampaignTaskGroup 
                                 title="Gelir Getirici Aktiviteler" 
@@ -379,6 +490,7 @@ export const Campaign90Page: React.FC = () => {
                                 onSkip={handleSkipTask} 
                                 colorClass="bg-blue-100 text-blue-600" 
                                 progressMap={taskProgressMap} 
+                                pendingTaskId={completeTaskMutation.isPending && typeof completeTaskMutation.variables === 'string' ? completeTaskMutation.variables : selectedTaskForModal?.task?.id || null}
                             />
                             <CampaignTaskGroup 
                                 title="Portföy Üretimi" 
@@ -388,6 +500,7 @@ export const Campaign90Page: React.FC = () => {
                                 onSkip={handleSkipTask} 
                                 colorClass="bg-purple-100 text-purple-600" 
                                 progressMap={taskProgressMap} 
+                                pendingTaskId={completeTaskMutation.isPending && typeof completeTaskMutation.variables === 'string' ? completeTaskMutation.variables : selectedTaskForModal?.task?.id || null}
                             />
                             <CampaignTaskGroup 
                                 title="Alan Uzmanlığı" 
@@ -398,6 +511,7 @@ export const Campaign90Page: React.FC = () => {
                                 defaultOpen={false} 
                                 colorClass="bg-orange-100 text-orange-600" 
                                 progressMap={taskProgressMap} 
+                                pendingTaskId={completeTaskMutation.isPending && typeof completeTaskMutation.variables === 'string' ? completeTaskMutation.variables : selectedTaskForModal?.task?.id || null}
                             />
                             <CampaignTaskGroup 
                                 title="Gün Sonu Kapanışı" 
@@ -408,6 +522,7 @@ export const Campaign90Page: React.FC = () => {
                                 defaultOpen={false} 
                                 colorClass="bg-emerald-100 text-emerald-600" 
                                 progressMap={taskProgressMap} 
+                                pendingTaskId={completeTaskMutation.isPending && typeof completeTaskMutation.variables === 'string' ? completeTaskMutation.variables : selectedTaskForModal?.task?.id || null}
                             />
                         </>
                     ) : (
@@ -427,6 +542,17 @@ export const Campaign90Page: React.FC = () => {
                     <CampaignProfessionalGuides />
                 </div>
             </div>
+            
+            {selectedTaskForModal && (
+                <CampaignTaskCompletionModal 
+                    task={selectedTaskForModal.task}
+                    mode={selectedTaskForModal.mode}
+                    isOpen={!!selectedTaskForModal}
+                    onClose={() => setSelectedTaskForModal(null)}
+                    onSubmit={handleModalSubmit}
+                    isPending={isCompletingWithModal}
+                />
+            )}
             
             {user?.id && campaign?.id && (
                 <Campaign90Tour userId={user.id} campaignId={campaign.id} />

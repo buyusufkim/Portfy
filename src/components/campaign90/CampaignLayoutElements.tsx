@@ -1,5 +1,5 @@
 import React from 'react';
-import { Trophy, Activity, Target, ExternalLink, ChevronDown, Lightbulb, BookOpen } from 'lucide-react';
+import { Trophy, Activity, Target, ExternalLink, ChevronDown, ChevronLeft, ChevronRight, Lightbulb, BookOpen } from 'lucide-react';
 import { Card } from '../UI';
 import { Campaign90Stats } from '../../hooks/useCampaign90Stats';
 
@@ -14,6 +14,8 @@ interface StatsProps {
     todayScore: number;
     cumulativeScore: number;
     dayStatus?: 'active' | 'closed' | 'not_started';
+    selectedDay?: number;
+    onSelectDay?: (day: number) => void;
 }
 
 export const CampaignTopStats: React.FC<StatsProps> = ({
@@ -26,8 +28,14 @@ export const CampaignTopStats: React.FC<StatsProps> = ({
     todayA,
     todayScore,
     cumulativeScore,
-    dayStatus = 'not_started'
+    dayStatus = 'not_started',
+    selectedDay,
+    onSelectDay
 }) => {
+    const displayDay = selectedDay ?? currentDay;
+    const canGoBack = displayDay > 1;
+    const canGoForward = displayDay < currentDay;
+
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 min-w-0">
             {/* Header Progress Card */}
@@ -40,14 +48,41 @@ export const CampaignTopStats: React.FC<StatsProps> = ({
                        <div className="w-12 h-12 bg-white/10 rounded-2xl flex items-center justify-center shrink-0 border border-white/5">
                           <Trophy size={24} className="text-[#00D2B4]" />
                        </div>
-                       <div>
+                       <div className="flex-1">
                            <div className="text-[11px] uppercase tracking-widest font-bold text-[#00D2B4] mb-1">Portfy Mentor</div>
                            <h2 className="font-bold text-lg leading-tight">Kamp İlerlemesi</h2>
                        </div>
+                       {onSelectDay && (
+                           <div className="flex items-center gap-1 bg-white/10 rounded-xl p-1 border border-white/10">
+                               <button 
+                                   onClick={() => canGoBack && onSelectDay(displayDay - 1)}
+                                   disabled={!canGoBack}
+                                   className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-colors"
+                               >
+                                   <ChevronLeft size={18} />
+                               </button>
+                               <select 
+                                   value={displayDay}
+                                   onChange={(e) => onSelectDay(Number(e.target.value))}
+                                   className="bg-transparent text-sm font-bold text-white outline-none cursor-pointer appearance-none px-2 text-center"
+                               >
+                                   {Array.from({length: currentDay}).map((_, i) => (
+                                       <option key={i+1} value={i+1} className="text-slate-900">Gün {i+1}</option>
+                                   ))}
+                               </select>
+                               <button 
+                                   onClick={() => canGoForward && onSelectDay(displayDay + 1)}
+                                   disabled={!canGoForward}
+                                   className="p-1 rounded-lg text-white/50 hover:text-white hover:bg-white/10 disabled:opacity-30 transition-colors"
+                               >
+                                   <ChevronRight size={18} />
+                               </button>
+                           </div>
+                       )}
                     </div>
 
                     <div className="flex justify-between items-end mb-2">
-                        <div className="text-sm font-bold text-white/80">Gün {currentDay} / 90</div>
+                        <div className="text-sm font-bold text-white/80">Gün {displayDay} / 90</div>
                         <div className="text-sm font-black text-white">{completedPercent}% Toplam</div>
                     </div>
                     <div className="w-full h-1.5 bg-white/10 rounded-full overflow-hidden mb-6">

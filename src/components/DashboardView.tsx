@@ -30,6 +30,11 @@ import {
   Home,
   ArrowUpRight,
   BarChart3,
+  Sun,
+  Cloud,
+  CloudRain,
+  CloudLightning,
+  CloudSnow,
 } from "lucide-react";
 import { Card } from "./UI";
 import { api } from "../services/api";
@@ -135,6 +140,7 @@ interface DashboardViewProps {
 import { Campaign90MiniCard } from "./habit/Campaign90MiniCard";
 import { advisorProfileService } from "../services/advisorProfileService";
 import { campaign90Service } from "../services/campaign90Service";
+import { useWeather } from "../hooks/useWeather";
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
   profile,
@@ -187,6 +193,65 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   });
 
   const isNewUserCampaignActive = advisorProfile?.experience_level === 'new' && !!activeCampaign;
+
+  const { weather, loading: weatherLoading } = useWeather(profile?.city, profile?.district);
+  
+  const hour = new Date().getHours();
+  let greetingObj = { text: "Günaydın", icon: <Sun size={18} className="text-amber-300" /> };
+  if (hour >= 12 && hour < 18) {
+    greetingObj = { text: "İyi günler", icon: <Sun size={18} className="text-amber-500" /> };
+  } else if (hour >= 18 || hour < 5) {
+    greetingObj = { text: "İyi akşamlar", icon: <Moon size={18} className="text-indigo-300" /> };
+  }
+
+  const todayDateString = new Intl.DateTimeFormat('tr-TR', { day: 'numeric', month: 'long', weekday: 'long' }).format(new Date());
+
+  const isCampaignActive = isNewUserCampaignActive || !!activeCampaign;
+  
+  let heroTitle = `${greetingObj.text}${profile?.display_name ? ` ${profile.display_name.split(' ')[0]}` : ''}, kolay gelsin`;
+  let heroSubtitle = "Planla, önceliklendir, ilerle ve günü güçlü kapat.";
+  
+  if (isCampaignActive) {
+    if (hour >= 12 && hour < 18) {
+      heroTitle = "İyi günler, kamp günün devam ediyor";
+    } else if (hour >= 18 || hour < 5) {
+      heroTitle = "İyi akşamlar, kamp gününü güçlü kapat";
+    } else {
+      heroTitle = "Günaydın, kamp günün başlıyor";
+    }
+    heroSubtitle = "Bugünün kamp akışına odaklan, adım adım ilerle.";
+  }
+
+  let WeatherIcon = Cloud;
+  let weatherText = "";
+  let weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#082B55] to-[#061A32]";
+
+  if (weather) {
+    if (weather.weathercode <= 3) {
+      WeatherIcon = weather.weathercode === 0 ? Sun : Cloud;
+      weatherText = weather.weathercode === 0 ? "Güneşli" : "Parçalı bulutlu";
+      weatherGradient = weather.weathercode === 0 ? "bg-gradient-to-br from-[#061A32] via-[#093566] to-[#061A32]" : "bg-gradient-to-br from-[#061A32] via-[#0D2440] to-[#061A32]";
+    } else if (weather.weathercode <= 67 || (weather.weathercode >= 80 && weather.weathercode <= 82)) {
+      WeatherIcon = CloudRain;
+      weatherText = "Yağmurlu";
+      weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#102A4A] to-[#061A32]";
+    } else if (weather.weathercode <= 77 || (weather.weathercode >= 85 && weather.weathercode <= 86)) {
+      WeatherIcon = CloudSnow;
+      weatherText = "Karlı";
+      weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#143254] to-[#061A32]";
+    } else if (weather.weathercode >= 95) {
+      WeatherIcon = CloudLightning;
+      weatherText = "Fırtınalı";
+      weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#1A2235] to-[#061A32]";
+    } else {
+      WeatherIcon = Cloud;
+      weatherText = "Bulutlu";
+    }
+  } else if (!weatherLoading && (hour >= 18 || hour < 5)) {
+    weatherGradient = "bg-gradient-to-br from-[#041224] via-[#061A32] to-[#041224]";
+  }
+
+  // --- /END SETUP ---
 
   const [selectedGoalDate, setSelectedGoalDate] = useState<string>(todayISO);
 
@@ -626,12 +691,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       animate={{ opacity: 1, y: 0 }}
       className="pb-36 lg:pb-8"
     >
-      <div className="lg:hidden px-2 mb-4">
-        <h1 className="text-xl font-bold text-[#061A32]">
-          Günaydın {profile?.display_name?.split(' ')[0] || 'Danışman'} 👋
-        </h1>
-      </div>
-
       {advisorProfile?.experience_level === 'new' && !activeCampaign && advisorProfile?.onboarding_completed && (
         <Card className="mb-6 bg-indigo-600 border border-indigo-500 rounded-2xl overflow-hidden relative shadow-lg shadow-indigo-600/10 text-white p-5 cursor-pointer hover:bg-indigo-700 transition" onClick={() => setActiveTab("campaign-90")}>
            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
@@ -672,17 +731,36 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         
           {/* HERO CARD: Bugünü Netleştir */}
           <section className="order-1">
-            <Card className="p-5 bg-gradient-to-br from-[#061A32] via-[#082B55] to-[#061A32] text-white border-none shadow-xl relative overflow-hidden rounded-[28px] flex flex-col md:flex-row justify-between gap-4 md:items-center">
+            <Card className={`p-5 ${weatherGradient} text-white border-none shadow-xl relative overflow-hidden rounded-[28px] flex flex-col md:flex-row justify-between gap-4 md:items-center transition-colors duration-1000`}>
               <div className="absolute top-0 right-0 w-64 h-64 bg-[#00D2B4]/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
               
               <div className="relative z-10 flex-1">
-                <div className="flex flex-col-reverse md:flex-row md:items-center justify-between gap-2 mb-2">
+                <div className="flex flex-col gap-1 mb-3">
+                  <div className="flex items-center gap-2 text-white/70 text-xs font-bold uppercase tracking-wider mb-1">
+                    {greetingObj.icon}
+                    <span>{todayDateString}</span>
+                    {profile?.district && (
+                      <>
+                        <span className="opacity-50">•</span>
+                        <span>{profile.district}{profile?.city && `, ${profile.city}`}</span>
+                      </>
+                    )}
+                    {weather && !weatherLoading && (
+                      <>
+                        <span className="opacity-50">•</span>
+                        <span className="flex items-center gap-1">
+                          <WeatherIcon size={14} className="opacity-80" />
+                          {weather.temperature}°C {weatherText && `· ${weatherText}`}
+                        </span>
+                      </>
+                    )}
+                  </div>
                   <h2 className="text-2xl font-black text-white tracking-tight">
-                    Bugünü Netleştir
+                    {heroTitle}
                   </h2>
                 </div>
                 <p className="text-sm text-white/75 font-medium max-w-sm mb-4">
-                  Planla, önceliklendir, ilerle ve günü güçlü kapat.
+                  {heroSubtitle}
                 </p>
 
                 {showMissedCloseWarning && (

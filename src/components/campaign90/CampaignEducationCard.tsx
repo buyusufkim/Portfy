@@ -6,9 +6,10 @@ import { CampaignCurriculumDay } from '../../data/campaignEducationCurriculum';
 
 interface Props {
     curriculum: CampaignCurriculumDay;
+    readOnly?: boolean;
 }
 
-export const CampaignEducationCard: React.FC<Props> = ({ curriculum }) => {
+export const CampaignEducationCard: React.FC<Props> = ({ curriculum, readOnly = false }) => {
     const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
 
     return (
@@ -93,7 +94,7 @@ export const CampaignEducationCard: React.FC<Props> = ({ curriculum }) => {
                                                 {q.options.map((opt, oIdx) => {
                                                     let optionClass = "flex items-start gap-3 p-3 rounded-xl border transition-all text-[13px] font-medium ";
                                                     
-                                                    if (!isAnswered) {
+                                                    if (!isAnswered && !readOnly) {
                                                         optionClass += "border-slate-200 hover:border-slate-400 hover:bg-slate-50 cursor-pointer text-slate-700";
                                                     } else {
                                                         if (oIdx === q.correctAnswer) {
@@ -115,11 +116,11 @@ export const CampaignEducationCard: React.FC<Props> = ({ curriculum }) => {
                                                                 name={`quiz-${curriculum.lesson_title}-${idx}`} 
                                                                 checked={selectedOpt === oIdx}
                                                                 onChange={() => {
-                                                                    if (!isAnswered) {
+                                                                    if (!isAnswered && !readOnly) {
                                                                         setQuizAnswers(prev => ({...prev, [idx]: oIdx}));
                                                                     }
                                                                 }}
-                                                                disabled={isAnswered}
+                                                                disabled={isAnswered || readOnly}
                                                                 className="mt-0.5 shrink-0" 
                                                             />
                                                             <span className="leading-relaxed">{opt}</span>

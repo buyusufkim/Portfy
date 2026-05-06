@@ -26,7 +26,7 @@ export const Header = ({
 
       <div className="hidden lg:flex flex-col">
         <h1 className="text-xl font-bold text-[#061A32]">
-          {activeTab === 'dashboard' && 'Günaydın ' + (profile?.display_name?.split(' ')[0] || 'Danışman') + ' 👋'}
+          {activeTab === 'dashboard' && 'Ana Ekran'}
           {activeTab === 'tasks' && 'Günlük Akış'}
           {activeTab === 'bolgem' && 'Bölge Analizi'}
           {activeTab === 'portfoyler' && 'Portföylerim'}
