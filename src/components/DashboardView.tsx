@@ -246,25 +246,29 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       WeatherIcon = Cloud;
       weatherText = "Sisli";
       weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#0D2440] to-[#061A32]";
-    } else if (weather.weathercode >= 51 && weather.weathercode <= 67) {
+    } else if ([51, 53, 55].includes(weather.weathercode)) {
+      WeatherIcon = CloudRain;
+      weatherText = "Çisenti";
+      weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#102A4A] to-[#061A32]";
+    } else if ([61, 63, 65].includes(weather.weathercode)) {
       WeatherIcon = CloudRain;
       weatherText = "Yağmurlu";
       weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#102A4A] to-[#061A32]";
-    } else if (weather.weathercode >= 71 && weather.weathercode <= 77) {
+    } else if ([71, 73, 75].includes(weather.weathercode)) {
       WeatherIcon = CloudSnow;
       weatherText = "Karlı";
       weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#143254] to-[#061A32]";
-    } else if (weather.weathercode >= 80 && weather.weathercode <= 82) {
+    } else if ([80, 81, 82].includes(weather.weathercode)) {
       WeatherIcon = CloudRain;
       weatherText = "Sağanak";
       weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#102A4A] to-[#061A32]";
-    } else if (weather.weathercode >= 95) {
+    } else if ([95, 96, 99].includes(weather.weathercode)) {
       WeatherIcon = CloudLightning;
       weatherText = "Fırtınalı";
       weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#1A2235] to-[#061A32]";
     } else {
       WeatherIcon = Cloud;
-      weatherText = "Göreceli";
+      weatherText = "Belirsiz";
     }
   } else if (!weatherLoading && (hour >= 18 || hour < 5)) {
     weatherGradient = "bg-gradient-to-br from-[#041224] via-[#061A32] to-[#041224]";
