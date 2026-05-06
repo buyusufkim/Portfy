@@ -194,7 +194,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const isNewUserCampaignActive = advisorProfile?.experience_level === 'new' && !!activeCampaign;
 
-  const { weather, loading: weatherLoading } = useWeather(profile?.city, profile?.district);
+  const city = profile?.city || profile?.region?.city || (advisorProfile?.region && typeof advisorProfile.region === 'string' ? advisorProfile.region.split('/')[0]?.trim() : undefined);
+  const district = profile?.district || profile?.region?.district || (advisorProfile?.region && typeof advisorProfile.region === 'string' ? advisorProfile.region.split('/')[1]?.trim() : undefined);
+
+  const { weather, loading: weatherLoading } = useWeather(city, district);
   
   const hour = new Date().getHours();
   let greetingObj = { text: "Günaydın", icon: <Sun size={18} className="text-amber-300" /> };
@@ -227,25 +230,41 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   let weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#082B55] to-[#061A32]";
 
   if (weather) {
-    if (weather.weathercode <= 3) {
-      WeatherIcon = weather.weathercode === 0 ? Sun : Cloud;
-      weatherText = weather.weathercode === 0 ? "Güneşli" : "Parçalı bulutlu";
-      weatherGradient = weather.weathercode === 0 ? "bg-gradient-to-br from-[#061A32] via-[#093566] to-[#061A32]" : "bg-gradient-to-br from-[#061A32] via-[#0D2440] to-[#061A32]";
-    } else if (weather.weathercode <= 67 || (weather.weathercode >= 80 && weather.weathercode <= 82)) {
+    if (weather.weathercode === 0) {
+      WeatherIcon = Sun;
+      weatherText = "Açık";
+      weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#093566] to-[#061A32]";
+    } else if (weather.weathercode === 1 || weather.weathercode === 2) {
+      WeatherIcon = Cloud;
+      weatherText = "Parçalı bulutlu";
+      weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#0D2440] to-[#061A32]";
+    } else if (weather.weathercode === 3) {
+      WeatherIcon = Cloud;
+      weatherText = "Bulutlu";
+      weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#0D2440] to-[#061A32]";
+    } else if (weather.weathercode === 45 || weather.weathercode === 48) {
+      WeatherIcon = Cloud;
+      weatherText = "Sisli";
+      weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#0D2440] to-[#061A32]";
+    } else if (weather.weathercode >= 51 && weather.weathercode <= 67) {
       WeatherIcon = CloudRain;
       weatherText = "Yağmurlu";
       weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#102A4A] to-[#061A32]";
-    } else if (weather.weathercode <= 77 || (weather.weathercode >= 85 && weather.weathercode <= 86)) {
+    } else if (weather.weathercode >= 71 && weather.weathercode <= 77) {
       WeatherIcon = CloudSnow;
       weatherText = "Karlı";
       weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#143254] to-[#061A32]";
+    } else if (weather.weathercode >= 80 && weather.weathercode <= 82) {
+      WeatherIcon = CloudRain;
+      weatherText = "Sağanak";
+      weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#102A4A] to-[#061A32]";
     } else if (weather.weathercode >= 95) {
       WeatherIcon = CloudLightning;
       weatherText = "Fırtınalı";
       weatherGradient = "bg-gradient-to-br from-[#061A32] via-[#1A2235] to-[#061A32]";
     } else {
       WeatherIcon = Cloud;
-      weatherText = "Bulutlu";
+      weatherText = "Göreceli";
     }
   } else if (!weatherLoading && (hour >= 18 || hour < 5)) {
     weatherGradient = "bg-gradient-to-br from-[#041224] via-[#061A32] to-[#041224]";
@@ -739,10 +758,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <div className="flex items-center gap-2 text-white/70 text-xs font-bold uppercase tracking-wider mb-1">
                     {greetingObj.icon}
                     <span>{todayDateString}</span>
-                    {profile?.district && (
+                    {district && (
                       <>
                         <span className="opacity-50">•</span>
-                        <span>{profile.district}{profile?.city && `, ${profile.city}`}</span>
+                        <span>{district}{city && `, ${city}`}</span>
                       </>
                     )}
                     {weather && !weatherLoading && (

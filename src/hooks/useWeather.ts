@@ -25,7 +25,7 @@ export const useWeather = (city?: string, district?: string) => {
 
             try {
                 // 1. Geocode
-                const query = district ? `${district}, ${city}` : city;
+                const query = district ? `${district}, ${city}, Turkey` : `${city}, Turkey`;
                 const geocodeRes = await fetch(`https://geocoding-api.open-meteo.com/v1/search?name=${encodeURIComponent(query)}&count=1&language=tr&format=json`);
                 
                 if (!geocodeRes.ok) throw new Error("Geocoding failed");

@@ -56,13 +56,21 @@ const app = express();
 
 app.get('/api/time/turkey', (_req, res) => {
   const now = new Date();
-  const turkeyNow = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }));
+  
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Europe/Istanbul',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  const today = formatter.format(now); // yyyy-mm-dd format
+
   res.json({
     ok: true,
     timezone: 'Europe/Istanbul',
-    iso: turkeyNow.toISOString(),
-    timestamp: turkeyNow.getTime(),
-    today: turkeyNow.toISOString().slice(0, 10)
+    iso: now.toISOString(),
+    timestamp: now.getTime(),
+    today: today
   });
 });
 
