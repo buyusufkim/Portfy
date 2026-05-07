@@ -11,7 +11,7 @@ export interface AIFeatureConfig {
 }
 
 const COMMON_MODELS = [
-  "gemini-2.0-flash",
+  "gemini-2.5-flash",
   "gemini-2.0-flash-lite-preview",
   "gemini-1.5-flash-latest"
 ];
@@ -118,7 +118,7 @@ const WHATSAPP_LEAD_EXTRACT_SCHEMA = {
 export const AI_FEATURE_REGISTRY: Record<string, AIFeatureConfig> = {
   ai_coach: {
     allowedModels: COMMON_MODELS,
-    defaultModel: "gemini-2.0-flash",
+    defaultModel: "gemini-2.5-flash",
     maxInputChars: 15000,
     responseSchema: AI_COACH_SCHEMA,
     allowClientSystemInstruction: false,
@@ -126,14 +126,14 @@ export const AI_FEATURE_REGISTRY: Record<string, AIFeatureConfig> = {
   },
   dashboard_coach: {
     allowedModels: COMMON_MODELS,
-    defaultModel: "gemini-2.0-flash",
+    defaultModel: "gemini-2.5-flash",
     maxInputChars: 5000,
     allowClientSystemInstruction: false,
     allowClientResponseSchema: false,
   },
   whatsapp_analysis: {
     allowedModels: COMMON_MODELS,
-    defaultModel: "gemini-2.0-flash",
+    defaultModel: "gemini-2.5-flash",
     maxInputChars: 10000,
     responseSchema: WHATSAPP_ANALYSIS_SCHEMA,
     allowClientSystemInstruction: false,
@@ -141,7 +141,7 @@ export const AI_FEATURE_REGISTRY: Record<string, AIFeatureConfig> = {
   },
   whatsapp_lead_extract: {
     allowedModels: COMMON_MODELS,
-    defaultModel: "gemini-2.0-flash",
+    defaultModel: "gemini-2.5-flash",
     maxInputChars: 10000,
     responseSchema: WHATSAPP_LEAD_EXTRACT_SCHEMA,
     allowClientSystemInstruction: false,
@@ -149,21 +149,21 @@ export const AI_FEATURE_REGISTRY: Record<string, AIFeatureConfig> = {
   },
   business_card_parse: {
     allowedModels: COMMON_MODELS,
-    defaultModel: "gemini-2.0-flash",
+    defaultModel: "gemini-2.5-flash",
     maxInputChars: 100000,
     allowClientSystemInstruction: false,
     allowClientResponseSchema: false,
   },
   property_valuation: {
     allowedModels: COMMON_MODELS,
-    defaultModel: "gemini-2.0-flash",
+    defaultModel: "gemini-2.5-flash",
     maxInputChars: 20000,
     allowClientSystemInstruction: false,
     allowClientResponseSchema: false,
   },
   generic_safe_json: {
     allowedModels: COMMON_MODELS,
-    defaultModel: "gemini-2.0-flash",
+    defaultModel: "gemini-2.5-flash",
     maxInputChars: 100000,
     allowClientSystemInstruction: false,
     allowClientResponseSchema: false,

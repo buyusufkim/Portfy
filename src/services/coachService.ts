@@ -42,7 +42,7 @@ export const coachService = {
     });
 
     try {
-      const response = await generateContent<AICoachResponse>("gemini-2.0-flash", prompt, {
+      const response = await generateContent<AICoachResponse>("gemini-2.5-flash", prompt, {
         featureKey: "ai_coach",
         responseMimeType: "application/json",
       });
@@ -110,7 +110,7 @@ export const coachService = {
     }`;
 
     try {
-      const response = await generateContent<CoachInsight>("gemini-2.0-flash", prompt, {
+      const response = await generateContent<CoachInsight>("gemini-2.5-flash", prompt, {
         featureKey: "dashboard_coach",
         responseMimeType: "application/json",
       });

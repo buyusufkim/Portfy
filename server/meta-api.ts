@@ -158,7 +158,7 @@ export const handleMetaWebhookPost = async (req: CustomRequest, res: Response) =
                 Sadece geçerli JSON dön: {"isLead": boolean, "intent": "Niyetin 3 kelimelik özeti"}`;
 
                 const response = await ai.models.generateContent({
-                  model: "gemini-2.0-flash",
+                  model: "gemini-2.5-flash",
                   contents: prompt,
                   config: { responseMimeType: "application/json" }
                 });

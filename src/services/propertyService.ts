@@ -250,7 +250,7 @@ export const propertyService = {
     `;
 
     try {
-      const response = await generateContent("gemini-2.0-flash", prompt, { featureKey: "generic_safe_json" }) as PropertyAIContent;
+      const response = await generateContent("gemini-2.5-flash", prompt, { featureKey: "generic_safe_json" }) as PropertyAIContent;
       return response.metin || "İlan metni oluşturulamadı. Lütfen tekrar deneyin.";
     } catch (error) {
       console.error("İlan metni üretim hatası:", error);
@@ -280,7 +280,7 @@ export const propertyService = {
       }
     `;
     
-    const response = await generateContent("gemini-2.0-flash", prompt, { featureKey: "generic_safe_json" }) as InstagramMarketingContent;
+    const response = await generateContent("gemini-2.5-flash", prompt, { featureKey: "generic_safe_json" }) as InstagramMarketingContent;
     return response;
   },
 
@@ -305,7 +305,7 @@ export const propertyService = {
       }
     `;
     
-    const response = await generateContent("gemini-2.0-flash", prompt, { featureKey: "generic_safe_json" }) as WhatsAppMarketingContent;
+    const response = await generateContent("gemini-2.5-flash", prompt, { featureKey: "generic_safe_json" }) as WhatsAppMarketingContent;
     return response;
   },
 
@@ -340,7 +340,7 @@ export const propertyService = {
       }
     `;
 
-    const response = await generateContent("gemini-2.0-flash", prompt, { featureKey: "generic_safe_json" }) as MarketingModuleContent;
+    const response = await generateContent("gemini-2.5-flash", prompt, { featureKey: "generic_safe_json" }) as MarketingModuleContent;
     return response;
   },
 

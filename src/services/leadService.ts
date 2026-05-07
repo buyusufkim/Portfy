@@ -92,7 +92,7 @@ export const leadService = {
       }
 
       const response = await generateContent(
-        "gemini-2.0-flash", 
+        "gemini-2.5-flash", 
         prompt,
         { featureKey: "generic_safe_json" }
       ) as AILeadAnalysis;

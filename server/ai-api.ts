@@ -93,7 +93,7 @@ const ALLOWED_MODELS = [
   "gemini-flash-latest",
   "gemini-3-flash-preview",
   "gemini-3.1-pro-preview",
-  "gemini-2.0-flash",
+  "gemini-2.5-flash",
   "gemini-2.0-flash-lite-preview",
   "gemini-2.0-pro-exp-02-05",
   "gemini-1.5-flash-latest",
@@ -1230,6 +1230,50 @@ export const handleEarnXP = async (req: AuthRequest, res: Response) => {
       if (Number.isNaN(d.getTime())) return null;
       return getTurkeyTodayISO(d);
     };
+
+    if (actionType === 'DAILY_FOCUS_COMPLETED') {
+      if (!entityId) {
+        return res.status(400).json({ error: "Missing taskId for DAILY_FOCUS_COMPLETED" });
+      }
+
+      // Safe server-side branch for DAILY_FOCUS_COMPLETED, fixed 25 XP
+      const { data: goal, error: goalError } = await supabaseAdmin
+        .from('micro_goals')
+        .select('*')
+        .eq('id', entityId)
+        .eq('user_id', userId)
+        .single();
+        
+      if (goalError || !goal) {
+        return res.status(400).json({ error: "Micro goal not found" });
+      }
+      
+      if (goal.xp_awarded) {
+        return res.json({ success: true, message: "XP already awarded", xp_awarded: 0 });
+      }
+
+      // Mark as awarded
+      await supabaseAdmin.from('micro_goals').update({ xp_awarded: true }).eq('id', entityId);
+
+      // Now we can update overall XP using a custom RPC or directly doing it from profiles table
+      const { data: profile } = await supabaseAdmin.from('profiles').select('total_xp, broker_level').eq('id', userId).single();
+      if (profile) {
+         const newXp = (profile.total_xp || 0) + 25;
+         let newLevel = 1;
+         if (newXp >= 15000) newLevel = 4;
+         else if (newXp >= 5000) newLevel = 3;
+         else if (newXp >= 1000) newLevel = 2;
+         await supabaseAdmin.from('profiles').update({ total_xp: newXp, broker_level: newLevel }).eq('id', userId);
+         
+         const { data: currentStats } = await supabaseAdmin.from('user_stats').select('xp_earned, tasks_completed').eq('user_id', userId).eq('date', today).maybeSingle();
+         if (currentStats) {
+             await supabaseAdmin.from('user_stats').update({ xp_earned: (currentStats.xp_earned || 0) + 25, tasks_completed: (currentStats.tasks_completed || 0) + 1 }).eq('user_id', userId).eq('date', today);
+         } else {
+             await supabaseAdmin.from('user_stats').insert({ user_id: userId, date: today, xp_earned: 25, tasks_completed: 1, calls_made: 0, visits_made: 0 });
+         }
+      }
+      return res.json({ success: true, xp_awarded: 25, new_total: profile ? (profile.total_xp || 0) + 25 : 25 });
+    }
 
     if (actionType === 'START_DAY' || actionType === 'END_DAY') {
       const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc(

@@ -73,7 +73,7 @@ export const aiService = {
     ];
 
     try {
-      const response = await generateContent<ParsedBusinessCard>("gemini-2.0-flash", contents, { 
+      const response = await generateContent<ParsedBusinessCard>("gemini-2.5-flash", contents, { 
         featureKey: "business_card_parse",
         responseMimeType: "application/json" 
       });
@@ -147,7 +147,7 @@ export const aiService = {
 
     try {
       const response = await generateContent<{ tasks: string[], insight: string }>(
-        "gemini-2.0-flash",
+        "gemini-2.5-flash",
         prompt,
         { 
           featureKey: "dashboard_coach",
@@ -204,7 +204,7 @@ export const aiService = {
     `;
 
     try {
-      const response = await generateContent<ValuationReport>("gemini-2.0-flash", prompt, { 
+      const response = await generateContent<ValuationReport>("gemini-2.5-flash", prompt, { 
         featureKey: "property_valuation",
         responseMimeType: "application/json" 
       });
