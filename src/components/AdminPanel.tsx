@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
   Users, Settings, Package, LayoutDashboard, X, 
-  ClipboardList, Activity, Briefcase, Mail
+  ClipboardList, Activity, Briefcase, Mail, Zap, Target
 } from 'lucide-react';
 import { supabase } from '../lib/supabase';
 import { UserProfile } from '../types';
@@ -20,9 +20,70 @@ import { AdminDashboardTab } from './admin/AdminDashboardTab';
 import { AdminUserDetailModal } from './admin/AdminUserDetailModal';
 import { AdminUserSubscriptionModal } from './admin/AdminUserSubscriptionModal';
 
+import { AdminPackageRequestsTab } from './admin/AdminPackageRequestsTab';
+import { AdminAiUsageTab } from './admin/AdminAiUsageTab';
+
+import { AdminSystemHealthTab } from './admin/AdminSystemHealthTab';
+import { AdminCampaign90Tab } from './admin/AdminCampaign90Tab';
+import { AdminOperationsTab } from './admin/AdminOperationsTab';
+
 const getErrorMessage = (error: unknown, fallback = 'Bilinmeyen bir hata oluştu') => {
   return error instanceof Error ? error.message : String(error);
 };
+
+export type AdminTabKey = 'dashboard' | 'users' | 'packages' | 'package_requests' | 'ai_usage' | 'system_health' | 'campaign90' | 'operations' | 'settings' | 'tasks' | 'support' | 'announcements' | 'audit';
+
+type AdminMenuItem = {
+  key: AdminTabKey;
+  label: string;
+  icon: React.ElementType;
+};
+
+type AdminMenuGroup = {
+  title: string;
+  items: AdminMenuItem[];
+};
+
+const adminMenuGroups: AdminMenuGroup[] = [
+  {
+    title: 'Genel Bakış',
+    items: [
+      { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard }
+    ]
+  },
+  {
+    title: 'Gelir & Abonelik',
+    items: [
+      { key: 'users', label: 'Üyeler & Abonelik', icon: Users },
+      { key: 'package_requests', label: 'Paket Talepleri', icon: ClipboardList },
+      { key: 'packages', label: 'Paketler', icon: Package }
+    ]
+  },
+  {
+    title: 'Kullanım & Başarı',
+    items: [
+      { key: 'campaign90', label: '90 Gün Kampı', icon: Target },
+      { key: 'operations', label: 'CRM & Portföy', icon: Briefcase },
+      { key: 'ai_usage', label: 'AI Kullanım', icon: Zap }
+    ]
+  },
+  {
+    title: 'Operasyon',
+    items: [
+      { key: 'tasks', label: 'Görev Yönetimi', icon: ClipboardList },
+      { key: 'support', label: 'Destek Talepleri', icon: Mail },
+      { key: 'announcements', label: 'Duyurular', icon: Briefcase }
+    ]
+  },
+  {
+    title: 'Sistem',
+    items: [
+      { key: 'system_health', label: 'Sistem Sağlığı', icon: Activity },
+      { key: 'audit', label: 'Audit Log', icon: Activity },
+      { key: 'settings', label: 'Genel Ayarlar', icon: Settings }
+    ]
+  }
+];
 
 export type AdminUserSubscriptionUpdate = {
   tier: 'free' | 'master';
@@ -35,7 +96,7 @@ interface AdminPanelProps {
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'packages' | 'settings' | 'tasks' | 'support' | 'announcements' | 'audit'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'packages' | 'package_requests' | 'ai_usage' | 'system_health' | 'campaign90' | 'operations' | 'settings' | 'tasks' | 'support' | 'announcements' | 'audit'>('dashboard');
 
   // Support & Announcements & Audit Log states can be placed here if needed.
   // Actually, I will create inner components for them to keep it clean.
@@ -328,31 +389,33 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
           </h1>
           <button onClick={onClose} className="p-2 text-slate-400 hover:text-white transition-colors md:hidden"><X size={24} /></button>
         </div>
-        <nav className="flex-1 px-4 space-y-1.5 overflow-y-auto mt-6">
-          <button onClick={() => setActiveTab('dashboard')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'dashboard' ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}`}>
-            <LayoutDashboard size={20} className={activeTab === 'dashboard' ? "text-teal-400" : ""} /> Dashboard
-          </button>
-          <button onClick={() => setActiveTab('users')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'users' ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}`}>
-            <Users size={20} className={activeTab === 'users' ? "text-teal-400" : ""} /> Üyeler & Abonelik
-          </button>
-          <button onClick={() => setActiveTab('support')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'support' ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}`}>
-            <Mail size={20} className={activeTab === 'support' ? "text-teal-400" : ""} /> Destek Talepleri
-          </button>
-          <button onClick={() => setActiveTab('announcements')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'announcements' ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}`}>
-            <Briefcase size={20} className={activeTab === 'announcements' ? "text-teal-400" : ""} /> Duyurular
-          </button>
-          <button onClick={() => setActiveTab('packages')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'packages' ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}`}>
-            <Package size={20} className={activeTab === 'packages' ? "text-teal-400" : ""} /> Paketler
-          </button>
-          <button onClick={() => setActiveTab('tasks')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'tasks' ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}`}>
-            <ClipboardList size={20} className={activeTab === 'tasks' ? "text-teal-400" : ""} /> Görev Yönetimi
-          </button>
-          <button onClick={() => setActiveTab('audit')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'audit' ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}`}>
-            <Activity size={20} className={activeTab === 'audit' ? "text-teal-400" : ""} /> Audit Log
-          </button>
-          <button onClick={() => setActiveTab('settings')} className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl font-bold transition-all ${activeTab === 'settings' ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'}`}>
-            <Settings size={20} className={activeTab === 'settings' ? "text-teal-400" : ""} /> Genel Ayarlar
-          </button>
+        <nav className="flex-1 px-4 py-4 space-y-6 overflow-y-auto mt-2">
+          {adminMenuGroups.map((group, gIdx) => (
+            <div key={gIdx} className="space-y-2">
+              <h3 className="text-[10px] font-black text-slate-500 uppercase tracking-widest px-2">
+                {group.title}
+              </h3>
+              <div className="space-y-1">
+                {group.items.map((item) => {
+                  const Icon = item.icon;
+                  const isActive = activeTab === item.key;
+                  return (
+                    <button 
+                      key={item.key}
+                      onClick={() => setActiveTab(item.key)} 
+                      className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl font-bold transition-all text-sm ${
+                        isActive 
+                          ? 'bg-slate-800 text-white shadow-sm border border-slate-700/50' 
+                          : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800/50 border border-transparent'
+                      }`}
+                    >
+                      <Icon size={18} className={isActive ? "text-teal-400" : ""} /> {item.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
         </nav>
         <div className="p-6 border-t border-slate-800 hidden md:block">
           <button onClick={onClose} className="w-full py-3 bg-slate-800/50 text-slate-300 rounded-xl font-bold hover:bg-slate-700 hover:text-white transition-colors border border-slate-700">Uygulamaya Dön</button>
@@ -370,6 +433,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                 <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-[10px] uppercase tracking-widest font-bold rounded-full border border-indigo-100">
                   {activeTab === 'dashboard' && 'Metrikler'}
                   {activeTab === 'users' && 'Üyeler'}
+                  {activeTab === 'package_requests' && 'Talepler'}
+                  {activeTab === 'campaign90' && '90 Gün Kampı'}
+                  {activeTab === 'operations' && 'Operasyon'}
+                  {activeTab === 'ai_usage' && 'AI İzleme'}
+                  {activeTab === 'system_health' && 'Sağlık'}
                   {activeTab === 'support' && 'Destek'}
                   {activeTab === 'announcements' && 'Duyurular'}
                   {activeTab === 'packages' && 'Satış'}
@@ -381,6 +449,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               <p className="text-sm text-slate-500 font-medium mt-1.5 line-clamp-1">
                 {activeTab === 'dashboard' && 'SaaS gelir, kullanıcı büyümesi ve yapay zeka maliyet özeti.'}
                 {activeTab === 'users' && 'Kullanıcı yönetimi, abonelik düzenlemeleri ve token limit kontrolü.'}
+                {activeTab === 'package_requests' && 'Kullanıcıların oluşturduğu abonelik paket talepleri ve havale onayları.'}
+                {activeTab === 'campaign90' && 'Yeni danışman kampı ilerleme, disiplin ve kopma riski takibi.'}
+                {activeTab === 'operations' && 'CRM, portföy, bölge ve kullanıcı kullanım görünürlüğü.'}
+                {activeTab === 'ai_usage' && 'AI token tüketimi, feature kırılımı ve tahmini maliyet takibi.'}
+                {activeTab === 'system_health' && 'API, Supabase, AI sağlayıcı, market servisi ve runtime hata takibi.'}
                 {activeTab === 'support' && 'Kullanıcı destek talepleri ve iletişim.'}
                 {activeTab === 'announcements' && 'Tüm üyelere gösterilecek sistem içi duyurular ve haberler.'}
                 {activeTab === 'packages' && 'Kullanıcılara sunulacak abonelik paketleri ve özellikleri.'}
@@ -444,6 +517,43 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               handleDeleteUser={handleDeleteUser}
               getRemainingDays={getRemainingDays}
               getEffectiveAiTokenLimitSafe={getEffectiveAiTokenLimitSafe}
+            />
+          )}
+
+          {/* PAKET TALEPLERİ SEKMESİ */}
+          {activeTab === 'package_requests' && (
+            <AdminPackageRequestsTab 
+              showAdminToast={showAdminToast}
+              openAdminConfirm={openAdminConfirm}
+              closeAdminConfirm={closeAdminConfirm}
+            />
+          )}
+
+          {/* AI KULLANIM SEKMESİ */}
+          {activeTab === 'ai_usage' && (
+            <AdminAiUsageTab 
+              showAdminToast={showAdminToast}
+            />
+          )}
+
+          {/* SİSTEM SAĞLIĞI SEKMESİ */}
+          {activeTab === 'system_health' && (
+            <AdminSystemHealthTab 
+              showAdminToast={showAdminToast}
+            />
+          )}
+
+          {/* 90 GÜN KAMP YÖNETİMİ SEKMESİ */}
+          {activeTab === 'campaign90' && (
+            <AdminCampaign90Tab 
+              showAdminToast={showAdminToast}
+            />
+          )}
+
+          {/* CRM & PORTFÖY OPERASYON SEKMESİ */}
+          {activeTab === 'operations' && (
+            <AdminOperationsTab 
+              showAdminToast={showAdminToast}
             />
           )}
 

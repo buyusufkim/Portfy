@@ -192,6 +192,21 @@ app.delete("/api/ai/admin/task-templates/:id", authenticate, requireAdmin, handl
 // Momentum Endpoints
 app.post("/api/momentum/maintenance/run", authenticate, handleMaintenanceRun);
 
+// System Health Endpoint (Admin Only)
+import { handleGetSystemHealth } from "./server/system-health-api.js";
+app.get("/api/admin/health", authenticate, requireAdmin, handleGetSystemHealth);
+
+import { handleAdminGetCampaignOverview, handleAdminGetCampaignUsers } from "./server/admin-campaign-api.js";
+app.get("/api/admin/campaign90/overview", authenticate, requireAdmin, handleAdminGetCampaignOverview);
+app.get("/api/admin/campaign90/users", authenticate, requireAdmin, handleAdminGetCampaignUsers);
+
+import { handleAdminOperationsOverview, handleAdminOperationsUsers } from "./server/admin-operations-api.js";
+app.get("/api/admin/operations/overview", authenticate, requireAdmin, handleAdminOperationsOverview);
+app.get("/api/admin/operations/users", authenticate, requireAdmin, handleAdminOperationsUsers);
+
+import { handleAdminGetUserActivity } from "./server/admin-user-activity-api.js";
+app.get("/api/admin/users/:userId/activity", authenticate, requireAdmin, handleAdminGetUserActivity);
+
 // Owner Portal Endpoints
 app.get("/api/portal/:token", handleGetPortalData);
 app.post("/api/portal/create", authenticate, handleCreatePortalToken);
@@ -229,7 +244,20 @@ app.post('/api/market/analyze', authenticate, marketLimiter, async (req: AuthReq
     res.json(marketData);
   } catch (error) {
     console.error('Market Analiz Hatası:', error);
-    res.status(500).json({ error: process.env.NODE_ENV === "development" && error instanceof Error ? error.message : "Piyasa verileri çekilemedi." });
+    const errorMessage = error instanceof Error ? error.message : "Piyasa verileri çekilemedi.";
+    
+    logRuntimeError({
+      requestId: (req as any).requestId,
+      userId: req.user?.id,
+      route: '/api/market/analyze',
+      method: 'POST',
+      statusCode: 500, // or 401 if unauthorized
+      message: errorMessage,
+      source: 'market',
+      severity: 'error'
+    });
+    
+    res.status(500).json({ error: process.env.NODE_ENV === "development" ? errorMessage : "Piyasa verileri çekilemedi." });
   }
 });
 
@@ -237,23 +265,39 @@ app.use("/api/*", (req, res) => {
   res.status(404).json({ error: `API route not found: ${req.originalUrl}` });
 });
 
+import { logRuntimeError } from "./server/runtime-logger.js";
+
 export const safeErrorMessage = (error: unknown, fallback: string) =>
     process.env.NODE_ENV === "development" && error instanceof Error ? error.message : fallback;
 
 app.use((err: unknown, req: CustomRequest, res: Response, next: NextFunction) => {
   const reqId = req.requestId || 'unknown';
+  const errorMessage = err instanceof Error ? err.message : String(err);
+  
   console.error(`[API_UNHANDLED_ERROR] [${reqId}]`, {
     path: req.path,
     method: req.method,
-    message: err instanceof Error ? err.message : String(err),
+    message: errorMessage,
     stack: err instanceof Error ? err.stack : undefined
   });
   
+  // Log strictly global errors
   if (req.url.startsWith('/api')) {
+    logRuntimeError({
+      requestId: reqId,
+      userId: (req as any).user?.id,
+      route: req.path,
+      method: req.method,
+      statusCode: 500,
+      message: errorMessage,
+      source: 'server',
+      severity: 'critical'
+    });
+    
     const isDev = process.env.NODE_ENV === "development";
     res.status(500).json({
       error: 'internal_server_error',
-      message: isDev ? (err instanceof Error ? err.message : 'Unknown server error') : 'Bir hata oluştu. Lütfen tekrar deneyin.',
+      message: isDev ? errorMessage : 'Bir hata oluştu. Lütfen tekrar deneyin.',
       requestId: reqId
     });
     return;

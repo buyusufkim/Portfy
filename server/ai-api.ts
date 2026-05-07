@@ -431,6 +431,23 @@ export const handleAIGeneration = async (req: AuthRequest, res: Response) => {
     });
   } catch (error: unknown) {
     console.error("AI Generation Backend Error:", error);
+    
+    // Log the AI error
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    import("./runtime-logger.js").then(({ logRuntimeError }) => {
+      logRuntimeError({
+        requestId: (req as any).requestId,
+        userId: req.user?.id,
+        route: '/api/ai/generate',
+        method: 'POST',
+        statusCode: 500,
+        message: errorMessage,
+        source: 'ai',
+        severity: 'error',
+        errorCode: 'AI_PROVIDER_ERROR'
+      });
+    }).catch(err => console.error('Failed to load runtime-logger', err));
+
     res
       .status(500)
       .json({

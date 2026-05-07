@@ -6,6 +6,7 @@ import {
 import { UserProfile } from '../../types';
 import { MaskedContact } from '../shared/MaskedContact';
 import { AdminUserNotes } from '../AdminUserNotes';
+import { AdminUserActivitySection } from './AdminUserActivitySection';
 import { getSubscriptionLabel } from '../ProfilView';
 import { getEffectiveAiTokenLimitSafe, isExpiredSubscriber } from './adminPanelHelpers';
 
@@ -155,6 +156,8 @@ export const AdminUserDetailModal: React.FC<AdminUserDetailModalProps> = ({
                 <AdminUserNotes userId={user.id} />
               </div>
               
+              <AdminUserActivitySection userId={user.id} />
+
               {/* Risk Situation Banner */}
               {(() => {
                   const isExpired = isExpiredSubscriber(user);

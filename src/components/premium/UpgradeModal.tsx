@@ -198,17 +198,39 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onA
                  </button>
               )}
 
+              <button 
+                onClick={async () => {
+                  try {
+                    setLoading(true);
+                    const { packageRequestService } = await import('../../services/packageRequestService');
+                    await packageRequestService.createPackageRequest({
+                      requested_duration: selectedDuration.id
+                    });
+                    alert('Paket talebiniz alındı. En kısa sürede iletişime geçeceğiz.');
+                    onClose();
+                  } catch (err: unknown) {
+                    alert(err instanceof Error ? err.message : 'Bir hata oluştu');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading || !selectedDuration}
+                className="w-full py-4 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-900/10 disabled:opacity-50"
+              >
+                Paket Talebi Oluştur <ArrowRight size={18} className="ml-1 opacity-70" />
+              </button>
+
               {isValidWa ? (
                 <>
                   <button 
                     onClick={handleActivationRequest}
                     disabled={loading || !selectedDuration}
-                    className="w-full py-4 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-xl shadow-slate-900/10 disabled:opacity-50"
+                    className="w-full py-3 bg-green-50 text-green-700 border border-green-200 rounded-xl font-semibold hover:bg-green-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >
-                    <MessageCircle size={20} className="text-white/70" /> WhatsApp'tan Satın Al <ArrowRight size={18} className="ml-1 opacity-70" />
+                    <MessageCircle size={20} /> Satış Ekibine WhatsApp'tan Ulaşın
                   </button>
-                  <p className="text-center text-xs text-slate-500 font-medium px-4">
-                    Ödemeni Havale/EFT ile yapmak için satış ekibimizle WhatsApp üzerinden iletişime geçebilirsin.
+                  <p className="text-center text-xs text-slate-500 font-medium px-4 mt-2">
+                    Talebinizi oluşturduktan sonra havale/EFT ile ödeme işlemini tamamlamak için satış ekibimizle iletişime geçebilirsiniz.
                   </p>
                 </>
               ) : (
@@ -216,7 +238,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onA
                   <button 
                     type="button"
                     disabled
-                    className="w-full py-4 bg-slate-100 text-slate-400 rounded-xl font-semibold flex items-center justify-center gap-2 cursor-not-allowed"
+                    className="w-full py-3 bg-slate-100 text-slate-400 rounded-xl font-semibold flex items-center justify-center gap-2 cursor-not-allowed mt-2"
                   >
                     <MessageCircle size={20} className="opacity-50" /> Satın alma şu an deaktif
                   </button>

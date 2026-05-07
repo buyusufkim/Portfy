@@ -143,6 +143,31 @@ export interface UserProfile {
   notification_preference?: string;
 }
 
+export interface PackageRequest {
+  id: string;
+  user_id: string;
+  requested_package: string;
+  requested_duration: '1-month' | '3-month' | '6-month' | '12-month';
+  amount_numeric: number;
+  amount_text: string;
+  status: 'pending' | 'approved' | 'rejected' | 'cancelled';
+  user_note?: string;
+  admin_note?: string;
+  approved_by?: string;
+  approved_at?: string;
+  rejected_at?: string;
+  created_at: string;
+  updated_at: string;
+  user?: {
+    display_name: string;
+    email: string;
+    phone?: string;
+    tier?: string;
+    subscription_type?: string;
+    subscription_end_date?: string;
+  };
+}
+
 export interface WorkDisciplineLog {
   id: string;
   user_id: string;
