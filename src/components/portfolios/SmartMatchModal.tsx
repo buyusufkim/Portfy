@@ -2,6 +2,7 @@ import React, { useMemo } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Zap, User, MessageSquare, ArrowRight } from 'lucide-react';
 import { Property, Lead } from '../../types';
+import { maskPhone } from '../../utils/masking';
 
 interface SmartMatchModalProps {
   show: boolean;
@@ -111,7 +112,7 @@ export const SmartMatchModal: React.FC<SmartMatchModalProps> = ({ show, onClose,
                               </div>
                               <div>
                                 <div className="text-sm font-bold text-slate-900">{lead.name}</div>
-                                <div className="text-[10px] text-slate-500">{lead.phone} • {lead.type}</div>
+                                <div className="text-[10px] text-slate-500">{maskPhone(lead.phone)} • {lead.type}</div>
                               </div>
                             </div>
                             <a 

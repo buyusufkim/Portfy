@@ -57,6 +57,8 @@ import { advisorProfileService } from "./services/advisorProfileService";
 import { campaign90Service } from "./services/campaign90Service";
 import { CampaignStartWizard } from "./components/campaign90/CampaignStartWizard";
 import { AdvisorProfessionalProfile } from "./types";
+import { supabase } from "./lib/supabase";
+import { useAppModalState } from "./hooks/useAppModalState";
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { retry: 2, staleTime: 1000 * 60 * 5 } },
@@ -154,7 +156,6 @@ function MainApp() {
 
       if (payload.package_action === 'pro_request') {
           try {
-              const { supabase } = await import('./lib/supabase');
               await supabase.from('support_tickets').insert({
                   user_id: profile?.id,
                   subject: "Portfy Pro Paket Talebi",
@@ -195,47 +196,30 @@ function MainApp() {
     }
   });
 
-  const [showQuickAdd, setShowQuickAdd] = useState(false);
-  const [showVoiceQuickAdd, setShowVoiceQuickAdd] = useState(false);
-  const [showAddProperty, setShowAddProperty] = useState(false);
-  const [showAddLead, setShowAddLead] = useState(false);
-  const [showAddVisit, setShowAddVisit] = useState(false);
-  const [showWhatsAppImport, setShowWhatsAppImport] = useState(false);
-  const [showDailyRadar, setShowDailyRadar] = useState(false);
-  const [pendingEarlyStartReason, setPendingEarlyStartReason] = useState<string | undefined>();
-  const [showDayCloser, setShowDayCloser] = useState(false);
-  const [showIntegrationModal, setShowIntegrationModal] = useState(false);
-  const [showExternalListings, setShowExternalListings] = useState(false);
-  const [showImportUrlModal, setShowImportUrlModal] = useState(false);
-  const [showMissedOpportunities, setShowMissedOpportunities] = useState(false);
-  const [showRegionSetup, setShowRegionSetup] = useState(false);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [showAddTask, setShowAddTask] = useState(false);
-  const [showDocumentAutomation, setShowDocumentAutomation] = useState(false);
-  const [documentAutomationProperty, setDocumentAutomationProperty] =
-    useState<Property | null>(null);
-  const [documentAutomationLead, setDocumentAutomationLead] =
-    useState<Lead | null>(null);
-
-  const closeAllModals = () => {
-    setShowQuickAdd(false);
-    setShowVoiceQuickAdd(false);
-    setShowAddProperty(false);
-    setShowAddLead(false);
-    setShowAddVisit(false);
-    setShowWhatsAppImport(false);
-    setShowDailyRadar(false);
-    setShowDayCloser(false);
-    setShowIntegrationModal(false);
-    setShowExternalListings(false);
-    setShowImportUrlModal(false);
-    setShowMissedOpportunities(false);
-    setShowAddTask(false);
-    setShowDocumentAutomation(false);
-    setShowRegionSetup(false);
-    setShowLeadMethodModal(false);
-    setShowScanner(false);
-  };
+  const {
+    showQuickAdd, setShowQuickAdd,
+    showVoiceQuickAdd, setShowVoiceQuickAdd,
+    showAddProperty, setShowAddProperty,
+    showAddLead, setShowAddLead,
+    showAddVisit, setShowAddVisit,
+    showWhatsAppImport, setShowWhatsAppImport,
+    showDailyRadar, setShowDailyRadar,
+    pendingEarlyStartReason, setPendingEarlyStartReason,
+    showDayCloser, setShowDayCloser,
+    showIntegrationModal, setShowIntegrationModal,
+    showExternalListings, setShowExternalListings,
+    showImportUrlModal, setShowImportUrlModal,
+    showMissedOpportunities, setShowMissedOpportunities,
+    showRegionSetup, setShowRegionSetup,
+    showUpgradeModal, setShowUpgradeModal,
+    showAddTask, setShowAddTask,
+    showDocumentAutomation, setShowDocumentAutomation,
+    documentAutomationProperty, setDocumentAutomationProperty,
+    documentAutomationLead, setDocumentAutomationLead,
+    showLeadMethodModal, setShowLeadMethodModal,
+    showScanner, setShowScanner,
+    closeAllModals,
+  } = useAppModalState();
 
   const [selectedProperty, setSelectedProperty] = useState<Property | null>(
     null,
@@ -455,8 +439,6 @@ function MainApp() {
     portfolios: portfolioProps,
     utilities: utilityProps,
   };
-  const [showLeadMethodModal, setShowLeadMethodModal] = useState(false);
-  const [showScanner, setShowScanner] = useState(false);
   const [bypassAdvProfileError, setBypassAdvProfileError] = useState(false);
 
   const showOnboarding = profile && !advProfileLoading && !advProfileError && (!advisorProfile || !advisorProfile.onboarding_completed) && !showCampaignPromo && !bypassAdvProfileError;

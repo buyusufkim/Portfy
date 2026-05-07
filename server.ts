@@ -90,7 +90,30 @@ app.get(["/health", "/api/health"], (_req, res) => {
 
 export interface CustomRequest extends Request {
   rawBody?: Buffer;
+  requestId?: string;
 }
+
+const sensitiveFields = ['phone', 'email', 'owner.phone', 'owner.email', 'whatsapp', 'token', 'access_token', 'refresh_token', 'apikey', 'secret', 'authorization', 'password'];
+
+const maskSensitiveData = (obj: unknown): unknown => {
+  if (!obj || typeof obj !== 'object') return obj;
+  
+  if (Array.isArray(obj)) {
+    return obj.map(item => maskSensitiveData(item));
+  }
+  
+  const maskedObj: Record<string, unknown> = {};
+  for (const key in obj as Record<string, unknown>) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      if (sensitiveFields.some(sf => key.toLowerCase().includes(sf.toLowerCase()))) {
+        maskedObj[key] = '***MASKED***';
+      } else {
+        maskedObj[key] = maskSensitiveData((obj as Record<string, unknown>)[key]);
+      }
+    }
+  }
+  return maskedObj;
+};
 
 app.use(express.json({
   limit: "50mb",
@@ -101,7 +124,10 @@ app.use(express.json({
   }
 }));
 
-app.use((req, res, next) => {
+app.use((req: CustomRequest, res: Response, next: NextFunction) => {
+  req.requestId = crypto.randomUUID();
+  res.setHeader('X-Request-ID', req.requestId);
+  
   if (req.url.startsWith('/api')) {
     const start = Date.now();
     
@@ -110,18 +136,12 @@ app.use((req, res, next) => {
       const isProduction = process.env.NODE_ENV === "production";
       
       let logBody = '';
-      if (!isProduction && req.method !== 'GET' && Object.keys(req.body || {}).length > 0) {
-        const maskedBody = { ...req.body };
-        const sensitiveFields = ['password', 'token', 'access_token', 'apiKey', 'apikey', 'secret', 'phone', 'email'];
-        Object.keys(maskedBody).forEach(key => {
-          if (sensitiveFields.some(sf => key.toLowerCase().includes(sf))) {
-            maskedBody[key] = '***MASKED***';
-          }
-        });
-        logBody = ` Body: ${JSON.stringify(maskedBody).substring(0, 500)}`;
+      if (req.method !== 'GET' && Object.keys(req.body || {}).length > 0) {
+        const maskedBody = maskSensitiveData(req.body);
+        logBody = ` Body: ${JSON.stringify(maskedBody).substring(0, 1000)}`;
       }
       
-      console.log(`[API] ${req.method} ${req.url} ${res.statusCode} ${latency}ms${logBody}`);
+      console.log(`[API] [${req.requestId}] ${req.method} ${req.url} ${res.statusCode} ${latency}ms${logBody}`);
     });
   }
   next();
@@ -220,18 +240,21 @@ app.use("/api/*", (req, res) => {
 export const safeErrorMessage = (error: unknown, fallback: string) =>
     process.env.NODE_ENV === "development" && error instanceof Error ? error.message : fallback;
 
-app.use((err: unknown, req: Request, res: Response, next: NextFunction) => {
-  console.error('[API_UNHANDLED_ERROR]', {
+app.use((err: unknown, req: CustomRequest, res: Response, next: NextFunction) => {
+  const reqId = req.requestId || 'unknown';
+  console.error(`[API_UNHANDLED_ERROR] [${reqId}]`, {
     path: req.path,
     method: req.method,
     message: err instanceof Error ? err.message : String(err),
     stack: err instanceof Error ? err.stack : undefined
   });
+  
   if (req.url.startsWith('/api')) {
+    const isProd = process.env.NODE_ENV === "production";
     res.status(500).json({
       error: 'internal_server_error',
-      message: err instanceof Error ? err.message : 'Unknown server error',
-      path: req.path
+      message: isProd ? 'Bir hata oluştu. Lütfen tekrar deneyin.' : (err instanceof Error ? err.message : 'Unknown server error'),
+      requestId: reqId
     });
     return;
   }

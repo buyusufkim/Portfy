@@ -872,3 +872,7 @@ export interface CampaignDailyScore {
   created_at: string;
   updated_at: string;
 }
+
+export const isAdminRole = (role?: string | null): boolean => {
+  return role === 'admin' || role === 'super_admin';
+};

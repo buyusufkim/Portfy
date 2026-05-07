@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Circle } from 'react-leaflet';
+import { maskPhone } from '../utils/masking';
 import L from 'leaflet';
 import { Plus, Layers, Crosshair, X, CheckCircle2, ArrowRight, Phone, MapPin as MapPinIcon, FileText, Calendar, MessageCircle, Map as MapIcon } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
@@ -204,7 +205,7 @@ export const RegionMap: React.FC<RegionMapProps> = ({
                 <span className="text-[10px] font-bold text-indigo-500 uppercase">{selectedPin.kind === 'region_point' ? 'Bölge Noktası' : 'Network Teması'}</span>
                 <h3 className="font-bold text-slate-900 text-sm mb-1">{selectedPin.title}</h3>
                 {selectedPin.contact_name && <p className="text-xs font-medium text-slate-700 m-0">{selectedPin.contact_name}</p>}
-                {selectedPin.phone && <p className="text-xs text-slate-500 m-0">{selectedPin.phone}</p>}
+                {selectedPin.phone && <p className="text-xs text-slate-500 m-0">{maskPhone(selectedPin.phone)}</p>}
               </div>
 
               <div className="grid grid-cols-2 gap-2 mb-3">

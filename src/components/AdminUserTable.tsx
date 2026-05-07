@@ -10,6 +10,7 @@ import {
 } from "lucide-react";
 import { UserProfile } from "../types";
 import { getEffectiveAiTokenLimit } from "../config/subscriptionLimits";
+import { maskEmail } from "../utils/masking";
 
 interface AdminUserTableProps {
   loading: boolean;
@@ -119,7 +120,7 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
                           <div className="font-bold text-slate-900 group-hover:text-indigo-600 transition-colors text-base">
                             {u.display_name || "İsimsiz Kullanıcı"}
                           </div>
-                          <div className="text-xs text-slate-500 font-medium mb-1">{u.email}</div>
+                          <div className="text-xs text-slate-500 font-medium mb-1">{maskEmail(u.email)}</div>
                           <div className="text-[10px] text-slate-400 flex items-center gap-1 font-medium">
                             <Clock size={10} />
                             Son Aktif: <span className="font-bold text-slate-500">{u.last_active_date || "Bilinmiyor"}</span>

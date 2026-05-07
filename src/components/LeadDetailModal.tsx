@@ -10,6 +10,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { dripService, DRIP_CAMPAIGNS, DripEventType } from '../services/dripService';
 import { toast } from 'react-hot-toast';
+import { MaskedContact } from './shared/MaskedContact';
 import { getTodayStr } from '../services/core/utils';
 
 interface LeadDetailModalProps {
@@ -303,7 +304,9 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                               <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400">
                                 <Phone size={12} /> Telefon
                               </div>
-                              <div className="text-base font-black text-slate-900">{lead.phone || '-'}</div>
+                              <div className="text-base font-black text-slate-900">
+                                <MaskedContact type="phone" value={lead.phone} />
+                              </div>
                           </div>
                           <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1.5 text-[10px] uppercase font-bold tracking-widest text-slate-400">
@@ -457,7 +460,9 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                         >
                           <div className="flex-1">
                              <div className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Phone size={12}/> Telefon</div>
-                             <div className="text-xl font-black text-slate-900">{lead.phone}</div>
+                             <div className="text-xl font-black text-slate-900">
+                               <MaskedContact type="phone" value={lead.phone} canReveal={false} />
+                             </div>
                              <div className="text-[11px] font-bold text-slate-400 mt-1.5 group-hover:text-orange-600 transition-colors">Hızlıca ara ve not al</div>
                           </div>
                           <div className="w-12 h-12 bg-slate-50 text-orange-500 rounded-2xl flex items-center justify-center border border-slate-100 group-hover:bg-orange-500 group-hover:text-white group-hover:border-orange-500 transition-all shadow-sm">

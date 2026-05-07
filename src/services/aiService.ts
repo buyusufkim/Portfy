@@ -73,7 +73,10 @@ export const aiService = {
     ];
 
     try {
-      const response = await generateContent<ParsedBusinessCard>("gemini-2.0-flash", contents, { responseMimeType: "application/json" });
+      const response = await generateContent<ParsedBusinessCard>("gemini-2.0-flash", contents, { 
+        featureKey: "business_card_parse",
+        responseMimeType: "application/json" 
+      });
       return response;
     } catch (error) {
       console.error("Business Card OCR Error:", error);
@@ -146,7 +149,10 @@ export const aiService = {
       const response = await generateContent<{ tasks: string[], insight: string }>(
         "gemini-2.0-flash",
         prompt,
-        { responseMimeType: "application/json" }
+        { 
+          featureKey: "dashboard_coach",
+          responseMimeType: "application/json" 
+        }
       );
 
       return response;
@@ -198,7 +204,10 @@ export const aiService = {
     `;
 
     try {
-      const response = await generateContent<ValuationReport>("gemini-2.0-flash", prompt, { responseMimeType: "application/json" });
+      const response = await generateContent<ValuationReport>("gemini-2.0-flash", prompt, { 
+        featureKey: "property_valuation",
+        responseMimeType: "application/json" 
+      });
       return response;
     } catch (error) {
       console.error("Valuation AI error", error);

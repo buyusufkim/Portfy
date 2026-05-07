@@ -16,6 +16,7 @@ import {
 import { Property, Lead, MutationResult } from '../../types';
 import { documentService, DocumentType } from '../../services/documentService';
 import { dripService } from '../../services/dripService';
+import { maskEmail, maskPhone } from '../../utils/masking';
 import { PortfyLogo } from '../PortfyLogo';
 
 interface DocumentAutomationModalProps {
@@ -413,7 +414,7 @@ export const DocumentAutomationModal: React.FC<DocumentAutomationModalProps> = (
                             </div>
                             <div>
                               <div className="text-sm font-black text-slate-900 truncate max-w-full">{l.name}</div>
-                              <div className="text-xs text-slate-400 mt-1">{l.phone}</div>
+                              <div className="text-xs text-slate-400 mt-1">{maskPhone(l.phone)}</div>
                             </div>
                             {selectedLead?.id === l.id && <Check className="text-orange-600 mt-2" size={18} />}
                           </button>
@@ -520,8 +521,8 @@ export const DocumentAutomationModal: React.FC<DocumentAutomationModalProps> = (
                           </div>
                           <div className="text-right space-y-1">
                             <div className="font-bold text-lg">{agentProfile?.display_name}</div>
-                            <div className="text-sm text-slate-600">{agentProfile?.email}</div>
-                            <div className="text-sm text-slate-600">{agentProfile?.phone}</div>
+                            <div className="text-sm text-slate-600">{maskEmail(agentProfile?.email)}</div>
+                            <div className="text-sm text-slate-600">{maskPhone(agentProfile?.phone)}</div>
                           </div>
                         </div>
 
@@ -543,7 +544,7 @@ export const DocumentAutomationModal: React.FC<DocumentAutomationModalProps> = (
                                   <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">ALICI ADAYI</div>
                                   <div className="space-y-1">
                                     <div className="font-bold text-slate-900">{selectedLead?.name || '...................'}</div>
-                                    <div className="text-sm text-slate-600">{selectedLead?.phone || '...................'}</div>
+                                    <div className="text-sm text-slate-600">{selectedLead ? maskPhone(selectedLead.phone) : '...................'}</div>
                                   </div>
                                 </div>
                                 <div className="space-y-4 text-right">

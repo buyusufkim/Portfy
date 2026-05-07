@@ -93,7 +93,8 @@ export const leadService = {
 
       const response = await generateContent(
         "gemini-2.0-flash", 
-        prompt
+        prompt,
+        { featureKey: "generic_safe_json" }
       ) as AILeadAnalysis;
 
       // 4. JSON OBJESİNİ EKRANDA GÖSTERİLECEK METNE ÇEVİR

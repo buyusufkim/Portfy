@@ -2,6 +2,7 @@ import { useAuth } from '../AuthContext';
 import { FeatureKey, SubscriptionTier } from '../types/subscription';
 import { FEATURE_ACCESS_CONFIG, TIER_HIERARCHY } from '../config/featureAccess';
 import { normalizeTier, isPremiumActive } from '../config/subscriptionLimits';
+import { isAdminRole } from '../types';
 
 export const useFeatureAccess = () => {
   const { profile, subscribe } = useAuth();
@@ -14,7 +15,7 @@ export const useFeatureAccess = () => {
     if (!config) return false;
 
     // Admin has access to everything
-    if (profile?.role === 'admin') return true;
+    if (isAdminRole(profile?.role)) return true;
 
     const userLevel = TIER_HIERARCHY[effectiveTier] || 0;
     const requiredLevel = TIER_HIERARCHY[config.minTier] || 0;

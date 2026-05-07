@@ -14,6 +14,8 @@ import L from 'leaflet';
 import { RegionMap } from './RegionMap';
 import { RegionStats } from './RegionStats';
 import { CompetitorList } from './CompetitorList';
+import { useBolgemPins } from './hooks/useBolgemPins';
+import { useBolgemActions, BolgemPinActionModal } from './hooks/useBolgemActions';
 
 const defaultCenter = { lat: 38.7205, lng: 35.4826 };
 
@@ -58,69 +60,14 @@ export const BolgemView = ({
   const [checkInModalData, setCheckInModalData] = useState<{ name: string } | null>(null);
   const [crmNote, setCrmNote] = useState('');
   
-  const [pinActionModal, setPinActionModal] = useState<{ type: 'call' | 'visit' | 'task' | 'note', pin: MapPinType } | null>(null);
+  const [pinActionModal, setPinActionModal] = useState<BolgemPinActionModal | null>(null);
   const [actionNote, setActionNote] = useState('');
   const [actionDate, setActionDate] = useState('');
   const [actionContactStatus, setActionContactStatus] = useState<string>('Takipte');
 
-  const updatePinMutation = useMutation({
-    mutationFn: ({ id, updates }: { id: string, updates: Partial<MapPinType> }) => api.updateMapPin(id, updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MAP_PINS, profile?.id] });
-      setPinActionModal(null);
-      setActionNote('');
-      setActionDate('');
-      if (setToast) setToast({ message: 'Aksiyon başarıyla kaydedildi!', type: 'success' });
-      setSelectedPin(null);
-    },
-    onError: (error) => {
-      if (setToast) setToast({ message: `Hata oluştu: ${(error as Error).message}`, type: 'error' });
-    }
-  });
-
-  const addTaskMutation = useMutation({
-    mutationFn: ({ pin, title, dueDate }: { pin: MapPinType, title: string, dueDate: string }) => api.addRegionTask(pin, title, dueDate),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS] });
-      queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MAP_PINS, profile?.id] });
-      setPinActionModal(null);
-      setActionNote('');
-      setActionDate('');
-      if (setToast) setToast({ message: 'Takip görevi oluşturuldu!', type: 'success' });
-      setSelectedPin(null);
-    },
-    onError: (error) => {
-      if (setToast) setToast({ message: `Hata oluştu: ${(error as Error).message}`, type: 'error' });
-    }
-  });
-
-  const handlePinActionModalSubmit = () => {
-    if (!pinActionModal) return;
-    const { type, pin } = pinActionModal;
-    
-    if (type === 'task') {
-      if (!actionDate) {
-        if (setToast) setToast({ message: 'Lütfen görev tarihini seçiniz.', type: 'error' });
-        return;
-      }
-      addTaskMutation.mutate({ pin, title: `${pin.title} - ${actionNote || 'Bölge Takibi'}`, dueDate: actionDate });
-    } else {
-      let actionLabel = 'Not';
-      if (type === 'call') actionLabel = 'Arandı';
-      if (type === 'visit') actionLabel = 'Ziyaret';
-      
-      const noteAppend = `[${new Date().toLocaleDateString('tr-TR')} - ${actionLabel}] ${actionNote}`;
-      const newNotes = pin.notes ? `${pin.notes}\n\n${noteAppend}` : noteAppend;
-      
-      const updates: Partial<MapPinType> = { notes: newNotes };
-      if (type === 'call' || type === 'visit') {
-        updates.last_contact_date = new Date().toISOString();
-        if (actionContactStatus) updates.relationship_level = actionContactStatus as MapPinType['relationship_level'];
-      }
-      
-      updatePinMutation.mutate({ id: pin.id, updates });
-    }
-  };
+  const { updatePinMutation, addTaskMutation, handlePinActionModalSubmit } = useBolgemActions(
+    profile?.id, setToast, setPinActionModal, setActionNote, setActionDate, setSelectedPin
+  );
 
   // Territory Plan Data
   const { data: territoryPlans = [] } = useQuery({
@@ -165,6 +112,8 @@ export const BolgemView = ({
 
   const [map, setMap] = useState<L.Map | null>(null);
 
+  const { combinedPins, filteredPins } = useBolgemPins(profile?.id, mapCenter, userLocation, filter, search);
+
   const hotspots = useMemo(() => {
     if (!profile?.region?.city || !mapCenter) return [];
     const offsets = [
@@ -180,41 +129,7 @@ export const BolgemView = ({
     }));
   }, [mapCenter, profile?.region]);
 
-  const { data: pins = [], isLoading: isLoadingPins } = useQuery({
-    queryKey: [QUERY_KEYS.MAP_PINS, profile?.id],
-    queryFn: api.getMapPins,
-    enabled: !!profile?.id
-  });
 
-  const { data: properties = [], isLoading: isLoadingProperties } = useQuery({
-    queryKey: ['properties', profile?.id],
-    queryFn: api.getProperties,
-    enabled: !!profile?.id
-  });
-
-  const combinedPins = useMemo(() => {
-    const propPins: MapPinType[] = properties
-      .filter((p: Property) => typeof p.address?.lat === 'number' && isFinite(p.address.lat) && typeof p.address?.lng === 'number' && isFinite(p.address.lng))
-      .map((p: Property) => {
-      /* Koordinatı olmayan portföyler ileride ayrı listede gösterilecek. */
-      const lat = p.address!.lat!;
-      const lng = p.address!.lng!;
-
-      return {
-        id: `prop-${p.id}`,
-        user_id: p.user_id,
-        lat,
-        lng,
-        type: 'portfoy',
-        title: `🏠 ${p.title}`,
-        address: `${p.address?.neighborhood || ''}, ${p.address?.district || ''}/${p.address?.city || ''}`,
-        notes: `Fiyat: ${p.price?.toLocaleString('tr-TR')} TL | Durum: ${p.status} | Tip: ${p.type}`,
-        created_at: p.created_at
-      };
-    });
-
-    return [...pins, ...propPins];
-  }, [pins, properties, mapCenter]);
 
   useEffect(() => {
     const geocodeProfileRegion = async () => {
@@ -241,6 +156,10 @@ export const BolgemView = ({
     geocodeProfileRegion();
   }, [profile?.region, map, hasGeocoded, combinedPins.length]);
 
+  const onMapLoad = (mapInstance: L.Map) => {
+    setMap(mapInstance);
+  };
+
   useEffect(() => {
     return () => {
       if (watchIdRef.current !== null && navigator.geolocation) {
@@ -248,10 +167,6 @@ export const BolgemView = ({
       }
     };
   }, []);
-
-  const onMapLoad = (mapInstance: L.Map) => {
-    setMap(mapInstance);
-  };
 
   const allPinTypes = useMemo(() => {
     const base = [
@@ -266,32 +181,6 @@ export const BolgemView = ({
     }
     return [...base, ...cats];
   }, [regionCategories]);
-
-  const filteredPins = useMemo(() => {
-    return combinedPins.filter((pin: MapPinType) => {
-      let matchFilter = false;
-      if (filter === 'all') {
-        matchFilter = true;
-      } else if (filter === 'nearby') {
-        if (userLocation && typeof pin.lat === 'number' && typeof pin.lng === 'number') {
-          try {
-            const dist = L.latLng(userLocation.lat, userLocation.lng).distanceTo(L.latLng(pin.lat, pin.lng));
-            matchFilter = dist <= 2000;
-          } catch (e) {
-            console.error("Distance calculation error:", e);
-            matchFilter = false;
-          }
-        } else {
-          matchFilter = false; 
-        }
-      } else {
-        matchFilter = pin.type === filter;
-      }
-
-      const matchSearch = (pin.title || '').toLowerCase().includes(search.toLowerCase()) || (pin.address || '').toLowerCase().includes(search.toLowerCase());
-      return matchFilter && matchSearch;
-    });
-  }, [filter, search, combinedPins, userLocation]);
 
   // ORİJİNAL ODAKLAMA SİSTEMİ: GPS ile çatışmaz.
   useEffect(() => {
@@ -1114,7 +1003,7 @@ export const BolgemView = ({
                      İptal
                    </button>
                    <button 
-                     onClick={handlePinActionModalSubmit}
+                     onClick={() => handlePinActionModalSubmit(pinActionModal, actionDate, actionNote, actionContactStatus)}
                      disabled={updatePinMutation.isPending || addTaskMutation.isPending}
                      className="flex-1 bg-blue-500 hover:bg-blue-600 text-white py-3 rounded-xl font-bold transition-all text-sm disabled:opacity-50"
                    >

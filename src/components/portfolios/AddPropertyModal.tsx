@@ -8,6 +8,7 @@ import { locationService } from '../../services/locationService';
 import { Property, Lead } from '../../types';
 import { api } from '../../services/api';
 import { toast } from 'react-hot-toast';
+import { MaskedContact } from '../shared/MaskedContact';
 
 interface AddPropertyModalProps {
   show: boolean;
@@ -688,7 +689,9 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
                             >
                               <div>
                                 <div className="text-sm font-bold text-slate-900">{lead.name}</div>
-                                <div className="text-[10px] text-slate-400">{lead.phone}</div>
+                                <div className="text-[10px] text-slate-400">
+                                  <MaskedContact type="phone" value={lead.phone} />
+                                </div>
                               </div>
                               <div className="text-[10px] font-bold text-orange-600 bg-orange-50 px-2 py-1 rounded-lg">CRM Kaydı</div>
                             </button>

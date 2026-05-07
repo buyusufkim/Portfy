@@ -1,6 +1,7 @@
 import { supabase } from './supabase'; // Auth token'ı almak için
 
 export interface GenerateContentConfig {
+  featureKey?: string;
   responseSchema?: Record<string, unknown>;
   responseMimeType?: string;
   systemInstruction?: string | { role: string; parts: { text: string }[] };
@@ -41,8 +42,7 @@ export const generateContent = async <T = unknown>(model: string, contents: Gene
       body: JSON.stringify({
         model: model,
         contents: formattedContents,
-        responseSchema: config?.responseSchema, // Gerekirse JSON şemasını gönder
-        systemInstruction: config?.systemInstruction
+        featureKey: config?.featureKey
       })
     });
 

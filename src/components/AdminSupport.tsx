@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Mail, CheckCircle, Clock, SearchX } from 'lucide-react';
 import { api } from '../services/api';
+import { maskEmail } from '../utils/masking';
 
 export const AdminSupport: React.FC = () => {
   const [tickets, setTickets] = useState<any[]>([]);
@@ -59,7 +60,7 @@ export const AdminSupport: React.FC = () => {
                  <span className="text-xs text-slate-400 font-medium">{new Date(t.created_at).toLocaleString('tr-TR', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' })}</span>
               </div>
               <h4 className="font-bold text-lg mt-3 text-slate-900">{t.subject}</h4>
-              <p className="text-sm text-slate-500 font-medium">{t.user?.display_name || 'İsimsiz Kullanıcı'} <span className="text-slate-400">({t.user?.email})</span></p>
+              <p className="text-sm text-slate-500 font-medium">{t.user?.display_name || 'İsimsiz Kullanıcı'} <span className="text-slate-400">({maskEmail(t.user?.email)})</span></p>
             </div>
             <div className="text-sm shrink-0">
               <select value={t.status} onChange={e => handleUpdateStatus(t.id, e.target.value)} className="bg-slate-50 border border-slate-200 text-slate-700 font-bold rounded-xl px-4 py-2.5 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 focus:bg-white transition-all cursor-pointer">

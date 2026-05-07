@@ -2,84 +2,14 @@ import { GoogleGenAI } from "@google/genai";
 import { rateLimit, ipKeyGenerator } from "express-rate-limit";
 import { User } from "@supabase/supabase-js";
 import { Request, Response, NextFunction } from "express";
+import { 
+  getEffectiveAiTokenLimit, 
+  ProfileForSubscriptionRules 
+} from "../src/shared/subscriptionRules.js";
 
-const AI_TOKEN_LIMITS = {
-  admin: 1000000,
-  master: 100000,
-  elite: 50000,
-  pro: 10000,
-  trial: 10000,
-  free: 1000,
-  none: 1000
+const isAdminRole = (role?: string | null): boolean => {
+  return role === 'admin' || role === 'super_admin';
 };
-
-export type ProfileForTokenLimit = {
-  role?: string;
-  tier?: string;
-  subscription_type?: string;
-  subscription_end_date?: string | null;
-  ai_token_limit?: number | string | null;
-  [key: string]: unknown;
-};
-
-const normalizeTier = (profile: ProfileForTokenLimit | null | undefined): string => {
-  if (profile?.role === 'admin') return 'admin';
-  if (profile?.tier === 'master' || profile?.subscription_type?.includes('master')) return 'master';
-  if (profile?.tier === 'elite') return 'elite';
-  if (profile?.tier === 'pro' || profile?.subscription_type === '1-month' || profile?.subscription_type === '3-month' || profile?.subscription_type === '6-month' || profile?.subscription_type === '12-month') return 'pro';
-  
-  if (profile?.tier === 'trial' || profile?.subscription_type === 'trial') return 'trial';
-
-  return 'free';
-};
-
-const isTrialActive = (profile: ProfileForTokenLimit | null | undefined): boolean => {
-  const tier = normalizeTier(profile);
-  if (tier !== 'trial') return false;
-
-  if (profile?.subscription_end_date) {
-    const endDate = new Date(profile.subscription_end_date);
-    if (endDate < new Date()) {
-      return false; // Trial has expired
-    }
-  }
-  return true;
-};
-
-const getDefaultAiTokenLimit = (profile: ProfileForTokenLimit | null | undefined): number => {
-  const tier = normalizeTier(profile);
-  
-  if (tier === 'admin') return AI_TOKEN_LIMITS.admin;
-  if (tier === 'master') return AI_TOKEN_LIMITS.master;
-  if (tier === 'elite') return AI_TOKEN_LIMITS.elite;
-  if (tier === 'pro') {
-     if (profile?.subscription_end_date && new Date(profile.subscription_end_date) < new Date()) {
-       return AI_TOKEN_LIMITS.free;
-     }
-     return AI_TOKEN_LIMITS.pro;
-  }
-  if (tier === 'trial') {
-      if (isTrialActive(profile)) {
-          return AI_TOKEN_LIMITS.trial;
-      }
-      return AI_TOKEN_LIMITS.free;
-  }
-  return AI_TOKEN_LIMITS.free;
-};
-
-export const getEffectiveAiTokenLimit = (profile: ProfileForTokenLimit | null | undefined): number => {
-  if (profile?.ai_token_limit !== undefined && profile?.ai_token_limit !== null) {
-    const limitNum = Number(profile.ai_token_limit);
-    if (!isNaN(limitNum) && limitNum > 0) {
-      return limitNum;
-    }
-  }
-
-  if (profile?.role === 'admin') return AI_TOKEN_LIMITS.admin;
-  
-  return getDefaultAiTokenLimit(profile);
-};
-
 
 export interface AuthRequest extends Request {
   user?: User;
@@ -89,8 +19,33 @@ import { createClient } from "@supabase/supabase-js";
 import { addMonths } from "date-fns";
 import * as dotenv from "dotenv";
 import { getTurkeyTodayISO } from "./time.js";
+import { getFeatureConfig } from "./ai-features.js";
 
 dotenv.config({ override: true });
+
+export function calculateContentTextLength(contents: unknown): number {
+  if (typeof contents === "string") {
+    return contents.length;
+  }
+  if (Array.isArray(contents)) {
+    let length = 0;
+    for (const item of contents) {
+      if (item && typeof item === "object" && Array.isArray(item.parts)) {
+        for (const part of item.parts) {
+          if (part && typeof part.text === "string") {
+            length += part.text.length;
+          }
+          if (part && part.inlineData && typeof part.inlineData.data === "string") {
+            // Rough size estimate for base64: character count
+            length += part.inlineData.data.length; 
+          }
+        }
+      }
+    }
+    return length;
+  }
+  return 0;
+}
 
 function getGenerativeAI() {
   const GEMINI_API_KEY = process.env.GEMINI_SV_KEY || process.env.GEMINI_API_KEY;
@@ -221,7 +176,7 @@ export const requireAdmin = async (
       .eq("id", adminId)
       .single();
 
-    if (adminError || adminProfile?.role !== "admin") {
+    if (adminError || !isAdminRole(adminProfile?.role)) {
       return res
         .status(403)
         .json({ error: "Unauthorized: Admin access required" });
@@ -292,12 +247,20 @@ export const tokenTrackerMiddleware = (
 
 export const handleAIGeneration = async (req: AuthRequest, res: Response) => {
   try {
-    const { model, contents, systemInstruction, responseSchema } = req.body;
+    const { model, contents, systemInstruction, responseSchema, featureKey } = req.body;
     const userId = req.user?.id;
 
+    let featureConfig;
+    try {
+      featureConfig = getFeatureConfig(featureKey);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : "Bilinmeyen AI feature hatası";
+      return res.status(400).json({ error: message });
+    }
+
     // 1. Model Allowlist Check
-    const targetModel = model || "gemini-3-flash-preview";
-    if (!ALLOWED_MODELS.includes(targetModel)) {
+    const targetModel = model || featureConfig.defaultModel;
+    if (!ALLOWED_MODELS.includes(targetModel) || !featureConfig.allowedModels.includes(targetModel)) {
       return res
         .status(400)
         .json({
@@ -307,6 +270,17 @@ export const handleAIGeneration = async (req: AuthRequest, res: Response) => {
 
     if (!supabaseAdmin)
       return res.status(503).json({ error: "Privileged service unavailable" });
+
+    if (!contents) {
+      return res
+        .status(400)
+        .json({ error: "İşlenecek içerik (contents) gönderilmedi." });
+    }
+
+    const inputLength = calculateContentTextLength(contents);
+    if (inputLength > featureConfig.maxInputChars) {
+      return res.status(413).json({ error: "İşlenecek içerik boyutu çok büyük." });
+    }
 
     // 2. Token Limit Check (Server-side Enforcement)
     const { data: profile, error: fetchError } = await supabaseAdmin
@@ -330,19 +304,16 @@ export const handleAIGeneration = async (req: AuthRequest, res: Response) => {
       });
     }
 
-    if (!contents) {
-      return res
-        .status(400)
-        .json({ error: "İşlenecek içerik (contents) gönderilmedi." });
-    }
-
     const config: Record<string, unknown> = {
       responseMimeType: "application/json",
     };
 
-    if (responseSchema) {
+    if (featureConfig.responseSchema) {
+      config.responseSchema = featureConfig.responseSchema;
+    } else if (responseSchema && featureConfig.allowClientResponseSchema) {
       config.responseSchema = responseSchema;
-    } else {
+    } else if (featureKey === "generic_safe_json" && !responseSchema) {
+      // Fallback schema for generic
       config.responseSchema = {
         type: "object",
         properties: {
@@ -350,10 +321,19 @@ export const handleAIGeneration = async (req: AuthRequest, res: Response) => {
           status: { type: "string", description: "Status code or generic status" }
         }
       };
+    } else if (!featureConfig.responseSchema && !featureConfig.allowClientResponseSchema) {
+      // Not allowed to provide schema and registry didn't define one, just don't set responseSchema.
+    } else if (responseSchema) {
+      // Client schema ignored
+      console.warn(`Feature ${featureKey} disabled client responseSchema. Ignored.`);
     }
 
-    if (systemInstruction) {
+    if (featureConfig.systemInstruction) {
+      config.systemInstruction = featureConfig.systemInstruction;
+    } else if (systemInstruction && featureConfig.allowClientSystemInstruction) {
       config.systemInstruction = systemInstruction;
+    } else if (systemInstruction) {
+      console.warn(`Feature ${featureKey} disabled client systemInstruction. Ignored.`);
     }
 
     const genAi = getGenerativeAI();
@@ -856,7 +836,7 @@ export const handleGetDailyPlanToday = async (req: AuthRequest, res: Response) =
       .maybeSingle();
 
     if (error) {
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: safeErrorMessage(error, "Failed to get daily plan") });
     }
 
     return res.json(data || null);
@@ -896,7 +876,7 @@ export const handleSaveDailyPlan = async (req: AuthRequest, res: Response) => {
       .single();
 
     if (error) {
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: safeErrorMessage(error, "Failed to save daily plan") });
     }
 
     return res.json(data);
@@ -922,7 +902,7 @@ export const handleGetDayClosureToday = async (req: AuthRequest, res: Response) 
       .maybeSingle();
 
     if (error) {
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: safeErrorMessage(error, "Failed to get day closure") });
     }
 
     return res.json(data || null);
@@ -962,7 +942,7 @@ export const handleSaveDayClosure = async (req: AuthRequest, res: Response) => {
       .single();
 
     if (error) {
-        return res.status(500).json({ error: error.message });
+        return res.status(500).json({ error: safeErrorMessage(error, "Failed to save day closure") });
     }
 
     return res.json(data);
@@ -1249,115 +1229,32 @@ export const handleEarnXP = async (req: AuthRequest, res: Response) => {
     };
 
     if (actionType === 'START_DAY' || actionType === 'END_DAY') {
-      const { data: profile } = await supabaseAdmin.from('profiles').select('*').eq('id', userId).single();
-      if (!profile) return res.status(404).json({ error: "Profile not found" });
+      const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc(
+        "award_day_xp_event",
+        {
+          p_user_id: userId,
+          p_action_type: actionType,
+          p_today: today,
+          p_now: now,
+          p_stats: safeStats
+        }
+      );
 
-      if (actionType === 'START_DAY') {
-        const lastStartedDate = getTurkeyDateFromTimestamp(profile.last_day_started_at);
-        if (lastStartedDate === today) return res.json({ success: true, message: 'Day already started today', xp_awarded: 0 });
-        
-        if (safeStats.early_start_reason) {
-          await supabaseAdmin.from('work_discipline_logs').insert({
-            user_id: userId, log_date: today, type: 'early_start', scheduled_time: profile.work_start_time, actual_time: now, reason: safeStats.early_start_reason
+      if (rpcError) throw rpcError;
+
+      if (!rpcResult.success) {
+        console.error("handleEarnXP day event failed:", rpcResult);
+        if (rpcResult.error && rpcResult.error.includes("already awarded")) {
+          return res.json({
+            success: true,
+            message: rpcResult.error,
+            xp_awarded: 0,
           });
         }
-        
-        const lastClosedDate = getTurkeyDateFromTimestamp(profile.last_ritual_completed_at);
-        if (lastStartedDate && lastStartedDate < today) {
-          const wasClosed = lastClosedDate === lastStartedDate;
-          if (!wasClosed) {
-            const { error: logError } = await supabaseAdmin.from('work_discipline_logs').insert({
-              user_id: userId, log_date: lastStartedDate, type: 'missed_close_penalty', actual_time: now, reason: 'Önceki gün kapatılmadan yeni gün başlatıldı', xp_delta: -50
-            });
-            if (!logError) {
-              profile.total_xp = Math.max(0, (profile.total_xp || 0) - 50);
-              safeStats.missed_penalty_applied = true;
-            }
-          }
-        }
-      } else if (actionType === 'END_DAY') {
-        if (getTurkeyDateFromTimestamp(profile.last_end_day_xp_at) === today) {
-          return res.json({ success: true, message: 'End day XP already awarded for today', xp_awarded: 0 });
-        }
-        
-        if (safeStats.early_close_reason) {
-          await supabaseAdmin.from('work_discipline_logs').insert({
-            user_id: userId, log_date: today, type: 'early_close', scheduled_time: profile.work_end_time, actual_time: now, reason: safeStats.early_close_reason
-          });
-        }
+        return res.status(400).json({ error: rpcResult.error || "XP kazanılamadı" });
       }
 
-      const v_amount = actionType === 'START_DAY' ? 50 : (actionType === 'END_DAY' ? 150 : 0);
-      const v_new_xp = (profile.total_xp || 0) + v_amount;
-      let v_new_level = 1;
-      if (v_new_xp >= 15000) v_new_level = 4;
-      else if (v_new_xp >= 5000) v_new_level = 3;
-      else if (v_new_xp >= 1000) v_new_level = 2;
-
-      let v_new_streak = profile.current_streak || 0;
-      if (actionType === 'END_DAY') {
-        const lastRitualTz = getTurkeyDateFromTimestamp(profile.last_ritual_completed_at);
-        if (!lastRitualTz || lastRitualTz !== today) {
-          const yesterdayObj = new Date(nowObj);
-          yesterdayObj.setDate(yesterdayObj.getDate() - 1);
-          const yesterdayStr = getTurkeyTodayISO(yesterdayObj);
-          
-          if (lastRitualTz && lastRitualTz === yesterdayStr) {
-            v_new_streak += 1;
-          } else {
-            v_new_streak = 1;
-          }
-        }
-      }
-
-      // Update Profile
-      await supabaseAdmin.from('profiles').update({
-        total_xp: v_new_xp,
-        broker_level: v_new_level,
-        current_streak: v_new_streak,
-        longest_streak: Math.max(v_new_streak, profile.longest_streak || 0),
-        last_active_date: actionType === 'END_DAY' ? today : profile.last_active_date,
-        last_day_started_at: actionType === 'START_DAY' ? now : profile.last_day_started_at,
-        last_morning_ritual_xp_at: actionType === 'START_DAY' ? now : profile.last_morning_ritual_xp_at,
-        last_ritual_completed_at: actionType === 'END_DAY' ? now : profile.last_ritual_completed_at,
-        last_end_day_xp_at: actionType === 'END_DAY' ? now : profile.last_end_day_xp_at,
-        updated_at: now
-      }).eq('id', userId);
-
-      // Update User Stats
-      const { data: userStatsStr } = await supabaseAdmin.from('user_stats').select('*').eq('user_id', userId).eq('date', today).maybeSingle();
-      if (userStatsStr) {
-        await supabaseAdmin.from('user_stats').update({
-          xp_earned: (userStatsStr.xp_earned || 0) + v_amount,
-          day_started_at: actionType === 'START_DAY' && !userStatsStr.day_started_at ? now : userStatsStr.day_started_at,
-          day_ended_at: actionType === 'END_DAY' ? now : userStatsStr.day_ended_at,
-          tasks_completed: Math.max(userStatsStr.tasks_completed || 0, parseInt(safeStats.tasks_completed) || 0),
-          calls_made: Math.max(userStatsStr.calls_made || 0, parseInt(safeStats.calls_made) || 0),
-          visits_made: Math.max(userStatsStr.visits_made || 0, parseInt(safeStats.visits_made) || 0),
-          potential_revenue_handled: Math.max(userStatsStr.potential_revenue_handled || 0, parseFloat(safeStats.potential_revenue_handled) || 0),
-          updated_at: now
-        }).eq('id', userStatsStr.id);
-      } else {
-        await supabaseAdmin.from('user_stats').insert({
-          user_id: userId,
-          date: today,
-          xp_earned: v_amount,
-          day_started_at: actionType === 'START_DAY' ? now : null,
-          day_ended_at: actionType === 'END_DAY' ? now : null,
-          tasks_completed: parseInt(safeStats.tasks_completed) || 0,
-          calls_made: parseInt(safeStats.calls_made) || 0,
-          visits_made: parseInt(safeStats.visits_made) || 0,
-          potential_revenue_handled: parseFloat(safeStats.potential_revenue_handled) || 0,
-        });
-      }
-
-      return res.json({
-        success: true,
-        xp_awarded: v_amount,
-        new_total: v_new_xp,
-        new_level: v_new_level,
-        new_streak: v_new_streak
-      });
+      return res.json(rpcResult);
     }
 
     const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc(

@@ -17,8 +17,7 @@ export const whatsappService = {
         "gemini-2.0-flash", // Backend'deki modele uyumlu
         prompt,
         {
-          // @ts-ignore
-          responseSchema: WHATSAPP_ANALYSIS_SCHEMA,
+          featureKey: "whatsapp_analysis",
           responseMimeType: "application/json"
         }
       );
@@ -61,19 +60,8 @@ export const whatsappService = {
       
       Mesaj: "${text}"`,
       {
-        responseMimeType: "application/json",
-        // @ts-ignore
-        responseSchema: {
-          type: "object",
-          properties: {
-            name: { type: "string" },
-            phone: { type: "string" },
-            type: { type: "string", enum: ['Alıcı', 'Satıcı', 'Kiracı', 'Kiralayan'] },
-            status: { type: "string", enum: ['Aday', 'Sıcak', 'Pasif'] },
-            notes: { type: "string" }
-          },
-          required: ["name", "phone", "type", "status", "notes"]
-        }
+        featureKey: "whatsapp_lead_extract",
+        responseMimeType: "application/json"
       }
     );
     

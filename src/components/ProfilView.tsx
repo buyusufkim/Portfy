@@ -19,9 +19,12 @@ import {
   BrokerAccount,
   MutationResult,
   ExternalListing,
-  NotificationPreference
+  NotificationPreference,
+  isAdminRole
 } from "../types";
 import { getEffectiveAiTokenLimit } from "../config/subscriptionLimits";
+import { maskEmail, maskPhone } from "../utils/masking";
+import { MaskedContact } from "./shared/MaskedContact";
 import { 
   ensureDefaultNotificationPreferences, 
   updateNotificationPreference 
@@ -29,6 +32,10 @@ import {
 import { Card, Badge } from "./UI";
 import { useQuery } from "@tanstack/react-query";
 import { profileService } from "../services/profileService";
+import { usePasswordReset } from "./hooks/usePasswordReset";
+import { useAvatarUpload } from "./hooks/useAvatarUpload";
+
+import { calculateProfileCompletionScore } from "./helpers/profilHelpers";
 
 interface ProfilViewProps {
   profile: UserProfile | null;
@@ -112,42 +119,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
   const [isNotificationsLoading, setIsNotificationsLoading] = useState(false);
   const [updatingNotificationType, setUpdatingNotificationType] = useState<string | null>(null);
 
-  const [isSendingPasswordReset, setIsSendingPasswordReset] = useState(false);
-  const [passwordResetStatus, setPasswordResetStatus] = useState<"idle" | "success" | "error">("idle");
-  const [passwordResetMessage, setPasswordResetMessage] = useState("");
-
-  const handlePasswordReset = async () => {
-    if (!profile?.email) {
-      setPasswordResetStatus("error");
-      setPasswordResetMessage("E-posta adresi bulunamadı.");
-      return;
-    }
-    
-    if (isSendingPasswordReset) return;
-    
-    setIsSendingPasswordReset(true);
-    setPasswordResetStatus("idle");
-    setPasswordResetMessage("");
-    
-    try {
-      // Mevcut özel reset-password route bulunmadığı için origin kullanıldı.
-      const redirectTo = `${window.location.origin}/`;
-      const { error } = await supabase.auth.resetPasswordForEmail(profile.email, { redirectTo });
-      
-      if (error) throw error;
-      
-      setPasswordResetStatus("success");
-      setPasswordResetMessage("Şifre sıfırlama bağlantısı e-posta adresine gönderildi.");
-    } catch (error: unknown) {
-      setPasswordResetStatus("error");
-      const message = error instanceof Error 
-        ? (error.message.includes('rate limit') ? 'Çok fazla istek gönderildi. Lütfen daha sonra tekrar deneyin.' : error.message)
-        : "Şifre sıfırlama e-postası gönderilemedi.";
-      setPasswordResetMessage(message);
-    } finally {
-      setIsSendingPasswordReset(false);
-    }
-  };
+  const { isSendingPasswordReset, passwordResetStatus, passwordResetMessage, handlePasswordReset } = usePasswordReset(profile);
 
   useEffect(() => {
     if (profile?.id) {
@@ -229,15 +201,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
     }
   }, [profile]);
 
-  const [uploading, setUploading] = useState(false);
-  const [localAvatar, setLocalAvatar] = useState<string | null>(profile?.avatar_url || null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  useEffect(() => {
-    if (profile?.avatar_url) {
-      setLocalAvatar(profile.avatar_url);
-    }
-  }, [profile?.avatar_url]);
+  const { uploading, localAvatar, fileInputRef, handleAvatarUpload } = useAvatarUpload(profile, updateProfileMutation);
 
   const { data: disciplineLogs = [], isLoading: isDisciplineLoading } = useQuery({
     queryKey: ['workDisciplineLogs', profile?.id],
@@ -245,74 +209,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
     enabled: !!profile?.id
   });
 
-  const handleAvatarUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    try {
-      setUploading(true);
-
-      if (!event.target.files || event.target.files.length === 0) {
-        throw new Error('Fotoğraf seçilmedi.');
-      }
-
-      const file = event.target.files[0];
-      if (!file.type.startsWith('image/')) {
-        throw new Error('Sadece görsel dosyaları yüklenebilir.');
-      }
-      
-      if (file.size > 5 * 1024 * 1024) {
-         throw new Error('Dosya boyutu 5MB altında olmalıdır.');
-      }
-      
-      if (!profile?.id) throw new Error('Kullanıcı bulunamadı.');
-
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${profile.id}/avatar-${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from('avatars')
-        .upload(fileName, file, { upsert: true });
-
-      if (uploadError) {
-        throw uploadError;
-      }
-
-      const { data } = supabase.storage
-        .from('avatars')
-        .getPublicUrl(fileName);
-
-      const newAvatarUrl = data.publicUrl;
-      setLocalAvatar(newAvatarUrl);
-      
-      updateProfileMutation.mutate({ id: profile.id, data: { avatar_url: newAvatarUrl } });
-
-    } catch (error: unknown) {
-      console.error("Avatar yükleme hatası:", error);
-      const message = error instanceof Error 
-        ? (error.message.includes('bucket') ? 'Profil fotoğrafı yüklenemedi. Storage avatars bucket kurulmamış olabilir.' : error.message)
-        : "Fotoğraf yüklenirken bir hata oluştu.";
-      alert(message);
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = '';
-      }
-    }
-  };
-
-  // Profil Tamamlanma Skoru
-  let score = 0;
-  if (formData.display_name) score += 10;
-  if (formData.phone) score += 10;
-  if (formData.bio) score += 10;
-  if (formData.city || formData.district) score += 10;
-  if (profile?.region?.city || profile?.region?.district) score += 15;
-  if (formData.company_name || formData.title) score += 10;
-  if (formData.expertise_areas.length > 0) score += 15;
-  if (brokerAccount) score += 20;
-  const clampedScore = Math.min(score, 100);
-
-  let scoreMessage = "Profilini tamamla, Portfy seni daha iyi yönlendirsin.";
-  if (clampedScore >= 80) scoreMessage = "Profil güçlü görünüyor.";
-  else if (clampedScore >= 50) scoreMessage = "İyi gidiyorsun, birkaç bilgi daha ekle.";
+  const { clampedScore, scoreMessage } = calculateProfileCompletionScore(formData, profile, brokerAccount);
 
   return (
     <motion.div
@@ -374,7 +271,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                  {formData.display_name || profile?.display_name || "İsimsiz Kullanıcı"} <span className="opacity-80">👋</span>
                </h2>
                <div className="flex flex-col gap-1 mt-1">
-                 <p className="text-slate-300 text-[13px] font-medium truncate max-w-[200px]">{profile?.email}</p>
+                 <p className="text-slate-300 text-[13px] font-medium truncate max-w-[200px]">{maskEmail(profile?.email)}</p>
                </div>
              </div>
           </div>
@@ -428,7 +325,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
               {formData.display_name || profile?.display_name || "İsimsiz Kullanıcı"} <span className="opacity-80">👋</span>
             </h2>
             <div className="flex items-center gap-2 mt-1">
-              <p className="text-slate-300 text-sm font-medium">{profile?.email}</p>
+              <p className="text-slate-300 text-sm font-medium">{maskEmail(profile?.email)}</p>
             </div>
           </div>
 
@@ -447,7 +344,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
         <div className="relative z-10 mt-5 sm:ml-[120px] flex flex-wrap items-center justify-start gap-2">
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/80 rounded-xl text-[10px] sm:text-[11px] font-bold text-slate-300 border border-slate-700/80">
             <ShieldCheck size={14} className="text-slate-400" />
-            {formData.title || profile?.title || (profile?.role === "admin" ? "Yönetici" : "Unvan eklenmedi")}
+            {formData.title || profile?.title || (isAdminRole(profile?.role) ? "Yönetici" : "Unvan eklenmedi")}
           </div>
           <div className="flex items-center gap-1.5 px-3 py-1.5 bg-slate-800/80 rounded-xl text-[10px] sm:text-[11px] font-bold text-slate-300 border border-slate-700/80">
             <MapPin size={14} className="text-slate-400" />
@@ -572,7 +469,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                 <div>
                   <h4 className="text-sm font-bold text-slate-900">Profil Bilgileri</h4>
                   <p className="text-[11px] text-slate-500 mt-0.5 lg:hidden line-clamp-1 pr-4">Kişisel ve iletişim bilgilerini yönet.</p>
-                  <p className="text-[10px] text-slate-400 lg:hidden line-clamp-1 pr-4 mt-0.5">{profile?.email || 'Eklenmedi'}</p>
+                  <p className="text-[10px] text-slate-400 lg:hidden line-clamp-1 pr-4 mt-0.5">{maskEmail(profile?.email) || 'Eklenmedi'}</p>
                 </div>
               </div>
               <ArrowRight size={18} className="text-slate-300 lg:hidden shrink-0" />
@@ -592,11 +489,11 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
               </div>
               <div className="overflow-hidden">
                 <span className="block text-[10px] text-slate-400 mb-0.5">E-posta</span>
-                <span className="text-[11px] font-bold text-slate-700 truncate block w-full">{profile?.email || 'Eklenmedi'}</span>
+                <span className="text-[11px] font-bold text-slate-700 truncate block w-full">{maskEmail(profile?.email) || 'Eklenmedi'}</span>
               </div>
               <div>
                 <span className="block text-[10px] text-slate-400 mb-0.5">Telefon</span>
-                <span className="text-[11px] font-bold text-slate-700">{formData.phone || profile?.phone || 'Eklenmedi'}</span>
+                <span className="text-[11px] font-bold text-slate-700">{maskPhone(formData.phone || profile?.phone) || 'Eklenmedi'}</span>
               </div>
               <div className="overflow-hidden">
                 <span className="block text-[10px] text-slate-400 mb-0.5">Unvan</span>
@@ -690,7 +587,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                   <h4 className="text-sm font-bold text-slate-900">Çalışma Stili</h4>
                   <p className="text-[11px] text-slate-500 mt-0.5 lg:hidden line-clamp-1 pr-4">Çalışma modelini ve tercihlerini yönet.</p>
                   <p className="text-[10px] text-slate-400 lg:hidden line-clamp-1 pr-4 mt-0.5">
-                    Mod: {profile?.role === 'admin' ? 'Yönetici' : 'Eklenmedi'}
+                    Mod: {isAdminRole(profile?.role) ? 'Yönetici' : 'Eklenmedi'}
                   </p>
                 </div>
               </div>
@@ -723,7 +620,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
               </div>
               <div className="flex items-center justify-between text-[11px] pt-1">
                 <span className="text-slate-500">Çalışma Modeli</span>
-                <span className="font-bold text-slate-700">{profile?.role === 'admin' ? 'Yönetici' : 'Eklenmedi'}</span>
+                <span className="font-bold text-slate-700">{isAdminRole(profile?.role) ? 'Yönetici' : 'Eklenmedi'}</span>
               </div>
               {(!profile?.working_style || profile.working_style.length === 0) && !profile?.preferred_start_time && (
                 <div className="text-[11px] text-slate-500 pt-2">Çalışma stili eklenmedi.</div>
@@ -1079,7 +976,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                     <h4 className="text-sm font-bold text-slate-900">Hesap & Güvenlik</h4>
                     <p className="text-[11px] text-slate-500 mt-0.5 lg:hidden line-clamp-1 pr-4">Şifre ve iki faktörlü doğrulamayı yönet.</p>
                     <p className="text-[10px] text-slate-400 lg:hidden line-clamp-1 pr-4 mt-0.5">
-                      {profile?.email || '-'}
+                      {maskEmail(profile?.email) || '-'}
                     </p>
                   </div>
                </div>
@@ -1094,7 +991,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                        <span className="text-[11px] font-bold text-slate-700">E-Posta</span>
                     </div>
                     <div className="flex items-center gap-3">
-                       <span className="text-[10px] text-slate-500 font-medium truncate max-w-[120px] sm:max-w-[200px]">{profile?.email || '-'}</span>
+                       <span className="text-[10px] text-slate-500 font-medium truncate max-w-[120px] sm:max-w-[200px]">{maskEmail(profile?.email) || '-'}</span>
                     </div>
                  </div>
 
@@ -1152,7 +1049,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
         </div>
 
         {/* Admin Card */}
-        {profile?.role === "admin" && (
+        {isAdminRole(profile?.role) && (
           <Card
             className="flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors border border-purple-100 group rounded-[24px] p-5 sm:p-6 shadow-sm"
             onClick={() => setShowAdminPanel(true)}
@@ -1570,7 +1467,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                       )}
                       <div className="p-4 border border-slate-200 rounded-2xl">
                          <div className="text-[11px] text-slate-400 mb-1">Kayıtlı E-Posta</div>
-                         <div className="text-sm font-bold text-slate-900">{profile?.email || '-'}</div>
+                         <div className="text-sm font-bold text-slate-900">{maskEmail(profile?.email) || '-'}</div>
                       </div>
                       <div className="p-4 border border-slate-200 rounded-2xl flex items-center justify-between">
                          <div>

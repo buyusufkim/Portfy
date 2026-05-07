@@ -1,17 +1,17 @@
 import React from 'react';
 import { AnimatePresence, motion } from 'motion/react';
-import { DashboardPage } from '../../pages/DashboardPage';
-import { TasksPage } from '../../pages/TasksPage';
-import { Campaign90Page } from '../../pages/Campaign90Page';
-import { PortfoliosPage } from '../../pages/PortfoliosPage';
-import { CRMPage } from '../../pages/CRMPage';
-import { ProfilView } from '../ProfilView';
-import { CoachView } from './CoachView';
 import { LoadingFallback } from './LoadingFallback';
 import { PremiumGate } from '../premium/PremiumGate'; // KİLİT SİSTEMİ EKLENDİ
 
 const AdminPanel = React.lazy(() => import('../AdminPanel'));
 const BolgemView = React.lazy(() => import('../BolgemView'));
+const DashboardPage = React.lazy(() => import('../../pages/DashboardPage').then(m => ({ default: m.DashboardPage })));
+const TasksPage = React.lazy(() => import('../../pages/TasksPage').then(m => ({ default: m.TasksPage })));
+const Campaign90Page = React.lazy(() => import('../../pages/Campaign90Page').then(m => ({ default: m.Campaign90Page })));
+const PortfoliosPage = React.lazy(() => import('../../pages/PortfoliosPage').then(m => ({ default: m.PortfoliosPage })));
+const CRMPage = React.lazy(() => import('../../pages/CRMPage').then(m => ({ default: m.CRMPage })));
+const ProfilView = React.lazy(() => import('../ProfilView').then(m => ({ default: m.ProfilView })));
+const CoachView = React.lazy(() => import('./CoachView').then(m => ({ default: m.CoachView })));
 
 import { 
   UserProfile, 
@@ -169,9 +169,10 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
         transition={{ duration: 0.2 }}
         className="h-full"
       >
-        {navigation.activeTab === 'dashboard' && (
-          <DashboardPage 
-            profile={navigation.profile}
+        <React.Suspense fallback={<LoadingFallback />}>
+          {navigation.activeTab === 'dashboard' && (
+            <DashboardPage 
+              profile={navigation.profile}
             properties={portfolios.properties || []}
             gamifiedTasks={utilities.gamifiedTasks || []}
             isGamifiedTasksLoading={utilities.tasksLoading}
@@ -201,12 +202,10 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
           />
         )}
         {navigation.activeTab === 'bolgem' && (
-          <React.Suspense fallback={<LoadingFallback />}>
             <BolgemView 
               profile={navigation.profile} 
               setToast={utilities.setToast}
             />
-          </React.Suspense>
         )}
         {navigation.activeTab === 'campaign-90' && (
           <Campaign90Page />
@@ -261,6 +260,7 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
             <CoachView setActiveTab={navigation.setActiveTab} />
           </PremiumGate>
         )}
+        </React.Suspense>
       </motion.div>
     </AnimatePresence>
   );

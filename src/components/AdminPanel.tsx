@@ -16,6 +16,8 @@ import { AdminAudit } from './AdminAudit';
 import { AdminUserNotes } from './AdminUserNotes';
 import { api } from '../services/api';
 import { getEffectiveAiTokenLimit } from '../config/subscriptionLimits';
+import { MaskedContact } from './shared/MaskedContact';
+import { maskEmail } from '../utils/masking';
 
 interface AdminPanelProps {
   onClose: () => void;
@@ -519,9 +521,9 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     <div className="flex-1 text-center md:text-left">
                       <h2 className="text-2xl font-black text-slate-900">{selectedUserDetail.display_name || 'İsimsiz Kullanıcı'}</h2>
                       <div className="flex flex-col md:flex-row gap-2 md:gap-4 mt-2 text-sm text-slate-500 font-medium items-center md:items-start">
-                        <span className="flex items-center gap-1.5"><Mail size={16} className="text-slate-400"/> {selectedUserDetail.email}</span>
+                        <span className="flex items-center gap-1.5"><Mail size={16} className="text-slate-400"/> <MaskedContact type="email" value={selectedUserDetail.email} canReveal={true} /></span>
                         {/* Not: Phone bilgisi UserProfile'da standart olmadığı için opsiyonel gösterilir */}
-                        <span className="flex items-center gap-1.5"><Phone size={16} className="text-slate-400"/> {selectedUserDetail.phone || 'Belirtilmemiş'}</span>
+                        <span className="flex items-center gap-1.5"><Phone size={16} className="text-slate-400"/> <MaskedContact type="phone" value={selectedUserDetail.phone} canReveal={true} /></span>
                       </div>
                       <div className="mt-4 flex items-center justify-center md:justify-start gap-2">
                          {selectedUserDetail.region ? (
@@ -675,7 +677,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     </div>
                     <div>
                       <div className="font-bold text-slate-900">{editingUser.display_name || 'İsimsiz Kullanıcı'}</div>
-                      <div className="text-xs text-slate-500">{editingUser.email}</div>
+                      <div className="text-xs text-slate-500">{maskEmail(editingUser.email)}</div>
                     </div>
                   </div>
 
@@ -850,7 +852,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                        {trialExpiring3dUsers.map(u => (
                           <div key={u.id} className="flex justify-between items-center p-3 rounded-xl bg-amber-50 border border-amber-100 cursor-pointer hover:border-amber-200 transition-colors" onClick={() => handleOpenUserDetail(u)}>
                              <div>
-                                <div className="font-bold text-sm text-slate-900">{u.display_name || u.email}</div>
+                                <div className="font-bold text-sm text-slate-900">{u.display_name || maskEmail(u.email)}</div>
                                 <div className="text-xs text-amber-700 mt-0.5">Deneme sürümü yakında bitiyor</div>
                              </div>
                              <span className="text-[10px] font-bold bg-amber-200/50 text-amber-800 px-2 py-1 rounded-lg uppercase tracking-wider">Önlem Al</span>
@@ -859,7 +861,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                        {expiredUsersList.map(u => (
                           <div key={u.id} className="flex justify-between items-center p-3 rounded-xl bg-rose-50 border border-rose-100 cursor-pointer hover:border-rose-200 transition-colors" onClick={() => handleOpenUserDetail(u)}>
                              <div>
-                                <div className="font-bold text-sm text-slate-900">{u.display_name || u.email}</div>
+                                <div className="font-bold text-sm text-slate-900">{u.display_name || maskEmail(u.email)}</div>
                                 <div className="text-xs text-rose-700 mt-0.5">Abonelik süresi doldu</div>
                              </div>
                              <span className="text-[10px] font-bold bg-rose-200/50 text-rose-800 px-2 py-1 rounded-lg uppercase tracking-wider">Süresi Bitti</span>
@@ -868,7 +870,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                        {approachingLimitUsers.filter(u => !trialExpiring3dUsers.find(t=>t.id===u.id) && !expiredUsersList.find(e=>e.id===u.id)).map(u => (
                           <div key={u.id} className="flex justify-between items-center p-3 rounded-xl bg-indigo-50 border border-indigo-100 cursor-pointer hover:border-indigo-200 transition-colors" onClick={() => handleOpenUserDetail(u)}>
                              <div>
-                                <div className="font-bold text-sm text-slate-900">{u.display_name || u.email}</div>
+                                <div className="font-bold text-sm text-slate-900">{u.display_name || maskEmail(u.email)}</div>
                                 <div className="text-xs text-indigo-700 mt-0.5">Token limiti dolmak üzere</div>
                              </div>
                              <span className="text-[10px] font-bold bg-indigo-200/50 text-indigo-800 px-2 py-1 rounded-lg uppercase tracking-wider">Satış Fırsatı</span>
@@ -877,7 +879,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                         {inactiveFor14dList.slice(0,5).filter(u => !trialExpiring3dUsers.find(t=>t.id===u.id) && !expiredUsersList.find(e=>e.id===u.id) && !approachingLimitUsers.find(a=>a.id===u.id)).map(u => (
                           <div key={u.id} className="flex justify-between items-center p-3 rounded-xl bg-slate-50 border border-slate-100 cursor-pointer hover:border-slate-200 transition-colors" onClick={() => handleOpenUserDetail(u)}>
                              <div>
-                                <div className="font-bold text-sm text-slate-900">{u.display_name || u.email}</div>
+                                <div className="font-bold text-sm text-slate-900">{u.display_name || maskEmail(u.email)}</div>
                                 <div className="text-xs text-slate-500 mt-0.5">14 günden uzun süredir pasif</div>
                              </div>
                              <span className="text-[10px] font-bold bg-slate-200 text-slate-600 px-2 py-1 rounded-lg uppercase tracking-wider">Uyandır</span>

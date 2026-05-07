@@ -47,6 +47,7 @@ export const voiceService = {
         'gemini-2.0-flash',
         prompt,
         {
+          featureKey: "generic_safe_json",
           responseMimeType: 'application/json',
         }
       );

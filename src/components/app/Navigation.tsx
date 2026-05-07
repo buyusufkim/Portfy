@@ -12,7 +12,7 @@ import {
   Building2,
   CheckSquare
 } from 'lucide-react';
-import { UserProfile } from '../../types';
+import { UserProfile, isAdminRole } from '../../types';
 import { PortfyLogo } from '../PortfyLogo';
 
 interface NavigationProps {
@@ -81,7 +81,7 @@ export const DesktopSidebar = ({
     </div>
 
     <div className="pt-6 mt-4 border-t border-slate-100 flex flex-col space-y-1">
-      {profile?.role === 'admin' && (
+      {isAdminRole(profile?.role) && (
         <SidebarLink icon={<ShieldCheck size={20} />} label="Admin Paneli" active={showAdminPanel} onClick={onAdminClick} />
       )}
       <SidebarLink icon={<UserIcon size={20} />} label="Profilim" active={activeTab === 'profil' && !showAdminPanel} onClick={() => onTabChange('profil')} />
@@ -120,7 +120,7 @@ export const MobileNav = ({
     { id: 'profil', icon: <UserIcon size={24} />, label: 'Profilim' },
   ];
 
-  if (profile?.role === 'admin') {
+  if (isAdminRole(profile?.role)) {
     navItems.push({ id: 'admin', icon: <ShieldCheck size={24} />, label: 'Admin' });
   }
 

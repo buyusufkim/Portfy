@@ -21,7 +21,7 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
         // İlanı Çek
         const { data: propData, error: propError } = await supabase
           .from('properties')
-          .select('*')
+          .select('id, title, description, images, location, price, details, user_id')
           .eq('id', propertyId)
           .maybeSingle();
 
@@ -29,11 +29,11 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
 
         if (propData) {
           setProperty(propData);
-          // İlan sahibini çek
+          // İlan sahibini çek (Sadece gerekli alanlar)
           if (propData.user_id) {
             const { data: agentData } = await supabase
               .from('profiles')
-              .select('*')
+              .select('id, display_name, avatar_url, phone, email, title, company_name')
               .eq('id', propData.user_id)
               .maybeSingle();
             if (agentData) setAgent(agentData);
@@ -41,7 +41,7 @@ export const PublicPresentation = ({ propertyId }: { propertyId: string }) => {
         }
       } catch (err: any) {
         console.error("Veri çekme hatası:", err);
-        setError(err.message);
+        setError('Bu ilan şu anda görüntülenemiyor. Lütfen daha sonra tekrar deneyin.');
       } finally {
         setLoading(false);
       }
