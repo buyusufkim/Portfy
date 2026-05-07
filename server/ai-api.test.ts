@@ -62,4 +62,12 @@ describe('getFeatureConfig', () => {
     const config = getFeatureConfig('ai_coach');
     expect(config.allowClientSystemInstruction).toBe(false);
   });
+
+  it('returns specific config for property_marketing_content', () => {
+    const config = getFeatureConfig('property_marketing_content');
+    expect(config.allowClientSystemInstruction).toBe(false);
+    expect(config.allowClientResponseSchema).toBe(false);
+    expect(config.defaultModel).toBe("gemini-2.5-flash");
+    expect(config.maxInputChars).toBe(12000);
+  });
 });

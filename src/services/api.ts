@@ -75,6 +75,8 @@ export const api = {
   generateInstagramCaptions: propertyService.generateInstagramCaptions,
   generateWhatsAppMessages: propertyService.generateWhatsAppMessages,
   generateMarketingModule: propertyService.generateMarketingModule,
+  getMarketingOutput: propertyService.getMarketingOutput,
+  saveMarketingOutput: propertyService.saveMarketingOutput,
 
   // sahibinden.com Entegrasyonu
   connectSahibinden: propertyService.connectSahibinden,

@@ -229,119 +229,134 @@ export const propertyService = {
   // ==========================================
   
   generatePropertyContent: async (property: Property) => {
-    const prompt = `
-      Aşağıdaki gayrimenkul özelliklerine dayanarak profesyonel bir ilan metni oluştur:
-      Başlık: ${property.title}
-      Tip: ${property.type}
-      Kategori: ${property.category}
-      Fiyat: ${property.price} TL
-      Konum: ${property.address.district}, ${property.address.city}
-      Metrekare: ${property.details.brut_m2} m2
-      Oda Sayısı: ${property.details.rooms}
-      Bina Yaşı: ${property.details.age}
-      Kat: ${property.details.floor}
-      
-      Lütfen Sahibinden.com için detaylı ve profesyonel bir açıklama üret.
-      
-      ÖNEMLİ KURAL: Yanıtı SADECE aşağıdaki JSON formatında ver, dışına çıkma:
-      {
-        "metin": "Ürettiğin ilan açıklaması buraya gelecek"
-      }
-    `;
-
     try {
-      const response = await generateContent("gemini-2.5-flash", prompt, { featureKey: "generic_safe_json" }) as PropertyAIContent;
-      return response.metin || "İlan metni oluşturulamadı. Lütfen tekrar deneyin.";
+      let data: any = await propertyService.getMarketingOutput(property.id);
+      if (!data) {
+        data = await propertyService.generateMarketingModule(property);
+      }
+      return data?.portal_description || data?.short_description || "İlan metni oluşturulamadı.";
     } catch (error) {
       console.error("İlan metni üretim hatası:", error);
-      return "İlan metni şu an üretilemiyor.";
+      throw error;
     }
   },
 
   generateInstagramCaptions: async (property: Property) => {
-    const prompt = `
-      Aşağıdaki gayrimenkul için 3 farklı tonda Instagram paylaşım metni üret:
-      Başlık: ${property.title}
-      Fiyat: ${property.price} TL
-      Konum: ${property.address.district}, ${property.address.city}
-      Oda: ${property.details.rooms}
-      M2: ${property.details.brut_m2}
-      
-      Varyasyonlar:
-      1. Kurumsal ton (Profesyonel, güven verici)
-      2. Satış odaklı ton (Fırsat vurgulu, heyecan verici)
-      3. Sıcak/Samimi ton (Yaşam alanı vurgulu, duygusal)
-      
-      Yanıtı SADECE şu JSON formatında ver:
-      {
-        "corporate": "metin",
-        "sales": "metin",
-        "warm": "metin"
+    try {
+      let data: any = await propertyService.getMarketingOutput(property.id);
+      if (!data) {
+        data = await propertyService.generateMarketingModule(property);
       }
-    `;
-    
-    const response = await generateContent("gemini-2.5-flash", prompt, { featureKey: "generic_safe_json" }) as InstagramMarketingContent;
-    return response;
+      const posts: any = data?.instagram_posts || [];
+      const kurumsal = posts.find((p: any) => p.tone === 'kurumsal') || posts[0];
+      const satis = posts.find((p: any) => p.tone === 'satis_odakli') || posts[1] || posts[0];
+      const samimi = posts.find((p: any) => p.tone === 'samimi') || posts[2] || posts[0];
+      
+      return {
+        corporate: kurumsal?.caption || '',
+        sales: satis?.caption || '',
+        warm: samimi?.caption || ''
+      };
+    } catch (error) {
+      console.error("Instagram metni üretim hatası:", error);
+      throw error;
+    }
   },
 
   generateWhatsAppMessages: async (property: Property) => {
-    const prompt = `
-      Aşağıdaki gayrimenkul için 3 farklı senaryoda WhatsApp mesajı üret:
-      Başlık: ${property.title}
-      Fiyat: ${property.price} TL
-      Konum: ${property.address.district}, ${property.address.city}
-      Oda: ${property.details.rooms}
-      
-      Senaryolar:
-      1. Tek müşteriye özel kısa mesaj
-      2. WhatsApp durum/toplu paylaşım mesajı
-      3. Yatırımcı müşteriye profesyonel mesaj
-      
-      Yanıtı SADECE şu JSON formatında ver:
-      {
-        "single": "metin",
-        "status": "metin",
-        "investor": "metin"
+    try {
+      let data: any = await propertyService.getMarketingOutput(property.id);
+      if (!data) {
+        data = await propertyService.generateMarketingModule(property);
       }
-    `;
-    
-    const response = await generateContent("gemini-2.5-flash", prompt, { featureKey: "generic_safe_json" }) as WhatsAppMarketingContent;
-    return response;
+      let statuses: any = data?.whatsapp_messages || {};
+      if (Array.isArray(data?.whatsapp_messages)) {
+          const arr = data.whatsapp_messages as any[];
+          statuses = {
+              single: arr.find(m => m.type === 'single')?.text || '',
+              status: arr.find(m => m.type === 'status')?.text || '',
+              investor: arr.find(m => m.type === 'investor')?.text || ''
+          };
+      }
+      return {
+        single: statuses.single || '',
+        status: statuses.status || '',
+        investor: statuses.investor || ''
+      };
+    } catch (error) {
+      console.error("WhatsApp metni üretim hatası:", error);
+      throw error;
+    }
+  },
+
+  saveMarketingOutput: async (propertyId: string, outputJson: any) => {
+    const userId = await getUserId();
+    if (!userId) throw new Error('Not authenticated');
+
+    const { error } = await supabase
+      .from('property_marketing_outputs')
+      .upsert({
+        user_id: userId,
+        property_id: propertyId,
+        output_type: 'full_marketing_pack',
+        output_json: outputJson,
+        updated_at: new Date().toISOString()
+      }, { onConflict: 'user_id, property_id, output_type' });
+
+    if (error) console.error("Error saving marketing output:", error);
+  },
+
+  getMarketingOutput: async (propertyId: string) => {
+    const userId = await getUserId();
+    if (!userId) throw new Error('Not authenticated');
+
+    const { data, error } = await supabase
+      .from('property_marketing_outputs')
+      .select('output_json')
+      .eq('user_id', userId)
+      .eq('property_id', propertyId)
+      .eq('output_type', 'full_marketing_pack')
+      .maybeSingle();
+
+    if (error) {
+      console.error("Error fetching marketing output:", error);
+      return null;
+    }
+    return data?.output_json || null;
   },
 
   generateMarketingModule: async (property: Property) => {
-    const prompt = `
-      Sen Portfy emlak asistanısın. Aşağıdaki gayrimenkul bilgilerini kullanarak profesyonel pazarlama içerikleri üret.
-      
-      Girdi Bilgileri:
-      - İlan Başlığı: ${property.title}
-      - İlan Tipi: ${property.type}
-      - Oda Sayısı: ${property.details.rooms}
-      - Metrekare: ${property.details.brut_m2} m2
-      - Kat Bilgisi: ${property.details.floor}. Kat
-      - Fiyat: ${property.price.toLocaleString()} TL
-      - Konum: ${property.address.neighborhood} / ${property.address.district} / ${property.address.city}
-      - Portföy Özeti: ${property.notes}
-      
-      Yanıtı tam olarak şu JSON formatında ver:
-      {
-        "instagram_posts": [
-          { "tone": "kurumsal", "headline": "...", "caption": "...", "cta": "...", "hashtags": ["...", "..."] },
-          { "tone": "satis_odakli", "headline": "...", "caption": "...", "cta": "...", "hashtags": ["...", "..."] },
-          { "tone": "samimi", "headline": "...", "caption": "...", "cta": "...", "hashtags": ["...", "..."] }
-        ],
-        "whatsapp_messages": [
-          { "type": "kisa_musteri_mesaji", "text": "...", "alternative_texts": ["...", "..."] },
-          { "type": "durum_toplu_paylasim", "text": "...", "alternative_texts": ["...", "..."] },
-          { "type": "yatirimciya_ozel", "text": "...", "alternative_texts": ["...", "..."] }
-        ],
-        "summaries": ["...", "...", "..."],
-        "cta_options": ["...", "...", "..."]
-      }
+    const propertyDetails = `
+      İlan Başlığı: ${property.title}
+      İlan Tipi: ${property.type}
+      Oda Sayısı: ${property.details.rooms}
+      Metrekare: ${property.details.brut_m2} m2
+      Kat Bilgisi: ${property.details.floor}. Kat
+      Fiyat: ${property.price.toLocaleString()} TL
+      Konum: ${property.address.neighborhood} / ${property.address.district} / ${property.address.city}
+      Portföy Özeti: ${property.notes}
     `;
 
-    const response = await generateContent("gemini-2.5-flash", prompt, { featureKey: "generic_safe_json" }) as MarketingModuleContent;
-    return response;
+    const response = await generateContent("gemini-2.5-flash", propertyDetails, { featureKey: "property_marketing_content" }) as any;
+    
+    // Convert to the exact frontend format expected by types if needed, or if it matches exactly, just return it.
+    // We already aligned the server responseSchema to match our needs, but whatsapp_messages is an object in server schema.
+    // The previous prompt asked for:
+    // "whatsapp_messages": [ { "type": "kisa_musteri_mesaji", "text": "...", "alternative_texts": ["...", "..."] }, ... ]
+    // Let's normalize it to the MarketingModuleContent type.
+    const normalizedResponse = {
+      ...response,
+      whatsapp_messages: response.whatsapp_messages ? (
+        Array.isArray(response.whatsapp_messages) ? response.whatsapp_messages : [
+          { type: 'single', text: response.whatsapp_messages.single || '', alternative_texts: [] },
+          { type: 'status', text: response.whatsapp_messages.status || '', alternative_texts: [] },
+          { type: 'investor', text: response.whatsapp_messages.investor || '', alternative_texts: [] }
+       ]
+      ) : []
+    };
+
+    await propertyService.saveMarketingOutput(property.id, normalizedResponse);
+    return normalizedResponse as MarketingModuleContent;
   },
 
   // sahibinden.com Entegrasyonu

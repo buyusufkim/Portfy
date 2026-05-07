@@ -716,6 +716,8 @@ export interface MarketingModuleContent {
   }[];
   summaries: string[];
   cta_options: string[];
+  short_description?: string;
+  portal_description?: string;
 }
 
 export interface CompetitorListing {

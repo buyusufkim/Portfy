@@ -31,6 +31,8 @@ export interface MarketingHubData {
   whatsapp_messages?: unknown[];
   summaries?: string[];
   cta_options?: string[];
+  short_description?: string;
+  portal_description?: string;
 }
 
 interface MarketingHubModalProps {

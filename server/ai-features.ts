@@ -161,6 +161,45 @@ export const AI_FEATURE_REGISTRY: Record<string, AIFeatureConfig> = {
     allowClientSystemInstruction: false,
     allowClientResponseSchema: false,
   },
+  property_marketing_content: {
+    allowedModels: COMMON_MODELS,
+    defaultModel: "gemini-2.5-flash",
+    maxInputChars: 12000,
+    allowClientSystemInstruction: false,
+    allowClientResponseSchema: false,
+    systemInstruction: "Sen profesyonel bir gayrimenkul danışmanısın. Verilen mülk bilgilerini kullanarak Instagram, WhatsApp ve emlak portalları için pazarlama metinleri üret. Farklı hedef kitlelere yönelik (kurumsal, satış odaklı, samimi) içerikler hazırla.",
+    responseSchema: {
+      type: "object",
+      properties: {
+        instagram_posts: {
+          type: "array",
+          items: {
+            type: "object",
+            properties: {
+              tone: { type: "string" },
+              headline: { type: "string" },
+              caption: { type: "string" },
+              cta: { type: "string" },
+              hashtags: {
+                type: "array",
+                items: { type: "string" }
+              }
+            }
+          }
+        },
+        whatsapp_messages: {
+          type: "object",
+          properties: {
+            single: { type: "string" },
+            status: { type: "string" },
+            investor: { type: "string" }
+          }
+        },
+        short_description: { type: "string" },
+        portal_description: { type: "string" }
+      }
+    }
+  },
   generic_safe_json: {
     allowedModels: COMMON_MODELS,
     defaultModel: "gemini-2.5-flash",

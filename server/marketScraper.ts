@@ -13,9 +13,11 @@ export const fetchMarketData = async (params: {
 
   if (!apiKey) {
     return {
+      success: false,
       status: "unavailable",
       is_estimated: true,
-      source: "System",
+      source: "fallback",
+      reason: "EVOMI_API_KEY_MISSING",
       error: "API key missing",
       raw_count: 0,
       averagePrice: null,
@@ -37,12 +39,29 @@ export const fetchMarketData = async (params: {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
+        'x-apikey': apiKey
       },
       body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
+      if (response.status === 401) {
+        console.error("Market Data Fetch Error: 401 Unauthorized from Evomi");
+        return {
+          success: false,
+          status: "unavailable",
+          is_estimated: true,
+          source: "fallback",
+          reason: "EVOMI_API_401",
+          error: "Piyasa verisi şu an canlı kaynaktan alınamadı, tahmini analiz gösteriliyor.",
+          raw_count: 0,
+          averagePrice: null,
+          priceTrend: null,
+          demandScore: null,
+          saleProbability: null,
+          lastUpdated: new Date().toISOString()
+        };
+      }
       throw new Error(`Evomi API Error: ${response.status} ${response.statusText}`);
     }
 

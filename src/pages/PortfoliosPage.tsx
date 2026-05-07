@@ -112,12 +112,29 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
 
   const { runSmartMatchAsync } = useSmartMatch();
 
+  const handleAiError = (error: any) => {
+    setIsGenerating(false);
+    const msg = error?.message || '';
+    if (msg.includes('403') || msg.includes('limit')) {
+      toast.error('Bu AI özelliği hesabında aktif değil veya kullanım limitin doldu.', { duration: 5000 });
+    } else if (msg.includes('401')) {
+      toast.error('Oturum süren dolmuş olabilir. Tekrar giriş yap.');
+    } else if (msg.includes('413')) {
+      toast.error('Girdi çok uzun. Portföy notlarını kısaltıp tekrar dene.');
+    } else if (msg.includes('invalid_ai_feature') || msg.includes('400')) {
+      toast.error('AI özelliği yapılandırması eksik veya geçersiz.');
+    } else {
+      toast.error('AI üretim sırasında hata oluştu. Biraz sonra tekrar dene.');
+    }
+  };
+
   const generateContentMutation = useMutation({
     mutationFn: (prop: Property) => api.generatePropertyContent(prop),
     onSuccess: (data) => {
       setAiContent(data);
       setIsGenerating(false);
     },
+    onError: handleAiError,
   });
 
   const generateInstagramMutation = useMutation({
@@ -126,6 +143,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
       setInstagramCaptions(data);
       setIsGenerating(false);
     },
+    onError: handleAiError,
   });
 
   const generateWhatsAppMutation = useMutation({
@@ -134,6 +152,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
       setWhatsappMessages(data);
       setIsGenerating(false);
     },
+    onError: handleAiError,
   });
 
   const generateMarketingMutation = useMutation({
@@ -142,7 +161,9 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
       setMarketingHubData(data as unknown as MarketingHubData);
       setIsGenerating(false);
       setShowMarketingHub(true);
+      toast.success('Pazarlama içerikleri portföye kaydedildi.');
     },
+    onError: handleAiError,
   });
 
   const { data: blockers = [] } = useQuery({
@@ -273,11 +294,22 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         setDocumentAutomationProperty={setDocumentAutomationProperty}
         setDocumentAutomationLead={setDocumentAutomationLead}
         onShowExternalListings={() => setShowExternalListings(true)}
-        onGenerateMarketingHub={() => {
+        onGenerateMarketingHub={async () => {
           if (!selectedProperty) return;
           setAiMarketingType("hub");
           setIsGenerating(true);
-          generateMarketingMutation.mutate(selectedProperty);
+          try {
+            const data = await api.getMarketingOutput(selectedProperty.id);
+            if (data && Object.keys(data).length > 0) {
+              setMarketingHubData(data as unknown as MarketingHubData);
+              setIsGenerating(false);
+              setShowMarketingHub(true);
+            } else {
+              generateMarketingMutation.mutate(selectedProperty);
+            }
+          } catch (err) {
+            generateMarketingMutation.mutate(selectedProperty);
+          }
         }}
         onEdit={() => {
           setIsEditing(true);
@@ -319,22 +351,59 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
           if (!selectedProperty) return;
           setShowMarketingHub(false);
           setAiMarketingType("listing");
-          setIsGenerating(true);
-          generateContentMutation.mutate(selectedProperty);
+          if (marketingHubData?.portal_description) {
+               setAiContent(marketingHubData.portal_description as string);
+               setIsGenerating(false);
+          } else {
+               setIsGenerating(true);
+               generateContentMutation.mutate(selectedProperty);
+          }
         }}
         onGenerateInstagram={() => {
           if (!selectedProperty) return;
           setShowMarketingHub(false);
           setAiMarketingType("instagram");
-          setIsGenerating(true);
-          generateInstagramMutation.mutate(selectedProperty);
+          if (marketingHubData?.instagram_posts && marketingHubData.instagram_posts.length > 0) {
+              const posts: any = marketingHubData.instagram_posts || [];
+              const kurumsal = posts.find((p: any) => p.tone === 'kurumsal') || posts[0];
+              const satis = posts.find((p: any) => p.tone === 'satis_odakli') || posts[1] || posts[0];
+              const samimi = posts.find((p: any) => p.tone === 'samimi') || posts[2] || posts[0];
+              
+              setInstagramCaptions({
+                  corporate: kurumsal?.caption || '',
+                  sales: satis?.caption || '',
+                  warm: samimi?.caption || ''
+              });
+              setIsGenerating(false);
+          } else {
+              setIsGenerating(true);
+              generateInstagramMutation.mutate(selectedProperty);
+          }
         }}
         onGenerateWhatsApp={() => {
           if (!selectedProperty) return;
           setShowMarketingHub(false);
           setAiMarketingType("whatsapp");
-          setIsGenerating(true);
-          generateWhatsAppMutation.mutate(selectedProperty);
+          if (marketingHubData?.whatsapp_messages && Object.keys(marketingHubData.whatsapp_messages).length > 0) {
+              let statuses: any = marketingHubData.whatsapp_messages;
+              if (Array.isArray(marketingHubData.whatsapp_messages)) {
+                  const arr = marketingHubData.whatsapp_messages as any[];
+                  statuses = {
+                      single: arr.find(m => m.type === 'single')?.text || '',
+                      status: arr.find(m => m.type === 'status')?.text || '',
+                      investor: arr.find(m => m.type === 'investor')?.text || ''
+                  };
+              }
+              setWhatsappMessages({
+                  single: statuses.single || '',
+                  status: statuses.status || '',
+                  investor: statuses.investor || ''
+              });
+              setIsGenerating(false);
+          } else {
+              setIsGenerating(true);
+              generateWhatsAppMutation.mutate(selectedProperty);
+          }
         }}
       />
       <AIContentModal
