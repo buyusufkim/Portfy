@@ -23,6 +23,8 @@ import {
   isAdminRole
 } from "../types";
 import { getEffectiveAiTokenLimit } from "../config/subscriptionLimits";
+import { featureKeyToLabel, shortRequestId } from "../utils/aiHelpers";
+import { aiService } from "../services/aiService";
 import { maskEmail, maskPhone } from "../utils/masking";
 import { MaskedContact } from "./shared/MaskedContact";
 import { 
@@ -208,6 +210,40 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
     queryFn: profileService.getWorkDisciplineLogs,
     enabled: !!profile?.id
   });
+
+  const [aiLogsOffset, setAiLogsOffset] = useState(0);
+  const [aiLogsFilter, setAiLogsFilter] = useState('all');
+  const [aiLogs, setAiLogs] = useState<any[]>([]);
+  const [hasMoreAiLogs, setHasMoreAiLogs] = useState(true);
+  const [loadingAiLogs, setLoadingAiLogs] = useState(false);
+
+  useEffect(() => {
+    setAiLogs([]);
+    setAiLogsOffset(0);
+    setHasMoreAiLogs(true);
+  }, [aiLogsFilter]);
+
+  useEffect(() => {
+    if (selectedPanel !== 'aiUsage' || !profile?.id) return;
+
+    const loadLogs = async () => {
+       setLoadingAiLogs(true);
+       try {
+         const logs = await aiService.getAiRequestLogs(20, aiLogsOffset, aiLogsFilter);
+         if (aiLogsOffset === 0) {
+            setAiLogs(logs);
+         } else {
+            setAiLogs(prev => [...prev, ...logs]);
+         }
+         setHasMoreAiLogs(logs.length === 20);
+       } catch(e) {
+         console.error(e);
+       } finally {
+         setLoadingAiLogs(false);
+       }
+    };
+    loadLogs();
+  }, [aiLogsOffset, aiLogsFilter, selectedPanel, profile?.id]);
 
   const { clampedScore, scoreMessage } = calculateProfileCompletionScore(formData, profile, brokerAccount);
 
@@ -1542,6 +1578,57 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                                />
                             </div>
                             <p className="text-[11px] text-slate-500 mt-2">Token kullanımınız bir sonraki fatura döneminde sıfırlanacaktır.</p>
+                            <div className="mt-8 pt-6 border-t border-slate-100 text-left">
+                                 <div className="flex justify-between items-center mb-4">
+                                   <h5 className="text-sm font-bold text-slate-900">AI Kullanım Arşivi</h5>
+                                   <select 
+                                     value={aiLogsFilter} 
+                                     onChange={(e) => setAiLogsFilter(e.target.value)}
+                                     className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 text-slate-700 outline-none focus:border-indigo-300"
+                                   >
+                                     <option value="all">Tümü</option>
+                                     <option value="ai_coach">AI Koç</option>
+                                     <option value="property_marketing_content">Portföy Pazarlama</option>
+                                     <option value="whatsapp_analysis">WhatsApp</option>
+                                     <option value="other">Diğer</option>
+                                   </select>
+                                 </div>
+                                 
+                                 {aiLogs && aiLogs.length > 0 ? (
+                                   <ul className="space-y-2">
+                                     {aiLogs.map((log: any, i: number) => (
+                                       <li key={log.id || i} className={`flex justify-between items-center text-sm p-3 rounded-xl border ${log.status_code >= 400 ? 'bg-red-50/50 border-red-100' : 'bg-slate-50 border-transparent'}`}>
+                                         <div>
+                                            <div className="font-semibold text-slate-700 flex items-center gap-2">
+                                              {featureKeyToLabel(log.feature_key)}
+                                              {log.status_code >= 400 && <span className="text-[10px] bg-red-100 text-red-600 px-1.5 rounded font-bold">Hata</span>}
+                                            </div>
+                                            <div className="text-[11px] text-slate-400">
+                                              {new Date(log.created_at).toLocaleString('tr-TR', { dateStyle: 'short', timeStyle: 'short' })} • {log.model_name}
+                                              {log.request_id && <span className="ml-1 opacity-50">#{shortRequestId(log.request_id)}</span>}
+                                            </div>
+                                         </div>
+                                         <div className={`font-bold ${log.status_code >= 400 ? 'text-slate-400' : 'text-slate-900'}`}>
+                                           {log.status_code < 400 ? `+${log.total_tokens}` : '-'}
+                                         </div>
+                                       </li>
+                                     ))}
+                                   </ul>
+                                 ) : (
+                                   !loadingAiLogs && <p className="text-sm text-slate-500 text-center py-4 bg-slate-50 rounded-xl my-2">Henüz AI kullanım kaydı yok.</p>
+                                 )}
+
+                                 {loadingAiLogs && <div className="text-center py-2 text-xs text-slate-400 mt-2">Yükleniyor...</div>}
+                                 
+                                 {hasMoreAiLogs && !loadingAiLogs && aiLogs.length > 0 && (
+                                   <button 
+                                     onClick={() => setAiLogsOffset(prev => prev + 20)}
+                                     className="w-full mt-2 py-2 text-xs font-bold text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors"
+                                   >
+                                     Daha fazla göster
+                                   </button>
+                                 )}
+                              </div>
                          </div>
                       ) : (
                          <p className="text-sm text-slate-500">Aboneliğiniz kapsamında detaylı kullanım verisi bulunmuyor.</p>

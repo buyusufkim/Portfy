@@ -75,6 +75,11 @@ describe('subscriptionRules', () => {
        expect(getEffectiveAiTokenLimit({ tier: 'pro', ai_token_limit: 15000 })).toBe(15000);
     });
 
+    it('admin override beats custom ai_token_limit', () => {
+       expect(getEffectiveAiTokenLimit({ role: 'admin', ai_token_limit: 5000 })).toBe(AI_TOKEN_LIMITS.admin);
+       expect(getEffectiveAiTokenLimit({ role: 'super_admin', ai_token_limit: 5000 })).toBe(AI_TOKEN_LIMITS.admin);
+    });
+
     it('ignores invalid custom ai_token_limit', () => {
        expect(getEffectiveAiTokenLimit({ tier: 'free', ai_token_limit: 0 })).toBe(AI_TOKEN_LIMITS.free);
        expect(getEffectiveAiTokenLimit({ tier: 'free', ai_token_limit: -500 })).toBe(AI_TOKEN_LIMITS.free);

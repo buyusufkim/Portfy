@@ -195,6 +195,23 @@ const safeErrorMessage = (error: unknown, fallback: string) =>
 
 // --- YENİ: TOKEN MUHASEBE MIDDLEWARE'İ ---
 // Yanıtı keser (intercept) ve token kullanımını arka planda asenkron olarak kaydeder.
+export function normalizeAiUsage(usage: any): { promptTokens: number; completionTokens: number; totalTokens: number } {
+  if (!usage) return { promptTokens: 0, completionTokens: 0, totalTokens: 0 };
+  const promptTokens = usage.promptTokenCount || usage.prompt_tokens || 0;
+  const completionTokens = usage.candidatesTokenCount || usage.completion_tokens || 0;
+  let totalTokens = usage.totalTokenCount || usage.total_tokens || usage.totalTokens || 0;
+  
+  if (!totalTokens) {
+    totalTokens = promptTokens + completionTokens;
+  }
+  
+  return {
+    promptTokens,
+    completionTokens,
+    totalTokens
+  };
+}
+
 export const tokenTrackerMiddleware = (
   req: AuthRequest,
   res: Response,
@@ -204,10 +221,11 @@ export const tokenTrackerMiddleware = (
 
   res.json = function (body: Record<string, unknown> | null) {
     const bodyData = body as {
-      usage?: { totalTokenCount?: number; totalTokens?: number };
+      usage?: unknown;
     } | null;
-    const totalTokens =
-      bodyData?.usage?.totalTokenCount || bodyData?.usage?.totalTokens;
+    
+    const usageObj = normalizeAiUsage(bodyData?.usage);
+    const totalTokens = usageObj.totalTokens;
     const userId = req.user?.id; // authenticate'den geliyor
 
     // Sadece başarılı dönen ve içinde usage barındıran AI yanıtlarını yakala
@@ -215,13 +233,13 @@ export const tokenTrackerMiddleware = (
       res.statusCode >= 200 &&
       res.statusCode < 300 &&
       userId &&
-      totalTokens &&
       totalTokens > 0
     ) {
       // Yanıtın gecikmemesi için fire-and-forget asenkron çalıştırıyoruz
       (async () => {
         if (!supabaseAdmin) return;
         try {
+          // RPC üzerinden tokenleri profiles üzerine atomic olarak ekle
           const { error: rpcError } = await supabaseAdmin.rpc("increment_ai_tokens", { 
             p_user_id: userId, 
             p_tokens: totalTokens 
@@ -229,8 +247,28 @@ export const tokenTrackerMiddleware = (
 
           if (rpcError) throw rpcError;
 
+          // Sonrasında ek logları alalım
+          const featureKey = req.body?.featureKey || 'unknown';
+          const reqModel = req.body?.model || 'unknown';
+          const responseModel = (bodyData as any)?.model || reqModel; // resolved model eğer dönerse
+
+          const { error: logError } = await supabaseAdmin.from('ai_request_logs').insert({
+            user_id: userId,
+            prompt_tokens: usageObj.promptTokens,
+            completion_tokens: usageObj.completionTokens,
+            total_tokens: totalTokens,
+            model_name: responseModel,
+            feature_key: featureKey,
+            request_id: (req as any).requestId || null,
+            status_code: res.statusCode
+          });
+
+          if (logError) {
+             console.error("[Token Muhasebe Hatası] AI log insert edilemedi:", logError);
+          }
+
           console.log(
-            `[Token Muhasebe] Danışman ID: ${userId} | Harcanan (Atomic): ${totalTokens}`,
+            `[Token Muhasebe] Danışman ID: ${userId} | Harcanan (Atomic): ${totalTokens}`
           );
         } catch (err: unknown) {
           const msg = err instanceof Error ? err.message : String(err);

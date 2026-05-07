@@ -29,6 +29,33 @@ export interface ValuationReport {
 }
 
 export const aiService = {
+  getAiRequestLogs: async (limit: number = 20, offset: number = 0, featureFilter?: string) => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return [];
+
+    let query = supabase
+      .from('ai_request_logs')
+      .select('id, feature_key, model_name, prompt_tokens, completion_tokens, total_tokens, status_code, request_id, created_at')
+      .eq('user_id', user.id)
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1);
+
+    if (featureFilter && featureFilter !== 'all') {
+      if (featureFilter === 'other') {
+        query = query.not('feature_key', 'in', '("ai_coach", "dashboard_coach", "property_marketing_content", "whatsapp_analysis", "whatsapp_lead_extract", "business_card_parse", "generic_safe_json")');
+      } else {
+        query = query.eq('feature_key', featureFilter);
+      }
+    }
+
+    const { data, error } = await query;
+    if (error) {
+       console.error("Error fetching AI logs:", error);
+       return [];
+    }
+    return data || [];
+  },
+
   checkUsage: async (userId: string): Promise<{ current: number, limit: number }> => {
     const { data: profile } = await supabase
       .from('profiles')

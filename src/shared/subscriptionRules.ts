@@ -85,6 +85,8 @@ export const getDefaultAiTokenLimit = (profile: ProfileForSubscriptionRules | nu
 };
 
 export const getEffectiveAiTokenLimit = (profile: ProfileForSubscriptionRules | null | undefined, now: Date = new Date()): number => {
+  if (isAdminRoleForSubscription(profile?.role)) return AI_TOKEN_LIMITS.admin;
+
   if (profile?.ai_token_limit !== undefined && profile?.ai_token_limit !== null) {
     const limitNum = Number(profile.ai_token_limit);
     if (!isNaN(limitNum) && limitNum > 0) {
@@ -92,7 +94,5 @@ export const getEffectiveAiTokenLimit = (profile: ProfileForSubscriptionRules | 
     }
   }
 
-  if (isAdminRoleForSubscription(profile?.role)) return AI_TOKEN_LIMITS.admin;
-  
   return getDefaultAiTokenLimit(profile, now);
 };

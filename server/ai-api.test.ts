@@ -1,6 +1,28 @@
 import { describe, it, expect } from 'vitest';
-import { calculateContentTextLength } from './ai-api';
+import { calculateContentTextLength, normalizeAiUsage } from './ai-api';
 import { getFeatureConfig } from './ai-features';
+
+describe('normalizeAiUsage', () => {
+  it('handles empty usage', () => {
+    expect(normalizeAiUsage(null)).toEqual({ promptTokens: 0, completionTokens: 0, totalTokens: 0 });
+    expect(normalizeAiUsage({})).toEqual({ promptTokens: 0, completionTokens: 0, totalTokens: 0 });
+  });
+
+  it('reads totalTokenCount for Gemini', () => {
+    const usage = { promptTokenCount: 10, candidatesTokenCount: 20, totalTokenCount: 30 };
+    expect(normalizeAiUsage(usage)).toEqual({ promptTokens: 10, completionTokens: 20, totalTokens: 30 });
+  });
+
+  it('reads OpenAI style snake_case tokens', () => {
+    const usage = { prompt_tokens: 15, completion_tokens: 25, total_tokens: 40 };
+    expect(normalizeAiUsage(usage)).toEqual({ promptTokens: 15, completionTokens: 25, totalTokens: 40 });
+  });
+
+  it('calculates totalTokens if missing', () => {
+    const usage = { prompt_tokens: 10, completion_tokens: 20 };
+    expect(normalizeAiUsage(usage)).toEqual({ promptTokens: 10, completionTokens: 20, totalTokens: 30 });
+  });
+});
 
 describe('calculateContentTextLength', () => {
   it('calculates length for a simple string', () => {
