@@ -12,10 +12,14 @@ import { UserProfile } from "../types";
 import { getEffectiveAiTokenLimit } from "../config/subscriptionLimits";
 import { maskEmail } from "../utils/masking";
 
+export type AdminUserFilter = 'all' | 'free' | 'trial' | 'master' | 'expired' | 'near_limit' | 'inactive_14d';
+
 interface AdminUserTableProps {
   loading: boolean;
   searchQuery: string;
   setSearchQuery: (val: string) => void;
+  userFilter: AdminUserFilter;
+  setUserFilter: (val: AdminUserFilter) => void;
   filteredUsers: UserProfile[];
   handleOpenUserDetail: (user: UserProfile) => void;
   handleResetToken: (id: string) => void;
@@ -24,10 +28,14 @@ interface AdminUserTableProps {
   getRemainingDays: (endDateStr?: string) => string | null;
 }
 
+import { getSubscriptionLabel } from './ProfilView';
+
 export const AdminUserTable: React.FC<AdminUserTableProps> = ({
   loading,
   searchQuery,
   setSearchQuery,
+  userFilter,
+  setUserFilter,
   filteredUsers,
   handleOpenUserDetail,
   handleResetToken,
@@ -37,23 +45,39 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
 }) => {
   return (
     <div className="space-y-6">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">Üye ve Abonelik Yönetimi</h2>
-          <p className="text-sm font-medium text-slate-500 mt-1">Sistemdeki tüm kullanıcıları, paketlerini ve token durumlarını yönetin.</p>
+      <div className="flex flex-col gap-4">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+          <div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight">Üye ve Abonelik Yönetimi</h2>
+            <p className="text-sm font-medium text-slate-500 mt-1">Sistemdeki tüm kullanıcıları, paketlerini ve token durumlarını yönetin.</p>
+          </div>
         </div>
-        <div className="relative w-full md:w-80">
-          <Search
-            size={18}
-            className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400"
-          />
-          <input
-            type="text"
-            placeholder="İsim veya E-posta ara..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-12 pr-4 py-3 border border-slate-200 bg-white rounded-2xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 text-sm font-medium text-slate-700 outline-none transition-all shadow-sm"
-          />
+        
+        <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+          <div className="relative w-full border-b border-slate-100">
+            <Search
+              size={18}
+              className="absolute left-6 top-1/2 -translate-y-1/2 text-slate-400"
+            />
+            <input
+              type="text"
+              placeholder="İsim veya E-posta ara..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full pl-14 pr-6 py-4 bg-transparent focus:ring-0 focus:outline-none text-sm font-medium text-slate-700 min-h-[56px]"
+            />
+          </div>
+          <div className="w-full overflow-x-auto custom-scrollbar bg-slate-50/50">
+             <div className="flex p-3 gap-2 min-w-max">
+                <button onClick={() => setUserFilter('all')} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${userFilter === 'all' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-200/50'}`}>Tümü</button>
+                <button onClick={() => setUserFilter('free')} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${userFilter === 'free' ? 'bg-white text-indigo-600 shadow-sm border border-slate-200' : 'text-slate-500 hover:bg-slate-200/50'}`}>Girişimci</button>
+                <button onClick={() => setUserFilter('trial')} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${userFilter === 'trial' ? 'bg-white text-amber-600 shadow-sm border border-amber-200' : 'text-slate-500 hover:bg-slate-200/50'}`}>Master Deneme</button>
+                <button onClick={() => setUserFilter('master')} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${userFilter === 'master' ? 'bg-white text-emerald-600 shadow-sm border border-emerald-200' : 'text-slate-500 hover:bg-slate-200/50'}`}>Master Ücretli</button>
+                <button onClick={() => setUserFilter('expired')} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${userFilter === 'expired' ? 'bg-white text-red-600 shadow-sm border border-red-200' : 'text-slate-500 hover:bg-slate-200/50'}`}>Süresi Dolan</button>
+                <button onClick={() => setUserFilter('near_limit')} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${userFilter === 'near_limit' ? 'bg-white text-orange-600 shadow-sm border border-orange-200' : 'text-slate-500 hover:bg-slate-200/50'}`}>Token Limite Yakın</button>
+                <button onClick={() => setUserFilter('inactive_14d')} className={`px-4 py-2 rounded-xl text-sm font-bold transition-all ${userFilter === 'inactive_14d' ? 'bg-white text-slate-700 shadow-sm border border-slate-300' : 'text-slate-500 hover:bg-slate-200/50'}`}>14+ Gün Pasif</button>
+             </div>
+          </div>
         </div>
       </div>
 
@@ -95,7 +119,7 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
                 const remainingText = getRemainingDays(u.subscription_end_date);
                 const isExpired = remainingText === "Süresi Doldu";
 
-                const isActiveMaster = u.tier === "master" && !isExpired;
+                const isActiveMaster = u.tier === "master" && u.subscription_type !== "trial" && !isExpired;
                 const isTrial = u.subscription_type === "trial" && !isExpired;
                 const isPassive = !isActiveMaster && !isTrial;
 
@@ -140,15 +164,7 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
                                 : "bg-slate-100 text-slate-600 border border-slate-200"
                           }`}
                         >
-                          {isActiveMaster
-                            ? "Master"
-                            : isTrial
-                              ? "Deneme"
-                              : isPassive
-                                ? isExpired
-                                  ? "Süresi Doldu / Pasif"
-                                  : "Başlangıç"
-                                : "Başlangıç"}
+                          {getSubscriptionLabel(u)}
                         </span>
                         {!isPassive && remainingText && (
                           <span

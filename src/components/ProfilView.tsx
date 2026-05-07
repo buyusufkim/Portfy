@@ -57,9 +57,20 @@ interface ProfilViewProps {
 export const getSubscriptionLabel = (profile: UserProfile | null | undefined): string => {
   if (isAdminRole(profile?.role)) return 'Admin';
   
+  if (profile?.subscription_end_date && new Date(profile.subscription_end_date) < new Date() && profile.subscription_type !== 'none') {
+    return 'Süresi Doldu';
+  }
+
   const tier = normalizeTier(profile);
   if (tier === 'trial') return 'Master Deneme';
-  if (tier === 'master') return 'Master';
+  if (tier === 'master') {
+    const subType = profile?.subscription_type || '';
+    if (subType.includes('1-month')) return 'Master / Aylık';
+    if (subType.includes('3-month')) return 'Master / 3 Aylık';
+    if (subType.includes('6-month')) return 'Master / 6 Aylık';
+    if (subType.includes('12-month')) return 'Master / 12 Aylık';
+    return 'Master';
+  }
   return 'Girişimci'; 
 };
 
@@ -94,9 +105,6 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
   const isExpired = profile?.subscription_end_date && new Date(profile.subscription_end_date) < new Date();
   
   let planStatusText = getSubscriptionLabel(profile);
-  if (isExpired && normalizeTier(profile) !== 'admin') {
-     planStatusText = "Girişimci (Süresi Doldu)";
-  }
 
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreference[]>([]);
   const [isNotificationsLoading, setIsNotificationsLoading] = useState(false);
