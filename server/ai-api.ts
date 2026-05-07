@@ -252,10 +252,13 @@ export const handleAIGeneration = async (req: AuthRequest, res: Response) => {
 
     let featureConfig;
     try {
+      if (!featureKey) {
+        return res.status(400).json({ error: "invalid_ai_feature", message: "AI featureKey zorunludur." });
+      }
       featureConfig = getFeatureConfig(featureKey);
     } catch (error: unknown) {
       const message = error instanceof Error ? error.message : "Bilinmeyen AI feature hatası";
-      return res.status(400).json({ error: message });
+      return res.status(400).json({ error: "invalid_ai_feature", message });
     }
 
     // 1. Model Allowlist Check
@@ -1431,7 +1434,20 @@ export const handleAdminUpdateAnnouncement = async (req: AuthRequest, res: Respo
   try {
     if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
     const { id } = req.params;
-    const { data, error } = await supabaseAdmin.from("admin_announcements").update(req.body).eq("id", id).select().single();
+    
+    const ALLOWLIST = ['title', 'content', 'is_active', 'starts_at', 'ends_at', 'priority', 'type', 'target_audience'];
+    const filteredData: Record<string, unknown> = {};
+    for (const key of ALLOWLIST) {
+      if (req.body[key] !== undefined) {
+        filteredData[key] = req.body[key];
+      }
+    }
+    
+    if (Object.keys(filteredData).length === 0) {
+      return res.status(400).json({ error: "No valid fields to update" });
+    }
+
+    const { data, error } = await supabaseAdmin.from("admin_announcements").update(filteredData).eq("id", id).select().single();
     if (error) throw error;
     await logAdminAudit(req.user?.id || '', null, 'ANNOUNCEMENT_UPDATED', { announcementId: id });
     res.json(data);
@@ -1468,7 +1484,22 @@ export const handleAdminUpdateSupportTicket = async (req: AuthRequest, res: Resp
   try {
     if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
     const { id } = req.params;
-    const { data, error } = await supabaseAdmin.from("support_tickets").update({...req.body, updated_at: new Date().toISOString()}).eq("id", id).select().single();
+
+    const ALLOWLIST = ['status', 'priority', 'admin_note', 'assigned_to', 'resolved_at'];
+    const filteredData: Record<string, unknown> = {};
+    for (const key of ALLOWLIST) {
+      if (req.body[key] !== undefined) {
+        filteredData[key] = req.body[key];
+      }
+    }
+    
+    if (Object.keys(filteredData).length === 0) {
+      return res.status(400).json({ error: "No valid fields to update" });
+    }
+
+    filteredData.updated_at = new Date().toISOString();
+
+    const { data, error } = await supabaseAdmin.from("support_tickets").update(filteredData).eq("id", id).select().single();
     if (error) throw error;
     await logAdminAudit(req.user?.id || '', data.user_id, 'SUPPORT_TICKET_UPDATED', { ticketId: id, status: req.body.status });
     res.json(data);

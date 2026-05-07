@@ -250,10 +250,10 @@ app.use((err: unknown, req: CustomRequest, res: Response, next: NextFunction) =>
   });
   
   if (req.url.startsWith('/api')) {
-    const isProd = process.env.NODE_ENV === "production";
+    const isDev = process.env.NODE_ENV === "development";
     res.status(500).json({
       error: 'internal_server_error',
-      message: isProd ? 'Bir hata oluştu. Lütfen tekrar deneyin.' : (err instanceof Error ? err.message : 'Unknown server error'),
+      message: isDev ? (err instanceof Error ? err.message : 'Unknown server error') : 'Bir hata oluştu. Lütfen tekrar deneyin.',
       requestId: reqId
     });
     return;

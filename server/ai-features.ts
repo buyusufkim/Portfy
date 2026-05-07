@@ -172,7 +172,7 @@ export const AI_FEATURE_REGISTRY: Record<string, AIFeatureConfig> = {
 
 export const getFeatureConfig = (key?: string): AIFeatureConfig => {
   if (!key) {
-    return AI_FEATURE_REGISTRY.generic_safe_json;
+    throw new Error("AI featureKey zorunludur.");
   }
   const feature = AI_FEATURE_REGISTRY[key];
   if (!feature) {

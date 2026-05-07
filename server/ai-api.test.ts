@@ -43,15 +43,19 @@ describe('calculateContentTextLength', () => {
 });
 
 describe('getFeatureConfig', () => {
-  it('returns generic config when no key provided', () => {
-    const config = getFeatureConfig();
-    expect(config.allowClientSystemInstruction).toBe(false);
-    expect(config.allowClientResponseSchema).toBe(false);
-    expect(config.maxInputChars).toBe(100000);
+  it('throws error when no key provided', () => {
+    expect(() => getFeatureConfig()).toThrow("AI featureKey zorunludur.");
   });
 
   it('throws error for invalid key', () => {
     expect(() => getFeatureConfig('invalid_random_key_12345')).toThrow();
+  });
+
+  it('returns generic_safe_json when explicitly requested', () => {
+    const config = getFeatureConfig('generic_safe_json');
+    expect(config.allowClientSystemInstruction).toBe(false);
+    expect(config.allowClientResponseSchema).toBe(false);
+    expect(config.maxInputChars).toBe(100000);
   });
 
   it('returns specific config for ai_coach', () => {
