@@ -8,6 +8,7 @@ import {
   useMutation,
   useQueryClient,
 } from "@tanstack/react-query";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 import { api } from "./services/api";
 import { AuthProvider, useAuth } from "./AuthContext";
 import {
@@ -710,6 +711,7 @@ export default function App() {
       <AuthProvider>
         <AppContent />
       </AuthProvider>
+      <SpeedInsights />
     </QueryClientProvider>
   );
 }
