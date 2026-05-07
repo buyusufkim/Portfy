@@ -12,7 +12,7 @@ import { AdminAnnouncements } from './AdminAnnouncements';
 import { AdminAudit } from './AdminAudit';
 import { api } from '../services/api';
 
-import { useAdminFeedback, AdminToastViewport, AdminConfirmModal, AdminConfirmIntent } from './admin/AdminFeedback';
+import { useAdminFeedback, AdminToastViewport, AdminConfirmModal } from './admin/AdminFeedback';
 import { getRemainingDays, getEffectiveAiTokenLimitSafe, isPaidMasterUser, isActiveTrialUser, isExpiredSubscriber, isFreeUser, buildAdminDashboardMetrics } from './admin/adminPanelHelpers';
 import { AdminPackagesTab } from './admin/AdminPackagesTab';
 import { AdminTasksTab } from './admin/AdminTasksTab';
@@ -28,7 +28,10 @@ import { AdminCampaign90Tab } from './admin/AdminCampaign90Tab';
 import { AdminOperationsTab } from './admin/AdminOperationsTab';
 
 const getErrorMessage = (error: unknown, fallback = 'Bilinmeyen bir hata oluştu') => {
-  return error instanceof Error ? error.message : String(error);
+  if (error instanceof Error) return error.message;
+  if (typeof error === 'string') return error;
+  if (error && typeof error === 'object' && 'message' in error) return String(error.message);
+  return fallback;
 };
 
 export type AdminTabKey = 'dashboard' | 'users' | 'packages' | 'package_requests' | 'ai_usage' | 'system_health' | 'campaign90' | 'operations' | 'settings' | 'tasks' | 'support' | 'announcements' | 'audit';
@@ -96,7 +99,23 @@ interface AdminPanelProps {
 }
 
 export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'users' | 'packages' | 'package_requests' | 'ai_usage' | 'system_health' | 'campaign90' | 'operations' | 'settings' | 'tasks' | 'support' | 'announcements' | 'audit'>('dashboard');
+  const [activeTab, setActiveTab] = useState<AdminTabKey>('dashboard');
+
+  const adminTabMeta: Record<AdminTabKey, { badge: string; description: string }> = {
+    dashboard: { badge: 'Metrikler', description: 'SaaS gelir, kullanıcı büyümesi ve yapay zeka maliyet özeti.' },
+    users: { badge: 'Üyeler', description: 'Kullanıcı yönetimi, abonelik düzenlemeleri ve token limit kontrolü.' },
+    package_requests: { badge: 'Talepler', description: 'Kullanıcıların oluşturduğu abonelik paket talepleri ve havale onayları.' },
+    packages: { badge: 'Satış', description: 'Kullanıcılara sunulacak abonelik paketleri ve özellikleri.' },
+    ai_usage: { badge: 'AI İzleme', description: 'AI token tüketimi, feature kırılımı ve tahmini maliyet takibi.' },
+    system_health: { badge: 'Sağlık', description: 'API, Supabase, AI sağlayıcı, market servisi ve runtime hata takibi.' },
+    campaign90: { badge: '90 Gün Kampı', description: 'Yeni danışman kampı ilerleme, disiplin ve kopma riski takibi.' },
+    operations: { badge: 'Operasyon', description: 'CRM, portföy, bölge ve kullanıcı kullanım görünürlüğü.' },
+    tasks: { badge: 'Oyunlaştırma', description: 'Kullanıcıların XP kazanabileceği görev şablonları havuzu.' },
+    support: { badge: 'Destek', description: 'Kullanıcı destek talepleri ve iletişim.' },
+    announcements: { badge: 'Duyurular', description: 'Tüm üyelere gösterilecek sistem içi duyurular ve haberler.' },
+    audit: { badge: 'Kayıtlar', description: 'Yönetici işlemlerinin kayıt geçmişi (Audit Trail).' },
+    settings: { badge: 'Sistem', description: 'Uygulama genel yapılandırmaları ve entegrasyon ayarları.' }
+  };
 
   // Support & Announcements & Audit Log states can be placed here if needed.
   // Actually, I will create inner components for them to keep it clean.
@@ -431,35 +450,11 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
               <h1 className="text-xl md:text-2xl font-black text-slate-900 tracking-tight flex items-center gap-3">
                 Yönetim Merkezi
                 <span className="px-3 py-1 bg-indigo-50 text-indigo-700 text-[10px] uppercase tracking-widest font-bold rounded-full border border-indigo-100">
-                  {activeTab === 'dashboard' && 'Metrikler'}
-                  {activeTab === 'users' && 'Üyeler'}
-                  {activeTab === 'package_requests' && 'Talepler'}
-                  {activeTab === 'campaign90' && '90 Gün Kampı'}
-                  {activeTab === 'operations' && 'Operasyon'}
-                  {activeTab === 'ai_usage' && 'AI İzleme'}
-                  {activeTab === 'system_health' && 'Sağlık'}
-                  {activeTab === 'support' && 'Destek'}
-                  {activeTab === 'announcements' && 'Duyurular'}
-                  {activeTab === 'packages' && 'Satış'}
-                  {activeTab === 'tasks' && 'Oyunlaştırma'}
-                  {activeTab === 'audit' && 'Kayıtlar'}
-                  {activeTab === 'settings' && 'Sistem'}
+                  {adminTabMeta[activeTab].badge}
                 </span>
               </h1>
               <p className="text-sm text-slate-500 font-medium mt-1.5 line-clamp-1">
-                {activeTab === 'dashboard' && 'SaaS gelir, kullanıcı büyümesi ve yapay zeka maliyet özeti.'}
-                {activeTab === 'users' && 'Kullanıcı yönetimi, abonelik düzenlemeleri ve token limit kontrolü.'}
-                {activeTab === 'package_requests' && 'Kullanıcıların oluşturduğu abonelik paket talepleri ve havale onayları.'}
-                {activeTab === 'campaign90' && 'Yeni danışman kampı ilerleme, disiplin ve kopma riski takibi.'}
-                {activeTab === 'operations' && 'CRM, portföy, bölge ve kullanıcı kullanım görünürlüğü.'}
-                {activeTab === 'ai_usage' && 'AI token tüketimi, feature kırılımı ve tahmini maliyet takibi.'}
-                {activeTab === 'system_health' && 'API, Supabase, AI sağlayıcı, market servisi ve runtime hata takibi.'}
-                {activeTab === 'support' && 'Kullanıcı destek talepleri ve iletişim.'}
-                {activeTab === 'announcements' && 'Tüm üyelere gösterilecek sistem içi duyurular ve haberler.'}
-                {activeTab === 'packages' && 'Kullanıcılara sunulacak abonelik paketleri ve özellikleri.'}
-                {activeTab === 'tasks' && 'Kullanıcıların XP kazanabileceği görev şablonları havuzu.'}
-                {activeTab === 'audit' && 'Yönetici işlemlerinin kayıt geçmişi (Audit Trail).'}
-                {activeTab === 'settings' && 'Uygulama genel yapılandırmaları ve entegrasyon ayarları.'}
+                {adminTabMeta[activeTab].description}
               </p>
             </div>
             <div className="md:hidden">

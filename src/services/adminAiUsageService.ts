@@ -28,17 +28,7 @@ export const adminAiUsageService = {
   async getAdminAiUsageLogs(params: AdminAiUsageParams) {
     let query = supabase
       .from('ai_request_logs')
-      .select(`
-        *,
-        profiles!ai_request_logs_user_id_fkey(
-          display_name,
-          email,
-          phone,
-          tier,
-          subscription_type,
-          subscription_end_date
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
     if (params.featureFilter && params.featureFilter !== 'all') {
@@ -59,13 +49,33 @@ export const adminAiUsageService = {
 
     const { data: rawData, error } = await query;
 
-    if (error) throw error;
+    if (error) {
+      if (error.code === 'PGRST116' || error.message.includes('relation "public.ai_request_logs" does not exist')) {
+        return [];
+      }
+      throw error;
+    }
+    
+    if (!rawData || rawData.length === 0) return [];
 
-    // Supabase returns foreign key records as 'profiles' because of join alias. We map it nicely.
-    // Also handling missing profile data if left join is null or user deleted.
-    const mapped = (rawData || []).map((row: any) => ({
+    const userIds = Array.from(new Set(rawData.map(r => r.user_id).filter(Boolean)));
+    let profilesData: any[] = [];
+    
+    if (userIds.length > 0) {
+      const { data: profiles, error: pError } = await supabase
+        .from('profiles')
+        .select('id, display_name, email, phone, tier, subscription_type, subscription_end_date')
+        .in('id', userIds);
+      if (!pError && profiles) {
+        profilesData = profiles;
+      }
+    }
+    
+    const profileMap = new Map(profilesData.map(p => [p.id, p]));
+
+    const mapped = rawData.map((row: any) => ({
       ...row,
-      user_profile: row.profiles || null
+      user_profile: profileMap.get(row.user_id) || null
     }));
 
     if (params.userSearch) {
@@ -82,18 +92,34 @@ export const adminAiUsageService = {
   async getAdminAiUsageSummary(params: AdminAiUsageParams): Promise<AdminAiUsageSummary> {
     let query = supabase
       .from('ai_request_logs')
-      .select(`
-        id, user_id, prompt_tokens, completion_tokens, total_tokens, 
-        model_name, feature_key, status_code, created_at,
-        profiles!ai_request_logs_user_id_fkey(display_name, email, tier)
-      `);
+      .select('id, user_id, prompt_tokens, completion_tokens, total_tokens, model_name, feature_key, status_code, created_at');
       
     if (params.dateFrom) query = query.gte('created_at', params.dateFrom);
     if (params.dateTo) query = query.lte('created_at', params.dateTo);
     if (params.featureFilter && params.featureFilter !== 'all') query = query.eq('feature_key', params.featureFilter);
 
     const { data, error } = await query;
-    if (error) throw error;
+    if (error) {
+      if (error.code === 'PGRST116' || error.message.includes('relation "public.ai_request_logs" does not exist')) {
+        return { totalRequests: 0, totalTokens: 0, totalPromptTokens: 0, totalCompletionTokens: 0, estimatedCostTRY: 0, avgTokensPerRequest: 0, topFeatures: [], topModels: [], topUsers: [], errorCount: 0 };
+      }
+      throw error;
+    }
+    
+    const userIds = Array.from(new Set((data || []).map(r => r.user_id).filter(Boolean)));
+    let profilesData: any[] = [];
+    
+    if (userIds.length > 0) {
+      const { data: profiles, error: pError } = await supabase
+        .from('profiles')
+        .select('id, display_name, email, tier')
+        .in('id', userIds);
+      if (!pError && profiles) {
+        profilesData = profiles;
+      }
+    }
+    
+    const profileMap = new Map(profilesData.map(p => [p.id, p]));
 
     let totalRequests = 0;
     let totalTokens = 0;
@@ -137,11 +163,12 @@ export const adminAiUsageService = {
       const uid = row.user_id;
       if (uid) {
         if (!userMap[uid]) {
+          const profileInfo = profileMap.get(uid);
           userMap[uid] = { 
             userId: uid, 
-            email: row.profiles?.email || 'Bilinmiyor', 
-            name: row.profiles?.display_name || 'İsimsiz', 
-            tier: row.profiles?.tier || 'free',
+            email: profileInfo?.email || 'Bilinmiyor', 
+            name: profileInfo?.display_name || 'İsimsiz', 
+            tier: profileInfo?.tier || 'free',
             requests: 0, 
             tokens: 0, 
             cost: 0 

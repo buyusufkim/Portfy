@@ -4,6 +4,15 @@ Portfy is a real estate AI CRM application.
 
 ## Production Verification
 
+For production Database validation, especially regarding admin tables correctly created, check via SQL Editor:
+```sql
+select to_regclass('public.package_requests');
+select to_regclass('public.ai_request_logs');
+select to_regclass('public.runtime_error_logs');
+```
+If `package_requests` is null, you must run migration `50`. If `runtime_error_logs` is null, run migration `51`.
+Always add `NOTIFY pgrst, 'reload schema';` at the end of new schema changes to instruct PostgREST cache flushes.
+
 To verify the project is ready for production, run:
 ```sh
 npm ci

@@ -25,16 +25,23 @@ export const AdminPackageRequestsTab: React.FC<AdminPackageRequestsTabProps> = (
 }) => {
   const [requests, setRequests] = useState<PackageRequest[]>([]);
   const [loading, setLoading] = useState(true);
+  const [missingTable, setMissingTable] = useState(false);
   const [filterStr, setFilterStr] = useState<string>('pending');
   const [searchQuery, setSearchQuery] = useState('');
 
   const loadRequests = async () => {
     try {
       setLoading(true);
+      setMissingTable(false);
       const data = await packageRequestService.adminGetPackageRequests();
       setRequests(data);
     } catch (err: unknown) {
-      showAdminToast("error", "Hata!", err instanceof Error ? err.message : "Paket talepleri yüklenemedi");
+      if (err instanceof Error && err.message === 'MISSING_TABLE') {
+        setMissingTable(true);
+        setRequests([]);
+      } else {
+        showAdminToast("error", "Hata!", err instanceof Error ? err.message : "Paket talepleri yüklenemedi");
+      }
     } finally {
       setLoading(false);
     }
@@ -121,6 +128,16 @@ export const AdminPackageRequestsTab: React.FC<AdminPackageRequestsTabProps> = (
 
   return (
     <div className="space-y-6">
+      {missingTable && (
+        <div className="bg-amber-50 border border-amber-200 text-amber-800 px-4 py-3 rounded-xl flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 mt-0.5" />
+          <div>
+            <h4 className="font-bold">Tablo Bulunamadı</h4>
+            <p className="text-sm mt-1">Paket talepleri tablosu bulunamadı. Lütfen "50_package_requests.sql" migration'ının production veritabanına uygulandığından emin olun.</p>
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm flex items-center justify-between">
           <div><div className="text-sm text-slate-500 font-bold mb-1">Bekleyen Talepler</div><div className="text-2xl font-black">{requests.filter(r => r.status==='pending').length}</div></div>

@@ -78,27 +78,44 @@ export const packageRequestService = {
 
   async adminGetPackageRequests() {
     // Requires admin privilege
-    const { data, error } = await supabase
+    // First fetch all package requests to avoid FK issues if local DB differs from prod DB
+    const { data: requests, error } = await supabase
       .from('package_requests')
-      .select(`
-        *,
-        profiles!package_requests_user_id_fkey(
-          display_name,
-          email,
-          phone,
-          tier,
-          subscription_type,
-          subscription_end_date
-        )
-      `)
+      .select('*')
       .order('created_at', { ascending: false });
 
-    if (error) throw error;
+    if (error) {
+      // If table missing in prod yet, return empty but let ui handle gracefully
+      if (error.code === 'PGRST116' || error.message.includes('relation "public.package_requests" does not exist')) {
+        throw new Error('MISSING_TABLE');
+      }
+      throw error;
+    }
     
+    if (!requests || requests.length === 0) return [];
+    
+    // Extract unique user_ids
+    const userIds = Array.from(new Set(requests.map(r => r.user_id).filter(Boolean)));
+    
+    // Fetch profiles individually
+    let profilesData: any[] = [];
+    if (userIds.length > 0) {
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select('id, display_name, email, phone, tier, subscription_type, subscription_end_date')
+        .in('id', userIds);
+        
+      if (!profilesError && profiles) {
+        profilesData = profiles;
+      }
+    }
+    
+    const profileMap = new Map(profilesData.map(p => [p.id, p]));
+
     // Map 'profiles' back to 'user' for PackageRequest matching
-    return data.map(req => ({
+    return requests.map(req => ({
       ...req,
-      user: req.profiles
+      user: profileMap.get(req.user_id) || null
     })) as PackageRequest[];
   },
 

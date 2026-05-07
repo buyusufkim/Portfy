@@ -98,12 +98,33 @@ export const handleAdminGetCampaignUsers = async (req: AuthRequest, res: Respons
     const dayRange = req.query.dayRange as string || 'all';
     // const search = req.query.search as string || '';
 
-    // Fetch campaigns and associated users
+    // Fetch campaigns
     const { data: campaigns, error: campaignError } = await supabaseAdmin
       .from("advisor_campaigns")
-      .select("*, profiles!user_id(display_name, email, phone, region, tier)");
+      .select("*");
 
-    if (campaignError) throw campaignError;
+    if (campaignError) {
+      if (campaignError.code === 'PGRST116' || campaignError.message.includes('relation "public.advisor_campaigns" does not exist')) {
+        return res.json({ data: [] });
+      }
+      throw campaignError;
+    }
+    
+    // Extract unique user_ids
+    const userIds = Array.from(new Set((campaigns || []).map(c => c.user_id).filter(Boolean)));
+    let profilesData: any[] = [];
+    
+    if (userIds.length > 0) {
+      const { data: profiles, error: pError } = await supabaseAdmin
+        .from('profiles')
+        .select('id, display_name, email, phone, region, tier')
+        .in('id', userIds);
+      if (!pError && profiles) {
+        profilesData = profiles;
+      }
+    }
+    
+    const profileMap = new Map(profilesData.map(p => [p.id, p]));
     
     const todayStr = getTurkeyTodayISO(new Date());
     const now = new Date();
@@ -115,7 +136,10 @@ export const handleAdminGetCampaignUsers = async (req: AuthRequest, res: Respons
       .from("campaign_daily_scores")
       .select("campaign_id, completed_tasks, total_tasks, score_date");
       
-    if (scoresError) throw scoresError;
+    if (scoresError) {
+       console.error("Scores fetch error:", scoresError);
+       // Do not throw, just use empty array for resilience
+    }
 
     const scoresByCampaign = (scores || []).reduce((acc, score) => {
         if (!acc[score.campaign_id]) acc[score.campaign_id] = { total: 0, completed: 0, todayTotal: 0, todayCompleted: 0 };
@@ -130,16 +154,17 @@ export const handleAdminGetCampaignUsers = async (req: AuthRequest, res: Respons
 
     for (const c of (campaigns || [])) {
         const md = c.metadata || {};
-        const profile = c.profiles || {};
+        const profile = profileMap.get(c.user_id) || {};
         const scoreData = scoresByCampaign[c.id] || { total: 0, completed: 0, todayTotal: 0, todayCompleted: 0 };
         
+        const currentDay = c.current_day || 1;
         let completionPercent = scoreData.total > 0 ? (scoreData.completed / scoreData.total) * 100 : 0;
         
         // Risk Logic
         let riskLevel = 'healthy';
         let riskReasons: string[] = [];
         
-        const lastActivityMs = new Date(c.updated_at).getTime();
+        const lastActivityMs = c.updated_at ? new Date(c.updated_at).getTime() : now.getTime();
         const daysSinceActivity = (now.getTime() - lastActivityMs) / (1000 * 3600 * 24);
         
         if (c.status === 'active') {
@@ -153,10 +178,10 @@ export const handleAdminGetCampaignUsers = async (req: AuthRequest, res: Respons
                  riskLevel = 'watch';
              }
 
-             if (c.current_day > 10 && completionPercent < 20) {
+             if (currentDay > 10 && completionPercent < 20) {
                  riskLevel = riskLevel === 'critical' ? 'critical' : 'risk';
                  riskReasons.push('Görev tamamlama oranı çok düşük (<%20)');
-             } else if (c.current_day > 10 && completionPercent < 40 && riskLevel !== 'critical') {
+             } else if (currentDay > 10 && completionPercent < 40 && riskLevel !== 'critical') {
                  riskLevel = riskLevel === 'risk' ? 'risk' : 'watch';
                  riskReasons.push('Görev tamamlama oranı düşük (<%40)');
              }
@@ -176,24 +201,24 @@ export const handleAdminGetCampaignUsers = async (req: AuthRequest, res: Respons
             campaign_id: c.id,
             user_id: c.user_id,
             display_name: profile.display_name || 'İsimsiz',
-            email: profile.email,
-            phone: profile.phone,
+            email: profile.email || '',
+            phone: profile.phone || '',
             region: c.region || profile.region || '-',
-            campaign_status: c.status,
+            campaign_status: c.status || 'inactive',
             start_date: c.start_date,
-            current_day: c.current_day,
-            progress_percent: Math.min(100, Math.round((c.current_day / 90) * 100)),
+            current_day: currentDay,
+            progress_percent: Math.min(100, Math.round((currentDay / 90) * 100)),
             overall_completion_percent: Math.round(completionPercent),
-            completed_tasks_count: scoreData.completed,
-            total_tasks_count: scoreData.total,
-            today_tasks_total: scoreData.todayTotal,
-            today_tasks_completed: scoreData.todayCompleted,
+            completed_tasks_count: scoreData.completed || 0,
+            total_tasks_count: scoreData.total || 0,
+            today_tasks_total: scoreData.todayTotal || 0,
+            today_tasks_completed: scoreData.todayCompleted || 0,
             last_activity_at: c.updated_at,
             today_started: md.last_day_started === todayStr,
             today_closed: md.last_day_closed === todayStr,
             risk_level: riskLevel,
             risk_reasons: riskReasons,
-            tier: profile.tier
+            tier: profile.tier || 'free'
         });
     }
 
