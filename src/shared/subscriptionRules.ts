@@ -1,4 +1,6 @@
-import { isAdminRole } from '../types';
+export const isAdminRoleForSubscription = (role: string | null | undefined): boolean => {
+  return role === 'admin' || role === 'super_admin';
+};
 
 export const AI_TOKEN_LIMITS = {
   admin: 1000000,
@@ -12,16 +14,18 @@ export const AI_TOKEN_LIMITS = {
 
 export type SubscriptionTier = 'admin' | 'master' | 'elite' | 'pro' | 'trial' | 'free' | 'none';
 
-export type ProfileForSubscriptionRules = {
-  role?: 'agent' | 'admin' | 'super_admin' | string | null;
+export type SubscriptionRole = 'agent' | 'admin' | 'super_admin' | string | null | undefined;
+
+export interface ProfileForSubscriptionRules {
+  role?: SubscriptionRole;
   tier?: string | null;
   subscription_type?: string | null;
   subscription_end_date?: string | null;
   ai_token_limit?: number | string | null;
-};
+}
 
 export const normalizeTier = (profile: ProfileForSubscriptionRules | null | undefined): string => {
-  if (isAdminRole(profile?.role)) return 'admin';
+  if (isAdminRoleForSubscription(profile?.role)) return 'admin';
   if (profile?.tier === 'master' || profile?.subscription_type?.includes('master')) return 'master';
   if (profile?.tier === 'elite') return 'elite';
   if (profile?.tier === 'pro' || profile?.subscription_type === '1-month' || profile?.subscription_type === '3-month' || profile?.subscription_type === '6-month' || profile?.subscription_type === '12-month') return 'pro';
@@ -45,7 +49,7 @@ export const isTrialActive = (profile: ProfileForSubscriptionRules | null | unde
 };
 
 export const isPremiumActive = (profile: ProfileForSubscriptionRules | null | undefined, now: Date = new Date()): boolean => {
-  if (isAdminRole(profile?.role)) return true;
+  if (isAdminRoleForSubscription(profile?.role)) return true;
   const tier = normalizeTier(profile);
   if (tier === 'admin' || tier === 'master' || tier === 'elite' || tier === 'pro') {
     if (profile?.subscription_end_date) {
@@ -88,7 +92,7 @@ export const getEffectiveAiTokenLimit = (profile: ProfileForSubscriptionRules | 
     }
   }
 
-  if (isAdminRole(profile?.role)) return AI_TOKEN_LIMITS.admin;
+  if (isAdminRoleForSubscription(profile?.role)) return AI_TOKEN_LIMITS.admin;
   
   return getDefaultAiTokenLimit(profile, now);
 };
