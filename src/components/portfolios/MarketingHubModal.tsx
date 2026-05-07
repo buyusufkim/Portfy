@@ -39,22 +39,26 @@ interface MarketingHubModalProps {
   show: boolean;
   onClose: () => void;
   marketingHubData: MarketingHubData | null;
+  isGenerating?: boolean;
   onGenerateListing?: () => void;
   onGenerateInstagram?: () => void;
   onGenerateWhatsApp?: () => void;
+  onRegenerate?: () => void;
 }
 
 export const MarketingHubModal: React.FC<MarketingHubModalProps> = ({
   show,
   onClose,
   marketingHubData,
+  isGenerating,
   onGenerateListing,
   onGenerateInstagram,
-  onGenerateWhatsApp
+  onGenerateWhatsApp,
+  onRegenerate
 }) => {
   return (
     <AnimatePresence>
-      {show && marketingHubData && (
+      {show && (
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
@@ -77,13 +81,29 @@ export const MarketingHubModal: React.FC<MarketingHubModalProps> = ({
                   <p className="text-xs text-slate-500">Yapay zeka destekli pazarlama asistanı</p>
                 </div>
               </div>
-              <button onClick={onClose} className="p-2 bg-white rounded-full text-slate-400 border border-slate-100">
+              <button disabled={isGenerating} onClick={onClose} className="p-2 bg-white rounded-full text-slate-400 border border-slate-100 disabled:opacity-50">
                 <X size={20} />
               </button>
             </div>
 
             <div className="flex-1 overflow-auto p-8 space-y-8">
-              
+              {isGenerating && !marketingHubData ? (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                   <div className="w-16 h-16 border-4 border-orange-100 border-t-orange-600 rounded-full animate-spin mb-6"></div>
+                   <h3 className="text-xl font-bold text-slate-800 mb-2">Portfy AI pazarlama içeriklerini hazırlıyor...</h3>
+                   <p className="text-slate-500 text-sm max-w-md mx-auto mb-8">
+                     Bu işlem 10-20 saniye sürebilir. Lütfen bekleyin.
+                   </p>
+                   <div className="w-full max-w-lg space-y-4">
+                      <div className="h-24 bg-slate-100 rounded-3xl animate-pulse"></div>
+                      <div className="grid grid-cols-2 gap-4">
+                         <div className="h-32 bg-slate-100 rounded-3xl animate-pulse"></div>
+                         <div className="h-32 bg-slate-100 rounded-3xl animate-pulse"></div>
+                      </div>
+                   </div>
+                </div>
+              ) : marketingHubData ? (
+                <>
               {/* AI İçerik Üretim Butonları (YENİ) */}
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <button 
@@ -176,9 +196,41 @@ export const MarketingHubModal: React.FC<MarketingHubModalProps> = ({
                   ))}
                 </div>
               </section>
+              </>
+              ) : (
+                <div className="flex flex-col items-center justify-center py-20 text-center">
+                  <div className="w-16 h-16 bg-red-50 text-red-500 rounded-full flex items-center justify-center mb-6">
+                    <X size={32} />
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-800 mb-2">Üretim Başarısız</h3>
+                  <p className="text-slate-500 text-sm max-w-md mx-auto mb-8">
+                    İçerikler oluşturulurken bir hata oluştu. Sağ üstteki bildirimden detaylara bakabilir ve tekrar deneyebilirsiniz.
+                  </p>
+                  {onRegenerate && (
+                    <button 
+                      onClick={onRegenerate}
+                      className="px-6 py-3 bg-slate-900 text-white rounded-xl font-bold text-sm hover:bg-slate-800 transition-colors"
+                    >
+                      Tekrar Dene
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
 
-            <div className="p-8 bg-slate-50 border-t border-slate-100 flex-shrink-0">
+            <div className="p-8 bg-slate-50 border-t border-slate-100 flex-shrink-0 flex gap-4">
+              {onRegenerate && (
+                <button 
+                  onClick={onRegenerate}
+                  disabled={isGenerating}
+                  className="w-full py-4 bg-white text-slate-700 border border-slate-200 hover:bg-slate-100 rounded-2xl font-bold text-sm transition-colors flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {isGenerating ? (
+                     <div className="w-5 h-5 border-2 border-slate-400 border-t-transparent rounded-full animate-spin"></div>
+                  ) : null}
+                  {isGenerating ? 'Yeniden Üretiliyor...' : 'Yeniden Üret'}
+                </button>
+              )}
               <button 
                 onClick={onClose}
                 className="w-full py-4 bg-slate-900 text-white rounded-2xl font-bold text-sm shadow-xl shadow-slate-900/20"

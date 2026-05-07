@@ -282,6 +282,7 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         onClose={() => {
           setSelectedProperty(null);
           setAiContent(null);
+          setMarketingHubData(null);
         }}
         regionScores={regionScores}
         leads={leads}
@@ -294,16 +295,19 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         setDocumentAutomationProperty={setDocumentAutomationProperty}
         setDocumentAutomationLead={setDocumentAutomationLead}
         onShowExternalListings={() => setShowExternalListings(true)}
+        isGeneratingMarketingHub={isGenerating && aiMarketingType === "hub"}
         onGenerateMarketingHub={async () => {
           if (!selectedProperty) return;
           setAiMarketingType("hub");
+          setMarketingHubData(null);
           setIsGenerating(true);
+          setShowMarketingHub(true);
+          
           try {
             const data = await api.getMarketingOutput(selectedProperty.id);
             if (data && Object.keys(data).length > 0) {
               setMarketingHubData(data as unknown as MarketingHubData);
               setIsGenerating(false);
-              setShowMarketingHub(true);
             } else {
               generateMarketingMutation.mutate(selectedProperty);
             }
@@ -347,6 +351,13 @@ export const PortfolioModals: React.FC<PortfolioModalsProps> = ({
         show={showMarketingHub}
         onClose={() => setShowMarketingHub(false)}
         marketingHubData={marketingHubData}
+        isGenerating={isGenerating && aiMarketingType === "hub"}
+        onRegenerate={() => {
+          if (!selectedProperty) return;
+          setAiMarketingType("hub");
+          setIsGenerating(true);
+          generateMarketingMutation.mutate(selectedProperty);
+        }}
         onGenerateListing={() => {
           if (!selectedProperty) return;
           setShowMarketingHub(false);

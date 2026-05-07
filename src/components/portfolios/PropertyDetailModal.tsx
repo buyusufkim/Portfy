@@ -38,6 +38,7 @@ interface PropertyDetailModalProps {
   onResolveBlocker?: (id: string) => void;
   onShowExternalListings: () => void;
   onGenerateMarketingHub: () => void;
+  isGeneratingMarketingHub?: boolean;
   onEdit: () => void;
   onDelete: () => void;
   onUploadImage: (file: File) => void;
@@ -80,6 +81,7 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
   leads,
   blockers = [],
   onGenerateMarketingHub,
+  isGeneratingMarketingHub,
   onEdit,
   onDelete,
   isDeleting = false,
@@ -427,9 +429,15 @@ export const PropertyDetailModal: React.FC<PropertyDetailModalProps> = ({
                     
                     {/* 3 Square Actions */}
                     <div className="flex-1 grid grid-cols-3 gap-3 md:gap-4">
-                      <button onClick={onGenerateMarketingHub} className="bg-white border border-slate-100 rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 hover:border-teal-300 hover:shadow-md transition-all shadow-sm group">
-                        <Sparkles size={24} className="text-slate-400 group-hover:text-teal-600" />
-                        <span className="text-[10px] font-black text-slate-800 text-center leading-tight">Pazarlama Üret</span>
+                      <button disabled={isGeneratingMarketingHub} onClick={onGenerateMarketingHub} className="bg-white border border-slate-100 rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 hover:border-teal-300 hover:shadow-md transition-all shadow-sm group disabled:opacity-50 disabled:cursor-not-allowed">
+                        {isGeneratingMarketingHub ? (
+                          <div className="w-6 h-6 border-2 border-teal-600 border-t-transparent rounded-full animate-spin"></div>
+                        ) : (
+                          <Sparkles size={24} className="text-slate-400 group-hover:text-teal-600" />
+                        )}
+                        <span className="text-[10px] font-black text-slate-800 text-center leading-tight">
+                          {isGeneratingMarketingHub ? "Hazırlanıyor..." : "Pazarlama Üret"}
+                        </span>
                       </button>
                       
                       <button onClick={() => setShowAddTask?.(true)} className="bg-white border border-slate-100 rounded-[24px] p-4 flex flex-col items-center justify-center gap-3 hover:border-slate-300 hover:shadow-md transition-all shadow-sm group">
