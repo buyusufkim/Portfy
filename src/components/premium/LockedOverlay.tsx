@@ -39,7 +39,7 @@ export const LockedOverlay: React.FC<LockedOverlayProps> = ({ featureKey, onUpgr
         onClick={onUpgrade}
         className="px-7 py-3.5 bg-indigo-600 text-white rounded-xl font-semibold text-sm flex items-center gap-2 hover:bg-indigo-500 transition-all shadow-lg shadow-indigo-600/20 active:scale-[0.98]"
       >
-        Planları Gör <ArrowRight size={16} />
+        Master'a Geç <ArrowRight size={16} />
       </button>
 
       <div className="mt-8 flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest">

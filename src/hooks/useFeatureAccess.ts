@@ -38,8 +38,6 @@ export const useFeatureAccess = () => {
     getFeatureConfig,
     subscribe,
     isFree: effectiveTier === 'free',
-    isPro: effectiveTier === 'pro',
-    isElite: effectiveTier === 'elite',
-    isMaster: effectiveTier === 'master'
+    isMaster: effectiveTier === 'master' || effectiveTier === 'admin'
   };
 };

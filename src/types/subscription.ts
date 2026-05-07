@@ -1,4 +1,6 @@
-export type SubscriptionTier = 'free' | 'pro' | 'elite' | 'master' | 'trial';
+import type { SubscriptionTier } from '../shared/subscriptionRules';
+
+export { SubscriptionTier };
 
 export type FeatureKey = 
   | 'ai_coach' 

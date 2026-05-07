@@ -22,7 +22,7 @@ import {
   NotificationPreference,
   isAdminRole
 } from "../types";
-import { getEffectiveAiTokenLimit } from "../config/subscriptionLimits";
+import { getEffectiveAiTokenLimit, normalizeTier } from "../config/subscriptionLimits";
 import { featureKeyToLabel, shortRequestId } from "../utils/aiHelpers";
 import { aiService } from "../services/aiService";
 import { maskEmail, maskPhone } from "../utils/masking";
@@ -54,26 +54,13 @@ interface ProfilViewProps {
   setShowRegionSetup: (show: boolean) => void;
 }
 
-export const formatPlanLabel = (plan?: string) => {
-  if (!plan) return 'Plan bilgisi yok';
-  const p = plan.toLowerCase();
-  switch (p) {
-    case 'free': return 'Ücretsiz';
-    case 'trial': return '7 Gün Deneme';
-    case '1-month':
-    case 'monthly': return 'Aylık';
-    case '3-month': return '3 Aylık';
-    case '6-month': return '6 Aylık';
-    case '12-month':
-    case 'twelve_month':
-    case 'annual':
-    case 'yearly': return '12 Aylık';
-    case 'pro': return 'Pro';
-    case 'elite': return 'Elite';
-    case 'master': return 'Master';
-    case 'none': return 'Süresi Doldu';
-    default: return plan.charAt(0).toUpperCase() + plan.slice(1);
-  }
+export const getSubscriptionLabel = (profile: UserProfile | null | undefined): string => {
+  if (isAdminRole(profile?.role)) return 'Admin';
+  
+  const tier = normalizeTier(profile);
+  if (tier === 'trial') return 'Master Deneme';
+  if (tier === 'master') return 'Master';
+  return 'Girişimci'; 
 };
 
 export const formatStatusLabel = (status?: string) => {
@@ -106,15 +93,9 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
 }) => {
   const isExpired = profile?.subscription_end_date && new Date(profile.subscription_end_date) < new Date();
   
-  let planStatusText = "Plan bilgisi yok";
-  if (profile?.subscription_type && profile.subscription_type !== "none") {
-    if (isExpired) {
-      planStatusText = "Süresi doldu";
-    } else {
-      planStatusText = formatPlanLabel(profile.subscription_type);
-    }
-  } else if (profile?.subscription_type === "none") {
-    planStatusText = "Süresi doldu";
+  let planStatusText = getSubscriptionLabel(profile);
+  if (isExpired && normalizeTier(profile) !== 'admin') {
+     planStatusText = "Girişimci (Süresi Doldu)";
   }
 
   const [notificationPreferences, setNotificationPreferences] = useState<NotificationPreference[]>([]);

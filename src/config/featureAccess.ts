@@ -1,41 +1,40 @@
 import { SubscriptionTier, FeatureKey, FeatureConfig } from '../types/subscription';
 
-export const TIER_HIERARCHY: Record<SubscriptionTier, number> = {
+export const TIER_HIERARCHY: Partial<Record<SubscriptionTier, number>> = {
   free: 0,
   trial: 1,
-  pro: 1,
-  elite: 2,
-  master: 3
+  master: 1, // master and trial both grant access
+  admin: 2 // top level
 };
 
 export const FEATURE_ACCESS_CONFIG: Record<FeatureKey, FeatureConfig> = {
   ai_coach: {
-    minTier: 'pro',
+    minTier: 'master',
     label: 'AI Koç',
     description: 'Günlük verilerinizi analiz eden ve stratejik öneriler sunan yapay zeka asistanı.'
   },
   whatsapp_analysis: {
-    minTier: 'pro',
+    minTier: 'master',
     label: 'WhatsApp Analizi',
     description: 'WhatsApp konuşmalarını analiz edip CRM verisine dönüştüren akıllı modül.'
   },
   advanced_stats: {
-    minTier: 'pro',
+    minTier: 'master',
     label: 'Gelişmiş İstatistikler',
     description: 'Satış performansınızı ve portföy sağlığınızı detaylı grafiklerle takip edin.'
   },
   unlimited_leads: {
-    minTier: 'elite',
+    minTier: 'master',
     label: 'Sınırsız Lead',
     description: 'Müşteri sayısında herhangi bir kısıtlama olmadan çalışın.'
   },
   unlimited_properties: {
-    minTier: 'elite',
+    minTier: 'master',
     label: 'Sınırsız Portföy',
     description: 'Portföy sayısında herhangi bir kısıtlama olmadan çalışın.'
   },
   team_collaboration: {
-    minTier: 'elite',
+    minTier: 'master',
     label: 'Ekip Çalışması',
     description: 'Diğer danışmanlarla portföy paylaşın ve ortak çalışın.'
   },

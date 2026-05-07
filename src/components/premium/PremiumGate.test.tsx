@@ -26,8 +26,6 @@ const createMockFeatureAccess = (overrides?: Partial<UseFeatureAccessReturn>): U
   userTier: 'free',
   getFeatureConfig: vi.fn(),
   isFree: true,
-  isPro: false,
-  isElite: false,
   isMaster: false,
   ...overrides,
 });
@@ -36,9 +34,9 @@ describe('PremiumGate', () => {
   it('renders children when user has access', () => {
     vi.spyOn(useFeatureAccessHook, 'useFeatureAccess').mockReturnValue(createMockFeatureAccess({
       hasAccess: () => true,
-      userTier: 'pro',
+      userTier: 'master',
       isFree: false,
-      isPro: true,
+      isMaster: true,
     }));
 
     render(
@@ -56,7 +54,7 @@ describe('PremiumGate', () => {
       hasAccess: () => false,
       userTier: 'free',
       isFree: true,
-      isPro: false,
+      isMaster: false,
     }));
 
     render(
@@ -73,7 +71,7 @@ describe('PremiumGate', () => {
       hasAccess: () => false,
       userTier: 'free',
       isFree: true,
-      isPro: false,
+      isMaster: false,
     }));
 
     render(

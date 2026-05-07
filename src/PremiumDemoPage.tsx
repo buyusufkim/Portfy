@@ -22,33 +22,33 @@ export const PremiumDemoPage: React.FC = () => {
       </header>
 
       <div className="max-w-4xl mx-auto grid grid-cols-1 gap-12">
-        {/* AI Coach - Pro Feature */}
+        {/* AI Coach - Master Feature */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-slate-900">AI Koç Analizi</h2>
-            <PremiumBadge tier="pro" />
+            <PremiumBadge tier="master" />
           </div>
           <PremiumGate featureKey="ai_coach">
             <AICoachPanel />
           </PremiumGate>
         </section>
 
-        {/* WhatsApp Analysis - Pro Feature */}
+        {/* WhatsApp Analysis - Master Feature */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-slate-900">WhatsApp Müşteri Analizi</h2>
-            <PremiumBadge tier="pro" />
+            <PremiumBadge tier="master" />
           </div>
           <PremiumGate featureKey="whatsapp_analysis">
             <WhatsAppAnalysisPanel />
           </PremiumGate>
         </section>
 
-        {/* Team Collaboration - Elite Feature */}
+        {/* Team Collaboration - Master Feature */}
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-xl font-bold text-slate-900">Ekip Çalışması</h2>
-            <PremiumBadge tier="elite" />
+            <PremiumBadge tier="master" />
           </div>
           <PremiumGate featureKey="team_collaboration">
             <div className="bg-white p-12 rounded-[40px] border border-slate-100 text-center space-y-4">

@@ -19,6 +19,8 @@ import { getEffectiveAiTokenLimit } from '../config/subscriptionLimits';
 import { MaskedContact } from './shared/MaskedContact';
 import { maskEmail } from '../utils/masking';
 
+import { getSubscriptionLabel } from './ProfilView';
+
 interface AdminPanelProps {
   onClose: () => void;
 }
@@ -322,7 +324,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
     if (editTier === "free") {
       updateData = { tier: "free", subscription_type: "none", subscription_end_date: null };
     } else if (editTier === "trial") {
-      updateData = { tier: "pro", subscription_type: "trial", subscription_end_date: finalEndDate };
+      updateData = { tier: "master", subscription_type: "trial", subscription_end_date: finalEndDate };
     } else if (editTier === "master") {
       updateData = { tier: "master", subscription_type: "12-month", subscription_end_date: finalEndDate };
     }
@@ -690,7 +692,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                         className={`p-4 rounded-2xl border-2 font-bold text-sm transition-all flex flex-col items-center justify-center gap-2 ${editTier === 'free' ? 'border-slate-900 bg-slate-900 text-white shadow-lg shadow-slate-900/20' : 'border-slate-200 text-slate-600 hover:border-slate-300 hover:bg-slate-50'}`}
                       >
                         <Briefcase size={20} className={editTier === 'free' ? 'text-slate-300' : 'text-slate-400'}/> 
-                        Başlangıç
+                        Girişimci
                       </button>
                       <button 
                         onClick={() => setEditTier('trial')}
@@ -789,7 +791,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                     <div className="text-3xl font-black text-slate-900 tracking-tight">{totalUsers || 0}</div>
                   </div>
                   <div className="mt-4 pt-4 border-t border-slate-100 flex items-center gap-3">
-                     <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300"></span><span className="text-xs font-bold text-slate-500">{freeUsers || 0} Free</span></div>
+                     <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-slate-300"></span><span className="text-xs font-bold text-slate-500">{freeUsers || 0} Girişimci</span></div>
                      <div className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400"></span><span className="text-xs font-bold text-amber-600">{trialUsers || 0} Deneme</span></div>
                   </div>
                 </div>
@@ -934,7 +936,7 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                                  <div className="w-8 h-8 rounded-full bg-slate-100 font-black text-slate-500 flex items-center justify-center text-xs group-hover:bg-indigo-100 group-hover:text-indigo-600 transition-colors">#{idx + 1}</div>
                                  <div>
                                    <div className="font-bold text-sm text-slate-900">{u.display_name?.split(' ')[0] || 'Kullanıcı'}</div>
-                                   <div className="text-[10px] text-slate-500 uppercase tracking-widest">{u.tier === 'master' ? 'Master' : (u.subscription_type === 'trial' ? 'Deneme' : 'Free')}</div>
+                                   <div className="text-[10px] text-slate-500 uppercase tracking-widest">{getSubscriptionLabel(u)}</div>
                                  </div>
                               </div>
                               <div className="font-black text-sm text-slate-700 bg-slate-50 px-2 py-1 rounded font-mono group-hover:text-indigo-600">
@@ -1019,7 +1021,10 @@ export const AdminPanel: React.FC<AdminPanelProps> = ({ onClose }) => {
                       )}
                       <div>
                         <div className="flex justify-between items-start mb-4">
-                          <h3 className="text-xl font-black text-slate-900">{pkg.name} <span className="text-sm text-slate-400 font-medium">({pkg.tier})</span></h3>
+                          <div>
+                            <h3 className="text-xl font-black text-slate-900">{pkg.name}</h3>
+                            <span className="text-[10px] text-slate-400 font-medium">KOD: {pkg.code || pkg.id}</span>
+                          </div>
                           {pkg.badge && <span className="bg-teal-50 text-teal-700 border border-teal-100 px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider">{pkg.badge}</span>}
                         </div>
                         <div className="flex items-baseline gap-1 mb-4">

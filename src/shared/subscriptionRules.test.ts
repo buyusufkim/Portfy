@@ -15,8 +15,9 @@ describe('subscriptionRules', () => {
 
     it('normalizes specific tier strings', () => {
       expect(normalizeTier({ tier: 'master' })).toBe('master');
-      expect(normalizeTier({ tier: 'elite' })).toBe('elite');
-      expect(normalizeTier({ subscription_type: '1-month' })).toBe('pro');
+      expect(normalizeTier({ tier: 'elite' })).toBe('master');
+      expect(normalizeTier({ tier: 'pro' })).toBe('master');
+      expect(normalizeTier({ subscription_type: '1-month' })).toBe('master');
       expect(normalizeTier({ subscription_type: 'trial' })).toBe('trial');
       expect(normalizeTier({})).toBe('free');
     });
@@ -37,32 +38,36 @@ describe('subscriptionRules', () => {
   });
 
   describe('getEffectiveAiTokenLimit', () => {
-    it('returns free limit (1000) for standard free user', () => {
+    it('returns free limit (25000) for standard free user', () => {
       expect(getEffectiveAiTokenLimit({})).toBe(AI_TOKEN_LIMITS.free);
     });
 
-    it('returns trial limit (10000) for active trial', () => {
+    it('returns trial limit (100000) for active trial', () => {
       const future = new Date();
       future.setDate(future.getDate() + 1);
       expect(getEffectiveAiTokenLimit({ tier: 'trial', subscription_end_date: future.toISOString() })).toBe(AI_TOKEN_LIMITS.trial);
     });
 
-    it('returns free limit (1000) for expired trial', () => {
+    it('returns free limit (25000) for expired trial', () => {
        const past = new Date();
        past.setDate(past.getDate() - 1);
        expect(getEffectiveAiTokenLimit({ tier: 'trial', subscription_end_date: past.toISOString() })).toBe(AI_TOKEN_LIMITS.free);
     });
 
-    it('returns pro limit (10000) for active pro', () => {
-      expect(getEffectiveAiTokenLimit({ tier: 'pro' })).toBe(AI_TOKEN_LIMITS.pro);
-    });
-
-    it('returns elite limit (50000) for active elite', () => {
-      expect(getEffectiveAiTokenLimit({ tier: 'elite' })).toBe(AI_TOKEN_LIMITS.elite);
-    });
-
-    it('returns master limit (100000) for active master', () => {
+    it('returns master limit (300000) for active master', () => {
       expect(getEffectiveAiTokenLimit({ tier: 'master' })).toBe(AI_TOKEN_LIMITS.master);
+    });
+
+    it('returns master limit (300000) for active legacy pro/elite/1-month', () => {
+      expect(getEffectiveAiTokenLimit({ tier: 'pro' })).toBe(AI_TOKEN_LIMITS.master);
+      expect(getEffectiveAiTokenLimit({ tier: 'elite' })).toBe(AI_TOKEN_LIMITS.master);
+      expect(getEffectiveAiTokenLimit({ subscription_type: '1-month' })).toBe(AI_TOKEN_LIMITS.master);
+    });
+
+    it('returns free limit (25000) for expired master', () => {
+       const past = new Date();
+       past.setDate(past.getDate() - 1);
+       expect(getEffectiveAiTokenLimit({ tier: 'master', subscription_end_date: past.toISOString() })).toBe(AI_TOKEN_LIMITS.free);
     });
 
     it('returns admin limit (1000000) for admin/super_admin', () => {
@@ -71,8 +76,7 @@ describe('subscriptionRules', () => {
     });
 
     it('respects custom ai_token_limit if positive', () => {
-       expect(getEffectiveAiTokenLimit({ tier: 'free', ai_token_limit: 5000 })).toBe(5000);
-       expect(getEffectiveAiTokenLimit({ tier: 'pro', ai_token_limit: 15000 })).toBe(15000);
+       expect(getEffectiveAiTokenLimit({ tier: 'free', ai_token_limit: 50000 })).toBe(50000);
     });
 
     it('admin override beats custom ai_token_limit', () => {
