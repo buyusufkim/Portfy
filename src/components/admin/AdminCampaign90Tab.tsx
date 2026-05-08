@@ -1,13 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { adminCampaign90Service, AdminCampaignOverview, AdminCampaignUser } from '../../services/adminCampaign90Service';
+import { AdminCampaign90DayContentsSection } from './AdminCampaign90DayContentsSection';
+import { AdminCampaign90UserDetailModal } from './AdminCampaign90UserDetailModal';
 import { maskEmail } from '../../utils/masking';
-import { Activity, RefreshCw, Search, Users, Target, CheckCircle2, AlertTriangle, AlertOctagon, TrendingDown, Eye, MessageCircle } from 'lucide-react';
+import { Activity, RefreshCw, Search, Users, Target, CheckCircle2, AlertTriangle, AlertOctagon, TrendingDown, Eye, MessageCircle, Settings, LayoutDashboard, FileText, ChevronRight } from 'lucide-react';
 
 type AdminCampaign90TabProps = {
   showAdminToast: (type: 'success' | 'error' | 'warning' | 'info', title: string, message?: string) => void;
 };
 
 export const AdminCampaign90Tab: React.FC<AdminCampaign90TabProps> = ({ showAdminToast }) => {
+  const [activeSubTab, setActiveSubTab] = useState<'overview' | 'day_contents'>('overview');
+  const [selectedUserIdDetail, setSelectedUserIdDetail] = useState<string | null>(null);
+  
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   
@@ -39,11 +44,13 @@ export const AdminCampaign90Tab: React.FC<AdminCampaign90TabProps> = ({ showAdmi
   };
 
   useEffect(() => {
-    loadData();
-  }, [statusFilter, dayRange]);
+    if (activeSubTab === 'overview') {
+       loadData();
+    }
+  }, [statusFilter, dayRange, activeSubTab]);
 
   const handleRefresh = () => {
-    loadData(true);
+    if (activeSubTab === 'overview') loadData(true);
   };
 
   const getRiskBadge = (level: string) => {
@@ -68,19 +75,45 @@ export const AdminCampaign90Tab: React.FC<AdminCampaign90TabProps> = ({ showAdmi
       {/* Header and Refresh */}
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-slate-800">90 Gün Danışman Kampı İzleme</h2>
-          <p className="text-sm text-slate-500">Kampanyaya katılan kullanıcıların ilerleme ve risk takibi.</p>
+          <h2 className="text-xl font-bold text-slate-800">90 Gün Danışman Kampı Yönetimi</h2>
+          <p className="text-sm text-slate-500">Kampanyaya katılan kullanıcıların izlenmesi ve gün içeriklerinin düzenlenmesi.</p>
         </div>
-        <button 
-          onClick={handleRefresh}
-          disabled={refreshing || loading}
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold rounded-xl transition-all"
+        <div className="flex gap-2">
+           <button 
+             onClick={handleRefresh}
+             disabled={refreshing || loading || activeSubTab !== 'overview'}
+             className="flex items-center gap-2 px-3 py-2 bg-indigo-50 text-indigo-600 hover:bg-indigo-100 font-bold rounded-xl transition-all"
+             title="Yenile (Sadece Genel Bakış için)"
+           >
+             <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+             <span className="hidden md:inline">Yenile</span>
+           </button>
+        </div>
+      </div>
+
+      <div className="flex border-b border-slate-200 gap-6">
+        <button
+          onClick={() => setActiveSubTab('overview')}
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeSubTab === 'overview' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
         >
-          <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
-          <span>Yenile</span>
+          <LayoutDashboard size={18} />
+          Genel Bakış & Kullanıcılar
+        </button>
+        <button
+          onClick={() => setActiveSubTab('day_contents')}
+          className={`pb-3 text-sm font-bold border-b-2 transition-colors flex items-center gap-2 ${activeSubTab === 'day_contents' ? 'border-indigo-500 text-indigo-600' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+        >
+          <FileText size={18} />
+          Gün İçerikleri 
         </button>
       </div>
 
+      {activeSubTab === 'day_contents' && (
+         <AdminCampaign90DayContentsSection showAdminToast={showAdminToast} />
+      )}
+
+      {activeSubTab === 'overview' && (
+      <div className="space-y-6 animate-in fade-in slide-in-from-bottom-2">
       {loading && !overview && (
         <div className="h-40 flex items-center justify-center text-slate-500 font-medium font-mono">
           Yükleniyor...
@@ -254,11 +287,12 @@ export const AdminCampaign90Tab: React.FC<AdminCampaign90TabProps> = ({ showAdmi
                            </a>
                         )}
                         <button 
-                           onClick={() => showAdminToast('info', 'Bilgi', 'Kullanıcı paneli entegrasyonu bu fazda hazırlanıyor.')}
-                           className="p-2 text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors border border-transparent hover:border-indigo-100"
+                           onClick={() => setSelectedUserIdDetail(user.user_id)}
+                           className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-lg transition-colors text-xs font-bold border border-indigo-100"
                            title="Kullanıcı Detayı"
                         >
-                           Detay
+                           <Eye size={14} />
+                           <span className="hidden sm:inline">Detay</span>
                         </button>
                      </div>
                   </td>
@@ -268,6 +302,16 @@ export const AdminCampaign90Tab: React.FC<AdminCampaign90TabProps> = ({ showAdmi
           </table>
         </div>
       </div>
+      </div>
+      )}
+
+      {selectedUserIdDetail && (
+         <AdminCampaign90UserDetailModal
+            userId={selectedUserIdDetail}
+            onClose={() => setSelectedUserIdDetail(null)}
+            showAdminToast={showAdminToast}
+         />
+      )}
     </div>
   );
 };

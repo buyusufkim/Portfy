@@ -196,9 +196,14 @@ app.post("/api/momentum/maintenance/run", authenticate, handleMaintenanceRun);
 import { handleGetSystemHealth } from "./server/system-health-api.js";
 app.get("/api/admin/health", authenticate, requireAdmin, handleGetSystemHealth);
 
-import { handleAdminGetCampaignOverview, handleAdminGetCampaignUsers } from "./server/admin-campaign-api.js";
+import { handleAdminGetCampaignOverview, handleAdminGetCampaignUsers, handleAdminGetCampaignDayContents, handleAdminGetCampaignDayContentByNumber, handleAdminUpdateCampaignDayContent, handleAdminGetCampaignUserDetail, handleAdminSeedCampaignDayContents } from "./server/admin-campaign-api.js";
 app.get("/api/admin/campaign90/overview", authenticate, requireAdmin, handleAdminGetCampaignOverview);
 app.get("/api/admin/campaign90/users", authenticate, requireAdmin, handleAdminGetCampaignUsers);
+app.get("/api/admin/campaign90/users/:userId/detail", authenticate, requireAdmin, handleAdminGetCampaignUserDetail);
+app.get("/api/admin/campaign90/day-contents", authenticate, requireAdmin, handleAdminGetCampaignDayContents);
+app.get("/api/admin/campaign90/day-contents/:dayNumber", authenticate, requireAdmin, handleAdminGetCampaignDayContentByNumber);
+app.patch("/api/admin/campaign90/day-contents/:dayNumber", authenticate, requireAdmin, handleAdminUpdateCampaignDayContent);
+app.post("/api/admin/campaign90/day-contents-seed", authenticate, requireAdmin, handleAdminSeedCampaignDayContents);
 
 import { handleAdminOperationsOverview, handleAdminOperationsUsers } from "./server/admin-operations-api.js";
 app.get("/api/admin/operations/overview", authenticate, requireAdmin, handleAdminOperationsOverview);

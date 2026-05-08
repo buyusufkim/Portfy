@@ -246,3 +246,229 @@ export const handleAdminGetCampaignUsers = async (req: AuthRequest, res: Respons
     res.status(500).json({ error: safeErrorMessage(error, "Users API hatası") });
   }
 };
+
+export const handleAdminGetCampaignUserDetail = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
+
+    const userId = req.params.userId;
+    
+    // Fetch campaign
+    const { data: campaign, error: campaignError } = await supabaseAdmin
+      .from("advisor_campaigns")
+      .select("*")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (campaignError) throw campaignError;
+    if (!campaign) return res.status(404).json({ error: "Kullanıcı kampanyası bulunamadı" });
+
+    // Fetch profile
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("display_name, email, phone, tier, region")
+      .eq("id", userId)
+      .maybeSingle();
+
+    // Fetch scores
+    const { data: scores } = await supabaseAdmin
+      .from("campaign_daily_scores")
+      .select("*")
+      .eq("campaign_id", campaign.id)
+      .order("score_date", { ascending: false });
+
+    // Calculate score summary
+    const scoreData = { total: 0, completed: 0 };
+    if (scores) {
+        scores.forEach(s => {
+            scoreData.total += s.total_tasks || 0;
+            scoreData.completed += s.completed_tasks || 0;
+        });
+    }
+
+    const currentDay = campaign.current_day || 1;
+    let completionPercent = scoreData.total > 0 ? (scoreData.completed / scoreData.total) * 100 : 0;
+    
+    // Risk Logic (same as list endpoint for consistency)
+    const now = new Date();
+    let riskLevel = 'healthy';
+    let riskReasons: string[] = [];
+    
+    const lastActivityMs = campaign.updated_at ? new Date(campaign.updated_at).getTime() : now.getTime();
+    const daysSinceActivity = (now.getTime() - lastActivityMs) / (1000 * 3600 * 24);
+    
+    if (campaign.status === 'active') {
+         if (daysSinceActivity > 7) {
+             riskLevel = 'critical';
+             riskReasons.push(`${Math.floor(daysSinceActivity)} gündür pasif.`);
+         } else if (daysSinceActivity > 3) {
+             riskLevel = 'watch';
+         }
+
+         if (currentDay > 10 && completionPercent < 20) {
+             riskLevel = riskLevel === 'critical' ? 'critical' : 'risk';
+             riskReasons.push('Görev tamamlama oranı çok düşük (<%20)');
+         } else if (currentDay > 10 && completionPercent < 40 && riskLevel !== 'critical') {
+             riskLevel = riskLevel === 'risk' ? 'risk' : 'watch';
+             riskReasons.push('Görev tamamlama oranı düşük (<%40)');
+         }
+    } else {
+        riskLevel = 'inactive';
+        riskReasons.push('Kampanya aktif değil.');
+    }
+
+    const detail = {
+        campaign_id: campaign.id,
+        user_id: campaign.user_id,
+        display_name: profile?.display_name || 'İsimsiz',
+        email: profile?.email || '',
+        phone: profile?.phone || '',
+        region: campaign.region || profile?.region || '-',
+        campaign_status: campaign.status || 'inactive',
+        start_date: campaign.start_date,
+        current_day: currentDay,
+        progress_percent: Math.min(100, Math.round((currentDay / 90) * 100)),
+        overall_completion_percent: Math.round(completionPercent),
+        completed_tasks_count: scoreData.completed,
+        total_tasks_count: scoreData.total,
+        last_activity_at: campaign.updated_at,
+        risk_level: riskLevel,
+        risk_reasons: riskReasons,
+        tier: profile?.tier || 'free',
+        scores: scores || []
+    };
+
+    res.json({ data: detail });
+
+  } catch (error: unknown) {
+    res.status(500).json({ error: safeErrorMessage(error, "User detail fetch error") });
+  }
+};
+
+export const handleAdminGetCampaignDayContents = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
+
+    const { data: contents, error } = await supabaseAdmin
+      .from("campaign90_day_contents")
+      .select("*")
+      .order("day_number", { ascending: true });
+
+    if (error) {
+      if (error.code === 'PGRST116' || error.message.includes('relation "public.campaign90_day_contents" does not exist')) {
+        return res.json({ data: [] });
+      }
+      throw error;
+    }
+
+    res.json({ data: contents });
+  } catch (error: unknown) {
+    res.status(500).json({ error: safeErrorMessage(error, "Day contents fetch hatası") });
+  }
+};
+
+export const handleAdminGetCampaignDayContentByNumber = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
+
+    const dayNumber = parseInt(req.params.dayNumber, 10);
+    if (isNaN(dayNumber) || dayNumber < 1 || dayNumber > 90) {
+      return res.status(400).json({ error: "Geçersiz gün numarası (1-90 arası olmalı)" });
+    }
+
+    const { data: content, error } = await supabaseAdmin
+      .from("campaign90_day_contents")
+      .select("*")
+      .eq("day_number", dayNumber)
+      .maybeSingle();
+
+    if (error) {
+       if (error.code === 'PGRST116' || error.message.includes('relation "public.campaign90_day_contents" does not exist')) {
+          return res.status(404).json({ error: "Tablo bulunamadı" });
+       }
+       throw error;
+    }
+
+    if (!content) {
+       return res.json({ data: null });
+    }
+
+    res.json({ data: content });
+  } catch (error: unknown) {
+    res.status(500).json({ error: safeErrorMessage(error, "Day content fetch hatası") });
+  }
+};
+
+export const handleAdminUpdateCampaignDayContent = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
+
+    const dayNumber = parseInt(req.params.dayNumber, 10);
+    if (isNaN(dayNumber) || dayNumber < 1 || dayNumber > 90) {
+      return res.status(400).json({ error: "Geçersiz gün numarası (1-90 arası olmalı)" });
+    }
+
+    const payload = req.body;
+    
+    let dailyQuestions = [];
+    if (payload.daily_questions) {
+       if (typeof payload.daily_questions === 'string') {
+          // If plain string text area, split by newlines and trim
+          dailyQuestions = payload.daily_questions.split('\n').map((q: string) => q.trim()).filter(Boolean);
+       } else if (Array.isArray(payload.daily_questions)) {
+          dailyQuestions = payload.daily_questions;
+       }
+    }
+
+    const upsertData = {
+        day_number: dayNumber,
+        title: payload.title || `Gün ${dayNumber}`,
+        short_summary: payload.short_summary || '',
+        learning_content: payload.learning_content || '',
+        mentor_message: payload.mentor_message || '',
+        vocabulary_title: payload.vocabulary_title || '',
+        vocabulary_content: payload.vocabulary_content || '',
+        task_brief: payload.task_brief || '',
+        daily_questions: dailyQuestions,
+        video_title: payload.video_title || '',
+        video_url: payload.video_url || '',
+        video_duration_minutes: payload.video_duration_minutes ? parseInt(payload.video_duration_minutes) : null,
+        status: payload.status || 'draft',
+        updated_by_admin_id: req.user?.id
+    };
+
+    const { data, error } = await supabaseAdmin
+      .from("campaign90_day_contents")
+      .upsert(upsertData, { onConflict: "day_number" })
+      .select()
+      .single();
+
+    if (error) throw error;
+
+    res.json({ data, success: true });
+  } catch (error: unknown) {
+    res.status(500).json({ error: safeErrorMessage(error, "Day content update hatası") });
+  }
+};
+
+export const handleAdminSeedCampaignDayContents = async (req: AuthRequest, res: Response) => {
+  try {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Privileged service unavailable" });
+    
+    // Dynamic import to avoid circular issues
+    const { processDbCampaign90SeedDefaults } = await import('./campaign90-default-content-seed.js');
+    
+    const { mode } = req.body;
+    if (mode !== 'missing_only' && mode !== 'fill_empty') {
+      return res.status(400).json({ error: "Geçersiz mod işlemi" });
+    }
+
+    console.log(`[Admin] Seeding Campaign 90 contents via ${req.user?.id} in mode: ${mode}`);
+    const summary = await processDbCampaign90SeedDefaults(supabaseAdmin, mode);
+    
+    res.json({ success: true, ...summary });
+  } catch (error: unknown) {
+    console.error("Seed error:", error);
+    res.status(500).json({ error: safeErrorMessage(error, "İçerik tohumlama (seed) hatası") });
+  }
+};
