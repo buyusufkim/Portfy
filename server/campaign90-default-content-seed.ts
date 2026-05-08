@@ -12,6 +12,10 @@ export async function processDbCampaign90SeedDefaults(supabaseAdmin: SupabaseCli
 
   if (fetchError) throw fetchError;
 
+  if (CAMPAIGN_90_DAYS.length !== 90) {
+    return { error: `Beklenen gün sayısı 90 iken kaynaklarda ${CAMPAIGN_90_DAYS.length} gün bulundu. Veri bütünlüğünü kontrol ediniz.` };
+  }
+
   let insertedCount = 0;
   let updatedCount = 0;
   let skippedCount = 0;

@@ -466,6 +466,10 @@ export const handleAdminSeedCampaignDayContents = async (req: AuthRequest, res: 
     console.log(`[Admin] Seeding Campaign 90 contents via ${req.user?.id} in mode: ${mode}`);
     const summary = await processDbCampaign90SeedDefaults(supabaseAdmin, mode);
     
+    if (summary.error) {
+      return res.status(400).json({ error: summary.error });
+    }
+    
     res.json({ success: true, ...summary });
   } catch (error: unknown) {
     console.error("Seed error:", error);

@@ -1,13 +1,13 @@
 // 90 Day Campaign 13-week templates
 
-import { days31to37 } from './campaignDays31to37';
-import { days38to45 } from './campaignDays38to45';
-import { days46to52 } from './campaignDays46to52';
-import { days53to60 } from './campaignDays53to60';
-import { days61to67 } from './campaignDays61to67';
-import { days68to75 } from './campaignDays68to75';
-import { days76to83 } from './campaignDays76to83';
-import { days84to90 } from './campaignDays84to90';
+import { days31to37 } from './campaignDays31to37.js';
+import { days38to45 } from './campaignDays38to45.js';
+import { days46to52 } from './campaignDays46to52.js';
+import { days53to60 } from './campaignDays53to60.js';
+import { days61to67 } from './campaignDays61to67.js';
+import { days68to75 } from './campaignDays68to75.js';
+import { days76to83 } from './campaignDays76to83.js';
+import { days84to90 } from './campaignDays84to90.js';
 
 export interface CampaignTemplateTask {
   task_key: string;

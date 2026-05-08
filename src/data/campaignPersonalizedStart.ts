@@ -1,4 +1,4 @@
-import { CampaignDayTemplate, CampaignTemplateTask } from './campaign90Template';
+import { CampaignDayTemplate, CampaignTemplateTask } from './campaign90Template.js';
 
 export const NEW_ADVISOR_DAY_1: CampaignTemplateTask[] = [
     { task_key: 'n_d1_g1', task_type: 'prospecting', title: 'Mesleki durumunu netleştir', description: 'Bağımsız mı, ofise bağlı mı, eğitim sürecinde mi çalışacağını belirle.', gpa_bucket: 'G', difficulty: 'required', xp_reward: 15 },
