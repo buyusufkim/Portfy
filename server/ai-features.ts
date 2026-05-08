@@ -200,6 +200,27 @@ export const AI_FEATURE_REGISTRY: Record<string, AIFeatureConfig> = {
       }
     }
   },
+  campaign90_mentor_insight: {
+    allowedModels: COMMON_MODELS,
+    defaultModel: "gemini-2.5-flash",
+    maxInputChars: 20000,
+    allowClientSystemInstruction: false,
+    allowClientResponseSchema: false,
+    systemInstruction: "Sen Portfy platformunun 90 Gün Kampı için yetkili ve deneyimli bir mentor-koçusun. Amacın, gayrimenkul danışmanlarının kamp kapsamındaki 'yansıma' cevaplarını analiz edip, sistem yöneticisine (admine) kısa, net ve eyleme geçirilebilir saha/operasyon koçluk önerileri sunmaktır. Hukuki/finansal tavsiye verme ve psikolojik teşhis koyma. Sadece iş disiplini, motivasyon, odaklanma ve takip üzerine yorum yap.",
+    responseSchema: {
+      type: "object",
+      properties: {
+        summary: { type: "string", description: "Kullanıcının son durumunun kısa özeti (max 2 cümle)" },
+        motivationLevel: { type: "string", enum: ["high", "medium", "low", "unknown"], description: "Kullanıcının cevaplarından anlaşılan motivasyon/disiplin seviyesi" },
+        mainBlocker: { type: "string", description: "Varsa kullanıcının ilerlemesini engelleyen temel neden (zaman, iptaller, odak eksikliği vb.)" },
+        suggestedAdminAction: { type: "string", enum: ["call", "whatsapp", "mentor_support", "watch", "none"], description: "Adminin kullanıcı için yapması gereken en iyi eylem" },
+        suggestedMessage: { type: "string", description: "Eğer iletişim kurulacaksa, adminin kuracağı örnek cümle (samimi, motive edici ve profesyonel)" },
+        nextFocus: { type: "string", description: "Kullanıcının bir sonraki adımda odaklanması gereken ana eylem" },
+        riskNote: { type: "string", description: "Kampın başarıyla bitmeme riski varsa not belir, yoksa boş geçilebilir" }
+      },
+      required: ["summary", "motivationLevel", "mainBlocker", "suggestedAdminAction", "suggestedMessage", "nextFocus", "riskNote"]
+    }
+  },
   generic_safe_json: {
     allowedModels: COMMON_MODELS,
     defaultModel: "gemini-2.5-flash",

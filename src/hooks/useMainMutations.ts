@@ -154,6 +154,26 @@ export function useMainMutations({
            console.error("Failed to add tomorrow's MicroGoal", e);
          }
       }
+      
+      // Upsert to campaign90 answers if applicable
+      if (variables.campaign_day) {
+        try {
+           const cAnswersService = await import('../services/campaign90AnswerService');
+           const ansPayload: Record<string, string> = {
+               source: 'day_close'
+           };
+           if (variables.wins) ansPayload.daily_win = variables.wins;
+           if (variables.blockers) ansPayload.main_blocker = variables.blockers;
+           if (variables.tomorrow_top3 && variables.tomorrow_top3[0]) ansPayload.tomorrow_focus = variables.tomorrow_top3[0];
+           if (variables.campaign_focus_reflection) ansPayload.campaign_focus_reflection = variables.campaign_focus_reflection;
+           if (variables.discipline_score) ansPayload.discipline_score = variables.discipline_score;
+           
+           await cAnswersService.campaign90AnswerService.saveMyCampaign90DayAnswers(variables.campaign_day, ansPayload);
+        } catch (e) {
+           console.error("Failed to save campaign day reflection on end_day", e);
+        }
+      }
+
       await api.momentumOs.saveDayClosure(variables);
       return api.endDay(variables);
     },

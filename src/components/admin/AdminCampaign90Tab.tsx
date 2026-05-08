@@ -63,6 +63,16 @@ export const AdminCampaign90Tab: React.FC<AdminCampaign90TabProps> = ({ showAdmi
      }
   };
 
+  const getReflectionBadge = (user: AdminCampaignUser) => {
+      switch (user.reflectionStatus) {
+         case 'answered_today': return <span className="px-2 py-1 rounded-md border font-bold text-[10px] uppercase bg-indigo-50 border-indigo-100 text-indigo-600">Bugün Cevapladı</span>;
+         case 'missing_today': return <span className="px-2 py-1 rounded-md border font-bold text-[10px] uppercase bg-amber-50 border-amber-100 text-amber-600">Bugün Eksik</span>;
+         case 'stale': return <span className="px-2 py-1 rounded-md border font-bold text-[10px] uppercase bg-rose-50 border-rose-100 text-rose-600">3+ Gün Yok</span>;
+         case 'none': return <span className="px-2 py-1 rounded-md border font-bold text-[10px] uppercase bg-slate-50 border-slate-200 text-slate-500">Hiç Yok</span>;
+         default: return null;
+      }
+  };
+
   // Local Search Filter
   const filteredUsers = users.filter(u => {
      if (!searchQuery) return true;
@@ -151,6 +161,18 @@ export const AdminCampaign90Tab: React.FC<AdminCampaign90TabProps> = ({ showAdmi
              <div className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-1">Görev (Bugün)</div>
              <div className="text-2xl font-black text-amber-600">{overview.tasksCompletedTodayCount}</div>
           </div>
+          <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-100 shadow-sm flex flex-col justify-center">
+             <div className="text-[11px] font-bold text-indigo-500 uppercase flex items-center gap-1.5 mb-1"><MessageCircle size={14}/> Yansıma (Bugün)</div>
+             <div className="text-2xl font-black text-indigo-700">{overview.reflectionsTodayCount}</div>
+          </div>
+          <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-col justify-center col-span-2 md:col-span-1">
+             <div className="text-[11px] font-bold text-slate-400 uppercase flex items-center gap-1.5 mb-1">Yansıması Eksik / Kopuk</div>
+             <div className="text-2xl font-black text-slate-700">
+                <span className="text-rose-500" title="Bugün cevabı eksik olan aktif kullanıcılar">{overview.missingReflectionsTodayCount}</span>
+                <span className="text-slate-300 mx-1">/</span>
+                <span className="text-slate-500" title="3+ gündür hiç yansıma bırakmayanlar">{overview.staleReflectionsCount}</span>
+             </div>
+          </div>
         </div>
       )}
 
@@ -168,6 +190,11 @@ export const AdminCampaign90Tab: React.FC<AdminCampaign90TabProps> = ({ showAdmi
             <option value="inactive_7d">Kopma Riski (7+ Gün Pasif)</option>
             <option value="no_start_today">Bugün Başlatmayanlar</option>
             <option value="low_completion">Düşük Tamamlama ({"< %40"})</option>
+            <option disabled>───────</option>
+            <option value="answered_today">Bugün Yansıma Bırakanlar</option>
+            <option value="missing_today">Bugün Yansıması Eksik (Aktif)</option>
+            <option value="stale_reflections">3+ Gündür Yansıma Yok</option>
+            <option value="no_reflections">Hiç Yansıma Yok (Aktif)</option>
           </select>
 
           <select 
@@ -204,7 +231,7 @@ export const AdminCampaign90Tab: React.FC<AdminCampaign90TabProps> = ({ showAdmi
                 <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase text-center">Gün</th>
                 <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase text-center">Tümü %</th>
                 <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase text-center">Bugün</th>
-                <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase text-center">Risk</th>
+                <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase text-center">Risk & Yansıma</th>
                 <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase">Son Aktivite</th>
                 <th className="py-4 px-4 text-xs font-bold text-slate-400 uppercase text-right">Aksiyon</th>
               </tr>
@@ -260,8 +287,16 @@ export const AdminCampaign90Tab: React.FC<AdminCampaign90TabProps> = ({ showAdmi
                   <td className="py-3 px-4 align-middle text-center">
                     <div className="flex flex-col items-center gap-1">
                        {getRiskBadge(user.risk_level)}
+                       {getReflectionBadge(user)}
+                       {user.openFollowupCount > 0 && (
+                          <div className={`px-2 py-0.5 mt-1 rounded text-[10px] font-bold border max-w-fit mx-auto truncate
+                             ${user.latestFollowupPriority === 'urgent' || user.latestFollowupPriority === 'high' ? 'bg-rose-50 text-rose-600 border-rose-200' : 'bg-amber-50 text-amber-600 border-amber-200'}
+                          `} title="Açık Takip Notu">
+                             Açık Takip ({user.openFollowupCount})
+                          </div>
+                       )}
                        {user.risk_reasons.length > 0 && (
-                          <div className="text-[9px] text-slate-400 max-w-[120px] leading-tight mt-1" title={user.risk_reasons.join(", ")}>
+                          <div className="text-[9px] text-slate-400 max-w-[120px] leading-tight mt-1 truncate" title={user.risk_reasons.join(", ")}>
                              {user.risk_reasons[0]} {user.risk_reasons.length > 1 && `+${user.risk_reasons.length-1}`}
                           </div>
                        )}

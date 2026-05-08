@@ -47,14 +47,14 @@ export function calculateContentTextLength(contents: unknown): number {
   return 0;
 }
 
-function getGenerativeAI() {
+export const getGenerativeAI = () => {
   const GEMINI_API_KEY = process.env.GEMINI_SV_KEY || process.env.GEMINI_API_KEY;
   if (!GEMINI_API_KEY || GEMINI_API_KEY.includes("your-gemini-key")) {
     console.warn("WARNING: GEMINI_SV_KEY and GEMINI_API_KEY are not defined or invalid.");
     return null;
   }
   return new GoogleGenAI({ apiKey: GEMINI_API_KEY });
-}
+};
 
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || "";
 const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY || process.env.VITE_SUPABASE_ANON_KEY || "";
@@ -990,7 +990,11 @@ export const handleSaveDayClosure = async (req: AuthRequest, res: Response) => {
       tomorrow_top3: payload.top3_tomorrow || payload.tomorrow_top3,
       completed_calls: payload.calls || payload.completed_calls || 0,
       completed_portfolio_actions: payload.visits || payload.completed_portfolio_actions || 0,
-      completed_followups: payload.completed_followups || 0
+      completed_followups: payload.completed_followups || 0,
+      early_close_reason: payload.early_close_reason,
+      campaign_focus_reflection: payload.campaign_focus_reflection,
+      discipline_score: payload.discipline_score,
+      campaign_day: payload.campaign_day
     };
 
     const { data, error } = await supabaseAdmin

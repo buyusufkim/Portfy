@@ -28,6 +28,8 @@ interface RitualOverlaysProps {
   campaignLoading?: boolean;
 }
 
+import { campaign90ContentService } from '../../services/campaign90ContentService';
+
 export const RitualOverlays = ({ 
   profile,
   showDailyRadar, 
@@ -46,6 +48,24 @@ export const RitualOverlays = ({
   activeCampaign,
   campaignLoading
 }: RitualOverlaysProps) => {
+
+  const campaignDay = activeCampaign?.current_day || 1;
+  const isCampaignUser = Boolean(advisorProfile?.experience_level === 'new' && activeCampaign?.id && activeCampaign?.status === 'active');
+
+  const { data: cmsContent } = useQuery({
+      queryKey: ['campaign90_cms_content', campaignDay],
+      queryFn: () => campaign90ContentService.getPublishedDayContent(campaignDay),
+      enabled: isCampaignUser && (showDailyRadar || showDayCloser)
+  });
+
+  const { data: campaignAnswers } = useQuery({
+      queryKey: ['campaign90_day_answers_closing', campaignDay],
+      queryFn: () => {
+          return import('../../services/campaign90AnswerService').then(m => m.campaign90AnswerService.fetchMyCampaign90DayAnswers(campaignDay));
+      },
+      enabled: isCampaignUser && showDayCloser
+  });
+
 
   // MİKRO HEDEFLER
   const { todayISO } = useTurkeyClock();
@@ -114,9 +134,6 @@ export const RitualOverlays = ({
       });
     }, 2000);
   };
-
-  const isCampaignUser = Boolean(advisorProfile?.experience_level === 'new' && activeCampaign?.id && activeCampaign?.status === 'active');
-  const campaignDay = activeCampaign?.current_day || 1;
 
   let radarTasks = dailyRadarData?.tasks || [];
   let radarInsight = dailyRadarData?.insight || '';
@@ -222,6 +239,8 @@ export const RitualOverlays = ({
               tasks={radarTasks}
               insight={radarInsight}
               isCampaignUser={finalIsCampaignUser}
+              campaignDay={campaignDay}
+              cmsContent={cmsContent}
               onComplete={handleMorningComplete}
               isPending={completeMorningRitualMutation.isPending || showReward}
               initialFocus={activeMicroGoal?.title}
@@ -282,6 +301,10 @@ export const RitualOverlays = ({
             }}
             onComplete={handleEveningComplete}
             initialFocus={tomorrowMicroGoal?.title}
+            isCampaignUser={finalIsCampaignUser}
+            campaignDay={campaignDay}
+            cmsContent={cmsContent}
+            campaignAnswers={campaignAnswers}
           />
         )}
       </AnimatePresence>

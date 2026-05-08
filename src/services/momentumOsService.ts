@@ -382,7 +382,11 @@ export const momentumOsService = {
         tomorrow_top3: payload.top3_tomorrow || payload.tomorrow_top3,
         completed_calls: payload.calls || payload.completed_calls || 0,
         completed_portfolio_actions: payload.visits || payload.completed_portfolio_actions || 0,
-        completed_followups: payload.completed_followups || 0
+        completed_followups: payload.completed_followups || 0,
+        early_close_reason: payload.early_close_reason,
+        campaign_focus_reflection: payload.campaign_focus_reflection,
+        discipline_score: payload.discipline_score,
+        campaign_day: payload.campaign_day
       };
 
       const { data, error } = await supabase

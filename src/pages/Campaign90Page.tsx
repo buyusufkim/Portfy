@@ -13,6 +13,10 @@ import { CAMPAIGN_90_DAYS } from '../data/campaign90Template';
 import { useCampaign90Stats } from '../hooks/useCampaign90Stats';
 import { useCampaign90Report } from '../hooks/useCampaign90Report';
 import { getCampaignCoachMessage } from '../utils/campaign90Coach';
+import { campaign90ContentService } from '../services/campaign90ContentService';
+import { campaign90AnswerService } from '../services/campaign90AnswerService';
+import { mergeCampaignDayContentWithFallback } from '../utils/campaign90ContentMergeHelpers';
+import { normalizeQuestionKey } from '../utils/campaign90AnswerHelpers';
 import { CampaignTaskGroup } from '../components/campaign90/CampaignTaskGroup';
 import { CampaignStartWizard } from '../components/campaign90/CampaignStartWizard';
 import { CampaignMentorCard } from '../components/campaign90/CampaignMentorCard';
@@ -111,6 +115,28 @@ export const Campaign90Page: React.FC = () => {
 
     const { data: crmStats } = useCampaign90Stats(user?.id);
     const { data: campaignReport } = useCampaign90Report(user?.id, campaign);
+
+    const { data: cmsContent, isLoading: isLoadingCms } = useQuery({
+        queryKey: ['campaign90_cms_content', selectedDay],
+        queryFn: () => campaign90ContentService.getPublishedDayContent(selectedDay)
+    });
+
+    const { data: savedAnswers, isLoading: isLoadingAnswers, refetch: refetchAnswers } = useQuery({
+        queryKey: ['campaign90_day_answers', selectedDay],
+        queryFn: () => campaign90AnswerService.fetchMyCampaign90DayAnswers(selectedDay),
+        staleTime: 0
+    });
+
+    const [answers, setAnswers] = React.useState<Record<string, string>>({});
+    const [isSavingAnswers, setIsSavingAnswers] = React.useState(false);
+
+    React.useEffect(() => {
+        if (savedAnswers) {
+            setAnswers(savedAnswers);
+        } else {
+            setAnswers({}); // reset if empty/new
+        }
+    }, [savedAnswers, selectedDay]);
 
     const startMutation = useMutation({
         mutationFn: async (payload: Partial<AdvisorProfessionalProfile>) => {
@@ -259,8 +285,16 @@ export const Campaign90Page: React.FC = () => {
     }).length;
 
     const currentDayTemplate = CAMPAIGN_90_DAYS.find(d => d.day_number === selectedDay);
-    const glossary = getGlossaryForDay(selectedDay);
-    const curriculum = getCurriculumForDay(selectedDay, advisorProfile?.experience_level);
+    const fallbackGlossary = getGlossaryForDay(selectedDay);
+    const fallbackCurriculum = getCurriculumForDay(selectedDay, advisorProfile?.experience_level);
+
+    const mergedContent = mergeCampaignDayContentWithFallback(
+        cmsContent, 
+        currentDayTemplate, 
+        fallbackCurriculum, 
+        fallbackGlossary, 
+        selectedDay
+    );
 
     const handleCompleteTask = (taskId: string) => {
         if (selectedDay < currentCampaignDay) {
@@ -348,6 +382,22 @@ export const Campaign90Page: React.FC = () => {
         skipTaskMutation.mutate(taskId);
     };
 
+    const handleSaveAnswers = async () => {
+        if (selectedDay < currentCampaignDay) {
+            toast.error("Geçmiş günlerin cevapları değiştirilemez.");
+            return;
+        }
+        setIsSavingAnswers(true);
+        const success = await campaign90AnswerService.saveMyCampaign90DayAnswers(selectedDay, answers);
+        setIsSavingAnswers(false);
+        if (success) {
+            toast.success("Cevaplarınız başarıyla kaydedildi.");
+            refetchAnswers();
+        } else {
+            toast.error("Cevaplar kaydedilemedi.");
+        }
+    };
+
     const isRestrictedDay8 = selectedDay >= 8 && (!profile?.subscription_end_date || new Date(profile.subscription_end_date) < new Date()) && profile?.tier !== 'master' && profile?.tier !== 'pro' && profile?.tier !== 'elite';
 
     const handleUpgradeRequest = async () => {
@@ -405,9 +455,9 @@ export const Campaign90Page: React.FC = () => {
             <div className="flex items-end gap-3 mb-5">
                 <div>
                     <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
-                        {currentDayTemplate ? currentDayTemplate.day_title : `Gün ${campaign.current_day} Görevleri`}
+                        {mergedContent.title}
                     </h1>
-                    <p className="text-sm font-bold text-slate-500 mt-1">Hafta {campaign.current_week}: {currentDayTemplate?.phase_title || phaseName}</p>
+                    <p className="text-sm font-bold text-slate-500 mt-1">Hafta {campaign.current_week}: {mergedContent.phaseTitle || phaseName}</p>
                 </div>
             </div>
 
@@ -438,7 +488,7 @@ export const Campaign90Page: React.FC = () => {
 
                 {/* 2. Portfy Mentor / Field Coach Message */}
                 <div data-tour="campaign-mentor">
-                    <CampaignMentorCard message={coachMessage} />
+                    <CampaignMentorCard message={mergedContent.isCmsActive && mergedContent.mentorMessage ? mergedContent.mentorMessage : coachMessage} />
                 </div>
 
                 {/* 3. Today's Rank */}
@@ -451,19 +501,58 @@ export const Campaign90Page: React.FC = () => {
                     />
                 </div>
 
+                {/* Daily Video (CMS Only) */}
+                {mergedContent.videoUrl && (
+                    <div className="bg-slate-900 rounded-2xl overflow-hidden p-6 relative border border-slate-800" data-tour="campaign-video">
+                        <div className="max-w-2xl">
+                             <h3 className="text-xl font-bold text-white mb-2">{mergedContent.videoTitle || 'Günün Eğitimi'}</h3>
+                             <p className="text-slate-400 text-sm mb-4">Bu video günün görevlerini daha iyi kavramanıza yardımcı olacaktır.</p>
+                             <a 
+                                href={mergedContent.videoUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center gap-2 bg-[#00D2B4] hover:bg-[#00e3c5] text-slate-900 font-bold px-6 py-3 rounded-xl transition-colors"
+                             >
+                                Videoyu İzle
+                             </a>
+                        </div>
+                    </div>
+                )}
+
                 {/* 4. Daily Education */}
                 {currentDayTemplate && (
                     <div data-tour="campaign-education">
-                        <CampaignEducationCard curriculum={curriculum} readOnly={selectedDay < currentCampaignDay} />
+                        <CampaignEducationCard 
+                            curriculum={{
+                                lesson_title: mergedContent.shortSummary,
+                                module_title: mergedContent.moduleTitle,
+                                learning_goals: mergedContent.learningGoals,
+                                lesson_body: mergedContent.learningContent,
+                                field_example: mergedContent.fieldExample,
+                                common_mistake: mergedContent.commonMistake,
+                                pro_tip: mergedContent.proTip,
+                                script_example: mergedContent.scriptExample,
+                                mini_quiz: mergedContent.miniQuiz,
+                                practice_assignment: mergedContent.practiceAssignment
+                            }} 
+                            readOnly={selectedDay < currentCampaignDay} 
+                        />
                     </div>
                 )}
 
                 {/* 5. Glossary */}
-                {currentDayTemplate && (
+                {mergedContent.glossaryTerms.length > 0 && (
                     <div data-tour="campaign-glossary">
-                        <CampaignGlossaryCard glossary={glossary} />
+                        <CampaignGlossaryCard glossary={mergedContent.glossaryTerms} />
                     </div>
                 )}
+
+                {/* Gün Kapatma Yönlendirmesi */}
+                <div className="bg-indigo-50 p-6 rounded-[24px] border border-indigo-100 shadow-sm text-center">
+                    <p className="text-indigo-900 font-medium text-sm">
+                        Bugünkü kamp odağını gün sonunda <span className="font-bold">Günü Mühürle</span> ekranında değerlendireceksin.
+                    </p>
+                </div>
 
                 {/* 6. Daily Campaign Tasks */}
                 <div className="pt-0 flex flex-col gap-3" data-tour="campaign-tasks">

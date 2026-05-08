@@ -11,6 +11,9 @@ export interface AdminCampaignOverview {
   averageProgressPercent: number;
   averageCurrentDay: number;
   riskUserCount: number;
+  reflectionsTodayCount: number;
+  missingReflectionsTodayCount: number;
+  staleReflectionsCount: number;
 }
 
 export interface AdminCampaignUser {
@@ -35,6 +38,17 @@ export interface AdminCampaignUser {
   risk_level: 'healthy' | 'watch' | 'risk' | 'critical';
   risk_reasons: string[];
   tier?: string;
+  lastAnswerAt: string | null;
+  lastAnswerDayNumber: number | null;
+  totalAnsweredDays: number;
+  answeredToday: boolean;
+  missingTodayAnswer: boolean;
+  daysSinceLastAnswer: number;
+  reflectionStatus: "answered_today" | "missing_today" | "stale" | "none";
+  openFollowupCount: number;
+  latestFollowupAt: string | null;
+  latestFollowupType: string | null;
+  latestFollowupPriority: string | null;
 }
 
 export interface AdminCampaignDayContentOverview {
@@ -78,6 +92,11 @@ export interface AdminCampaignUserDetail extends AdminCampaignUser {
     total_tasks: number;
     completed_optional_tasks: number;
     total_optional_tasks: number;
+  }[];
+  answers?: {
+    day_number: number;
+    answered_at: string;
+    answers: any;
   }[];
 }
 
@@ -189,5 +208,75 @@ export const adminCampaign90Service = {
     }
     const json = await res.json();
     return json;
+  },
+
+  getAdminCampaignUserFollowups: async (userId: string): Promise<any[]> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) throw new Error("Oturum yok");
+
+    const res = await fetch(`/api/admin/campaign90/users/${userId}/followups`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) throw new Error("Takip notları alınamadı");
+    const json = await res.json();
+    return json.data || [];
+  },
+
+  createCampaign90UserFollowup: async (userId: string, payload: any): Promise<any> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) throw new Error("Oturum yok");
+
+    const res = await fetch(`/api/admin/campaign90/users/${userId}/followups`, {
+        method: 'POST',
+        headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+        const d = await res.json().catch(()=>({}));
+        throw new Error(d.error || "Not eklenemedi");
+    }
+    return res.json();
+  },
+
+  updateCampaign90Followup: async (followupId: string, payload: any): Promise<any> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) throw new Error("Oturum yok");
+
+    const res = await fetch(`/api/admin/campaign90/followups/${followupId}`, {
+        method: 'PATCH',
+        headers: { 
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(payload)
+    });
+    if (!res.ok) {
+        const d = await res.json().catch(()=>({}));
+        throw new Error(d.error || "Güncellenemedi");
+    }
+    return res.json();
+  },
+
+  generateMentorInsight: async (userId: string): Promise<any> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token;
+    if (!token) throw new Error("Oturum yok");
+
+    const res = await fetch(`/api/admin/campaign90/users/${userId}/mentor-insight`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) {
+        const d = await res.json().catch(()=>({}));
+        throw new Error(d.error || "Yorum oluşturulamadı");
+    }
+    const json = await res.json();
+    return json.data;
   }
 };

@@ -13,18 +13,36 @@ interface DayCloserProps {
     social: number;
   };
   profile?: UserProfile | null;
-  onComplete: (data: Partial<DayClosure> & { early_close_reason?: string }) => void;
+  onComplete: (data: Partial<DayClosure> & { early_close_reason?: string, campaign_focus_reflection?: string, discipline_score?: string }) => void;
   isPending?: boolean;
   onClose?: () => void;
   initialFocus?: string;
+  isCampaignUser?: boolean;
+  campaignDay?: number;
+  cmsContent?: any;
+  campaignAnswers?: Record<string, string>;
 }
 
-export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete, isPending, onClose, initialFocus }) => {
+export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete, isPending, onClose, initialFocus, isCampaignUser, campaignDay, cmsContent, campaignAnswers }) => {
   const [step, setStep] = useState(1);
   const [wins, setWins] = useState('');
   const [blockers, setBlockers] = useState('');
   const [tomorrowTop3, setTomorrowTop3] = useState([initialFocus || '', '', '']);
   const [earlyCloseReason, setEarlyCloseReason] = useState('');
+  
+  const [campaignFocusReflection, setCampaignFocusReflection] = useState('');
+  const [disciplineScore, setDisciplineScore] = useState('');
+
+  React.useEffect(() => {
+    if (campaignAnswers) {
+      if (campaignAnswers.daily_win) setWins(campaignAnswers.daily_win);
+      if (campaignAnswers.main_blocker) setBlockers(campaignAnswers.main_blocker);
+      if (campaignAnswers.tomorrow_focus) setTomorrowTop3([campaignAnswers.tomorrow_focus, '', '']);
+      if (campaignAnswers.campaign_focus_reflection) setCampaignFocusReflection(campaignAnswers.campaign_focus_reflection);
+      if (campaignAnswers.discipline_score) setDisciplineScore(campaignAnswers.discipline_score);
+    }
+  }, [campaignAnswers]);
+
   const { timeLabel } = useTurkeyClock();
 
   const isEarlyClose = React.useMemo(() => {
@@ -48,7 +66,10 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete
         wins,
         blockers,
         tomorrow_top3: tomorrowTop3.filter(t => t.trim() !== ''),
-        early_close_reason: earlyCloseReason.trim()
+        early_close_reason: earlyCloseReason.trim(),
+        campaign_focus_reflection: campaignFocusReflection.trim(),
+        discipline_score: disciplineScore,
+        campaign_day: campaignDay
       });
     }
   };
@@ -162,6 +183,49 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete
                     className="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white/90 text-sm focus:border-rose-500 outline-none transition-colors"
                   />
                 </div>
+
+                {isCampaignUser && (
+                  <>
+                    <div className="pt-4 border-t border-white/10 mt-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <span className="text-orange-400 font-black text-xs uppercase tracking-widest">Bugünün Kamp Yansıması</span>
+                        <span className="text-slate-500 text-[10px] font-bold">90 Gün Kampı / {campaignDay}. Gün</span>
+                      </div>
+                      
+                      <div className="mb-4 text-sm font-medium text-slate-300">
+                        {cmsContent?.dayTitle && <span className="font-bold text-white mr-2">{cmsContent.dayTitle} -</span>}
+                        {cmsContent?.mainObjective || 'Odağını Koru'}
+                      </div>
+
+                      <div className="space-y-4">
+                        <div>
+                          <label className="block text-slate-400 text-xs font-bold mb-2">Bugünkü kamp odağına ne kadar yaklaştın?</label>
+                          <textarea 
+                            value={campaignFocusReflection}
+                            onChange={(e) => setCampaignFocusReflection(e.target.value)}
+                            placeholder="Kamp çalışmalarını kısaca değerlendir..."
+                            className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white/90 text-sm focus:border-orange-500 outline-none h-20 transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-slate-400 text-xs font-bold mb-2">Disiplin Puanın (1-5)</label>
+                          <div className="flex gap-2">
+                            {[1, 2, 3, 4, 5].map(score => (
+                              <button
+                                key={score}
+                                type="button"
+                                onClick={() => setDisciplineScore(score.toString())}
+                                className={`flex-1 py-2 rounded-xl text-sm font-bold border transition-colors ${disciplineScore === score.toString() ? 'bg-orange-500 text-white border-orange-500' : 'bg-white/5 text-slate-400 border-white/10 hover:border-orange-500/50'}`}
+                              >
+                                {score}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </>
+                )}
               </div>
 
               <button

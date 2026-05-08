@@ -38,6 +38,7 @@ import { usePasswordReset } from "./hooks/usePasswordReset";
 import { useAvatarUpload } from "./hooks/useAvatarUpload";
 
 import { calculateProfileCompletionScore } from "./helpers/profilHelpers";
+import { DisciplineRecordsSection } from "./profile/DisciplineRecordsSection";
 
 interface ProfilViewProps {
   profile: UserProfile | null;
@@ -754,6 +755,13 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
             )}
           </div>
         </Card>
+
+        {/* Disiplin Kayıtları (Gün Kapatma Geçmişi) */}
+        <div className="col-span-1 lg:col-span-2">
+           <h3 className="text-xl font-bold text-slate-800 mb-2">Disiplin Kayıtları</h3>
+           <p className="text-sm text-slate-500 mb-4">Günü Mühürle kayıtların burada birikir. Bu alan çalışma düzenini, tekrar eden engellerini ve gelişim ritmini görmeni sağlar.</p>
+           <DisciplineRecordsSection />
+        </div>
 
         {/* Bildirim Tercihi & Bölge Ayarları */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

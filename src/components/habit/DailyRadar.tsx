@@ -7,12 +7,14 @@ interface DailyRadarProps {
   tasks: string[];
   insight: string;
   isCampaignUser?: boolean;
+  campaignDay?: number;
+  cmsContent?: any;
   onComplete: (data: Partial<DailyPlan>) => void;
   isPending?: boolean;
   initialFocus?: string;
 }
 
-export const DailyRadar: React.FC<DailyRadarProps> = ({ tasks, insight, isCampaignUser, onComplete, isPending, initialFocus }) => {
+export const DailyRadar: React.FC<DailyRadarProps> = ({ tasks, insight, isCampaignUser, campaignDay, cmsContent, onComplete, isPending, initialFocus }) => {
   const [step, setStep] = useState(1);
   const [plannedCalls, setPlannedCalls] = useState(5);
   const [plannedFollowups, setPlannedFollowups] = useState(3);
@@ -78,37 +80,78 @@ export const DailyRadar: React.FC<DailyRadarProps> = ({ tasks, insight, isCampai
                 </p>
               </div>
 
-              <div className="space-y-4">
-                {tasks.map((task, index) => (
-                  <motion.div
-                    key={index}
-                    initial={{ x: -20, opacity: 0 }}
-                    animate={{ x: 0, opacity: 1 }}
-                    transition={{ delay: 0.2 + index * 0.1 }}
-                    className="bg-slate-800/50 border border-slate-700 p-5 rounded-3xl flex items-center gap-4"
-                  >
-                    <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center text-orange-500 shrink-0">
-                      <CheckCircle2 size={20} />
+              {isCampaignUser && (
+                <motion.div
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    transition={{ delay: 0.1 }}
+                    className="bg-slate-800 border border-slate-700 rounded-[24px] p-6 text-left"
+                >
+                    <div className="flex items-center gap-2 mb-3 text-orange-400 font-bold text-[11px] uppercase tracking-wider">
+                        <Target size={14} /> Bugünün 90 Gün Kampı Odağı
                     </div>
-                    <p className="text-white font-medium text-sm">{task}</p>
-                  </motion.div>
-                ))}
-              </div>
+                    <div className="mb-4">
+                        <h2 className="text-xl font-bold text-white">
+                            {campaignDay}. Gün <span className="font-normal text-slate-400 ml-1">{cmsContent?.dayTitle || 'Kamp Eğitimi'}</span>
+                        </h2>
+                        <p className="text-orange-300 font-medium text-sm mt-1">{cmsContent?.mainObjective || 'Odağını Koru'}</p>
+                    </div>
+                    <div className="bg-slate-900/50 p-4 rounded-xl border border-slate-700">
+                        <div className="text-sm font-semibold text-white mb-2">Mentor Notu</div>
+                        <p className="text-slate-300 text-sm leading-relaxed">{cmsContent?.shortSummary || 'Eğitimlerini eksiksiz tamamla ve görevleri atlama.'}</p>
+                    </div>
+                    
+                    {cmsContent?.taskItems && cmsContent.taskItems.length > 0 && (
+                        <div className="mt-4">
+                            <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2">Bugün Unutma</div>
+                            <ul className="space-y-2">
+                                {cmsContent.taskItems.slice(0, 3).map((item: any, idx: number) => (
+                                    <li key={idx} className="flex gap-2 text-sm text-slate-300">
+                                        <CheckCircle2 size={16} className="text-orange-500 flex-shrink-0 mt-0.5" />
+                                        <span>{item.task_title || item.taskTitle}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                        </div>
+                    )}
+                </motion.div>
+              )}
 
-              <motion.div
-                initial={{ y: 20, opacity: 0 }}
-                animate={{ y: 0, opacity: 1 }}
-                transition={{ delay: 0.6 }}
-                className="bg-orange-500/10 border border-orange-500/20 p-6 rounded-3xl space-y-2"
-              >
-                <div className="flex items-center gap-2 text-orange-500 font-bold text-sm uppercase tracking-wider">
-                  <Sparkles size={16} />
-                  AI Koç İçgörüsü
+              {!isCampaignUser && (
+                <div className="space-y-4">
+                  {tasks.map((task, index) => (
+                    <motion.div
+                      key={index}
+                      initial={{ x: -20, opacity: 0 }}
+                      animate={{ x: 0, opacity: 1 }}
+                      transition={{ delay: 0.2 + index * 0.1 }}
+                      className="bg-slate-800/50 border border-slate-700 p-5 rounded-3xl flex items-center gap-4"
+                    >
+                      <div className="w-10 h-10 bg-orange-500/10 rounded-xl flex items-center justify-center text-orange-500 shrink-0">
+                        <CheckCircle2 size={20} />
+                      </div>
+                      <p className="text-white font-medium text-sm">{task}</p>
+                    </motion.div>
+                  ))}
                 </div>
-                <p className="text-orange-100 italic leading-relaxed text-sm">
-                  "{insight}"
-                </p>
-              </motion.div>
+              )}
+
+              {!isCampaignUser && (
+                <motion.div
+                  initial={{ y: 20, opacity: 0 }}
+                  animate={{ y: 0, opacity: 1 }}
+                  transition={{ delay: 0.6 }}
+                  className="bg-orange-500/10 border border-orange-500/20 p-6 rounded-3xl space-y-2"
+                >
+                  <div className="flex items-center gap-2 text-orange-500 font-bold text-sm uppercase tracking-wider">
+                    <Sparkles size={16} />
+                    AI Koç İçgörüsü
+                  </div>
+                  <p className="text-orange-100 italic leading-relaxed text-sm">
+                    "{insight}"
+                  </p>
+                </motion.div>
+              )}
 
               <button
                 onClick={handleNext}

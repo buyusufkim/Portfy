@@ -151,6 +151,13 @@ app.use((req: CustomRequest, res: Response, next: NextFunction) => {
 app.get("/api/webhooks/meta", handleMetaWebhookGet);
 app.post("/api/webhooks/meta", handleMetaWebhookPost);
 
+import { handleGetUserCampaignDayContent, handleGetUserCampaignDayAnswers, handlePutUserCampaignDayAnswers } from "./server/campaign90-api.js";
+
+// Campaign 90 Content Endpoint
+app.get("/api/campaign90/day-content/:dayNumber", authenticate, handleGetUserCampaignDayContent);
+app.get("/api/campaign90/day-answers/:dayNumber", authenticate, handleGetUserCampaignDayAnswers);
+app.put("/api/campaign90/day-answers/:dayNumber", authenticate, handlePutUserCampaignDayAnswers);
+
 // Secure Profile Endpoints
 app.post("/api/ai/generate", authenticate, aiLimiter, tokenTrackerMiddleware, handleAIGeneration);
 app.post("/api/ai/profile/update", authenticate, handleUpdateProfile);
@@ -196,10 +203,14 @@ app.post("/api/momentum/maintenance/run", authenticate, handleMaintenanceRun);
 import { handleGetSystemHealth } from "./server/system-health-api.js";
 app.get("/api/admin/health", authenticate, requireAdmin, handleGetSystemHealth);
 
-import { handleAdminGetCampaignOverview, handleAdminGetCampaignUsers, handleAdminGetCampaignDayContents, handleAdminGetCampaignDayContentByNumber, handleAdminUpdateCampaignDayContent, handleAdminGetCampaignUserDetail, handleAdminSeedCampaignDayContents } from "./server/admin-campaign-api.js";
+import { handleAdminGetCampaignOverview, handleAdminGetCampaignUsers, handleAdminGetCampaignDayContents, handleAdminGetCampaignDayContentByNumber, handleAdminUpdateCampaignDayContent, handleAdminGetCampaignUserDetail, handleAdminSeedCampaignDayContents, handleAdminGetCampaignUserFollowups, handleAdminCreateCampaignUserFollowup, handleAdminUpdateCampaignFollowup, handleAdminGenerateCampaignMentorInsight } from "./server/admin-campaign-api.js";
 app.get("/api/admin/campaign90/overview", authenticate, requireAdmin, handleAdminGetCampaignOverview);
 app.get("/api/admin/campaign90/users", authenticate, requireAdmin, handleAdminGetCampaignUsers);
 app.get("/api/admin/campaign90/users/:userId/detail", authenticate, requireAdmin, handleAdminGetCampaignUserDetail);
+app.get("/api/admin/campaign90/users/:userId/followups", authenticate, requireAdmin, handleAdminGetCampaignUserFollowups);
+app.post("/api/admin/campaign90/users/:userId/followups", authenticate, requireAdmin, handleAdminCreateCampaignUserFollowup);
+app.post("/api/admin/campaign90/users/:userId/mentor-insight", authenticate, requireAdmin, tokenTrackerMiddleware, handleAdminGenerateCampaignMentorInsight);
+app.patch("/api/admin/campaign90/followups/:followupId", authenticate, requireAdmin, handleAdminUpdateCampaignFollowup);
 app.get("/api/admin/campaign90/day-contents", authenticate, requireAdmin, handleAdminGetCampaignDayContents);
 app.get("/api/admin/campaign90/day-contents/:dayNumber", authenticate, requireAdmin, handleAdminGetCampaignDayContentByNumber);
 app.patch("/api/admin/campaign90/day-contents/:dayNumber", authenticate, requireAdmin, handleAdminUpdateCampaignDayContent);
