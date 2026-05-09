@@ -40,3 +40,80 @@ export const extractTopBlockers = (records: DayClosure[]): string => {
 export const countCampaignReflections = (records: DayClosure[]): number => {
   return records.filter(r => r.campaign_focus_reflection || r.campaign_day).length;
 };
+
+export const buildCalendarDaysForMonth = (year: number, month: number): Date[] => {
+  const days: Date[] = [];
+  const firstDay = new Date(year, month, 1);
+  const lastDay = new Date(year, month + 1, 0);
+
+  let firstDayOfWeek = firstDay.getDay() - 1;
+  if(firstDayOfWeek === -1) firstDayOfWeek = 6;
+
+  for (let i = firstDayOfWeek; i > 0; i--) {
+    days.push(new Date(year, month, 1 - i));
+  }
+
+  for (let i = 1; i <= lastDay.getDate(); i++) {
+    days.push(new Date(year, month, i));
+  }
+
+  const remaining = days.length % 7;
+  if (remaining !== 0) {
+    const toAdd = 7 - remaining;
+    for (let i = 1; i <= toAdd; i++) {
+      days.push(new Date(year, month + 1, i));
+    }
+  }
+
+  return days;
+};
+
+export const getRecordForDate = (records: DayClosure[], date: Date): DayClosure | undefined => {
+  const isoDate = new Date(date).toLocaleDateString('sv').split('T')[0]; // simple stable yyyy-mm-dd fallback depending on timezone though sv locale yields YYYY-MM-DD
+  // actually simpler to just manual format:
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const target = `${yyyy}-${mm}-${dd}`;
+  
+  return records.find(r => r.closure_date === target);
+};
+
+export const hasCampaignReflectionForDate = (records: DayClosure[], date: Date): boolean => {
+  const record = getRecordForDate(records, date);
+  return !!record && (!!record.campaign_focus_reflection || !!record.campaign_day);
+};
+
+export const formatDisciplineRecordDate = (dateString: string): string => {
+  return new Date(dateString).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+};
+
+export const formatWorkTimeRange = (record: DayClosure): string | null => {
+  if (!record.day_started_at && !record.day_closed_at) return null;
+  
+  const startStr = record.day_started_at 
+    ? new Date(record.day_started_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+    : '??:??';
+    
+  const endStr = record.day_closed_at
+    ? new Date(record.day_closed_at).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' })
+    : '??:??';
+    
+  return `${startStr} - ${endStr}`;
+};
+
+export const formatWorkDuration = (minutes: number | null | undefined): string | null => {
+  if (minutes === null || minutes === undefined) return null;
+  const hours = Math.floor(minutes / 60);
+  const mins = Math.floor(minutes % 60);
+  if (hours === 0) return `${mins} dk`;
+  return `${hours} saat ${mins} dk`;
+};
+
+export const calculateAverageWorkDuration = (records: DayClosure[]): string | null => {
+  const validRecords = records.filter(r => r.work_duration_minutes != null);
+  if (validRecords.length === 0) return null;
+  const total = validRecords.reduce((sum, r) => sum + (r.work_duration_minutes || 0), 0);
+  const avg = Math.round(total / validRecords.length);
+  return formatWorkDuration(avg);
+};

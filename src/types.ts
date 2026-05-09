@@ -398,6 +398,9 @@ export interface DayClosure {
   campaign_focus_reflection?: string;
   discipline_score?: string;
   campaign_day?: number;
+  day_started_at?: string;
+  day_closed_at?: string;
+  work_duration_minutes?: number;
 }
 
 export interface PortfolioBlocker {

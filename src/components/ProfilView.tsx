@@ -195,12 +195,6 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
 
   const { uploading, localAvatar, fileInputRef, handleAvatarUpload } = useAvatarUpload(profile, updateProfileMutation);
 
-  const { data: disciplineLogs = [], isLoading: isDisciplineLoading } = useQuery({
-    queryKey: ['workDisciplineLogs', profile?.id],
-    queryFn: profileService.getWorkDisciplineLogs,
-    enabled: !!profile?.id
-  });
-
   const [aiLogsOffset, setAiLogsOffset] = useState(0);
   const [aiLogsFilter, setAiLogsFilter] = useState('all');
   const [aiLogs, setAiLogs] = useState<any[]>([]);
@@ -712,56 +706,8 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
           </div>
         </Card>
 
-        {/* Çalışma Disiplini Arşivi */}
-        <Card className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 transition-colors">
-          <div className="flex justify-between items-center border-b border-slate-100 pb-3 mb-4">
-            <div className="flex items-start sm:items-center gap-3 lg:gap-2">
-              <div className="w-10 h-10 lg:w-8 lg:h-8 bg-indigo-50 rounded-xl lg:rounded-lg flex items-center justify-center text-indigo-600 shrink-0">
-                <Check size={20} className="lg:w-4 lg:h-4" />
-              </div>
-              <div>
-                <h4 className="text-sm font-bold text-slate-900">Çalışma Disiplini Arşivi</h4>
-                <p className="text-[11px] text-slate-500 mt-0.5 lg:text-[12px] line-clamp-1">Mesai dışı hareketler (Erken başlama / Erken kapanış / Kapanmayan gün) listesi.</p>
-              </div>
-            </div>
-          </div>
-          
-          <div className="space-y-3">
-            {isDisciplineLoading ? (
-              <div className="text-xs text-slate-400">Yükleniyor...</div>
-            ) : disciplineLogs.length > 0 ? (
-              disciplineLogs.map(log => (
-                <div key={log.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-3 bg-slate-50 border border-slate-100 rounded-xl">
-                  <div className="flex flex-col">
-                    <span className="text-[10px] text-slate-400">
-                      {new Date(log.actual_time).toLocaleString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                    </span>
-                    <span className="text-[13px] font-bold text-slate-700">
-                      {log.type === 'early_start' ? 'Erken Başlangıç' : 
-                       log.type === 'early_close' ? 'Erken Kapanış' : 
-                       log.type === 'missed_close_penalty' ? 'Kapatılmayan Gün' : log.type}
-                    </span>
-                    {log.reason && <span className="text-xs text-slate-500 mt-1">{log.reason}</span>}
-                  </div>
-                  {log.xp_delta && log.xp_delta !== 0 && (
-                    <div className="shrink-0 flex items-center gap-1 text-xs font-bold text-red-500 bg-red-100 px-2 py-1 rounded-md">
-                      {log.xp_delta} XP
-                    </div>
-                  )}
-                </div>
-              ))
-            ) : (
-              <div className="text-xs text-slate-500 italic">Hiç disiplin kaydı bulunmuyor.</div>
-            )}
-          </div>
-        </Card>
-
         {/* Disiplin Kayıtları (Gün Kapatma Geçmişi) */}
-        <div className="col-span-1 lg:col-span-2">
-           <h3 className="text-xl font-bold text-slate-800 mb-2">Disiplin Kayıtları</h3>
-           <p className="text-sm text-slate-500 mb-4">Günü Mühürle kayıtların burada birikir. Bu alan çalışma düzenini, tekrar eden engellerini ve gelişim ritmini görmeni sağlar.</p>
-           <DisciplineRecordsSection />
-        </div>
+        <DisciplineRecordsSection />
 
         {/* Bildirim Tercihi & Bölge Ayarları */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

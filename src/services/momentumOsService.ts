@@ -373,10 +373,13 @@ export const momentumOsService = {
     if (dateStr && dateStr !== getTodayStr()) {
       const userId = await getUserId();
       
+      const nowIso = new Date().toISOString();
+      const localDayStarted = localStorage.getItem(`day_started_${userId}_${dateStr}`);
+      
       const normalizedPayload: Partial<DayClosure> = {
         user_id: userId,
         closure_date: dateStr,
-        updated_at: new Date().toISOString(),
+        updated_at: nowIso,
         wins: payload.wins,
         blockers: payload.blockers,
         tomorrow_top3: payload.top3_tomorrow || payload.tomorrow_top3,
@@ -386,8 +389,16 @@ export const momentumOsService = {
         early_close_reason: payload.early_close_reason,
         campaign_focus_reflection: payload.campaign_focus_reflection,
         discipline_score: payload.discipline_score,
-        campaign_day: payload.campaign_day
+        campaign_day: payload.campaign_day,
+        day_started_at: payload.day_started_at || localDayStarted || undefined,
+        day_closed_at: payload.day_closed_at || nowIso,
+        work_duration_minutes: payload.work_duration_minutes
       };
+
+      if (normalizedPayload.day_started_at && normalizedPayload.day_closed_at && !normalizedPayload.work_duration_minutes) {
+        const diffMs = new Date(normalizedPayload.day_closed_at).getTime() - new Date(normalizedPayload.day_started_at).getTime();
+        normalizedPayload.work_duration_minutes = Math.max(0, Math.floor(diffMs / 60000));
+      }
 
       const { data, error } = await supabase
         .from('day_closure')

@@ -980,11 +980,36 @@ export const handleSaveDayClosure = async (req: AuthRequest, res: Response) => {
     
     const payload = req.body;
     
+    // Fetch profile to get last_day_started_at
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("last_day_started_at")
+      .eq("id", userId)
+      .single();
+
+    const nowIso = new Date().toISOString();
+    let day_started_at = payload.day_started_at || null;
+    let day_closed_at = payload.day_closed_at || nowIso;
+    let work_duration_minutes = payload.work_duration_minutes || null;
+
+    if (!day_started_at && profile?.last_day_started_at) {
+        // Only use if it corresponds to today roughly
+        const startTodayStr = getTurkeyTodayISO(new Date(profile.last_day_started_at));
+        if (startTodayStr === todayStr) {
+            day_started_at = profile.last_day_started_at;
+        }
+    }
+
+    if (day_started_at && day_closed_at && work_duration_minutes === null) {
+        const diffMs = new Date(day_closed_at).getTime() - new Date(day_started_at).getTime();
+        work_duration_minutes = Math.max(0, Math.floor(diffMs / 60000));
+    }
+    
     // Normalize payload to match DB schema exactly like frontend
     const normalizedPayload = {
       user_id: userId,
       closure_date: todayStr,
-      updated_at: new Date().toISOString(),
+      updated_at: nowIso,
       wins: payload.wins,
       blockers: payload.blockers,
       tomorrow_top3: payload.top3_tomorrow || payload.tomorrow_top3,
@@ -994,7 +1019,10 @@ export const handleSaveDayClosure = async (req: AuthRequest, res: Response) => {
       early_close_reason: payload.early_close_reason,
       campaign_focus_reflection: payload.campaign_focus_reflection,
       discipline_score: payload.discipline_score,
-      campaign_day: payload.campaign_day
+      campaign_day: payload.campaign_day,
+      day_started_at,
+      day_closed_at,
+      work_duration_minutes
     };
 
     const { data, error } = await supabaseAdmin

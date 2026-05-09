@@ -1,10 +1,14 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { disciplineRecordsService } from '../../services/disciplineRecordsService';
-import { Loader2, Calendar, Target, Award, ShieldAlert, CheckCircle2 } from 'lucide-react';
-import { countClosedDaysInRange, getLastClosureDate, extractTopBlockers, countCampaignReflections } from '../../utils/disciplineRecordsHelpers';
+import { Loader2, Calendar, Target, ShieldAlert, ChevronRight, ArrowRight } from 'lucide-react';
+import { countClosedDaysInRange, getLastClosureDate, extractTopBlockers, countCampaignReflections, formatDisciplineRecordDate, calculateAverageWorkDuration } from '../../utils/disciplineRecordsHelpers';
+import { DisciplineRecordsModal } from './DisciplineRecordsModal';
+import { Card } from '../UI';
 
 export const DisciplineRecordsSection: React.FC = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
   const { data: records, isLoading, isError } = useQuery({
     queryKey: ['discipline-records'],
     queryFn: () => disciplineRecordsService.fetchMyDisciplineRecords(30)
@@ -12,136 +16,92 @@ export const DisciplineRecordsSection: React.FC = () => {
 
   if (isLoading) {
     return (
-      <div className="flex justify-center items-center p-8 bg-white rounded-3xl border border-slate-200">
+      <Card className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 relative flex justify-center items-center h-[120px]">
         <Loader2 className="animate-spin text-slate-400" size={24} />
-      </div>
+      </Card>
     );
   }
 
   if (isError) {
     return (
-      <div className="p-8 bg-white rounded-3xl border border-red-100 flex flex-col items-center text-center">
-        <ShieldAlert className="text-red-400 mb-2" size={32} />
-        <h3 className="font-bold text-slate-800">Kayıtlar Yüklenemedi</h3>
-        <p className="text-slate-500 text-sm mt-1">Disiplin kayıtlarınızı alırken bir sorun oluştu.</p>
-      </div>
+      <Card className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-red-100 relative flex flex-col items-center justify-center text-center h-[120px]">
+        <ShieldAlert className="text-red-400 mb-2" size={24} />
+        <h3 className="font-bold text-slate-800 text-sm">Yüklenemedi</h3>
+      </Card>
     );
   }
 
   const hasRecords = records && records.length > 0;
-
-  if (!hasRecords) {
-    return (
-      <div className="bg-slate-50 p-8 rounded-3xl border border-dashed border-slate-200 text-center">
-        <Calendar className="mx-auto text-slate-300 mb-3" size={32} />
-        <h3 className="text-sm font-bold text-slate-600">Henüz disiplin kaydın yok</h3>
-        <p className="text-xs text-slate-500 mt-2">
-          Günü Mühürle ekranını kullandıkça, çalışma ritmini ve gelişimini buradan takip edebilirsin.
-        </p>
-      </div>
-    );
-  }
-
-  const closedLast7 = countClosedDaysInRange(records, 7);
-  const closedLast30 = countClosedDaysInRange(records, 30);
-  const lastClosure = getLastClosureDate(records);
-  const topBlocker = extractTopBlockers(records);
-  const reflectionCount = countCampaignReflections(records);
+  const closedLast7 = records ? countClosedDaysInRange(records, 7) : 0;
+  const lastClosure = records ? getLastClosureDate(records) : null;
+  const averageDuration = records ? calculateAverageWorkDuration(records) : null;
 
   return (
-    <div className="space-y-6">
-      {/* İstatistikler */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white p-4 justify-between flex flex-col border border-slate-200 rounded-2xl">
-          <div className="flex items-center gap-2 mb-2 text-slate-500 font-bold text-xs">
-            <Target size={14} className="text-slate-400" /> Toplam Kapanış
+    <>
+      <Card 
+        onClick={() => setIsModalOpen(true)}
+        className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 relative cursor-pointer hover:bg-slate-50 transition-colors h-full flex flex-col"
+      >
+        {/* Header / Mobile Summary */}
+        <div className="flex items-center justify-between lg:border-b lg:border-slate-100 lg:pb-3">
+          <div className="flex items-center gap-3 lg:gap-2">
+            <div className="w-10 h-10 lg:w-8 lg:h-8 rounded-xl lg:rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center shrink-0">
+              <Target size={20} className="lg:w-4 lg:h-4" />
+            </div>
+            <div>
+              <h4 className="text-sm font-bold text-slate-900">Disiplin Kayıtları</h4>
+              <p className="text-[11px] text-slate-500 mt-0.5 lg:hidden line-clamp-1 pr-4">Günü Mühürle kayıtlarını ve çalışma ritmini incele.</p>
+              <p className="text-[10px] text-slate-400 lg:hidden line-clamp-1 pr-4 mt-0.5">
+                {hasRecords && averageDuration ? `Ort. Mesai: ${averageDuration}` : 
+                 (hasRecords ? `${closedLast7} kapanış (Son 7 gün)` : 'Henüz kayıt yok')}
+              </p>
+            </div>
           </div>
-          <div className="text-2xl font-black text-slate-800">{records.length} <span className="text-xs font-medium text-slate-400 leading-none">gün</span></div>
+          <ArrowRight size={18} className="text-slate-300 lg:hidden shrink-0" />
+          <button 
+            onClick={(e) => { e.stopPropagation(); setIsModalOpen(true); }}
+            className="hidden lg:block absolute top-4 right-4 px-3 py-1 bg-slate-50 border border-slate-200 rounded-lg text-[10px] font-bold text-slate-600 hover:bg-slate-100 transition-colors"
+          >
+            İncele
+          </button>
         </div>
-        <div className="bg-white p-4 justify-between flex flex-col border border-slate-200 rounded-2xl">
-          <div className="flex items-center gap-2 mb-2 text-slate-500 font-bold text-xs">
-            <Calendar size={14} className="text-slate-400" /> Son 7 Gün
-          </div>
-          <div className="text-2xl font-black text-slate-800">{closedLast7} <span className="text-xs font-medium text-slate-400 leading-none">gün</span></div>
-        </div>
-        <div className="bg-white p-4 justify-between flex flex-col border border-slate-200 rounded-2xl sm:col-span-2">
-          <div className="flex items-center gap-2 mb-1 text-slate-500 font-bold text-xs">
-            <ShieldAlert size={14} className="text-red-400" /> En Sık Tekrar Eden Engel
-          </div>
-          <div className="text-sm font-semibold text-slate-800 leading-tight">
-            {topBlocker}
-          </div>
-        </div>
-      </div>
-
-      <div className="space-y-4">
-        {records.map(record => (
-          <div key={record.id} className="bg-white rounded-3xl border border-slate-200 p-5 shadow-sm hover:shadow-md transition-shadow">
-            <div className="flex justify-between items-start mb-4">
-              <div>
-                <span className="font-bold text-lg text-slate-800">
-                  {new Date(record.closure_date).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' })}
-                </span>
-              </div>
-              <div className="flex flex-col items-end gap-2">
-                {record.early_close_reason && (
-                  <span className="text-[10px] uppercase tracking-wider font-bold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-md">Erken Kapanış</span>
+        
+        {/* Desktop Details */}
+        <div className="hidden lg:block mt-4 flex-1">
+          <p className="text-[11px] text-slate-500 mb-3">Günü Mühürle kayıtlarını ve çalışma ritmini incele.</p>
+          <div className="flex flex-col h-auto">
+            {hasRecords ? (
+              <div className="space-y-1.5">
+                <div className="flex flex-col">
+                  <span className="text-[10px] text-slate-400">Son 7 Gün</span>
+                  <span className="text-[11px] font-bold text-slate-700">{closedLast7} Kapanış</span>
+                </div>
+                {lastClosure && (
+                  <div className="flex flex-col">
+                    <span className="text-[10px] text-slate-400">Son Kapanış</span>
+                    <span className="text-[11px] font-bold text-slate-700">{formatDisciplineRecordDate(lastClosure)}</span>
+                  </div>
                 )}
-                {record.campaign_day ? (
-                  <span className="text-[10px] uppercase tracking-wider font-bold bg-orange-100 border border-orange-200 text-orange-700 px-2 py-0.5 rounded-md flex items-center gap-1">
-                    <Award size={10} /> Kamp {record.campaign_day}. Gün
-                  </span>
-                ) : null}
+                {averageDuration && (
+                  <div className="flex flex-col mt-1">
+                    <span className="text-[10px] text-slate-400">Ortalama Mesai</span>
+                    <span className="text-[11px] font-bold text-slate-700">{averageDuration}</span>
+                  </div>
+                )}
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-               {record.wins && (
-                 <div className="bg-emerald-50/50 rounded-xl p-3 border border-emerald-100/50">
-                    <div className="text-xs font-bold text-emerald-800/60 uppercase tracking-widest mb-1 flex items-center gap-1">
-                      <CheckCircle2 size={12} /> Günün Kazancı
-                    </div>
-                    <p className="text-sm font-medium text-emerald-950">{record.wins}</p>
-                 </div>
-               )}
-               {record.blockers && (
-                 <div className="bg-rose-50/50 rounded-xl p-3 border border-rose-100/50">
-                    <div className="text-xs font-bold text-rose-800/60 uppercase tracking-widest mb-1">Karşılaşılan Engel</div>
-                    <p className="text-sm font-medium text-rose-950">{record.blockers}</p>
-                 </div>
-               )}
-            </div>
-
-            {record.tomorrow_top3 && record.tomorrow_top3.length > 0 && record.tomorrow_top3[0].trim() !== '' && (
-              <div className="mt-4 pt-4 border-t border-slate-100">
-                 <div className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Yarınki Odak</div>
-                 <p className="text-sm text-slate-700 font-medium">{record.tomorrow_top3[0]}</p>
-              </div>
-            )}
-
-            {record.campaign_focus_reflection && (
-              <div className="mt-4 p-4 rounded-xl bg-gradient-to-br from-orange-50 to-amber-50 border border-orange-100 border-l-4 border-l-orange-500">
-                 <div className="flex justify-between items-center mb-2">
-                    <div className="text-[10px] font-bold text-orange-600/70 uppercase tracking-widest">Kamp Yansıması</div>
-                    {record.discipline_score && (
-                       <div className="text-[10px] font-bold bg-white text-orange-700 px-2 py-0.5 rounded shadow-sm">
-                         Disiplin: {record.discipline_score}/5
-                       </div>
-                    )}
-                 </div>
-                 <p className="text-sm font-medium text-slate-800">{record.campaign_focus_reflection}</p>
-              </div>
-            )}
-
-            {record.early_close_reason && (
-               <div className="mt-4 pt-4 border-t border-slate-100 text-sm text-slate-600">
-                  <span className="font-bold text-slate-700">Erken kapanış nedeni: </span>
-                  {record.early_close_reason}
-               </div>
+            ) : (
+              <span className="text-[11px] font-medium text-slate-400 italic block mt-1">Henüz disiplin kaydı yok.</span>
             )}
           </div>
-        ))}
-      </div>
-    </div>
+        </div>
+      </Card>
+
+      {isModalOpen && records && (
+        <DisciplineRecordsModal 
+          records={records} 
+          onClose={() => setIsModalOpen(false)} 
+        />
+      )}
+    </>
   );
 };
