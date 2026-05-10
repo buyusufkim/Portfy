@@ -1,11 +1,11 @@
 import React from 'react';
 import { Home } from 'lucide-react';
 import { Property, PortfolioBlocker } from '../../types';
-import { PropertyCard, PipelineColumn } from '../PropertyComponents';
+import { CompactPropertyCard, VisualPropertyCard, PipelineColumn } from '../PropertyComponents';
 import { Skeleton } from '../UI';
 
 interface PropertyGridProps {
-  viewMode: 'list' | 'pipeline';
+  viewMode: 'list' | 'grid' | 'pipeline';
   propertiesLoading: boolean;
   filteredProperties: Property[];
   setSelectedProperty: (p: Property) => void;
@@ -31,9 +31,9 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
   const statuses = ['Yeni', 'Hazırlanıyor', 'Yayında', 'İlgi Var', 'Pazarlık', 'Satıldı', 'Kiralandı', 'Pasif'];
 
   return (
-    <div className="flex-1 overflow-auto bg-slate-50">
-      {viewMode === 'list' ? (
-        <div className="p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+    <div className={`flex flex-col flex-1 bg-slate-50 ${viewMode === 'pipeline' ? 'overflow-hidden h-full' : ''}`}>
+      {viewMode === 'list' || viewMode === 'grid' ? (
+        <div className={`p-4 md:p-5 grid gap-4 ${viewMode === 'list' ? 'grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'}`}>
           {propertiesLoading ? (
             Array.from({ length: 6 }).map((_, i) => (
               <div key={`skeleton-${i}`} className="bg-white rounded-[32px] border border-slate-100 p-4 space-y-4">
@@ -70,17 +70,26 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
             </div>
           ) : filteredProperties.map(p => (
             <div key={p.id} className="relative group">
-              <PropertyCard 
-                property={p} 
-                onClick={() => setSelectedProperty(p)} 
-                activeBlockers={blockers?.filter(b => b.property_id === p.id && b.is_active)}
-                onResolveBlocker={onResolveBlocker}
-              />
+              {viewMode === 'list' ? (
+                <CompactPropertyCard 
+                  property={p} 
+                  onClick={() => setSelectedProperty(p)} 
+                  activeBlockers={blockers?.filter(b => b.property_id === p.id && b.is_active)}
+                  onResolveBlocker={onResolveBlocker}
+                />
+              ) : (
+                <VisualPropertyCard 
+                  property={p} 
+                  onClick={() => setSelectedProperty(p)} 
+                  activeBlockers={blockers?.filter(b => b.property_id === p.id && b.is_active)}
+                  onResolveBlocker={onResolveBlocker}
+                />
+              )}
             </div>
           ))}
         </div>
       ) : (
-        <div className="p-6 flex gap-6 overflow-x-auto h-full items-start">
+        <div className="p-4 md:p-5 flex gap-4 overflow-x-auto overflow-y-auto h-full flex-1 items-start">
           {propertiesLoading ? (
             Array.from({ length: 4 }).map((_, i) => (
               <div key={`col-skeleton-${i}`} className="w-80 shrink-0 space-y-4">

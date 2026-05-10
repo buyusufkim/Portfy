@@ -452,8 +452,8 @@ interface PortfoliosPageProps {
   selectedDistrict: string;
   setSelectedDistrict: (district: string) => void;
   regionScores: RegionEfficiencyScore[];
-  viewMode: "list" | "pipeline";
-  setViewMode: (mode: "list" | "pipeline") => void;
+  viewMode: "list" | "grid" | "pipeline";
+  setViewMode: (mode: "list" | "grid" | "pipeline") => void;
   setShowImportUrlModal: (show: boolean) => void;
   setSelectedProperty: (p: Property) => void;
   isEditing?: boolean;
@@ -566,7 +566,7 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
     <motion.div
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className="flex flex-col h-screen"
+      className="flex flex-col flex-1 min-h-0"
     >
       <PortfoliosToolbar
         viewMode={viewMode}

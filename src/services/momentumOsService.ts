@@ -386,10 +386,6 @@ export const momentumOsService = {
         completed_calls: payload.calls || payload.completed_calls || 0,
         completed_portfolio_actions: payload.visits || payload.completed_portfolio_actions || 0,
         completed_followups: payload.completed_followups || 0,
-        early_close_reason: payload.early_close_reason,
-        campaign_focus_reflection: payload.campaign_focus_reflection,
-        discipline_score: payload.discipline_score,
-        campaign_day: payload.campaign_day,
         day_started_at: payload.day_started_at || localDayStarted || undefined,
         day_closed_at: payload.day_closed_at || nowIso,
         work_duration_minutes: payload.work_duration_minutes

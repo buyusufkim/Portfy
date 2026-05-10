@@ -72,8 +72,8 @@ export interface PortfolioProps {
   propertiesLoading: boolean;
   selectedDistrict: string | 'all';
   setSelectedDistrict: (val: string | 'all') => void;
-  viewMode: 'list' | 'pipeline';
-  setViewMode: (val: 'list' | 'pipeline') => void;
+  viewMode: 'list' | 'grid' | 'pipeline';
+  setViewMode: (val: 'list' | 'grid' | 'pipeline') => void;
   setShowImportUrlModal: (val: boolean) => void;
   regionScores: RegionEfficiencyScore[];
   setShowExternalListings: (val: boolean) => void;
@@ -197,7 +197,6 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
             profile={navigation.profile}
             tasks={utilities.tasks || []}
             personalTasks={utilities.personalTasks || []}
-            setShowAddTask={utilities.setShowAddTask}
             setActiveTab={navigation.setActiveTab}
           />
         )}

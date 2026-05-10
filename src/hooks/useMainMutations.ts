@@ -134,6 +134,9 @@ export function useMainMutations({
         message: `Güne harika bir başlangıç yaptın${xpMessage}`,
         type: "success",
       });
+      if (data?.xp_awarded) {
+         confetti();
+      }
     },
     onError: () => {
       setShowDailyRadar(false);
@@ -174,10 +177,40 @@ export function useMainMutations({
         }
       }
 
-      await api.momentumOs.saveDayClosure(variables);
-      return api.endDay(variables);
+      console.log("Saving DayClosure", variables);
+      const closure = await api.momentumOs.saveDayClosure(variables);
+      console.log("saveDayClosure ok");
+      
+      let xpResult = null;
+      try {
+         xpResult = await api.endDay(variables);
+         console.log("endDay ok", xpResult);
+      } catch (e) {
+         console.error("endDay failed", e);
+         throw e;
+      }
+      
+      return { closure, xpResult };
     },
     onSuccess: (data) => {
+      const nowIso = new Date().toISOString();
+      queryClient.setQueryData([QUERY_KEYS.PROFILE], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          last_ritual_completed_at: nowIso,
+          last_end_day_xp_at: nowIso
+        };
+      });
+      queryClient.setQueryData([QUERY_KEYS.PROFILE, profileId], (oldData: any) => {
+        if (!oldData) return oldData;
+        return {
+          ...oldData,
+          last_ritual_completed_at: nowIso,
+          last_end_day_xp_at: nowIso
+        };
+      });
+
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.MICRO_GOALS],
       });
@@ -200,17 +233,31 @@ export function useMainMutations({
         queryKey: [QUERY_KEYS.MICRO_GOALS, profileId]
       });
       if (profileId) {
-        // Fallback for immediate UI update: store locally using current local date which usually overlaps enough with TR date.
-        const todayStr = new Date().toISOString().split("T")[0];
-        localStorage.setItem(`day_ended_${profileId}_${todayStr}`, "true");
+        const todayStr = getTodayStr(new Date());
+        localStorage.setItem(`day_ended_${profileId}_${todayStr}`, nowIso);
       }
       setShowDayCloser(false);
-      const xpMessage = data?.xp_awarded ? ` +${data.xp_awarded} XP!` : "!";
+      
+      const xpMessage = data?.xpResult?.xp_awarded ? ` +${data.xpResult.xp_awarded} XP!` : "!";
+      if (data?.xpResult?.xp_awarded === 0) {
+        setToast({
+          message: "Bugün zaten kapatılmış.",
+          type: "info",
+        });
+      } else {
+        setToast({
+          message: `Günü başarıyla kapattın. İyi dinlenmeler${xpMessage}`,
+          type: "success",
+        });
+        confetti();
+      }
+    },
+    onError: (e) => {
+      console.error("Gün kapatılamadı:", e);
       setToast({
-        message: `Günü başarıyla kapattın. İyi dinlenmeler${xpMessage}`,
-        type: "success",
+         message: "Gün kapatılamadı: " + (e instanceof Error ? e.message : String(e)),
+         type: "error"
       });
-      confetti();
     },
   });
 

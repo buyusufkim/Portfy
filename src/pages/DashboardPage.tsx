@@ -4,7 +4,6 @@ import confetti from 'canvas-confetti';
 import { api } from '../services/api';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { DashboardView } from '../components/DashboardView';
-import { useRevenueStats } from '../hooks/useRevenueStats';
 import { getTodayStr } from '../services/core/utils';
 import { UserProfile, Property, GamifiedTask, Task, PersonalTask, RescueSession, MissedOpportunity, MutationResult, Lead, DailyPlan } from '../types';
 
@@ -52,39 +51,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   const queryClient = useQueryClient();
 
   // Dashboard-specific queries
-  const { data: revenueStats, isLoading: revenueLoading } = useRevenueStats();
-
-  const { data: gamifiedStats } = useQuery({
+  const gamifiedStats = useQuery({
     queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profile?.id],
     queryFn: () => api.getGamifiedStats(),
     enabled: !!profile?.id
-  });
-
-  const staticCoachInsight = React.useMemo(() => {
-    const overdueTasks = tasks.filter(t => !t.completed && t.due_date && new Date(t.due_date) < new Date());
-    let tip = "Bugünün odağını tek aksiyona indir.";
-    
-    if (overdueTasks.length > 0) {
-      tip = `Geciken ${overdueTasks.length} görevin var. Önce geciken takipleri kapat.`;
-    } else if (tasks.length === 0 && personalTasks.length === 0) {
-      tip = "Bugün için küçük bir hedef belirle ve güne başla.";
-    } else {
-      const remainingTasks = tasks.filter(t => !t.completed).length;
-      if (remainingTasks > 0) {
-         tip = `Bugün bekleyen ${remainingTasks} görevin var. En önemlisinden başla.`;
-      }
-    }
-
-    return {
-      score: 80,
-      daily_tip: tip,
-      strength: { title: "Düzen", description: "İyi bir ritim" },
-      weakness: { title: "Odak", description: "Bir şeye odaklan" },
-      recommended_tasks: [],
-      market_opportunities: [],
-      focus_areas: []
-    };
-  }, [tasks, personalTasks]);
+  }).data;
 
   // Dashboard-specific mutations
   const refreshTasksMutation = useMutation({
@@ -208,18 +179,11 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     enabled: !!profile?.id
   });
 
-  const { data: weeklyReports = [] } = useQuery({
-    queryKey: [QUERY_KEYS.MOMENTUM_WEEKLY_REPORTS, profile?.id],
-    queryFn: () => api.momentumOs.getWeeklyReports(),
-    enabled: !!profile?.id
-  });
-
   useEffect(() => {
     if (profile?.id) {
       // Sesi veya güne özgü heavy hesaplamaları backend'e devrettik
       api.momentumOs.runMaintenance().then(() => {
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_LEAD_ALERTS, profile.id] });
-        queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.MOMENTUM_WEEKLY_REPORTS, profile.id] });
       }).catch(console.error);
     }
   }, [profile?.id, queryClient]);
@@ -228,34 +192,22 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
     <DashboardView 
       gamifiedTasks={gamifiedTasks}
       isGamifiedTasksLoading={isGamifiedTasksLoading}
-      isGamifiedTasksError={isGamifiedTasksError}
       properties={properties}
       profile={profile}
       gamifiedStats={gamifiedStats || null}
-      coachInsights={staticCoachInsight}
       tasks={tasks}
       personalTasks={personalTasks}
       startRescueMutation={startRescueMutation}
-      rescueSession={rescueSession}
       completeMorningRitualMutation={completeMorningRitualMutation}
       setActiveTab={setActiveTab}
-      setShowAdminPanel={setShowAdminPanel}
-      refreshTasksMutation={refreshTasksMutation}
       completeTaskMutation={completeTaskMutation}
       setShowDailyRadar={setShowDailyRadar}
       setShowDayCloser={setShowDayCloser}
-      setShowMissedOpportunities={setShowMissedOpportunities}
-      missedOpportunities={missedOpportunities}
       startDayMutation={startDayMutation}
-      revenueStats={revenueStats}
-      revenueLoading={revenueLoading}
       queryClient={queryClient}
       leadAlerts={leadAlerts}
       dailyPlan={dailyPlan}
       dayClosure={dayClosure}
-      weeklyReports={weeklyReports}
-      setSelectedLead={setSelectedLead}
-      setSelectedProperty={setSelectedProperty}
     />
   );
 };

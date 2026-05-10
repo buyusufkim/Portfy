@@ -72,7 +72,7 @@ function MainApp() {
 
   const [activeTab, setActiveTab] = useState("dashboard");
   const [showAdminPanel, setShowAdminPanel] = useState(false);
-  const [viewMode, setViewMode] = useState<"list" | "pipeline">("list");
+  const [viewMode, setViewMode] = useState<"list" | "grid" | "pipeline">("list");
   const [toast, setToast] = useState<{
     message: string;
     type: "success" | "error" | "info";
@@ -444,7 +444,11 @@ function MainApp() {
   const showOnboarding = profile && !advProfileLoading && !advProfileError && (!advisorProfile || !advisorProfile.onboarding_completed) && !showCampaignPromo && !bypassAdvProfileError;
 
   return (
-    <div className="min-h-screen bg-slate-50 pb-[calc(8rem+env(safe-area-inset-bottom))] lg:pb-0 font-sans text-slate-900 overflow-x-hidden">
+    <div className={
+      activeTab === "bolgem"
+        ? "h-[100dvh] bg-slate-50 font-sans text-slate-900 overflow-hidden"
+        : "min-h-screen bg-slate-50 pb-[calc(8rem+env(safe-area-inset-bottom))] lg:pb-0 font-sans text-slate-900 overflow-x-hidden"
+    }>
       
       {advProfileLoading && !bypassAdvProfileError && profile && (
         <div className="fixed inset-0 z-50 bg-slate-50 w-full h-full flex items-center justify-center">
@@ -518,7 +522,7 @@ function MainApp() {
         />
       ) : null}
 
-      <div className="flex flex-col md:flex-row w-full min-h-screen">
+      <div className={`flex flex-col md:flex-row w-full ${activeTab === "bolgem" ? "h-full overflow-hidden" : "min-h-screen"}`}>
         <RitualOverlays
           profile={profile}
           showDailyRadar={showDailyRadar}
@@ -546,12 +550,16 @@ function MainApp() {
           }}
           onAdminClick={() => setShowAdminPanel(true)}
         />
-        <div className="flex-1 flex flex-col min-w-0">
+        <div className={`flex-1 flex flex-col min-w-0 ${activeTab === "bolgem" ? "h-full overflow-hidden" : ""}`}>
           {activeTab !== "bolgem" && (
             <Header activeTab={activeTab} profile={profile} />
           )}
           <main
-            className={`flex-1 w-full max-w-[1600px] mx-auto ${activeTab === "bolgem" ? "" : "px-4 md:px-8 py-6"}`}
+            className={
+              activeTab === "bolgem"
+                ? "flex-1 min-h-0 h-full w-full max-w-none mx-0 flex flex-col overflow-hidden"
+                : "flex-1 w-full max-w-[1600px] mx-auto px-4 md:px-8 py-6"
+            }
           >
             <MainContentRouter {...appProps} />
           </main>

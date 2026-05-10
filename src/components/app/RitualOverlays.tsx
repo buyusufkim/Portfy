@@ -118,21 +118,13 @@ export const RitualOverlays = ({
 
   // Sabah Ritüeli Tamamlanma Senaryosu
   const handleMorningComplete = (payload: Partial<DailyPlan>) => {
-    triggerHaptic([30, 50, 30, 50, 100]); // Başarı hissi veren titreşim deseni
-    setRewardContent({ title: "Güne Harika Başladın!", xp: "+50 XP" });
-    setShowReward(true);
-    
-    // Sinematik gecikme ile mutation'ı tetikle
-    setTimeout(() => {
-      setShowReward(false);
-      completeMorningRitualMutation.mutate({
-        planned_calls: payload.planned_calls,
-        planned_followups: payload.planned_followups,
-        planned_portfolio_actions: payload.planned_portfolio_actions,
-        top3: payload.top3,
-        early_start_reason: pendingEarlyStartReason
-      });
-    }, 2000);
+    completeMorningRitualMutation.mutate({
+      planned_calls: payload.planned_calls,
+      planned_followups: payload.planned_followups,
+      planned_portfolio_actions: payload.planned_portfolio_actions,
+      top3: payload.top3,
+      early_start_reason: pendingEarlyStartReason
+    });
   };
 
   let radarTasks = dailyRadarData?.tasks || [];
@@ -160,15 +152,7 @@ export const RitualOverlays = ({
 
   // Akşam Ritüeli Tamamlanma Senaryosu
   const handleEveningComplete = (payload: Partial<DayClosure>) => {
-    triggerHaptic([30, 50, 30, 50, 150]); // Daha güçlü başarı titreşimi
-    setRewardContent({ title: "Gün Başarıyla Kapatıldı!", xp: "+100 XP" });
-    setShowReward(true);
-    
-    // Sinematik gecikme ile mutation'ı tetikle
-    setTimeout(() => {
-      setShowReward(false);
-      completeEveningRitualMutation.mutate(payload);
-    }, 2000);
+    completeEveningRitualMutation.mutate(payload);
   };
 
   return (
@@ -242,7 +226,7 @@ export const RitualOverlays = ({
               campaignDay={campaignDay}
               cmsContent={cmsContent}
               onComplete={handleMorningComplete}
-              isPending={completeMorningRitualMutation.isPending || showReward}
+              isPending={completeMorningRitualMutation.isPending}
               initialFocus={activeMicroGoal?.title}
             />
           ) : (
@@ -290,7 +274,7 @@ export const RitualOverlays = ({
           <DayCloser 
             key="closer_overlay"
             profile={profile}
-            isPending={completeEveningRitualMutation.isPending || showReward}
+            isPending={completeEveningRitualMutation.isPending}
             onClose={() => setShowDayCloser(false)}
             stats={{
               tasks_completed: gamifiedTasks.filter(t => t.is_completed).length + personalTasks.filter(t => t.is_completed).length,

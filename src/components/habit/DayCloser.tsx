@@ -63,12 +63,13 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete
       onComplete({
         completed_calls: stats.calls,
         completed_portfolio_actions: stats.visits,
-        wins,
-        blockers,
+        completed_followups: 0,
+        wins: wins.trim() || undefined,
+        blockers: blockers.trim() || undefined,
         tomorrow_top3: tomorrowTop3.filter(t => t.trim() !== ''),
-        early_close_reason: earlyCloseReason.trim(),
-        campaign_focus_reflection: campaignFocusReflection.trim(),
-        discipline_score: disciplineScore,
+        early_close_reason: earlyCloseReason.trim() || undefined,
+        campaign_focus_reflection: campaignFocusReflection.trim() || undefined,
+        discipline_score: disciplineScore === '' ? undefined : disciplineScore,
         campaign_day: campaignDay
       });
     }
@@ -290,12 +291,12 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete
               </div>
 
               <div className="bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-[40px] flex items-center gap-8">
-                <div className="w-20 h-20 bg-yellow-500/20 rounded-3xl flex items-center justify-center text-yellow-500 shrink-0">
-                  <Star size={40} className="fill-yellow-500" />
+                <div className="w-20 h-20 bg-emerald-500/20 rounded-3xl flex items-center justify-center text-emerald-500 shrink-0">
+                  <CheckCircle2 size={40} />
                 </div>
                 <div>
-                  <div className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">Kazanılan Ödül</div>
-                  <div className="text-2xl font-black text-white">+150 XP & Streak</div>
+                  <div className="text-slate-500 text-xs font-bold uppercase tracking-widest mb-2">Hazırsın!</div>
+                  <div className="text-xl font-black text-white">Günü Kapatmaya Hazır</div>
                 </div>
               </div>
 

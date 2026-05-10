@@ -342,10 +342,10 @@ export const BolgemView = ({
     <motion.div 
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
-      className={`relative flex flex-col ${view === 'map' ? 'h-[calc(100vh-80px)] md:h-screen' : 'p-6 space-y-6 pb-32'}`}
+      className={`relative flex flex-col flex-1 h-full min-h-0 w-full ${view === 'map' ? 'overflow-hidden bg-[#020617]' : 'p-6 space-y-6 pb-[calc(6rem+env(safe-area-inset-bottom))] overflow-y-auto bg-slate-50'}`}
     >
       {view === 'map' ? (
-        <div className="relative flex-1 w-full overflow-hidden bg-[#020617]">
+        <div className="absolute inset-0 bg-[#020617] flex flex-col">
           
           {/* HARİTA BUTONLARI: React-Leaflet yapısını kırmadan, z-index 400 ile en üste güvenli bir şekilde sabitlendi */}
           <div className="absolute right-4 top-40 flex flex-col gap-2 z-[400] pointer-events-auto">
@@ -920,7 +920,7 @@ export const BolgemView = ({
         )}
       </AnimatePresence>
 
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-40 bg-slate-900/90 backdrop-blur-xl p-2 rounded-2xl flex shadow-2xl border border-white/10 pointer-events-auto">
+      <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-10 left-1/2 -translate-x-1/2 z-[450] bg-slate-900/90 backdrop-blur-xl p-2 rounded-2xl flex shadow-2xl border border-white/10 pointer-events-auto">
         <button 
           onClick={() => setView('map')}
           className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${view === 'map' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}

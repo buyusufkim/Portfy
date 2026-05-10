@@ -2,12 +2,44 @@ import React, { useEffect, useState } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap, useMapEvents, Circle } from 'react-leaflet';
 import { maskPhone } from '../utils/masking';
 import L from 'leaflet';
-import { Plus, Layers, Crosshair, X, CheckCircle2, ArrowRight, Phone, MapPin as MapPinIcon, FileText, Calendar, MessageCircle, Map as MapIcon } from 'lucide-react';
+import { Plus, Layers, Crosshair, X, CheckCircle2, ArrowRight, Phone, MapPin as MapPinIcon, FileText, Calendar, MessageCircle, Map as MapIcon, User as UserIcon } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 import { MapPin as MapPinType } from '../types';
 import { UseMutationResult } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { toast } from 'react-hot-toast';
+
+const ResizeMap = () => {
+  const map = useMap();
+  useEffect(() => {
+    const handleResize = () => {
+      map.invalidateSize();
+    };
+
+    window.addEventListener('resize', handleResize);
+    // Observe container size logic instead of just window resize
+    let observer: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== 'undefined') {
+      observer = new ResizeObserver(() => {
+        map.invalidateSize();
+      });
+      if (map.getContainer()) {
+         observer.observe(map.getContainer());
+      }
+    }
+    
+    const timer1 = setTimeout(() => map.invalidateSize(), 150);
+    const timer2 = setTimeout(() => map.invalidateSize(), 400);
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      if (observer) observer.disconnect();
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+    };
+  }, [map]);
+  return null;
+};
 
 interface RegionMapProps {
   isLoaded: boolean;
@@ -92,6 +124,16 @@ export const RegionMap: React.FC<RegionMapProps> = ({
   const [newCatName, setNewCatName] = useState('');
   const [newCatKind, setNewCatKind] = useState<'network_contact' | 'region_point'>('network_contact');
   const [newCatAutoCrm, setNewCatAutoCrm] = useState(false);
+  const [wizardStep, setWizardStep] = useState(1);
+
+  // Modal kapandığında wizard ve form state'lerini sıfırla
+  useEffect(() => {
+    if (!showAddPin) {
+      setWizardStep(1);
+      setShowAddCategoryForm(false);
+      setNewCatName('');
+    }
+  }, [showAddPin]);
 
   const isValidCoords = (lat: number | undefined | null, lng: number | undefined | null) => {
     return typeof lat === 'number' && typeof lng === 'number' && isFinite(lat) && isFinite(lng);
@@ -141,13 +183,14 @@ export const RegionMap: React.FC<RegionMapProps> = ({
   }
 
   return (
-    <div className="w-full h-full relative z-0">
+    <div className="absolute inset-0 w-full h-full min-h-[320px] z-0 flex-1 bg-slate-50">
       <MapContainer
         center={[mapCenter.lat, mapCenter.lng]}
         zoom={mapZoom}
-        style={{ height: "100%", width: "100%" }}
+        style={{ height: "100%", width: "100%", minHeight: "320px" }}
         zoomControl={false}
       >
+        <ResizeMap />
         <MapController center={mapCenter} zoom={mapZoom} onClick={handleMapClick} onMapLoad={onMapLoad} />
         <TileLayer
           attribution='&copy; <a href="https://carto.com/">CARTO</a>'
@@ -336,277 +379,375 @@ export const RegionMap: React.FC<RegionMapProps> = ({
         )}
       </MapContainer>
 
-      {/* Add Pin Modal */}
+      {/* Add Pin Modal Wizard */}
       <AnimatePresence>
         {showAddPin && (
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center p-4 pointer-events-none pb-24 sm:pb-4"
+            className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm shadow-2xl"
           >
             <motion.div 
-              initial={{ scale: 0.95, opacity: 0 }}
-              animate={{ scale: 1, opacity: 1 }}
-              exit={{ scale: 0.95, opacity: 0 }}
-              className="bg-white rounded-3xl p-6 w-full max-w-md shadow-2xl pointer-events-auto max-h-[85vh] overflow-y-auto flex flex-col gap-4"
+              initial={{ y: '100%', opacity: 0, scale: 1 }}
+              animate={{ y: 0, opacity: 1, scale: 1 }}
+              exit={{ y: '100%', opacity: 0, scale: 1 }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
+              className="bg-white rounded-t-3xl sm:rounded-3xl p-6 w-full max-w-md shadow-2xl pointer-events-auto flex flex-col h-[85vh] sm:h-auto sm:max-h-[85vh] overflow-hidden"
             >
-              <div className="flex justify-between items-center mb-2">
-                <h3 className="text-xl font-bold text-slate-900">Haritaya Ekle</h3>
-                <button onClick={() => setShowAddPin(false)} className="p-2 bg-slate-100 rounded-full text-slate-500">
-                  <X size={20} />
-                </button>
+              {/* Header & Progress */}
+              <div className="flex flex-col gap-4 mb-6 shrink-0">
+                <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto sm:hidden" />
+                <div className="flex justify-between items-center">
+                  <div>
+                    <div className="text-xs font-bold text-indigo-600 mb-1">Adım {wizardStep} / 4</div>
+                    <h3 className="text-xl font-bold text-slate-900">
+                      {wizardStep === 1 && "Haritaya ne ekliyorsun?"}
+                      {wizardStep === 2 && "Kişi veya nokta bilgisi"}
+                      {wizardStep === 3 && "Takip bilgisi"}
+                      {wizardStep === 4 && "Kontrol et"}
+                    </h3>
+                  </div>
+                  <button onClick={() => setShowAddPin(false)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+                    <X size={20} />
+                  </button>
+                </div>
+                {/* Progress Bar */}
+                <div className="flex gap-1 h-1">
+                  {[1, 2, 3, 4].map(s => (
+                    <div key={s} className={`flex-1 rounded-full ${s <= wizardStep ? 'bg-indigo-600' : 'bg-slate-100'}`} />
+                  ))}
+                </div>
               </div>
 
-              {/* KIND SELECTOR */}
-              <div className="flex bg-slate-100 p-1 rounded-xl">
-                <button 
-                  onClick={() => setNewPinData({...newPinData, kind: 'network_contact'})}
-                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${(!newPinData.kind || newPinData.kind === 'network_contact') ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  Network Teması
-                </button>
-                <button 
-                  onClick={() => setNewPinData({...newPinData, kind: 'region_point'})}
-                  className={`flex-1 py-2 text-sm font-bold rounded-lg transition-all ${newPinData.kind === 'region_point' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
-                >
-                  Bölge Noktası
-                </button>
-              </div>
-
-              <div className="space-y-4">
-                {/* DYNAMIC FORM */}
-                {(!newPinData.kind || newPinData.kind === 'network_contact') ? (
-                  <>
+              {/* Wizard Content (Scrollable) */}
+              <div className="flex-1 overflow-y-auto space-y-6 pb-4 md:pr-2">
+                
+                {/* SETP 1: Tür Seç */}
+                {wizardStep === 1 && (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
                     <div className="grid grid-cols-2 gap-3">
+                      <button 
+                        onClick={() => setNewPinData({...newPinData, kind: 'network_contact'})}
+                        className={`p-4 rounded-2xl border-2 text-left transition-all ${(!newPinData.kind || newPinData.kind === 'network_contact') ? 'border-indigo-600 bg-indigo-50 shadow-md' : 'border-slate-100 hover:border-indigo-200'}`}
+                      >
+                        <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center mb-3">
+                          <UserIcon size={20} />
+                        </div>
+                        <h4 className="font-bold text-slate-900 text-sm">Network Teması</h4>
+                        <p className="text-[10px] text-slate-500 mt-1">Esnaf, Bina Görevlisi, Müşteri vb.</p>
+                      </button>
+                      <button 
+                        onClick={() => setNewPinData({...newPinData, kind: 'region_point'})}
+                        className={`p-4 rounded-2xl border-2 text-left transition-all ${newPinData.kind === 'region_point' ? 'border-indigo-600 bg-indigo-50 shadow-md' : 'border-slate-100 hover:border-indigo-200'}`}
+                      >
+                        <div className="w-10 h-10 bg-rose-100 text-rose-600 rounded-xl flex items-center justify-center mb-3">
+                          <MapPinIcon size={20} />
+                        </div>
+                        <h4 className="font-bold text-slate-900 text-sm">Bölge Noktası</h4>
+                        <p className="text-[10px] text-slate-500 mt-1">İnşaat, Proje, Satılık İlanı vb.</p>
+                      </button>
+                    </div>
+
+                    <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 flex justify-between items-center">
+                        Alt Kategori
+                        {!showAddCategoryForm && (
+                          <button className="text-indigo-600 hover:text-indigo-700 lowercase" onClick={() => setShowAddCategoryForm(true)}>+ Yeni Kategori</button>
+                        )}
+                      </label>
+                      
+                      {showAddCategoryForm && (
+                        <div className="bg-white border border-indigo-100 p-3 rounded-xl mb-3 space-y-3 shadow-sm">
+                          <div className="flex justify-between items-center">
+                            <span className="text-xs font-bold text-indigo-900">Yeni Kategori Ekle</span>
+                            <button onClick={() => setShowAddCategoryForm(false)} className="text-slate-400 hover:text-slate-600"><X size={16} /></button>
+                          </div>
+                          <input 
+                            type="text" 
+                            value={newCatName}
+                            onChange={(e) => setNewCatName(e.target.value)}
+                            placeholder="Örn: Eczane, Spor Salonu"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                          />
+                          <div className="flex bg-slate-50 rounded-lg border border-slate-200 p-0.5">
+                            <button onClick={() => setNewCatKind('network_contact')} className={`flex-1 py-1 text-xs font-bold rounded-md transition-all ${newCatKind === 'network_contact' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}>Network</button>
+                            <button onClick={() => setNewCatKind('region_point')} className={`flex-1 py-1 text-xs font-bold rounded-md transition-all ${newCatKind === 'region_point' ? 'bg-white shadow text-slate-900' : 'text-slate-500'}`}>Nokta</button>
+                          </div>
+                          <label className="flex items-start gap-2 cursor-pointer mt-2">
+                            <input type="checkbox" checked={newCatAutoCrm} onChange={(e) => setNewCatAutoCrm(e.target.checked)} className="mt-0.5 w-4 h-4 rounded text-indigo-600" />
+                            <span className="text-xs text-slate-600">CRM'e otomatik olarak eklensin</span>
+                          </label>
+                          <button
+                            onClick={() => {
+                              if (newCatName.trim()) {
+                                const cColors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'];
+                                if (addCategory) addCategory(newCatName, cColors[Math.floor(Math.random() * cColors.length)], newCatKind, newCatAutoCrm);
+                                toast.success("Kategori eklendi.");
+                                setNewCatName('');
+                                setShowAddCategoryForm(false);
+                              }
+                            }}
+                            className="w-full bg-indigo-50 text-indigo-700 font-bold py-2 rounded-lg text-xs hover:bg-indigo-100"
+                          >
+                            Kategoriyi Kaydet
+                          </button>
+                        </div>
+                      )}
+
+                      <select 
+                        value={newPinData.type || ''}
+                        onChange={(e) => setNewPinData({...newPinData, type: e.target.value})}
+                        className="w-full bg-white border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none text-slate-700 font-medium"
+                      >
+                        <option value="" disabled>Lütfen bir kategori seçin</option>
+                        {(categories || []).filter(c => c.kind === (newPinData.kind || 'network_contact') || !c.kind).map(c => (
+                          <option key={c.id} value={c.id}>{c.label}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 2: Kim/Neresi? */}
+                {wizardStep === 2 && (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                    {(!newPinData.kind || newPinData.kind === 'network_contact') ? (
+                      <>
+                        <div>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">İşletme / Kurum Adı</label>
+                          <input 
+                            type="text" 
+                            value={newPinData.title || ''}
+                            onChange={(e) => setNewPinData({...newPinData, title: e.target.value})}
+                            placeholder="Örn: Güven Market"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-base focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow"
+                            autoFocus
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Kişi Adı Soyadı</label>
+                          <input 
+                            type="text" 
+                            value={newPinData.contact_name || ''}
+                            onChange={(e) => setNewPinData({...newPinData, contact_name: e.target.value})}
+                            placeholder="Örn: Ahmet Yılmaz"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-base focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Telefon (Opsiyonel)</label>
+                          <input 
+                            type="tel" 
+                            value={newPinData.phone || ''}
+                            onChange={(e) => setNewPinData({...newPinData, phone: e.target.value})}
+                            placeholder="Örn: 0555 555 55 55"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-base focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow"
+                          />
+                        </div>
+                      </>
+                    ) : (
                       <div>
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Kişi / İşletme Adı</label>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Nokta Adı</label>
                         <input 
                           type="text" 
                           value={newPinData.title || ''}
                           onChange={(e) => setNewPinData({...newPinData, title: e.target.value})}
-                          placeholder="Örn: Ahmet Bakkal"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                          placeholder="Örn: Yeni İnşaat Projesi Şantiyesi"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-base focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow"
+                          autoFocus
                         />
                       </div>
-                      <div>
-                        <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">İsim Soyisim</label>
-                        <input 
-                          type="text" 
-                          value={newPinData.contact_name || ''}
-                          onChange={(e) => setNewPinData({...newPinData, contact_name: e.target.value})}
-                          placeholder="Örn: Ahmet Yılmaz"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                        />
-                      </div>
-                    </div>
-                    <div>
-                      <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Telefon</label>
-                      <input 
-                        type="tel" 
-                        value={newPinData.phone || ''}
-                        onChange={(e) => setNewPinData({...newPinData, phone: e.target.value})}
-                        placeholder="Örn: 0555 555 55 55"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                      />
-                    </div>
-                  </>
-                ) : (
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Nokta Adı</label>
-                    <input 
-                      type="text" 
-                      value={newPinData.title || ''}
-                      onChange={(e) => setNewPinData({...newPinData, title: e.target.value})}
-                      placeholder="Örn: Yeni İnşaat Projesi"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                    />
-                  </div>
-                )}
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 flex justify-between items-center">
-                    Kategori
-                    {!showAddCategoryForm && (
-                      <button 
-                        className="text-indigo-500 hover:text-indigo-600 lowercase"
-                        onClick={() => setShowAddCategoryForm(true)}
-                      >
-                        + Yeni Kategori
-                      </button>
                     )}
-                  </label>
-                  
-                  {showAddCategoryForm && (
-                    <div className="bg-indigo-50 border border-indigo-100 p-3 rounded-xl mb-3 space-y-3">
-                      <div className="flex justify-between items-center">
-                        <span className="text-xs font-bold text-indigo-900">Yeni Kategori Ekle</span>
-                        <button onClick={() => setShowAddCategoryForm(false)} className="text-indigo-400 hover:text-indigo-600">
-                          <X size={16} />
-                        </button>
-                      </div>
+                    
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Açık Adres / Konum Tarifi</label>
                       <input 
                         type="text" 
-                        value={newCatName}
-                        onChange={(e) => setNewCatName(e.target.value)}
-                        placeholder="Örn: Eczane, Spor Salonu"
-                        className="w-full bg-white border border-indigo-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                        value={newPinData.address || ''}
+                        onChange={(e) => setNewPinData({...newPinData, address: e.target.value})}
+                        placeholder="Örn: Atatürk Caddesi, 1. Sokak köşesi"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none transition-shadow"
                       />
-                      <div className="flex bg-white rounded-lg border border-indigo-200 p-0.5">
-                        <button 
-                          onClick={() => setNewCatKind('network_contact')}
-                          className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${newCatKind === 'network_contact' ? 'bg-indigo-100 text-indigo-800' : 'text-slate-500 hover:text-slate-700'}`}
+                    </div>
+                  </div>
+                )}
+
+                {/* STEP 3: İlişki ve Takip */}
+                {wizardStep === 3 && (
+                  <div className="space-y-5 animate-in fade-in slide-in-from-right-4 duration-300">
+                    {(!newPinData.kind || newPinData.kind === 'network_contact') && (
+                      <div>
+                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">İlişki Seviyesi</label>
+                        <select 
+                          value={newPinData.relationship_level || ''}
+                          onChange={(e) => setNewPinData({...newPinData, relationship_level: e.target.value as MapPinType['relationship_level']})}
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
                         >
-                          Network
-                        </button>
-                        <button 
-                          onClick={() => setNewCatKind('region_point')}
-                          className={`flex-1 py-1.5 text-xs font-bold rounded-md transition-all ${newCatKind === 'region_point' ? 'bg-indigo-100 text-indigo-800' : 'text-slate-500 hover:text-slate-700'}`}
-                        >
-                          Nokta
-                        </button>
+                          <option value="" disabled>Seçiniz</option>
+                          <option value="Soğuk Temas">Soğuk Temas</option>
+                          <option value="Tanışıldı">Tanışıldı</option>
+                          <option value="Güven Oluşuyor">Güven Oluşuyor</option>
+                          <option value="Aktif Referans Kaynağı">Aktif Referans Kaynağı</option>
+                          <option value="VIP Network">VIP Network</option>
+                        </select>
                       </div>
-                      <label className="flex items-start gap-2 cursor-pointer mt-2">
+                    )}
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Potansiyel</label>
+                      <div className="flex gap-2">
+                        {['Düşük', 'Orta', 'Yüksek', 'Sıcak'].map(lvl => (
+                          <button
+                            key={lvl}
+                            onClick={() => setNewPinData({...newPinData, potential: lvl as MapPinType['potential']})}
+                            className={`flex-1 py-2 text-xs font-bold rounded-lg border transition-all ${newPinData.potential === lvl ? 'border-indigo-600 bg-indigo-50 text-indigo-700 shadow-sm' : 'border-slate-200 text-slate-500 bg-slate-50 hover:bg-slate-100'}`}
+                          >
+                            {lvl}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-3">
+                      {(!newPinData.kind || newPinData.kind === 'network_contact') ? (
+                        <>
+                          <div>
+                            <label className="text-[10px] font-bold text-slate-500 uppercase tracking-wider mb-1 block">Son Temas</label>
+                            <input type="date" value={newPinData.last_contact_date || ''} onChange={(e) => setNewPinData({...newPinData, last_contact_date: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                          </div>
+                          <div>
+                            <label className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-1 block">Gelecek Takip</label>
+                            <input type="date" value={newPinData.next_contact_date || ''} onChange={(e) => setNewPinData({...newPinData, next_contact_date: e.target.value})} className="w-full bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                          </div>
+                        </>
+                      ) : (
+                        <div className="col-span-2">
+                          <label className="text-[10px] font-bold text-indigo-600 uppercase tracking-wider mb-1 block">Gelecek Takip</label>
+                          <input type="date" value={newPinData.followup_date || ''} onChange={(e) => setNewPinData({...newPinData, followup_date: e.target.value})} className="w-full bg-indigo-50 border border-indigo-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500" />
+                        </div>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Notlar (Opsiyonel)</label>
+                      <textarea 
+                        value={newPinData.notes || ''}
+                        onChange={(e) => setNewPinData({...newPinData, notes: e.target.value})}
+                        placeholder="Örn: Güvenlik görevlisiyle konuştum, müteahhit yarın gelecekmiş..."
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-24"
+                      />
+                    </div>
+
+                    {(!newPinData.kind || newPinData.kind === 'network_contact') && (
+                      <label className="flex items-start gap-3 p-4 bg-slate-50 rounded-2xl border border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
                         <input 
                           type="checkbox" 
-                          checked={newCatAutoCrm} 
-                          onChange={(e) => setNewCatAutoCrm(e.target.checked)}
-                          className="mt-0.5 w-4 h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
+                          checked={newPinData.add_to_crm || false} 
+                          onChange={(e) => setNewPinData({...newPinData, add_to_crm: e.target.checked})}
+                          className="mt-1 w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
                         />
-                        <span className="text-xs text-slate-700 leading-tight">CRM'e otomatik olarak eklensin (Sadece bu kategori için)</span>
+                        <div>
+                          <span className="block text-sm font-bold text-slate-900">Ayrıca CRM Rehberine Ekle</span>
+                          <span className="block text-[11px] text-slate-500 mt-0.5 leading-snug">Bu kişiyi CRM'deki müşteri adayları listenize kopyalar.</span>
+                        </div>
                       </label>
-                      <button
-                        onClick={() => {
-                          if (newCatName.trim()) {
-                            const cColors = ['#ef4444', '#f97316', '#eab308', '#22c55e', '#3b82f6', '#8b5cf6', '#ec4899', '#64748b'];
-                            const randomColor = cColors[Math.floor(Math.random() * cColors.length)];
-                            if (addCategory) {
-                              addCategory(newCatName, randomColor, newCatKind, newCatAutoCrm);
-                            }
-                            toast.success("Kategori eklendi.");
-                            setNewCatName('');
-                            setShowAddCategoryForm(false);
-                          }
-                        }}
-                        className="w-full bg-indigo-600 text-white font-bold py-2 rounded-lg text-xs hover:bg-indigo-700"
-                      >
-                        Kaydet
-                      </button>
-                    </div>
-                  )}
+                    )}
+                  </div>
+                )}
 
-                  <select 
-                    value={newPinData.type || ''}
-                    onChange={(e) => setNewPinData({...newPinData, type: e.target.value})}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
+                {/* STEP 4: Kontrol ve Kaydet */}
+                {wizardStep === 4 && (
+                  <div className="space-y-4 animate-in fade-in slide-in-from-right-4 duration-300">
+                    <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100 space-y-4">
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0">
+                          {newPinData.kind === 'region_point' ? <MapPinIcon size={24} /> : <UserIcon size={24} />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="font-black text-lg text-slate-900 truncate">{newPinData.title || "-"}</h4>
+                          <p className="text-xs text-slate-500 truncate">{newPinData.contact_name || newPinData.address || "Detay yok"}</p>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3 pt-4 border-t border-slate-200/60">
+                        <div>
+                          <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Tür</div>
+                          <div className="text-xs font-bold text-slate-700 truncate">
+                            {(categories || []).find(c => c.id === newPinData.type)?.label || newPinData.type || "-"}
+                          </div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Potansiyel</div>
+                          <div className="text-xs font-bold text-slate-700">{newPinData.potential || "-"}</div>
+                        </div>
+                        <div>
+                          <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Gelecek Takip</div>
+                          <div className="text-xs font-bold text-slate-700">{newPinData.next_contact_date || newPinData.followup_date || "-"}</div>
+                        </div>
+                        {newPinData.phone && (
+                          <div>
+                            <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">Telefon</div>
+                            <div className="text-xs font-bold text-slate-700">{newPinData.phone}</div>
+                          </div>
+                        )}
+                        {newPinData.relationship_level && (
+                          <div className="col-span-2">
+                            <div className="text-[10px] uppercase font-bold text-slate-400 mb-0.5">İlişki Seviyesi</div>
+                            <div className="text-xs font-bold text-slate-700">{newPinData.relationship_level}</div>
+                          </div>
+                        )}
+                      </div>
+
+                      {newPinData.add_to_crm && (
+                        <div className="pt-2">
+                          <div className="bg-amber-50 text-amber-700 text-[11px] font-bold px-3 py-2 rounded-lg flex items-center gap-2">
+                            <CheckCircle2 size={14} /> CRM Müşteri Adaylarına Eklenecek
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Navigation / Footer */}
+              <div className="pt-4 border-t border-slate-100 flex gap-3 mt-auto shrink-0 bg-white">
+                {wizardStep > 1 && (
+                  <button 
+                    onClick={() => setWizardStep(prev => prev - 1)}
+                    className="px-6 py-3.5 rounded-xl font-bold bg-slate-100 hover:bg-slate-200 text-slate-700 transition-colors"
                   >
-                    <option value="" disabled>Seçiniz</option>
-                    {(categories || []).filter(c => c.kind === (newPinData.kind || 'network_contact') || !c.kind).map(c => (
-                      <option key={c.id} value={c.id}>{c.label}</option>
-                    ))}
-                  </select>
-                </div>
-
-                {(!newPinData.kind || newPinData.kind === 'network_contact') && (
-                  <div>
-                    <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">İlişki Seviyesi</label>
-                    <select 
-                      value={newPinData.relationship_level || ''}
-                      onChange={(e) => setNewPinData({...newPinData, relationship_level: e.target.value as MapPinType['relationship_level']})}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                    >
-                      <option value="" disabled>Seçiniz</option>
-                      <option value="Soğuk Temas">Soğuk Temas</option>
-                      <option value="Tanışıldı">Tanışıldı</option>
-                      <option value="Güven Oluşuyor">Güven Oluşuyor</option>
-                      <option value="Aktif Referans Kaynağı">Aktif Referans Kaynağı</option>
-                      <option value="VIP Network">VIP Network</option>
-                    </select>
-                  </div>
+                    Geri
+                  </button>
                 )}
-
-                <div className="grid grid-cols-2 gap-3">
-                  {(!newPinData.kind || newPinData.kind === 'network_contact') ? (
-                    <>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Son Temas</label>
-                        <input type="date" value={newPinData.last_contact_date || ''} onChange={(e) => setNewPinData({...newPinData, last_contact_date: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs outline-none" />
-                      </div>
-                      <div>
-                        <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Gelecek Temas</label>
-                        <input type="date" value={newPinData.next_contact_date || ''} onChange={(e) => setNewPinData({...newPinData, next_contact_date: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs outline-none" />
-                      </div>
-                    </>
-                  ) : (
-                    <div>
-                      <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 block">Takip Tarihi</label>
-                      <input type="date" value={newPinData.followup_date || ''} onChange={(e) => setNewPinData({...newPinData, followup_date: e.target.value})} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2 py-2 text-xs outline-none" />
-                    </div>
-                  )}
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Potansiyel</label>
-                  <div className="flex gap-2">
-                    {['Düşük', 'Orta', 'Yüksek', 'Sıcak'].map(lvl => (
-                      <button
-                        key={lvl}
-                        onClick={() => setNewPinData({...newPinData, potential: lvl as MapPinType['potential']})}
-                        className={`flex-1 py-1.5 text-xs font-bold rounded-lg border ${newPinData.potential === lvl ? 'border-indigo-500 bg-indigo-50 text-indigo-600' : 'border-slate-200 text-slate-500 bg-white'}`}
-                      >
-                        {lvl}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Açık Adres / Konum</label>
-                  <input 
-                    type="text" 
-                    value={newPinData.address || ''}
-                    onChange={(e) => setNewPinData({...newPinData, address: e.target.value})}
-                    placeholder="Örn: Atatürk Cad. No:12"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none"
-                  />
-                </div>
-
-                {(!newPinData.kind || newPinData.kind === 'network_contact') && (
-                  <label className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 cursor-pointer">
-                    <input 
-                      type="checkbox" 
-                      checked={newPinData.add_to_crm || false} 
-                      onChange={(e) => setNewPinData({...newPinData, add_to_crm: e.target.checked})}
-                      className="w-5 h-5 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500"
-                    />
-                    <div>
-                      <span className="block text-sm font-bold text-slate-700">CRM'e Ekle</span>
-                      <span className="block text-xs text-slate-500">Bu kişiyi aynı zamanda CRM rehberime de kaydet</span>
-                    </div>
-                  </label>
+                
+                {wizardStep < 4 ? (
+                  <button 
+                    onClick={() => setWizardStep(prev => prev + 1)}
+                    disabled={
+                      (wizardStep === 1 && !newPinData.type) || 
+                      (wizardStep === 2 && !newPinData.title?.trim())
+                    }
+                    className="flex-1 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:hover:bg-indigo-600 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-indigo-600/20 transition-all flex items-center justify-center gap-2"
+                  >
+                    Devam Et <ArrowRight size={18} />
+                  </button>
+                ) : (
+                  <button 
+                    onClick={() => {
+                      handleAddPin();
+                    }}
+                    disabled={!newPinData.title || !newPinData.type || addPinMutation.isPending}
+                    className="flex-1 bg-emerald-500 hover:bg-emerald-600 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl shadow-lg shadow-emerald-500/20 transition-all flex items-center justify-center gap-2"
+                  >
+                    {addPinMutation.isPending ? (
+                      <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    ) : (
+                      <>Haritaya Kaydet <CheckCircle2 size={18} /></>
+                    )}
+                  </button>
                 )}
-
-                <div>
-                  <label className="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2 block">Notlar</label>
-                  <textarea 
-                    value={newPinData.notes || ''}
-                    onChange={(e) => setNewPinData({...newPinData, notes: e.target.value})}
-                    placeholder="Detaylı notlar..."
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-4 py-3 text-sm focus:ring-2 focus:ring-indigo-500 outline-none resize-none h-20"
-                  />
-                </div>
-
-                <button 
-                  onClick={handleAddPin}
-                  disabled={!newPinData.title || !newPinData.type || addPinMutation.isPending}
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white font-bold py-3.5 rounded-xl shadow-lg transition-colors flex items-center justify-center gap-2"
-                >
-                  {addPinMutation.isPending ? (
-                    <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                  ) : (
-                    <>Ekle <ArrowRight size={18} /></>
-                  )}
-                </button>
               </div>
             </motion.div>
           </motion.div>

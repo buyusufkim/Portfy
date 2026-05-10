@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { motion } from 'motion/react';
+import { motion, AnimatePresence } from 'motion/react';
 import { 
   MessageSquare, 
   Plus, 
@@ -11,8 +11,12 @@ import {
   AlertTriangle,
   Globe,
   BellOff,
-  Zap
+  Zap,
+  BarChart3,
+  ArrowRight,
+  X
 } from 'lucide-react';
+import { CRMFinanceTab } from './crm/CRMFinanceTab';
 import { Lead, LeadAlert, UserProfile, Property, Referral, MutationResult } from '../types';
 import { Card, Badge, Skeleton } from './UI';
 import { api } from '../services/api';
@@ -62,13 +66,14 @@ export const CRMView: React.FC<CRMViewProps> = ({
   profile,
   properties = []
 }) => {
-  const [activeTab, setActiveTab] = useState<'rehber' | 'araclar'>('rehber');
+  const [activeTab, setActiveTab] = useState<'rehber' | 'araclar' | 'finans'>('rehber');
   const [crmSegment, setCrmSegment] = useState<'all' | 'customers' | 'network' | 'hot' | 'silent'>('all');
   const [searchTerm, setSearchTerm] = React.useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = React.useState('');
   
   // Araçlar - Sahip Portalı
   const [portalLink, setPortalLink] = useState<string | null>(null);
+  const [activeTool, setActiveTool] = useState<'owner_portal_traffic' | 'referral_engine' | null>(null);
 
   // Araçlar - Referral Motoru
   const queryClient = useQueryClient();
@@ -291,7 +296,17 @@ export const CRMView: React.FC<CRMViewProps> = ({
             >
               <Globe size={16} /> Araçlar
             </button>
+            <button 
+              onClick={() => setActiveTab('finans')} 
+              className={`flex items-center gap-2 pb-3 px-4 text-sm font-bold transition-all border-b-2 ${activeTab === 'finans' ? 'border-orange-500 text-slate-900' : 'border-transparent text-slate-500 hover:text-slate-700'}`}
+            >
+              <BarChart3 size={16} /> Finans
+            </button>
           </div>
+
+          {activeTab === 'finans' && (
+             <CRMFinanceTab profile={profile} properties={properties} />
+          )}
 
           {activeTab === 'rehber' && (
             <>
@@ -493,134 +508,194 @@ export const CRMView: React.FC<CRMViewProps> = ({
 
           {activeTab === 'araclar' && (
             <div className="space-y-6">
-              <section className="space-y-4">
-                <Card className="p-4 md:p-6 bg-gradient-to-r from-blue-600 to-indigo-700 relative overflow-hidden group">
-                  <div className="absolute inset-0 opacity-10 pointer-events-none mix-blend-overlay border-[1px] border-dashed border-white" />
-                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 relative z-10">
-                    <div className="flex items-start gap-4 text-white">
-                      <div className="w-12 h-12 bg-white/10 backdrop-blur-md rounded-2xl flex items-center justify-center shrink-0 border border-white/20">
-                        <Globe size={24} className="text-white" />
-                      </div>
-                      <div>
-                        <h3 className="text-lg font-bold flex items-center gap-2">
-                          Sahip Portalı Trafik Motoru
-                          <div className="text-[9px] font-black bg-white/20 px-2 py-0.5 rounded tracking-widest border border-white/20 uppercase">OTOMASYON</div>
-                        </h3>
-                        <p className="text-xs text-blue-100 mt-1 font-medium max-w-sm leading-relaxed">
-                          Müşterilerinize şeffaf rapor sunun.
-                        </p>
-                      </div>
-                    </div>
+              {!activeTool && (
+                <>
+                  <div className="mb-2">
+                    <h2 className="text-xl font-black text-slate-800">Araçlar</h2>
+                    <p className="text-slate-500 text-sm">İşinizi otomatize edecek performans araçları.</p>
                   </div>
-                </Card>
-
-                {properties.length > 0 ? (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {properties.map(prop => {
-                      const traffic = getPropertyTraffic(prop.id);
-                      return (
-                        <Card key={prop.id} className="p-4 bg-white border-slate-100 shadow-sm hover:border-blue-200 transition-all group">
-                          <div className="flex justify-between items-start mb-3">
-                            <div className="flex-1 pr-2">
-                              <h4 className="text-xs font-bold text-slate-900 line-clamp-1">{prop.title}</h4>
-                              <div className="flex items-center gap-2 mt-1">
-                                <Badge className="text-[8px] bg-slate-100 text-slate-500 border-none">{prop.status}</Badge>
-                                {traffic.views > 0 && <span className="text-[9px] font-bold text-emerald-600 flex items-center gap-1"><Zap size={8} /> {traffic.views} İzlenme</span>}
-                              </div>
-                            </div>
-                            <button 
-                              onClick={() => handleCreatePortal(prop.id)}
-                              className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm"
-                              title="Portal Linki Oluştur"
-                            >
-                              <Plus size={16} />
-                            </button>
-                          </div>
-                          {traffic.lastView && (
-                            <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
-                              Son: {new Date(traffic.lastView).toLocaleDateString('tr-TR')}
-                            </div>
-                          )}
-                        </Card>
-                      );
-                    })}
-                  </div>
-                ) : (
-                  <div className="text-center p-6 bg-slate-50 border border-slate-100 rounded-2xl">
-                    <p className="text-sm font-medium text-slate-500">Henüz hiç portföyünüz yok.</p>
-                  </div>
-                )}
-                {portalLink && (
-                  <div className="p-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Portal Linki Hazır</span>
-                    </div>
-                    <div className="text-[10px] font-medium text-slate-600 break-all bg-white p-2 rounded-lg border border-emerald-100/50">
-                      {portalLink}
-                    </div>
-                  </div>
-                )}
-              </section>
-
-              <section className="space-y-4">
-                <Card className="flex flex-col gap-4 border border-emerald-100 bg-emerald-50/50 p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600">
-                        <Users size={20} />
-                      </div>
-                      <h4 className="text-sm font-bold text-slate-900">Referral Motoru</h4>
-                    </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {/* Sahip Portalı Motoru Kartı */}
                     <button 
-                      onClick={() => setShowReferralInput(!showReferralInput)}
-                      className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg shadow-sm hover:bg-emerald-700 transition flex items-center gap-1.5 text-xs font-bold"
+                      onClick={() => setActiveTool('owner_portal_traffic')} 
+                      className="p-5 bg-white border border-slate-100 rounded-3xl shadow-sm hover:shadow-md hover:border-blue-200 text-left transition-all group flex flex-col h-full items-start"
                     >
-                      <Plus size={14} /> Ekle
+                      <div className="w-12 h-12 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <Globe size={24} />
+                      </div>
+                      <div className="text-[10px] font-black tracking-widest text-slate-400 uppercase mb-2">Otomasyon</div>
+                      <h3 className="text-lg font-bold text-slate-900 mb-2">Sahip Portalı Trafik Motoru</h3>
+                      <p className="text-sm font-medium text-slate-500 mb-6 flex-1">Müşterilerinize şeffaf portföy raporu sunun.</p>
+                      <div className="flex items-center gap-2 text-sm font-bold text-blue-600 mt-auto">
+                        Aç <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                      </div>
+                    </button>
+
+                    {/* Referral Motoru Kartı */}
+                    <button 
+                      onClick={() => setActiveTool('referral_engine')} 
+                      className="p-5 bg-white border border-slate-100 rounded-3xl shadow-sm hover:shadow-md hover:border-emerald-200 text-left transition-all group flex flex-col h-full items-start"
+                    >
+                      <div className="w-12 h-12 bg-emerald-50 text-emerald-600 rounded-2xl flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                        <Users size={24} />
+                      </div>
+                      <div className="text-[10px] font-black tracking-widest text-slate-400 uppercase mb-2">Network</div>
+                      <h3 className="text-lg font-bold text-slate-900 mb-2">Referral Motoru</h3>
+                      <p className="text-sm font-medium text-slate-500 mb-6 flex-1">Referans kaynaklarını takip et ve yeni fırsat üret.</p>
+                      <div className="flex items-center gap-2 text-sm font-bold text-emerald-600 mt-auto">
+                        Aç <ArrowRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                      </div>
                     </button>
                   </div>
-                  {showReferralInput && (
-                    <div className="flex items-center gap-2">
-                      <input 
-                        type="text" 
-                        placeholder="Kişi Adı" 
-                        value={newReferralName}
-                        onChange={(e) => setNewReferralName(e.target.value)}
-                        className="flex-1 p-2 text-sm rounded-lg border border-emerald-200 outline-none bg-white"
-                      />
-                      <button 
-                        onClick={() => newReferralName.trim() && addReferralMutation.mutate(newReferralName)}
-                        disabled={addReferralMutation.isPending}
-                        className="px-3 py-2 bg-emerald-600 text-white rounded-lg text-sm font-bold"
-                      >
-                        Ekle
-                      </button>
-                    </div>
-                  )}
-                  {referrals.length > 0 && (
-                    <div className="max-h-48 overflow-y-auto space-y-2">
-                      {referrals.map((ref: Referral) => (
-                        <div key={ref.id} className="bg-white p-2.5 rounded-lg border border-emerald-100 flex justify-between items-center text-sm shadow-sm">
-                          <span className="font-medium text-slate-700">{ref.referred_name || 'İsimsiz'}</span>
-                          <select 
-                            className="text-xs p-1 rounded bg-emerald-50 border-none outline-none text-emerald-700 font-bold"
-                            value={ref.status}
-                            onChange={(e) => updateReferralMutation.mutate({ id: ref.id, status: e.target.value })}
-                            disabled={updateReferralMutation.isPending}
-                          >
-                            <option value="İstendi">İstendi</option>
-                            <option value="Alındı">Alındı</option>
-                            <option value="Görüşmeye döndü">Görüşmeye Döndü</option>
-                            <option value="Kapanış">Kapanış</option>
-                          </select>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </Card>
-              </section>
+                </>
+              )}
             </div>
           )}
         </div>
+
+        {/* Araç Modal/Bottom Sheet */}
+        <AnimatePresence>
+          {activeTab === 'araclar' && activeTool && (
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-[1000] flex items-end sm:items-center justify-center p-0 sm:p-4 bg-slate-900/40 backdrop-blur-sm shadow-2xl"
+            >
+              <motion.div 
+                initial={{ y: '100%', opacity: 0, scale: 1 }}
+                animate={{ y: 0, opacity: 1, scale: 1 }}
+                exit={{ y: '100%', opacity: 0, scale: 1 }}
+                transition={{ type: "spring", damping: 25, stiffness: 300 }}
+                className="bg-white rounded-t-3xl sm:rounded-3xl p-6 md:p-8 w-full max-w-2xl shadow-2xl pointer-events-auto flex flex-col h-[85vh] sm:h-auto sm:max-h-[85vh] overflow-hidden"
+              >
+                {/* Header */}
+                <div className="flex flex-col gap-4 mb-6 shrink-0">
+                  <div className="w-12 h-1.5 bg-slate-200 rounded-full mx-auto sm:hidden" />
+                  <div className="flex justify-between items-center bg-transparent">
+                    <div className="flex items-center gap-4">
+                      <div className={`w-12 h-12 rounded-2xl flex items-center justify-center shrink-0 ${activeTool === 'owner_portal_traffic' ? 'bg-blue-50 text-blue-600' : 'bg-emerald-50 text-emerald-600'}`}>
+                        {activeTool === 'owner_portal_traffic' ? <Globe size={24} /> : <Users size={24} />}
+                      </div>
+                      <div>
+                        <h3 className="text-xl font-bold text-slate-900">
+                          {activeTool === 'owner_portal_traffic' ? 'Sahip Portalı Trafik Motoru' : 'Referral Motoru'}
+                        </h3>
+                        <p className="text-xs font-medium text-slate-500">
+                           {activeTool === 'owner_portal_traffic' ? 'Müşterilerinize şeffaf rapor sunun.' : 'Referans kaynaklarını takip et ve fırsat üret.'}
+                        </p>
+                      </div>
+                    </div>
+                    <button onClick={() => setActiveTool(null)} className="p-2 bg-slate-100 hover:bg-slate-200 rounded-full text-slate-500 transition-colors">
+                      <X size={20} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Content */}
+                <div className="flex-1 overflow-y-auto space-y-6 pb-4 md:pr-2">
+                  {activeTool === 'owner_portal_traffic' && (
+                    <div className="space-y-6">
+                      <div className="p-4 bg-blue-50 border border-blue-100 rounded-2xl">
+                        <p className="text-sm font-medium text-blue-800">Aktif portföylerinizi seçip sahipleri için rapor linkleri oluşturabilirsiniz.</p>
+                      </div>
+                      {properties.length > 0 ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          {properties.map(prop => {
+                            const traffic = getPropertyTraffic(prop.id);
+                            return (
+                              <Card key={prop.id} className="p-4 bg-white border border-slate-100 shadow-sm hover:border-blue-200 transition-all group">
+                                <div className="flex justify-between items-start mb-3">
+                                  <div className="flex-1 pr-2">
+                                    <h4 className="text-xs font-bold text-slate-900 line-clamp-1">{prop.title}</h4>
+                                    <div className="flex items-center gap-2 mt-1">
+                                      <Badge className="text-[8px] bg-slate-100 text-slate-500 border-none">{prop.status}</Badge>
+                                      {traffic.views > 0 && <span className="text-[9px] font-bold text-emerald-600 flex items-center gap-1"><Zap size={8} /> {traffic.views} İzlenme</span>}
+                                    </div>
+                                  </div>
+                                  <button 
+                                    onClick={() => handleCreatePortal(prop.id)}
+                                    className="p-2 bg-blue-50 text-blue-600 rounded-lg group-hover:bg-blue-600 group-hover:text-white transition-all shadow-sm shrink-0"
+                                    title="Portal Linki Oluştur"
+                                  >
+                                    <Plus size={16} />
+                                  </button>
+                                </div>
+                                {traffic.lastView && (
+                                  <div className="text-[8px] font-bold text-slate-400 uppercase tracking-wider">
+                                    Son: {new Date(traffic.lastView).toLocaleDateString('tr-TR')}
+                                  </div>
+                                )}
+                              </Card>
+                            );
+                          })}
+                        </div>
+                      ) : (
+                        <div className="text-center p-6 bg-slate-50 border border-slate-100 rounded-2xl">
+                          <p className="text-sm font-medium text-slate-500">Henüz hiç portföyünüz yok.</p>
+                        </div>
+                      )}
+                      
+                      {portalLink && (
+                        <div className="p-4 bg-emerald-50 border-2 border-emerald-100 rounded-2xl">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-[10px] font-black text-emerald-600 uppercase tracking-widest">Portal Linki Hazır</span>
+                          </div>
+                          <div className="text-[10px] font-medium text-slate-600 break-all bg-white p-2 rounded-lg border border-emerald-100/50">
+                            {portalLink}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {activeTool === 'referral_engine' && (
+                    <div className="space-y-6">
+                      <div className="flex gap-2">
+                        <input 
+                          type="text" 
+                          placeholder="Kişi Adı (örn: Ahmet Yılmaz)" 
+                          value={newReferralName}
+                          onChange={(e) => setNewReferralName(e.target.value)}
+                          className="flex-1 p-3 text-sm rounded-xl border border-slate-200 outline-none bg-slate-50 focus:ring-2 focus:ring-emerald-500 focus:bg-white transition-all"
+                        />
+                        <button 
+                          onClick={() => newReferralName.trim() && addReferralMutation.mutate(newReferralName)}
+                          disabled={addReferralMutation.isPending || !newReferralName.trim()}
+                          className="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 text-white rounded-xl text-sm font-bold shadow-md transition-colors"
+                        >
+                          Ekle
+                        </button>
+                      </div>
+
+                      {referrals.length > 0 && (
+                        <div className="space-y-2">
+                          {referrals.map((ref: any) => (
+                            <div key={ref.id} className="bg-white p-3 rounded-xl border border-slate-100 flex justify-between items-center text-sm shadow-sm hover:border-emerald-100 transition-colors">
+                              <span className="font-bold text-slate-700">{ref.referred_name || 'İsimsiz'}</span>
+                              <select 
+                                className="text-xs px-2 py-1.5 rounded-lg bg-slate-50 border border-slate-100 outline-none hover:bg-emerald-50 hover:text-emerald-700 focus:border-emerald-300 font-bold transition-colors cursor-pointer"
+                                value={ref.status}
+                                onChange={(e) => updateReferralMutation.mutate({ id: ref.id, status: e.target.value })}
+                                disabled={updateReferralMutation.isPending}
+                              >
+                                <option value="İstendi">İstendi</option>
+                                <option value="Alındı">Alındı</option>
+                                <option value="Görüşmeye döndü">Görüşmeye Döndü</option>
+                                <option value="Kapanış">Kapanış</option>
+                              </select>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+              </motion.div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* SAĞ KOLON (Desktop) */}
         <div className="xl:col-span-4 flex flex-col gap-6">

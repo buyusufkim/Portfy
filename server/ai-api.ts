@@ -1006,24 +1006,52 @@ export const handleSaveDayClosure = async (req: AuthRequest, res: Response) => {
     }
     
     // Normalize payload to match DB schema exactly like frontend
+    const normalizeString = (str: any) => {
+        if (typeof str === 'string' && str.trim() === '') return null;
+        return str || null;
+    };
+
+    const normalizeDisciplineScore = (score: any) => {
+        if (score === "" || score === null || score === undefined) return null;
+        const num = Number(score);
+        if (isNaN(num)) return null;
+        return num;
+    };
+
+    const normalizeTomorrowTop3 = (top3: any) => {
+        if (!top3) return null;
+        if (Array.isArray(top3)) {
+            const filtered = top3.filter(i => typeof i === 'string' && i.trim() !== '');
+            if (filtered.length === 0) return null;
+            return filtered;
+        }
+        if (typeof top3 === 'string' && top3.trim() !== '') {
+            return [top3];
+        }
+        return null;
+    };
+
     const normalizedPayload = {
       user_id: userId,
       closure_date: todayStr,
       updated_at: nowIso,
-      wins: payload.wins,
-      blockers: payload.blockers,
-      tomorrow_top3: payload.top3_tomorrow || payload.tomorrow_top3,
-      completed_calls: payload.calls || payload.completed_calls || 0,
-      completed_portfolio_actions: payload.visits || payload.completed_portfolio_actions || 0,
-      completed_followups: payload.completed_followups || 0,
-      early_close_reason: payload.early_close_reason,
-      campaign_focus_reflection: payload.campaign_focus_reflection,
-      discipline_score: payload.discipline_score,
-      campaign_day: payload.campaign_day,
+      wins: normalizeString(payload.wins),
+      blockers: normalizeString(payload.blockers),
+      tomorrow_top3: normalizeTomorrowTop3(payload.top3_tomorrow || payload.tomorrow_top3) || [],
+      completed_calls: Number(payload.calls || payload.completed_calls) || 0,
+      completed_portfolio_actions: Number(payload.visits || payload.completed_portfolio_actions) || 0,
+      completed_followups: Number(payload.completed_followups) || 0,
       day_started_at,
       day_closed_at,
       work_duration_minutes
     };
+
+    // Remove undefined/null values that might not be in the db schema if not strictly needed
+    // However, sending null to nullable fields is fine. We will send it as is.
+    
+    console.log("Saving Day Closure Payload:", JSON.stringify({
+        userId, closure_date: todayStr, wins: normalizedPayload.wins
+    }));
 
     const { data, error } = await supabaseAdmin
       .from("day_closure")
@@ -1032,7 +1060,17 @@ export const handleSaveDayClosure = async (req: AuthRequest, res: Response) => {
       .single();
 
     if (error) {
-        return res.status(500).json({ error: safeErrorMessage(error, "Failed to save day closure") });
+        console.error("Supabase Day Closure Upsert Error:");
+        console.error("- Message:", error.message);
+        console.error("- Code:", error.code);
+        console.error("- Details:", error.details);
+        console.error("- Hint:", error.hint);
+        console.error("- Payload Keys:", Object.keys(normalizedPayload));
+        
+        return res.status(500).json({ 
+            error: safeErrorMessage(error, "Failed to save day closure"),
+            details: process.env.NODE_ENV === 'development' ? error : undefined
+        });
     }
 
     return res.json(data);

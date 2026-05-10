@@ -16,7 +16,6 @@ import {
   Plus,
   MapPin,
   StickyNote,
-  Brain,
   Calendar,
   Play,
   Star,
@@ -28,8 +27,6 @@ import {
   ChevronRight,
   Mail,
   Home,
-  ArrowUpRight,
-  BarChart3,
   Sun,
   Cloud,
   CloudRain,
@@ -64,8 +61,6 @@ import { QueryClient, useMutation, useQuery } from "@tanstack/react-query";
 import { LucideIcon } from "lucide-react";
 import { TopActionItem, leadAlertDescriptions, getDedupedAlerts, isTodayOrOverdue, formatTime } from "../helpers/dashboardHelpers";
 
-import { useFeatureAccess } from "../hooks/useFeatureAccess";
-import { UpgradeModal } from "./premium/UpgradeModal";
 import { toast } from "react-hot-toast";
 import { useTurkeyClock } from "../hooks/useTurkeyClock";
 
@@ -73,16 +68,10 @@ interface DashboardViewProps {
   profile: UserProfile | null;
   gamifiedStats: UserStats | null;
   properties: Property[];
-  coachInsights: CoachInsight | null;
   gamifiedTasks: GamifiedTask[];
-  rescueSession: RescueSession | null;
   isGamifiedTasksLoading: boolean;
-  isGamifiedTasksError: boolean;
-  refreshTasksMutation: MutationResult<GamifiedTask[], void>;
   completeTaskMutation: MutationResult<void, { task: GamifiedTask }>;
   startRescueMutation: MutationResult<RescueSession, void>;
-  revenueStats: RevenueStats | null;
-  revenueLoading: boolean;
   setActiveTab: (tab: string) => void;
   setShowDayCloser: (show: boolean) => void;
   queryClient: QueryClient;
@@ -93,20 +82,13 @@ interface DashboardViewProps {
   >;
   tasks?: Task[];
   personalTasks?: PersonalTask[];
-  setShowAdminPanel?: (show: boolean) => void;
   setShowDailyRadar?: (show: boolean) => void;
   setPendingEarlyStartReason?: (val: string) => void;
-  setShowMissedOpportunities?: (show: boolean) => void;
-  missedOpportunities?: MissedOpportunity[];
   leadAlerts?: LeadAlert[];
   dailyPlan?: DailyPlan | null;
   dayClosure?: DayClosure | null;
-  weeklyReports?: WeeklyReport[];
-  setSelectedLead?: (lead: Lead | null) => void;
-  setSelectedProperty?: (prop: Property | null) => void;
 }
 
-import { Campaign90MiniCard } from "./habit/Campaign90MiniCard";
 import { advisorProfileService } from "../services/advisorProfileService";
 import { campaign90Service } from "../services/campaign90Service";
 import { useWeather } from "../hooks/useWeather";
@@ -115,12 +97,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   profile,
   gamifiedStats,
   properties,
-  coachInsights,
   gamifiedTasks,
   isGamifiedTasksLoading,
   completeTaskMutation,
   startRescueMutation,
-  revenueStats,
   setActiveTab,
   setShowDayCloser,
   queryClient,
@@ -132,7 +112,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   setPendingEarlyStartReason,
   leadAlerts = [],
   dailyPlan,
-  weeklyReports = [],
+  dayClosure,
 }) => {
   const [visiblePriorityCount, setVisiblePriorityCount] = useState(5);
   const [showEarlyStartModal, setShowEarlyStartModal] = useState(false);
@@ -476,11 +456,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     }
   });
 
-  // Premium Erişim Kontrolleri
-  const { hasAccess, subscribe } = useFeatureAccess();
-  const canUseAiCoach = hasAccess("ai_coach");
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-
   const localStarted = profile?.id
     ? localStorage.getItem(`day_started_${profile.id}_${todayISO}`)
     : null;
@@ -498,8 +473,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   );
 
   const dayStartTimestamp = profile?.last_day_started_at || localStarted || "";
+  
+  const dayClosureEndedToday = dayClosure && (dayClosure.closure_date === todayISO || (dayClosure.updated_at && getTodayStrFromDate(new Date(dayClosure.updated_at)) === todayISO));
+
   const isDayEnded = !!(
     localEnded ||
+    dayClosureEndedToday ||
     (profile?.last_ritual_completed_at &&
       getTodayStrFromDate(new Date(profile.last_ritual_completed_at)) === todayISO &&
       (!dayStartTimestamp ||
@@ -639,20 +618,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const countPriceRevisions = smartRecItems.length;
   const totalBadges = countMissedFollowups + countNewLeads + countPriceRevisions + countBolgemAlerts;
 
-  const countOverdueTasks = (tasks || []).filter(t => !t.completed && t.due_date && t.due_date.split("T")[0] < todayISO).length + 
-                            (personalTasks || []).filter(t => !t.is_completed && t.due_date && t.due_date.split("T")[0] < todayISO).length;
-
-  const formatCurrency = (val: number) => new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY', maximumFractionDigits: 0 }).format(val);
-
-  const isEst = !(revenueStats && (revenueStats.total_pipeline_value !== undefined || revenueStats.weighted_revenue !== undefined));
-  const rvPotential = revenueStats?.total_pipeline_value ?? properties.filter(p => p.status === 'Yayında').reduce((acc, p) => acc + ((p.price || 0) * 0.02), 0);
-  const rvExpected = revenueStats?.weighted_revenue ?? Math.round(rvPotential * 0.6);
-  const rvOffer = Math.round(rvPotential * 0.3);
-  const rvClosed = Math.round(rvPotential * 0.4);
-  const rvMax = Math.max(1, rvPotential, rvExpected, rvOffer, rvClosed);
-
-  const hasMomentumData = weeklyReports?.[0]?.metrics?.performance_score !== undefined || gamifiedStats?.streak;
-  const momentumScore = (weeklyReports?.[0]?.metrics?.performance_score as number) ?? (gamifiedStats?.streak ? Math.min(100, Math.round((gamifiedStats.streak / 7) * 100)) : 0);
+  const countOverdueTasks = (tasks || []).filter(t => !t.completed && (t.due_date || t.time) && (t.due_date || t.time)!.split("T")[0] <= todayISO).length + 
+                            (personalTasks || []).filter(t => !t.is_completed && (t.due_date || t.reminder_time) && (t.due_date || t.reminder_time)!.split("T")[0] <= todayISO).length;
 
   const canUseDebugReset = isAdminRole(profile?.role);
 
@@ -662,43 +629,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       animate={{ opacity: 1, y: 0 }}
       className="pb-36 lg:pb-8"
     >
-      {advisorProfile?.experience_level === 'new' && !activeCampaign && advisorProfile?.onboarding_completed && (
-        <Card className="mb-6 bg-indigo-600 border border-indigo-500 rounded-2xl overflow-hidden relative shadow-lg shadow-indigo-600/10 text-white p-5 cursor-pointer hover:bg-indigo-700 transition" onClick={() => setActiveTab("campaign-90")}>
-           <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full blur-2xl -mr-10 -mt-10 pointer-events-none" />
-           <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
-             <div>
-                <h3 className="text-base sm:text-lg font-black mb-1 flex items-center gap-2">90 Gün Kampı seni adım adım mesleğe hazırlar.</h3>
-                <p className="text-xs sm:text-sm text-indigo-100 font-medium">İlk 3 gün satış baskısı yok; MYK, ofis, yetki ve güvenli çalışma zeminini kurarsın.</p>
-             </div>
-             <button onClick={(e) => { e.stopPropagation(); setActiveTab("campaign-90") }} className="shrink-0 bg-white text-indigo-700 font-bold px-5 py-2.5 rounded-xl text-sm hover:bg-indigo-50 transition w-full md:w-auto mt-2 md:mt-0">
-               90 Gün Kampı'nı İncele
-             </button>
-           </div>
-        </Card>
-      )}
-
       <TokenUsageAlert />
 
-      {isDayStarted && isDayEnded && (
-        <Card className="p-5 md:p-6 bg-slate-50 border-slate-200 border-dashed mb-6 rounded-[24px]">
-          <div className="flex items-center gap-4 text-slate-500">
-            <div className="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center">
-              <CheckCircle2 size={24} />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold">Bugün Başarıyla Tamamlandı</h3>
-              <p className="text-[10px] font-medium uppercase tracking-wider">
-                Bugünün kaydı tamamlandı. Yarın için güçlü bir başlangıç hazır.
-              </p>
-            </div>
-          </div>
-        </Card>
-      )}
-
-      <div className="flex flex-col lg:grid lg:grid-cols-3 gap-6 md:gap-8">
+      <div className="flex flex-col gap-6 md:gap-8">
         
-        {/* SOL KOLON (MAIN) */}
-        <div className="contents lg:flex lg:flex-col lg:col-span-2 lg:gap-6">
+        {/* ANA AKIŞ */}
+        <div className="flex flex-col gap-6">
         
           {/* HERO CARD: Bugünü Netleştir */}
           <section className="order-1">
@@ -758,33 +694,50 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 )}
               </div>
 
-              {/* Sağ Taraf - Stats */}
-              <div className="relative z-10 grid grid-cols-2 gap-0 bg-[#041A33]/70 rounded-2xl w-full md:w-auto overflow-hidden">
-                <div className="p-4 flex flex-col justify-center">
-                  <div className="flex items-center gap-1 mb-1 text-[#FF6B1A]">
-                    <Zap size={14} className="fill-current shrink-0" />
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-white/90 truncate">Günlük Streak</span>
+              {/* Sağ Taraf - Stats & Campaign */}
+              <div className="relative z-10 flex flex-col gap-2 w-full md:w-auto">
+                <div className="grid grid-cols-2 gap-0 bg-[#041A33]/70 rounded-2xl overflow-hidden w-full">
+                  <div className="p-4 flex flex-col justify-center">
+                    <div className="flex items-center gap-1 mb-1 text-[#FF6B1A]">
+                      <Zap size={14} className="fill-current shrink-0" />
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-white/90 truncate">Günlük Streak</span>
+                    </div>
+                    <div className="flex items-baseline mb-1">
+                      <span className="text-2xl md:text-3xl font-black text-white leading-none">{gamifiedStats ? gamifiedStats.streak ?? 0 : 0}</span>
+                      <span className="text-xs md:text-sm font-bold ml-1 text-white/80">gün</span>
+                    </div>
+                    <div className="text-[9px] text-[#00D2B4] font-bold truncate mt-auto">Harika gidiyorsun!</div>
                   </div>
-                  <div className="flex items-baseline mb-1">
-                    <span className="text-2xl md:text-3xl font-black text-white leading-none">{gamifiedStats ? gamifiedStats.streak ?? 0 : 0}</span>
-                    <span className="text-xs md:text-sm font-bold ml-1 text-white/80">gün</span>
+                  
+                  <div className="p-4 border-l border-white/10 flex flex-col justify-center">
+                    <div className="flex items-center gap-1 mb-1 text-amber-400">
+                      <Star size={14} className="stroke-[2.5] shrink-0" />
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-white/90 truncate">XP Puanı</span>
+                    </div>
+                    <div className="flex items-baseline mb-1">
+                      <span className="text-2xl md:text-3xl font-black text-white leading-none">{gamifiedStats ? (gamifiedStats.points ?? 0).toLocaleString() : 0}</span>
+                    </div>
+                    <div className="w-full h-1 bg-white/10 rounded-full mt-auto overflow-hidden shrink-0">
+                       <div className="h-full bg-[#00D2B4] rounded-full" style={{ width: `${Math.min(100, ((gamifiedStats?.points ?? 0) / 2000) * 100)}%` }} />
+                    </div>
+                    <div className="text-[8px] text-white/50 mt-1 truncate">Ödüle {Math.max(0, 2000 - (gamifiedStats?.points ?? 0))} XP</div>
                   </div>
-                  <div className="text-[9px] text-[#00D2B4] font-bold truncate mt-auto">Harika gidiyorsun!</div>
                 </div>
-                
-                <div className="p-4 border-l border-white/10 flex flex-col justify-center">
-                  <div className="flex items-center gap-1 mb-1 text-amber-400">
-                    <Star size={14} className="stroke-[2.5] shrink-0" />
-                    <span className="text-[9px] font-bold uppercase tracking-widest text-white/90 truncate">XP Puanı</span>
+
+                {activeCampaign && (
+                  <div onClick={() => setActiveTab && setActiveTab('campaign-90')} className="bg-[#00D2B4]/10 hover:bg-[#00D2B4]/20 border border-[#00D2B4]/20 rounded-2xl p-3 cursor-pointer transition-colors flex items-center justify-between group">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#00D2B4]/20 text-[#00D2B4] flex items-center justify-center shrink-0">
+                         <Target size={16} />
+                      </div>
+                      <div>
+                         <h4 className="text-xs font-bold text-white group-hover:text-[#00D2B4] transition-colors">90 Gün Kampı - Gün {activeCampaign.current_day}</h4>
+                         <p className="text-[10px] uppercase font-bold text-[#00D2B4]/80 tracking-wider">Bugün: {(campaignTasks || []).filter(t => t.status === 'completed').length}/{campaignTasks?.length || 0} Görev</p>
+                      </div>
+                    </div>
+                    <ArrowRight size={16} className="text-[#00D2B4] group-hover:translate-x-1 transition-transform" />
                   </div>
-                  <div className="flex items-baseline mb-1">
-                    <span className="text-2xl md:text-3xl font-black text-white leading-none">{gamifiedStats ? (gamifiedStats.points ?? 0).toLocaleString() : 0}</span>
-                  </div>
-                  <div className="w-full h-1 bg-white/10 rounded-full mt-auto overflow-hidden shrink-0">
-                     <div className="h-full bg-[#00D2B4] rounded-full" style={{ width: `${Math.min(100, ((gamifiedStats?.points ?? 0) / 2000) * 100)}%` }} />
-                  </div>
-                  <div className="text-[8px] text-white/50 mt-1 truncate">Ödüle {Math.max(0, 2000 - (gamifiedStats?.points ?? 0))} XP</div>
-                </div>
+                )}
               </div>
             </Card>
           </section>
@@ -817,24 +770,24 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             setActiveTab("campaign-90");
                           }
                         }}
-                        className={`flex items-center justify-between p-2.5 hover:bg-slate-50 transition-colors rounded-xl border border-transparent hover:border-slate-100 group min-h-[64px] ${(item.type === "gamified" || item.type === "campaign") ? "cursor-pointer" : ""}`}
+                        className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-2.5 hover:bg-slate-50 transition-colors rounded-2xl sm:rounded-xl border border-slate-100 sm:border-transparent hover:border-slate-200 group min-h-[64px] ${(item.type === "gamified" || item.type === "campaign") ? "cursor-pointer" : ""}`}
                       >
-                        <div className="flex items-center gap-4 min-w-0 pr-2">
+                        <div className="flex items-start gap-3 sm:gap-4 min-w-0 pr-2 w-full sm:w-auto">
                           <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.colorClass} saturate-[0.8] shadow-sm`}>
                             <item.icon size={20} />
                           </div>
                           <div className="min-w-0 flex-1">
-                            <h4 className="text-sm font-bold text-slate-800 truncate">
+                            <h4 className="text-[13px] sm:text-sm font-bold text-slate-800 line-clamp-2 md:truncate">
                               {item.title}
                             </h4>
-                            <p className="text-[11px] text-slate-500 font-medium truncate mt-0.5">
+                            <p className="text-[11px] text-slate-500 font-medium line-clamp-1 mt-0.5">
                               {item.desc || item.subtitle}
                             </p>
                           </div>
                         </div>
                         
-                        <div className="shrink-0 flex items-center ml-2">
-                            <div className={`px-2.5 py-1 text-[10px] font-bold rounded-md ${
+                        <div className="shrink-0 flex items-center justify-start sm:justify-end w-full sm:w-auto mt-2 sm:mt-0 sm:ml-2 border-t sm:border-t-0 border-slate-100 pt-2 sm:pt-0">
+                            <div className={`px-2.5 py-1 text-[9px] sm:text-[10px] font-bold rounded-md ${
                               item.type === "alert" ? "bg-red-50 text-red-700" :
                               item.type === "drip" ? "bg-orange-50 text-orange-700" :
                               item.type === "smart_rec" ? "bg-amber-50 text-amber-700" :
@@ -902,13 +855,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </Card>
           </section>
 
-          {/* 2. BUGÜNÜN ODAK NOKTASI */}
+          {/* 2. BUGÜNKÜ HEDEF VE PLAN */}
           <section className="order-3">
               <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">2</div>
-                    <h3 className="text-base font-bold text-slate-900">Bugünün Odak Noktası</h3>
+                    <h3 className="text-base font-bold text-slate-900">Bugünkü Hedef ve Plan</h3>
                   </div>
                 </div>
 
@@ -946,7 +899,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   })}
                 </div>
 
-                <div className="space-y-3">
+                <div className="space-y-3 mb-4">
                       {focusesToDisplay.length > 0 ? (
                         focusesToDisplay.map((focus, idx) => (
                           <div key={focus.id || idx} className={`flex flex-col gap-3 p-4 rounded-2xl border border-slate-100 transition-colors ${focus.status === 'completed' ? 'bg-emerald-50/50' : 'bg-slate-50/50'}`}>
@@ -997,7 +950,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             <h4 className="text-sm font-bold text-slate-900 truncate">
                               Bugün için odak noktası belirlenmedi.
                             </h4>
-                            <p className="text-xs text-slate-500 truncate">
+                            <p className="text-[11px] text-slate-500 truncate">
                               Gününü başlatırken ana odağını belirleyebilirsin.
                             </p>
                           </div>
@@ -1005,72 +958,54 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       )}
                     </div>
                 
-                <div className="flex items-center gap-1.5 mt-3 text-slate-400">
-                  <Play size={10} className="fill-current text-slate-300" />
-                  <span className="text-[10px] font-medium">Önceliklerini sadeleştir, en yüksek etkili 1 aksiyona odaklan.</span>
-                </div>
+                {!isNewUserCampaignActive && (
+                  <div className="grid grid-cols-3 gap-3 border-t border-slate-100 pt-4">
+                    <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 flex flex-col justify-center items-center text-center">
+                      <div className="flex items-center gap-1 text-emerald-500 mb-1">
+                        <Phone size={12} />
+                        <span className="text-[9px] font-bold text-slate-600 uppercase">Arama</span>
+                      </div>
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        <span className="text-sm font-black text-slate-900">{calcCallsDone}</span>
+                        <span className="text-[10px] text-slate-400 font-medium">/ {calcCallsTarget}</span>
+                      </div>
+                    </div>
+                    
+                    <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 flex flex-col justify-center items-center text-center">
+                      <div className="flex items-center gap-1 text-orange-500 mb-1">
+                        <UserCheck size={12} />
+                        <span className="text-[9px] font-bold text-slate-600 uppercase">Takip</span>
+                      </div>
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        <span className="text-sm font-black text-slate-900">{calcFollowupsDone}</span>
+                        <span className="text-[10px] text-slate-400 font-medium">/ {calcFollowupsTarget}</span>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-50 p-2.5 rounded-2xl border border-slate-100 flex flex-col justify-center items-center text-center">
+                      <div className="flex items-center gap-1 text-blue-500 mb-1">
+                        <Calendar size={12} />
+                        <span className="text-[9px] font-bold text-slate-600 uppercase">Ziyaret</span>
+                      </div>
+                      <div className="flex items-baseline gap-1 mt-0.5">
+                        <span className="text-sm font-black text-slate-900">{calcVisitsDone}</span>
+                        <span className="text-[10px] text-slate-400 font-medium">/ {calcVisitsTarget}</span>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </Card>
           </section>
 
-          {/* 3. GÜNLÜK PLAN MİNİ GÖSTERGELERİ */}
-          {!isNewUserCampaignActive && (
+
+
+          {/* 3. GÜNÜN NOTLARI / AKIŞ NOTLARI */}
           <section className="order-4">
-              <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">3</div>
-                  <h3 className="text-base font-bold text-slate-900">Günlük Plan Mini Göstergeleri</h3>
-                </div>
-
-                <div className="grid grid-cols-3 gap-3">
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col justify-center">
-                    <div className="flex items-center gap-1.5 text-emerald-500 mb-1">
-                      <Phone size={14} />
-                      <span className="text-[10px] font-bold text-slate-600">Arama</span>
-                    </div>
-                    <div className="flex items-baseline gap-1 mt-1">
-                      <span className="text-lg font-black text-slate-900">{calcCallsDone}</span>
-                      <span className="text-xs text-slate-400 font-medium">/ {calcCallsTarget}</span>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col justify-center">
-                    <div className="flex items-center gap-1.5 text-orange-500 mb-1">
-                      <UserCheck size={14} />
-                      <span className="text-[10px] font-bold text-slate-600">Takip</span>
-                    </div>
-                    <div className="flex items-baseline gap-1 mt-1">
-                      <span className="text-lg font-black text-slate-900">{calcFollowupsDone}</span>
-                      <span className="text-xs text-slate-400 font-medium">/ {calcFollowupsTarget}</span>
-                    </div>
-                  </div>
-
-                  <div className="bg-slate-50 p-3 rounded-2xl border border-slate-100 flex flex-col justify-center">
-                    <div className="flex items-center gap-1.5 text-blue-500 mb-1">
-                      <Calendar size={14} />
-                      <span className="text-[10px] font-bold text-slate-600">Ziyaret</span>
-                    </div>
-                    <div className="flex items-baseline gap-1 mt-1">
-                      <span className="text-lg font-black text-slate-900">{calcVisitsDone}</span>
-                      <span className="text-xs text-slate-400 font-medium">/ {calcVisitsTarget}</span>
-                    </div>
-                  </div>
-                </div>
-              </Card>
-          </section>
-          )}
-
-          {/* 90 DAY CAMPAIGN MINI CARD */}
-          <section className="order-4">
-             {profile?.id && <Campaign90MiniCard userId={profile.id} profile={profile} setActiveTab={setActiveTab} />}
-          </section>
-
-          {/* 4. GÜNÜN NOTLARI / AKIŞ NOTLARI */}
-          <section className="order-5">
               <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
-                    <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">4</div>
-                    <h3 className="text-base font-bold text-slate-900">Günün Notları / Akış Notları</h3>
+                    <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">3</div>
+                    <h3 className="text-base font-bold text-slate-900">Akış Notları</h3>
                   </div>
                   {setActiveTab && (
                       <button onClick={() => setActiveTab("tasks")} className="text-xs font-bold text-blue-600 hover:text-blue-700 flex items-center shrink-0">
@@ -1110,44 +1045,60 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
 
 
-          {/* 7. RESCUE / GÜNÜN ÖZETİ */}
+          {/* 4. KRİTİK SİNYALLER / AKSİYON MERKEZİ */}
           {!isNewUserCampaignActive && (
-          <section className="order-8">
-              <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">7</div>
-                  <h3 className="text-base font-bold text-slate-900">Rescue / Günün Özeti</h3>
+          <section className="order-5">
+            <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
+             <div className="flex items-center justify-between mb-4">
+               <div className="flex items-center gap-3">
+                 <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">4</div>
+                 <h3 className="text-base font-bold text-slate-900">Kritik Sinyaller</h3>
+               </div>
+             </div>
+             
+             <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="bg-red-50/50 p-3 rounded-xl border border-red-100 flex flex-col justify-center gap-1">
+                   <div className="flex items-center gap-1.5 text-red-600">
+                      <Phone size={14} />
+                      <span className="text-[10px] font-bold uppercase">Cevapsız</span>
+                   </div>
+                   <span className="text-xl font-black text-slate-900">{countMissedFollowups}</span>
                 </div>
 
-                <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 w-full">
-                    <div className="flex items-center gap-3">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${countOverdueTasks > 0 ? "bg-orange-50 text-orange-500" : "bg-emerald-50 text-emerald-500"}`}>
-                        <LifeBuoy size={24} />
-                      </div>
-                      <div>
-                        {countOverdueTasks > 0 ? (
-                          <>
-                            <p className="text-sm font-bold text-slate-900">Planın gerisindesin. <span className="text-orange-600">{countOverdueTasks} aksiyonda gecikme var.</span></p>
-                            <p className="text-[11px] text-slate-500 font-medium mt-0.5">Önceliklerini sadeleştir, en yüksek etkili 1 aksiyona odaklan.</p>
-                          </>
-                        ) : (
-                          <>
-                            <p className="text-sm font-bold text-slate-900">Planın yolunda. <span className="text-emerald-600">Geciken aksiyon yok.</span></p>
-                            <p className="text-[11px] text-slate-500 font-medium mt-0.5">Mevcut odağını koruyarak ilerlemeye devam et.</p>
-                          </>
-                        )}
-                      </div>
-                    </div>
-                    <button onClick={() => startRescueMutation.mutate()} className={`text-[11px] font-bold bg-white border px-4 h-10 rounded-xl transition-colors flex items-center justify-center gap-1.5 w-full md:w-auto shadow-sm whitespace-nowrap shrink-0 ${countOverdueTasks > 0 ? "text-orange-500 border-orange-200 hover:bg-orange-50" : "text-emerald-500 border-emerald-200 hover:bg-emerald-50"}`}>
-                      <Zap size={14} className="fill-current" /> Odaklanma Modu
-                    </button>
+                <div className="bg-orange-50/50 p-3 rounded-xl border border-orange-100 flex flex-col justify-center gap-1">
+                   <div className="flex items-center gap-1.5 text-orange-600">
+                      <Mail size={14} />
+                      <span className="text-[10px] font-bold uppercase">Yeni Lead</span>
+                   </div>
+                   <span className="text-xl font-black text-slate-900">{countNewLeads}</span>
                 </div>
-              </Card>
+
+                <div className="bg-blue-50/50 p-3 rounded-xl border border-blue-100 flex flex-col justify-center gap-1">
+                   <div className="flex items-center gap-1.5 text-blue-600">
+                      <Home size={14} />
+                      <span className="text-[10px] font-bold uppercase">Fiyat Revize</span>
+                   </div>
+                   <span className="text-xl font-black text-slate-900">{countPriceRevisions}</span>
+                </div>
+                
+                <div className="bg-amber-50/50 p-3 rounded-xl border border-amber-100 flex flex-col justify-center gap-1">
+                   <div className="flex items-center gap-1.5 text-amber-600">
+                      <MapPin size={14} />
+                      <span className="text-[10px] font-bold uppercase">Bölgem</span>
+                   </div>
+                   <span className="text-xl font-black text-slate-900">{countBolgemAlerts}</span>
+                </div>
+             </div>
+             
+             <button onClick={() => setActiveTab && setActiveTab("tasks")} className="text-[11px] font-bold text-blue-600 hover:text-blue-700 w-full text-left mt-4 flex items-center">
+               Tüm aksiyonları gör <ArrowRight size={14} className="ml-1" />
+             </button>
+          </Card>
           </section>
           )}
 
-          {/* 8. GÜNÜ KAPAT */}
-          <section className="order-9">
+          {/* 5. GÜNÜ KAPAT / GÜN ÖZETİ */}
+          <section className="order-6">
               {isDayEnded ? (
                 <Card className="p-4 bg-[#F2FFF8] border border-emerald-100 flex items-center justify-between rounded-[24px]">
                   <div className="flex items-center gap-3">
@@ -1163,19 +1114,34 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                 </Card>
               ) : (
-                <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
-                  <div className="flex flex-col md:flex-row items-center md:items-start justify-between gap-5">
-                    <div className="flex items-center gap-4 text-center md:text-left w-full">
-                      <div className="w-12 h-12 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center shrink-0">
-                        <Moon size={24} />
+                <Card className="p-4 md:p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
+                  <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
+                    <div className="flex items-center gap-4 text-left w-full">
+                      <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${countOverdueTasks > 0 ? "bg-orange-50 text-orange-500" : "bg-emerald-50 text-emerald-500"}`}>
+                        {countOverdueTasks > 0 ? <LifeBuoy size={24} /> : <CheckCircle2 size={24} />}
                       </div>
                       <div className="flex-1 text-left">
-                        <h4 className="text-base font-bold text-slate-900">Günü Kapat</h4>
-                        <p className="text-[11px] text-slate-500 font-medium mt-0.5 pr-2">Bugünkü ilerlemeni kaydet, kazanımlarını not al ve yarına hazır ol.</p>
+                        {countOverdueTasks > 0 ? (
+                          <>
+                            <h4 className="text-sm md:text-base font-bold text-slate-900">Bugün <span className="text-orange-600">{countOverdueTasks} aksiyon</span> geride kaldı.</h4>
+                            <p className="text-[11px] text-slate-500 font-medium mt-0.5 md:pr-4">İstersen günü kapatmadan önce odaklanma moduna geçip toparlanabilirsin.</p>
+                          </>
+                        ) : (
+                          <>
+                            <h4 className="text-sm md:text-base font-bold text-slate-900">Planın yolunda.</h4>
+                            <p className="text-[11px] text-slate-500 font-medium mt-0.5 md:pr-4">Geciken aksiyon yok. Günü kısa bir değerlendirmeyle kapatabilirsin.</p>
+                          </>
+                        )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-3 w-full md:w-auto mt-2 md:mt-0">
-                        <button onClick={() => setShowDayCloser(true)} className="h-10 px-6 rounded-xl bg-[#061A32] text-white font-bold text-[11px] flex items-center gap-1.5 hover:bg-[#082B55] transition-colors w-full md:w-auto justify-center shadow-md">
+                    
+                    <div className="flex items-center gap-3 w-full md:w-auto shrink-0 justify-end mt-2 md:mt-0">
+                        {countOverdueTasks > 0 && !isNewUserCampaignActive && (
+                            <button onClick={() => startRescueMutation.mutate()} className="h-10 px-4 rounded-xl text-orange-600 bg-orange-50 border border-orange-200 font-bold text-[11px] flex items-center gap-1.5 hover:bg-orange-100 transition-colors justify-center shadow-sm flex-1 md:flex-none whitespace-nowrap">
+                              <Zap size={14} className="fill-current" /> Odaklanma Modu
+                            </button>
+                        )}
+                        <button onClick={() => setShowDayCloser(true)} className="h-10 px-6 rounded-xl bg-[#061A32] text-white font-bold text-[11px] flex items-center gap-1.5 hover:bg-[#082B55] transition-colors justify-center flex-1 md:flex-none shadow-md whitespace-nowrap">
                           <CheckCircle2 size={16} /> Günü Kapat
                         </button>
                     </div>
@@ -1183,281 +1149,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </Card>
               )}
           </section>
-        </div>
 
-        {/* SAĞ KOLON (WIDGETS: AI İçgörü, Gelir Özeti vs.) */}
-        <div className="contents lg:flex lg:flex-col lg:col-span-1 lg:gap-6 mt-4 lg:mt-0">
-          
-          {/* 6. AKSİYON MERKEZİ */}
-          {!isNewUserCampaignActive && (
-          <section className="order-7">
-            <Card className="p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
-             <div className="flex items-center justify-between mb-4">
-               <div className="flex items-center gap-2">
-                 <Target size={18} className="text-slate-700" />
-                 <h3 className="text-sm font-bold text-slate-900">Aksiyon Merkezi</h3>
-               </div>
-               {totalBadges > 0 && (
-                 <div className="w-5 h-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center">{totalBadges}</div>
-               )}
-             </div>
-             
-             <div className="space-y-1">
-               <div className="flex items-center justify-between text-xs py-2">
-                  <div className="flex items-center gap-2.5 text-slate-600 font-medium">
-                     <Phone size={16} className="text-emerald-500" /> Cevapsız / Geri Dönüş Bekleyen
-                  </div>
-                  <div className="flex items-center gap-2">
-                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${countMissedFollowups > 0 ? "text-red-500 bg-red-50" : "text-slate-500 bg-slate-50"}`}>{countMissedFollowups}</span>
-                  </div>
-               </div>
-               <div className="w-full h-px bg-slate-50 border-b border-dashed border-slate-100" />
 
-               <div className="flex items-center justify-between text-xs py-2">
-                  <div className="flex items-center gap-2.5 text-slate-600 font-medium">
-                     <Mail size={16} className="text-blue-500" /> Yeni Lead'ler
-                  </div>
-                  <div className="flex items-center gap-2">
-                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${countNewLeads > 0 ? "text-orange-500 bg-orange-50" : "text-slate-500 bg-slate-50"}`}>{countNewLeads}</span>
-                  </div>
-               </div>
-               <div className="w-full h-px bg-slate-50 border-b border-dashed border-slate-100" />
-
-               <div className="flex items-center justify-between text-xs py-2">
-                  <div className="flex items-center gap-2.5 text-slate-600 font-medium">
-                     <Home size={16} className="text-indigo-500" /> Fiyat Revizyonu Önerileri
-                  </div>
-                  <div className="flex items-center gap-2">
-                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${countPriceRevisions > 0 ? "text-blue-500 bg-blue-50" : "text-slate-500 bg-slate-50"}`}>{countPriceRevisions}</span>
-                  </div>
-               </div>
-               <div className="w-full h-px bg-slate-50 border-b border-dashed border-slate-100" />
-               
-               <div className="flex items-center justify-between text-xs py-2">
-                  <div className="flex items-center gap-2.5 text-slate-600 font-medium">
-                     <MapPin size={16} className="text-emerald-500" /> Bölge Takip Hatırlatmaları
-                  </div>
-                  <div className="flex items-center gap-2">
-                     <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${countBolgemAlerts > 0 ? "text-emerald-500 bg-emerald-50" : "text-slate-500 bg-slate-50"}`}>{countBolgemAlerts}</span>
-                  </div>
-               </div>
-             </div>
-             
-             <button onClick={() => setActiveTab && setActiveTab("tasks")} className="text-[11px] font-bold text-blue-600 hover:text-blue-700 w-full text-left mt-3 flex items-center">
-               Tüm aksiyonları gör <ArrowRight size={14} className="ml-1" />
-             </button>
-          </Card>
-          </section>
-          )}
-
-          {/* 9. GELİR ÖZETİ */}
-          {!isNewUserCampaignActive && (
-          <section className="order-10">
-            <Card className="p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
-             <div className="flex items-center justify-between mb-4">
-               <h3 className="text-sm font-bold text-slate-900">Gelir Özeti</h3>
-               <select className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-600 outline-none">
-                 <option>Bu Ay</option>
-               </select>
-             </div>
-             <div>
-                <div className="flex items-end gap-2 mb-1">
-                  <span className="text-[28px] font-black text-slate-900 leading-none">{formatCurrency(rvPotential).replace('₺', '')} <span className="text-xl">₺</span></span>
-                  <span className="text-xs font-bold text-emerald-500 flex items-center mb-1"><ArrowUpRight size={12} /></span>
-                </div>
-                <div className="flex items-center justify-between mt-1.5">
-                  <span className="text-[9px] uppercase font-bold text-slate-400 tracking-wide">{rvPotential === 0 ? "Gelir Verisi Yok" : (isEst ? "Tahmini Potansiyel Gelir" : "Toplam Potansiyel Gelir")}</span>
-                  <span className="text-[9px] text-slate-400">{isEst && rvPotential > 0 ? "Portföylerden tahmini" : ""}</span>
-                </div>
-             </div>
-
-             <div className="mt-6 space-y-4">
-                <div>
-                   <div className="flex justify-between text-xs font-bold mb-1.5">
-                     <span className="text-slate-600">{isEst ? "Tahmini Potansiyel" : "Potansiyel"}</span>
-                     <span className="text-slate-900">{formatCurrency(rvPotential)}</span>
-                   </div>
-                   <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                     <div className="h-full bg-slate-800" style={{width: `${Math.min(100, (rvPotential / rvMax) * 100)}%`}}></div>
-                   </div>
-                </div>
-                <div>
-                   <div className="flex justify-between text-xs font-bold mb-1.5">
-                     <span className="text-slate-600">{isEst ? "Tahmini Görüşme" : "Görüşme/Ağırlıklı"}</span>
-                     <span className="text-slate-900">{formatCurrency(rvExpected)}</span>
-                   </div>
-                   <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                     <div className="h-full bg-[#00D2B4]" style={{width: `${Math.min(100, (rvExpected / rvMax) * 100)}%`}}></div>
-                   </div>
-                </div>
-                <div>
-                   <div className="flex justify-between text-xs font-bold mb-1.5">
-                     <span className="text-slate-600">{isEst ? "Tahmini Teklif" : "Teklif"}</span>
-                     <span className="text-slate-900">{formatCurrency(rvOffer)}</span>
-                   </div>
-                   <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                     <div className="h-full bg-[#FF6B1A]" style={{width: `${Math.min(100, (rvOffer / rvMax) * 100)}%`}}></div>
-                   </div>
-                </div>
-                <div>
-                   <div className="flex justify-between text-xs font-bold mb-1.5">
-                     <span className="text-slate-600">{isEst ? "Tahmini Kapanan" : "Kapanan"}</span>
-                     <span className="text-slate-900">{formatCurrency(rvClosed)}</span>
-                   </div>
-                   <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
-                     <div className="h-full bg-emerald-500" style={{width: `${Math.min(100, (rvClosed / rvMax) * 100)}%`}}></div>
-                   </div>
-                </div>
-             </div>
-
-             <button onClick={() => setActiveTab && setActiveTab("crm")} className="text-[11px] font-bold text-blue-600 hover:text-blue-700 w-full text-left mt-5 flex items-center">
-               Funnel'ı detaylı gör <ArrowRight size={14} className="ml-1" />
-             </button>
-          </Card>
-          </section>
-          )}
-
-          {/* 5. AI İÇGÖRÜ */}
-          {!isNewUserCampaignActive && (
-          <section className="order-6">
-            <Card
-              onClick={() => {
-                if (!canUseAiCoach) {
-                  setShowUpgradeModal(true);
-                } else {
-                  setActiveTab && setActiveTab("koc");
-                }
-              }}
-              className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px] cursor-pointer group flex flex-col"
-            >
-               <div className="flex items-center justify-between mb-4">
-                 <div className="flex items-center gap-2">
-                   <Brain size={18} className="text-slate-700" />
-                   <h3 className="text-sm font-bold text-slate-900">AI İçgörü</h3>
-                 </div>
-               </div>
-               
-               <div className="flex flex-col gap-3 flex-1 bg-slate-50 border border-slate-100 rounded-2xl p-4">
-                  <p className="text-[13px] text-slate-700 leading-relaxed font-medium">
-                    {canUseAiCoach 
-                      ? (coachInsights?.daily_tip || "Bugün için AI içgörü henüz oluşmadı. Veri biriktikçe burada öneriler görünür.")
-                      : "Yapay zeka asistanınız verilerinizi analiz ederek size özel öneriler sunar."}
-                  </p>
-                  {canUseAiCoach && coachInsights?.daily_tip && (
-                    <div className="flex items-center gap-2 mt-1">
-                       <span className="text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded flex items-center gap-1 w-fit"><ArrowUpRight size={10} /> Yüksek</span>
-                    </div>
-                  )}
-               </div>
-               
-               <button onClick={(e) => { e.stopPropagation(); setActiveTab && setActiveTab("koc"); }} className="text-[11px] font-bold text-blue-600 hover:text-blue-700 w-full text-left mt-4 flex items-center">
-                 Tüm içgörüleri gör <ArrowRight size={14} className="ml-1" />
-               </button>
-            </Card>
-          </section>
-          )}
-
-          {/* 10. HAFTALIK MOMENTUM */}
-          {!isNewUserCampaignActive && (
-          <section className="order-11 mb-8 lg:mb-0">
-            <Card className="p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
-             <div className="flex items-center justify-between mb-4">
-               <div className="flex items-center gap-2">
-                 <BarChart3 size={18} className="text-slate-700" />
-                 <h3 className="text-sm font-bold text-slate-900">Haftalık Momentum</h3>
-               </div>
-               <select className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-600 outline-none">
-                 <option>Bu Hafta</option>
-               </select>
-             </div>
-             
-             <div className="flex gap-4 items-end mt-4">
-                <div className="relative w-20 h-20 shrink-0">
-                  <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
-                    <path
-                      className="text-slate-100 stroke-current"
-                      strokeWidth="3"
-                      fill="none"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                    <path
-                      className={hasMomentumData ? "text-[#00D2B4] stroke-current" : "text-slate-200 stroke-current"}
-                      strokeWidth="3"
-                      strokeDasharray={`${hasMomentumData ? momentumScore : 0}, 100`}
-                      strokeLinecap="round"
-                      fill="none"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
-                    />
-                  </svg>
-                  <div className="absolute inset-0 flex items-center justify-center flex-col pt-1">
-                    <span className="text-xl font-black text-slate-900">{hasMomentumData ? momentumScore : 0}%</span>
-                    <span className="text-[6px] uppercase font-bold text-slate-400">Momentum Skoru</span>
-                  </div>
-                </div>
-
-                <div className="flex-1 flex items-end justify-between h-14 w-full px-1 border-b border-dashed border-slate-200 relative pb-1">
-                   <div className="absolute top-0 right-0 left-0 border-t border-dashed border-slate-200 pointer-events-none">
-                     <span className="absolute -top-3 right-0 text-[8px] font-bold text-slate-400">Hedef 85%</span>
-                   </div>
-                   {hasMomentumData ? (
-                     <>
-                       <div className="w-2 h-[30%] bg-slate-200 rounded-t-sm" />
-                       <div className="w-2 h-[60%] bg-slate-200 rounded-t-sm" />
-                       <div className="w-2 h-[80%] bg-slate-200 rounded-t-sm" />
-                       <div className="w-2 h-[100%] bg-[#00D2B4] rounded-t-sm" />
-                       <div className="w-2 h-[50%] bg-slate-200 rounded-t-sm" />
-                       <div className="w-2 h-[40%] bg-slate-200 rounded-t-sm" />
-                       <div className="w-2 h-[20%] bg-slate-200 rounded-t-sm" />
-                     </>
-                   ) : (
-                     <>
-                       <div className="w-2 h-1 bg-slate-100 rounded-t-sm" />
-                       <div className="w-2 h-1 bg-slate-100 rounded-t-sm" />
-                       <div className="w-2 h-1 bg-slate-100 rounded-t-sm" />
-                       <div className="w-2 h-1 bg-slate-100 rounded-t-sm" />
-                       <div className="w-2 h-1 bg-slate-100 rounded-t-sm" />
-                       <div className="w-2 h-1 bg-slate-100 rounded-t-sm" />
-                       <div className="w-2 h-1 bg-slate-100 rounded-t-sm" />
-                     </>
-                   )}
-                </div>
-             </div>
-             
-             <div className="flex justify-between pl-[5.5rem] pr-1 mt-1">
-                <span className="text-[8px] font-bold text-slate-400">Pzt</span>
-                <span className="text-[8px] font-bold text-slate-400">Sal</span>
-                <span className="text-[8px] font-bold text-slate-400">Çar</span>
-                <span className="text-[8px] font-bold text-slate-400">Per</span>
-                <span className="text-[8px] font-bold text-slate-400">Cum</span>
-                <span className="text-[8px] font-bold text-slate-400">Cmt</span>
-                <span className="text-[8px] font-bold text-slate-400">Paz</span>
-             </div>
-
-             {!hasMomentumData && (
-               <div className="mt-4 text-center">
-                 <span className="text-xs font-medium text-slate-500">Henüz momentum verisi yok</span>
-               </div>
-             )}
-          </Card>
-          </section>
-          )}
 
         </div>
       </div>
-      
-      <UpgradeModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        onSelectPlan={(tier) => console.log("Plan seçildi:", tier)}
-        onActivateTrial={async () => {
-          try {
-            await subscribe("trial");
-            setShowUpgradeModal(false);
-          } catch (e) {
-            console.error("Deneme sürümü başlatılırken hata:", e);
-          }
-        }}
-      />
       {showEarlyStartModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
           <div className="bg-white rounded-[24px] p-6 w-full max-w-sm shadow-2xl">

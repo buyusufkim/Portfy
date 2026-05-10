@@ -29,7 +29,6 @@ import toast from "react-hot-toast";
 import { getTodayStr } from "../services/core/utils";
 import { AddTaskModal } from "../components/app/modals/AddTaskModal";
 import { campaign90Service } from '../services/campaign90Service';
-import { useNavigate } from 'react-router-dom';
 
 const Campaign90RedirectBanner: React.FC<{userId: string, setActiveTab?: (t: string) => void}> = ({ userId, setActiveTab }) => {
   const { data: campaign } = useQuery({
@@ -80,6 +79,9 @@ const Campaign90RedirectBanner: React.FC<{userId: string, setActiveTab?: (t: str
 
 const safeFormatTime = (isoString?: string | null) => {
   if (!isoString) return "Tam Gün";
+  if (isoString.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(isoString)) {
+    return "Tam Gün";
+  }
   const d = new Date(isoString);
   if (isNaN(d.getTime())) return "Tam Gün";
   return d.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit', timeZone: 'Europe/Istanbul' });
@@ -89,7 +91,6 @@ export interface TasksPageProps {
   profile: UserProfile | null;
   tasks: Task[];
   personalTasks: PersonalTask[];
-  setShowAddTask: (show: boolean) => void;
   setActiveTab?: (tab: string) => void;
 }
 
@@ -208,8 +209,7 @@ type FlowTypeFilter =
   | "crm"
   | "bolgem"
   | "content"
-  | "personal"
-  | "campaign";
+  | "personal";
 
 export const TasksPage: React.FC<TasksPageProps> = ({
   profile,
@@ -226,21 +226,7 @@ export const TasksPage: React.FC<TasksPageProps> = ({
   const [internalAddTaskMode, setInternalAddTaskMode] = useState<"work"| "followup"| "personal"| "activity"| "content">("work");
   const [selectedTaskDetails, setSelectedTaskDetails] = useState<FlowItem | null>(null);
 
-  const { data: campaign } = useQuery({
-    queryKey: ['campaign90_active', profile?.id],
-    queryFn: () => campaign90Service.getActiveCampaign(profile!.id),
-    enabled: !!profile?.id,
-  });
-
   const todayStr = getTodayStr();
-
-  const { data: campaignTasks } = useQuery({
-      queryKey: ['campaign90_tasks', campaign?.id, todayStr],
-      queryFn: () => campaign90Service.getTodayCampaignTasks(profile!.id, todayStr),
-      enabled: !!campaign?.id && !!profile?.id
-  });
-
-  const isCampaignRestricted = campaign && campaign.current_day >= 8 && (!profile?.subscription_end_date || new Date(profile.subscription_end_date) < new Date()) && profile?.tier !== 'master' && profile?.tier !== 'pro' && profile?.tier !== 'elite';
 
   const handleFlowFilterChange = (val: "today" | "overdue" | "upcoming" | "all") => {
     setFlowFilter(val);
@@ -306,27 +292,10 @@ export const TasksPage: React.FC<TasksPageProps> = ({
       raw: t,
     }));
 
-    const mappedCampaign: FlowItem[] = (campaignTasks || []).filter(t => t.status !== 'skipped').map((t) => {
-      const isLocked = isCampaignRestricted;
-      return {
-        id: t.id,
-        source: "campaign",
-        title: isLocked ? "Pro Özellik Kilidi Aç" : t.title,
-        notes: isLocked ? "Paketi aktif et" : t.description,
-        typeLabel: "90 Gün Kampı",
-        sourceLabel: "Kampanya",
-        dueDate: todayStr,
-        priority: "high",
-        completed: t.status === 'completed',
-        completedAt: t.completed_at,
-        raw: t,
-      };
-    });
+    return [...mappedTasks, ...mappedPersonal];
+  }, [tasks, personalTasks, todayStr]);
 
-    return [...mappedTasks, ...mappedPersonal, ...mappedCampaign];
-  }, [tasks, personalTasks, campaignTasks, todayStr]);
-
-  const { filteredItems, stats, overviews, flowNotes, focusBlock } = useMemo(() => {
+  const { filteredItems, stats, overviews, flowNotes } = useMemo(() => {
     const todayISO = getTodayStr();
 
     let todayCount = 0;
@@ -339,8 +308,6 @@ export const TasksPage: React.FC<TasksPageProps> = ({
     let summaryOverdue = 0;
 
     const notesList: Array<{ text: string; time?: string; sourceLabel: string; isOverdue: boolean }> = [];
-
-    let potentialFocus: FlowItem[] = [];
 
     const parseTargetDate = (item: FlowItem) => {
       let targetDateStr = item.dueDate;
@@ -408,24 +375,6 @@ export const TasksPage: React.FC<TasksPageProps> = ({
           isOverdue
         });
       }
-
-      // Collect candidates for focus block
-      if (isToday || isOverdue) {
-        potentialFocus.push(item);
-      }
-    });
-
-    // Determine focus block
-    potentialFocus.sort((a, b) => {
-      // 1. High priority + Overdue
-      const aScore = (a.priority === "high" ? 10 : 0) + (parseTargetDate(a) < todayISO ? 5 : 0);
-      const bScore = (b.priority === "high" ? 10 : 0) + (parseTargetDate(b) < todayISO ? 5 : 0);
-      if (aScore !== bScore) return bScore - aScore;
-      
-      // 2. Earliest Reminder
-      const strA = safeDateCompareStr(a);
-      const strB = safeDateCompareStr(b);
-      return strA.localeCompare(strB);
     });
 
     let displayItems = allItems.filter((item) => {
@@ -442,7 +391,6 @@ export const TasksPage: React.FC<TasksPageProps> = ({
       // 2. apply typeFilter
       if (typeFilter !== "all") {
         if (typeFilter === "personal" && item.source !== "personal") return false;
-        if (typeFilter === "campaign" && item.source !== "campaign") return false;
         if (typeFilter === "content" && item.sourceLabel !== "İçerik") return false;
         if (typeFilter === "crm" && item.sourceLabel !== "CRM") return false;
         if (typeFilter === "portfolio" && item.sourceLabel !== "Portföy") return false;
@@ -481,7 +429,6 @@ export const TasksPage: React.FC<TasksPageProps> = ({
         overdue: summaryOverdue
       },
       flowNotes: notesList.slice(0, 3), // Max 3 notes
-      focusBlock: potentialFocus[0] || null
     };
   }, [allItems, flowFilter, typeFilter]);
 
@@ -489,10 +436,7 @@ export const TasksPage: React.FC<TasksPageProps> = ({
     e.stopPropagation();
     try {
       const newStatus = !item.completed;
-      if (item.source === "campaign" && setActiveTab) {
-         setActiveTab('campaign-90');
-         return;
-      } else if (item.source === "task") {
+      if (item.source === "task") {
         await api.updateTaskStatus(item.id, newStatus);
         queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.TASKS, profile?.id] });
       } else {
@@ -506,10 +450,6 @@ export const TasksPage: React.FC<TasksPageProps> = ({
   };
 
   const handleRowClick = (item: FlowItem) => {
-    if (item.source === "campaign" && setActiveTab) {
-       setActiveTab('campaign-90');
-       return;
-    }
     setSelectedTaskDetails(item);
   };
 
@@ -527,14 +467,14 @@ export const TasksPage: React.FC<TasksPageProps> = ({
       case "Bölgem": return { bg: "bg-violet-50", text: "text-violet-700", icon: <MapPin size={14}/> };
       case "İçerik": return { bg: "bg-teal-50", text: "text-teal-700", icon: <Play size={14}/> };
       case "Kişisel": return { bg: "bg-rose-50", text: "text-rose-700", icon: <UserIcon size={14}/> };
-      case "Kampanya": return { bg: "bg-[#00D2B4]/10", text: "text-[#00D2B4]", icon: <Target size={14}/> };
       default: return { bg: "bg-slate-100", text: "text-slate-600", icon: <CheckSquare size={14}/> };
     }
   };
 
   const getStatusBadge = (item: FlowItem) => {
     const todayISO = getTodayStr();
-    let targetDateStr = item.dueDate || item.reminderTime?.split("T")[0] || todayISO;
+    const rawDate = item.dueDate || (item.reminderTime ? item.reminderTime.split("T")[0] : null) || todayISO;
+    const targetDateStr = rawDate.split("T")[0];
     if (targetDateStr < todayISO) {
       return <span className="flex items-center gap-1.5 text-xs font-bold text-red-600"><AlertTriangle size={14}/> Gecikti</span>;
     }
@@ -645,7 +585,6 @@ export const TasksPage: React.FC<TasksPageProps> = ({
             {(
               [
                 { id: "all", label: "Tümü" },
-                { id: "campaign", label: "Kampanya" },
                 { id: "work", label: "İş" },
                 { id: "followup", label: "Takip" },
                 { id: "portfolio", label: "Portföy" },
@@ -690,21 +629,9 @@ export const TasksPage: React.FC<TasksPageProps> = ({
                 <div 
                   key={item.id}
                   onClick={() => handleRowClick(item)}
-                  className="group bg-white p-4 rounded-3xl border border-slate-100 hover:border-[#0f172a]/20 hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)] transition-all flex items-start sm:items-center gap-4 cursor-pointer"
+                  className="group bg-white p-3.5 sm:p-4 rounded-[20px] sm:rounded-3xl border border-slate-100 hover:border-[#0f172a]/20 hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)] transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 cursor-pointer"
                 >
-                  {item.source === 'campaign' ? (
-                    <div
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        if (setActiveTab) setActiveTab('campaign-90');
-                      }}
-                      className="shrink-0 mt-0.5 sm:mt-0"
-                    >
-                      <div className="px-2.5 py-1 text-[10px] font-bold rounded-md bg-[#00D2B4]/10 text-[#00D2B4] hover:bg-[#00D2B4]/20 transition-colors cursor-pointer border border-[#00D2B4]/30 flex items-center gap-1">
-                        Kampa Git <ArrowRight size={10} />
-                      </div>
-                    </div>
-                  ) : (
+                  <div className="flex items-start sm:items-center gap-3 w-full sm:w-auto sm:flex-1 min-w-0">
                     <div 
                       onClick={(e) => handleToggle(e, item)}
                       className="shrink-0 mt-0.5 sm:mt-0 text-slate-300 hover:text-emerald-500 transition-colors"
@@ -713,34 +640,50 @@ export const TasksPage: React.FC<TasksPageProps> = ({
                         {item.completed && <CheckCircle2 size={16} className="text-emerald-500 fill-current bg-white rounded-full" />}
                       </div>
                     </div>
-                  )}
 
-                  <div className={`w-11 h-11 rounded-2xl flex items-center justify-center shrink-0 ${srcStyle.bg} ${srcStyle.text}`}>
-                     {srcStyle.icon}
-                  </div>
-
-                  <div className="flex-1 min-w-0 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="min-w-0 pr-4">
-                      <h4 className="font-bold text-sm text-slate-900 truncate">{item.title}</h4>
-                      {item.notes && <p className="text-xs text-slate-500 truncate mt-1">{item.notes}</p>}
+                    <div className={`w-10 h-10 sm:w-11 sm:h-11 rounded-2xl flex items-center justify-center shrink-0 ${srcStyle.bg} ${srcStyle.text}`}>
+                       {srcStyle.icon}
                     </div>
 
-                    <div className="flex flex-wrap items-center gap-2 sm:gap-4 shrink-0 mt-1 sm:mt-0">
-                      <div className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${srcStyle.bg} ${srcStyle.text}`}>
-                        {item.sourceLabel}
-                      </div>
+                    <div className="flex-1 min-w-0 pr-2">
+                       <h4 className="font-bold text-[13px] sm:text-sm text-slate-900 line-clamp-2 md:truncate">{item.title}</h4>
+                       {item.notes && <p className="text-[11px] sm:text-xs text-slate-500 line-clamp-1 mt-0.5">{item.notes}</p>}
+                       
+                       {/* Mobile Chips */}
+                       <div className="flex sm:hidden flex-wrap items-center gap-1.5 mt-2">
+                         <div className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase tracking-wider ${srcStyle.bg} ${srcStyle.text}`}>
+                           {item.sourceLabel}
+                         </div>
+                         <div className="flex items-center gap-1 text-[9px] font-bold bg-slate-50 text-slate-500 px-2 py-0.5 rounded-md">
+                            <Clock size={10} className="text-slate-400" />
+                            {item.reminderTime 
+                               ? safeFormatTime(item.reminderTime)
+                               : (item.dueDate ? safeFormatTime(item.dueDate) : 'Tam Gün')
+                            }
+                         </div>
+                         <div className="flex shrink-0 transform scale-[0.85] origin-left">
+                           {getStatusBadge(item)}
+                         </div>
+                       </div>
+                    </div>
+                  </div>
 
-                      <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-bold bg-slate-50 px-3 py-1 rounded-lg">
-                         <Clock size={12} className="text-slate-400" />
-                         {item.reminderTime 
-                            ? safeFormatTime(item.reminderTime)
-                            : (item.dueDate ? safeFormatTime(item.dueDate) : 'Tam Gün')
-                         }
-                      </div>
-                      
-                      <div className="flex justify-start sm:justify-end">
-                        {getStatusBadge(item)}
-                      </div>
+                  {/* Desktop Right Side Tags & Actions */}
+                  <div className="hidden sm:flex flex-wrap items-center gap-4 shrink-0 mt-1 sm:mt-0">
+                    <div className={`px-3 py-1 rounded-lg text-[10px] font-bold uppercase tracking-wider ${srcStyle.bg} ${srcStyle.text}`}>
+                      {item.sourceLabel}
+                    </div>
+
+                    <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-bold bg-slate-50 px-3 py-1 rounded-lg">
+                       <Clock size={12} className="text-slate-400" />
+                       {item.reminderTime 
+                          ? safeFormatTime(item.reminderTime)
+                          : (item.dueDate ? safeFormatTime(item.dueDate) : 'Tam Gün')
+                       }
+                    </div>
+                    
+                    <div className="flex justify-end">
+                      {getStatusBadge(item)}
                     </div>
                   </div>
                 </div>
@@ -803,7 +746,7 @@ export const TasksPage: React.FC<TasksPageProps> = ({
           </div>
 
           {/* Akış Notları */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
+          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm mb-8 lg:mb-0">
             <div className="flex items-center justify-between mb-5">
               <h3 className="font-bold text-slate-900">Akış Notları</h3>
             </div>
@@ -836,42 +779,6 @@ export const TasksPage: React.FC<TasksPageProps> = ({
               </div>
             )}
           </div>
-
-          {/* Odak Bloğu */}
-          <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm mb-8 lg:mb-0">
-             
-             <div className="flex items-center gap-2.5 mb-5">
-               <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                 <Target size={18} />
-               </div>
-               <h3 className="font-bold text-slate-900 text-[15px]">Odak Bloğu</h3>
-             </div>
-
-             {focusBlock ? (
-               <div 
-                  onClick={() => handleRowClick(focusBlock)}
-                  className="bg-slate-50/50 rounded-2xl p-5 border border-slate-100 shadow-[0_2px_10px_-4px_rgba(0,0,0,0.05)] hover:border-indigo-200 hover:bg-white hover:shadow-md transition-all cursor-pointer group relative"
-               >
-                 <h4 className="font-black text-slate-900 text-sm line-clamp-2 pr-6 mb-2 tracking-tight group-hover:text-indigo-900">{focusBlock.title}</h4>
-                 <p className="text-xs text-slate-500 line-clamp-2 mb-4 leading-relaxed">{focusBlock.notes || 'Detay girilmedi.'}</p>
-                 <div className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-indigo-50/80 border border-indigo-100 text-[11px] font-bold text-indigo-600 group-hover:bg-indigo-100 group-hover:text-indigo-700 transition-colors uppercase tracking-widest">
-                    <Clock size={12} />
-                    {focusBlock.reminderTime 
-                      ? `${safeFormatTime(focusBlock.reminderTime)} tamamla` 
-                      : 'Bugün içinde tamamla'}
-                 </div>
-                 <ChevronRight size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-300 group-hover:text-indigo-500 transition-colors group-hover:translate-x-1" />
-               </div>
-             ) : (
-               <div className="bg-slate-50/50 rounded-2xl p-6 border border-slate-100 text-center">
-                 <div className="w-12 h-12 bg-white rounded-full border border-slate-100 shadow-sm flex items-center justify-center mx-auto mb-3">
-                   <CheckCircle2 size={24} className="text-emerald-400" />
-                 </div>
-                 <p className="text-[13px] font-bold text-slate-600">Tüm odağınız net!</p>
-               </div>
-             )}
-          </div>
-
         </div>
       </div>
 
