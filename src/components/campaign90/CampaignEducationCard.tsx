@@ -13,46 +13,52 @@ export const CampaignEducationCard: React.FC<Props> = ({ curriculum, readOnly = 
     const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
 
     return (
-        <Card className="bg-white border border-slate-200 rounded-[24px] overflow-hidden shadow-sm">
-            <div className="p-6 relative">
+        <Card className="bg-white border border-slate-200 rounded-[20px] overflow-hidden shadow-sm">
+            <div className="p-4 md:p-5 relative">
                 <div className="absolute right-0 top-0 opacity-[0.03] text-slate-900 pointer-events-none">
-                    <BookOpen size={160} />
+                    <BookOpen size={100} />
                 </div>
                 <div className="relative z-10 block">
-                    <div className="flex items-center gap-2 mb-2">
-                        <div className="text-[10px] font-black text-[#00D2B4] tracking-widest uppercase bg-[#00D2B4]/10 px-2.5 py-0.5 rounded-sm">
-                            GÜNÜN EĞİTİMİ: {curriculum.module_title}
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-2">
+                        <div className="flex flex-col">
+                            <div className="text-[9px] font-black text-[#00D2B4] tracking-widest uppercase bg-[#00D2B4]/10 px-2 py-0.5 rounded w-max mb-1.5">
+                                GÜNÜN EĞİTİMİ: {curriculum.module_title}
+                            </div>
+                            <h2 className="text-xl font-black text-slate-900 leading-tight">{curriculum.lesson_title}</h2>
                         </div>
                     </div>
-                    <h2 className="text-2xl font-black text-slate-900 mb-3">{curriculum.lesson_title}</h2>
                     
-                    <div className="flex flex-wrap gap-2 mb-5">
+                    <div className="flex flex-wrap gap-1.5 mb-3">
                         {curriculum.learning_goals.map((goal, idx) => (
-                            <div key={idx} className="bg-slate-50 border border-slate-100 text-slate-600 text-[11px] font-bold px-3 py-1 rounded-full flex items-center gap-1.5">
-                                <Check size={12} className="text-[#00D2B4]" />
+                            <div key={idx} className="bg-slate-50 border border-slate-100 text-slate-600 text-[10px] font-bold px-2 py-1 rounded flex items-center gap-1">
+                                <Check size={10} className="text-[#00D2B4]" />
                                 {goal}
                             </div>
                         ))}
                     </div>
                     
-                    <p className="text-slate-700 font-medium text-sm leading-relaxed whitespace-pre-wrap">{curriculum.lesson_body}</p>
+                    <p className="text-slate-600 font-medium text-[13px] leading-relaxed line-clamp-2">{curriculum.lesson_body}</p>
                 </div>
             </div>
 
             <div className="border-t border-slate-100 bg-slate-50/50">
                 <details className="group [&_summary::-webkit-details-marker]:hidden">
-                    <summary className="p-4 px-6 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors">
-                        <div className="font-bold text-sm text-slate-800 flex items-center gap-2">
-                            <Target size={16} className="text-indigo-500" />
+                    <summary className="p-3 px-5 flex items-center justify-between cursor-pointer hover:bg-slate-50 transition-colors">
+                        <div className="font-bold text-[13px] text-slate-800 flex items-center gap-1.5">
+                            <Target size={14} className="text-indigo-500" />
                             Eğitim Detayları ve Saha Uygulaması
                         </div>
-                        <div className="flex items-center gap-2 text-xs font-bold text-slate-400">
+                        <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-400">
                             <span className="group-open:hidden">Aç ve İncele</span>
                             <span className="hidden group-open:block">Kapat</span>
-                            <ChevronDown size={16} className="group-open:rotate-180 transition-transform"/>
+                            <ChevronDown size={14} className="group-open:rotate-180 transition-transform"/>
                         </div>
                     </summary>
-                    <div className="px-6 pb-6 pt-2 space-y-4">
+                    <div className="px-5 pb-5 pt-2 space-y-4">
+                        <div className="bg-white p-4 rounded-xl border border-slate-100 mb-4 shadow-sm">
+                            <h4 className="text-[11px] font-black text-slate-500 uppercase tracking-wider mb-2">Eğitim Metni</h4>
+                            <p className="text-sm font-medium text-slate-800 whitespace-pre-wrap leading-relaxed">{curriculum.lesson_body}</p>
+                        </div>
                         
                         <div className="bg-white border-l-4 border-indigo-500 p-4 rounded-r-xl shadow-sm">
                             <h4 className="text-xs font-black text-slate-500 uppercase tracking-wider mb-1">Sahada Nasıl Uygulanır?</h4>

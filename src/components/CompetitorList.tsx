@@ -17,21 +17,21 @@ export const CompetitorList: React.FC<CompetitorListProps> = ({ filteredPins, al
           const typeObj = allPinTypes.find(t => t.id === pin.type);
           const Icon = typeObj?.icon || Building2;
           return (
-            <div key={pin.id} className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex gap-4 hover:shadow-md transition-all">
+            <div key={pin.id} className="bg-white p-3.5 rounded-[16px] shadow-sm border border-slate-100 flex gap-3 hover:shadow-md transition-all">
               <div 
-                className="w-12 h-12 rounded-xl flex items-center justify-center text-white shrink-0"
+                className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
                 style={{ backgroundColor: typeObj?.color || '#eab308' }}
               >
-                <Icon size={20} />
+                <Icon size={18} />
               </div>
               <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-start mb-1">
-                  <h3 className="font-bold text-slate-900 truncate">{pin.title}</h3>
-                  <span className="text-[10px] font-bold text-slate-400 bg-slate-100 px-2 py-1 rounded-md shrink-0 ml-2">{typeObj?.label}</span>
+                <div className="flex justify-between items-start mb-0.5">
+                  <h3 className="text-sm font-bold text-slate-900 truncate">{pin.title}</h3>
+                  <span className="text-[9px] font-bold text-slate-400 bg-slate-100 px-1.5 py-0.5 rounded shrink-0 ml-2">{typeObj?.label}</span>
                 </div>
-                <p className="text-xs text-slate-500 mb-2 truncate">{pin.address}</p>
+                <p className="text-[10px] text-slate-500 mb-1.5 truncate">{pin.address}</p>
                 {pin.notes && (
-                  <p className="text-xs text-slate-700 bg-slate-50 p-2 rounded-lg line-clamp-2 italic">
+                  <p className="text-[10px] text-slate-700 bg-slate-50 px-2 py-1.5 rounded-lg line-clamp-1 italic">
                     "{pin.notes}"
                   </p>
                 )}

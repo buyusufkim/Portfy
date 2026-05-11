@@ -472,22 +472,29 @@ export const BolgemView = ({
         </div>
       ) : (
         <>
-          <div className="flex justify-between items-center mb-6">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Bölge Analizi</h1>
-            <div className="flex gap-2">
-              <button 
-                onClick={() => setView('map')}
-                className="flex items-center gap-2 px-4 py-2 bg-slate-900 text-white rounded-xl text-sm font-bold hover:bg-slate-800 transition-all"
-              >
-                <MapIcon size={16} /> Haritaya Dön
-              </button>
-              <button 
-                onClick={() => setShowFieldNotes(true)}
-                className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-sm font-bold hover:bg-indigo-100 transition-all"
-              >
-                <MessageSquare size={16} /> Saha Notları
-              </button>
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
+            <div className="flex items-center gap-3 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
+               <h1 className="text-2xl font-bold text-slate-900 tracking-tight shrink-0 mr-2">Bölge Analizi</h1>
+               <div className="flex bg-slate-100/80 p-1 rounded-xl shrink-0 border border-slate-200/50">
+                 <button 
+                   onClick={() => setView('map')}
+                   className="flex items-center gap-1.5 px-4 py-1.5 rounded-lg text-[11px] font-bold text-slate-500 hover:text-slate-900 hover:bg-white/50 transition-all"
+                 >
+                   <MapIcon size={14} /> Radar
+                 </button>
+                 <button 
+                   className="flex items-center gap-1.5 px-4 py-1.5 bg-white border border-slate-200/60 shadow-sm text-indigo-600 rounded-lg text-[11px] font-bold transition-all"
+                 >
+                   <LayoutDashboard size={14} /> Analiz
+                 </button>
+               </div>
             </div>
+            <button 
+              onClick={() => setShowFieldNotes(true)}
+              className="flex items-center justify-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl text-xs font-bold hover:bg-indigo-100 transition-all w-full sm:w-auto shrink-0"
+            >
+               <MessageSquare size={14} /> Saha Notları
+            </button>
           </div>
 
           <RegionStats profile={profile} pins={combinedPins} />
@@ -571,93 +578,92 @@ export const BolgemView = ({
               <div className="space-y-6 mb-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Score Card */}
-                  <div className="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-3xl p-6 text-white shadow-xl flex flex-col justify-between">
-                    <div>
-                      <h3 className="text-xl font-bold mb-1">Bölge Hakimiyeti</h3>
-                      <p className="text-indigo-200 text-xs">Network gücü ve saha aktivitenize göre hesaplanan güncel skorunuz.</p>
-                    </div>
-                    
-                    <div className="flex items-end items-center gap-4 mt-6">
-                      <div className="text-6xl font-black">{masteryScore}</div>
-                      <div className="text-sm font-medium text-emerald-400">
-                        / 100
+                  <div className="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-[20px] p-5 text-white shadow-xl flex flex-col justify-between h-full min-h-[220px]">
+                    <div className="flex justify-between items-start mb-4">
+                      <div>
+                        <h3 className="text-lg font-bold mb-0.5">Bölge Hakimiyeti</h3>
+                        <p className="text-indigo-200 text-[10px] leading-tight max-w-[180px]">Saha aktivitesine göre network gücü</p>
+                      </div>
+                      <div className="flex items-baseline gap-1 bg-white/10 rounded-xl px-3 py-1.5 shrink-0 ml-2">
+                        <div className="text-3xl font-black text-white leading-none">{masteryScore}</div>
+                        <div className="text-[10px] font-bold text-emerald-400 uppercase">/ 100</div>
                       </div>
                     </div>
 
-                    <div className="mt-6 grid grid-cols-2 gap-3 text-sm">
-                      <div className="bg-white/10 rounded-xl p-3">
-                        <div className="text-indigo-200 text-[10px] uppercase font-bold">Network Teması</div>
-                        <div className="text-xl font-bold">{networkPins.length}</div>
+                    <div className="grid grid-cols-2 gap-2 mt-auto">
+                      <div className="bg-white/10 rounded-xl p-2.5 flex items-center justify-between">
+                        <div className="text-indigo-200 text-[10px] font-bold">Ağımız</div>
+                        <div className="text-sm font-black">{networkPins.length}</div>
                       </div>
-                      <div className="bg-white/10 rounded-xl p-3">
-                        <div className="text-indigo-200 text-[10px] uppercase font-bold">Bölge Noktası</div>
-                        <div className="text-xl font-bold">{pointPins.length}</div>
+                      <div className="bg-white/10 rounded-xl p-2.5 flex items-center justify-between">
+                        <div className="text-indigo-200 text-[10px] font-bold">Nokta</div>
+                        <div className="text-sm font-black">{pointPins.length}</div>
                       </div>
-                      <div className="bg-white/10 rounded-xl p-3">
-                        <div className="text-indigo-200 text-[10px] uppercase font-bold">Sıcak / Referans</div>
-                        <div className="text-xl font-bold">{hotPotentials.length + activeReferrals.length}</div>
+                      <div className="bg-white/10 rounded-xl p-2.5 flex items-center justify-between">
+                        <div className="text-indigo-200 text-[10px] font-bold">Sıcak</div>
+                        <div className="text-sm font-black">{hotPotentials.length + activeReferrals.length}</div>
                       </div>
-                      <div className="bg-white/10 rounded-xl p-3">
-                        <div className="text-indigo-200 text-[10px] uppercase font-bold">Son 7 Gün Temas</div>
-                        <div className="text-xl font-bold">{recentContacts.length}</div>
+                      <div className="bg-white/10 rounded-xl p-2.5 flex items-center justify-between">
+                        <div className="text-indigo-200 text-[10px] font-bold">Aktif 7G</div>
+                        <div className="text-sm font-black">{recentContacts.length}</div>
                       </div>
                     </div>
                   </div>
 
                   <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Today's Follow-ups */}
-                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                          <CheckCircle2 size={16} className="text-emerald-500" />
+                    <div className="bg-white rounded-[20px] p-5 shadow-sm border border-slate-100 flex flex-col h-full min-h-[220px]">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5 uppercase tracking-wide">
+                          <CheckCircle2 size={14} className="text-emerald-500" />
                           Bugün Uğranacaklar
                         </h3>
-                        <span className="bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full text-[10px] font-bold">{pendingVisitsToday.length} Temas</span>
+                        <span className="bg-emerald-100 text-emerald-600 px-2 py-0.5 rounded-full text-[10px] font-bold">{pendingVisitsToday.length}</span>
                       </div>
-                      <div className="flex-1 overflow-y-auto max-h-[300px] pr-2 space-y-3">
+                      <div className="flex-1 overflow-y-auto max-h-[170px] pr-1 space-y-2">
                         {pendingVisitsToday.length > 0 ? pendingVisitsToday.map(pin => (
-                          <div key={pin.id} className="p-3 border border-slate-100 rounded-xl bg-slate-50">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h4 className="text-xs font-bold text-slate-900">{pin.title}</h4>
-                                <p className="text-[10px] text-slate-500">{pin.contact_name || pin.type}</p>
+                          <div key={pin.id} className="p-2.5 border border-slate-100 rounded-xl bg-slate-50/50">
+                            <div className="flex justify-between items-center mb-1">
+                              <div className="min-w-0 pr-2">
+                                <h4 className="text-[11px] font-bold text-slate-900 truncate">{pin.title}</h4>
+                                <p className="text-[9px] text-slate-500 truncate">{pin.contact_name || pin.type}</p>
                               </div>
-                              <span className="text-[10px] font-bold bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded">{pin.potential}</span>
+                              <span className="text-[9px] font-bold bg-indigo-50 text-indigo-600 px-1.5 py-0.5 rounded shrink-0">{pin.potential}</span>
                             </div>
                             <ActionButtons pin={pin} />
                           </div>
                         )) : (
-                          <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
-                            <CheckCircle2 size={24} className="mb-2 text-slate-300" />
-                            Bugün için kritik ziyaret bulunmuyor.
+                          <div className="h-full py-6 flex flex-col items-center justify-center text-slate-400">
+                            <CheckCircle2 size={20} className="mb-1 text-slate-300" />
+                            <span className="text-[10px]">Kritik ziyaret yok.</span>
                           </div>
                         )}
                       </div>
                     </div>
 
                     {/* Weak Network */}
-                    <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 flex flex-col">
-                      <div className="flex items-center justify-between mb-4">
-                        <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                          <TrendingUp size={16} className="text-red-500" />
+                    <div className="bg-white rounded-[20px] p-5 shadow-sm border border-slate-100 flex flex-col h-full min-h-[220px]">
+                      <div className="flex items-center justify-between mb-3">
+                        <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5 uppercase tracking-wide">
+                          <TrendingUp size={14} className="text-red-500" />
                           Zayıf Kalan Ağ
                         </h3>
-                        <span className="bg-red-100 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-bold">{weakNetwork.length} Riskli</span>
+                        <span className="bg-red-50 text-red-600 px-2 py-0.5 rounded-full text-[10px] font-bold">{weakNetwork.length} Riskli</span>
                       </div>
-                      <div className="flex-1 overflow-y-auto max-h-[300px] pr-2 space-y-3">
+                      <div className="flex-1 overflow-y-auto max-h-[170px] pr-1 space-y-2">
                         {weakNetwork.length > 0 ? weakNetwork.map(pin => (
-                          <div key={pin.id} className="p-3 border border-red-50 rounded-xl bg-red-50/30">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <h4 className="text-xs font-bold text-slate-900">{pin.title}</h4>
-                                <p className="text-[10px] text-slate-500">Son Tema: {pin.last_contact_date ? new Date(pin.last_contact_date).toLocaleDateString('tr-TR') : 'Hiç'}</p>
+                          <div key={pin.id} className="p-2.5 border border-red-50/50 rounded-xl bg-red-50/30">
+                            <div className="flex items-center justify-between mb-1">
+                              <div className="min-w-0 pr-2">
+                                <h4 className="text-[11px] font-bold text-slate-900 truncate">{pin.title}</h4>
+                                <p className="text-[9px] text-slate-500 truncate">Son: {pin.last_contact_date ? new Date(pin.last_contact_date).toLocaleDateString('tr-TR') : 'Hiç'}</p>
                               </div>
                             </div>
                             <ActionButtons pin={pin} />
                           </div>
                         )) : (
-                          <div className="h-full flex flex-col items-center justify-center text-slate-400 text-xs">
-                            Zayıf bağınız bulunmuyor.
+                          <div className="h-full py-6 flex flex-col items-center justify-center text-slate-400">
+                            <span className="text-[10px]">Zayıf bağ bulunmuyor.</span>
                           </div>
                         )}
                       </div>
@@ -666,18 +672,16 @@ export const BolgemView = ({
                 </div>
 
                 {/* Category Distribution */}
-                <div className="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-                   <h3 className="text-sm font-bold text-slate-900 mb-4">Kategori Dağılımı</h3>
-                   <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-3">
+                <div className="bg-white rounded-[20px] p-5 shadow-sm border border-slate-100">
+                   <h3 className="text-xs font-bold text-slate-900 mb-3 uppercase tracking-wide">Kategori Dağılımı</h3>
+                   <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2">
                      {categoryDistribution.map(cat => {
                        const Icon = cat.icon || Building2;
                        return (
-                         <div key={cat.id} className="p-3 border rounded-xl flex flex-col" style={{ borderColor: cat.color + '30', backgroundColor: cat.color + '10' }}>
-                           <div className="flex items-center gap-2 mb-2">
-                             <Icon size={14} style={{ color: cat.color }} />
-                             <span className="text-[10px] font-bold text-slate-700 line-clamp-1">{cat.label}</span>
-                           </div>
-                           <div className="text-lg font-black text-slate-900">{cat.count}</div>
+                         <div key={cat.id} className="p-2 border rounded-[14px] flex flex-col items-center text-center gap-1" style={{ borderColor: cat.color + '30', backgroundColor: cat.color + '10' }}>
+                           <Icon size={16} style={{ color: cat.color }} className="opacity-80" />
+                           <span className="text-[9px] font-bold text-slate-700 line-clamp-1 break-all w-full leading-tight">{cat.label}</span>
+                           <div className="text-sm font-black text-slate-900">{cat.count}</div>
                          </div>
                        );
                      })}
@@ -745,19 +749,19 @@ export const BolgemView = ({
             )}
           </div>
 
-          <div className="space-y-4 mb-6">
+          <div className="space-y-3 mb-6">
             <div className="relative">
-              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400" size={20} />
+              <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
               <input 
                 type="text"
                 placeholder="Sokak, bina veya kişi ara..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-white border-2 border-slate-100 rounded-2xl py-3 pl-12 pr-4 text-sm focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                className="w-full bg-white border border-slate-200 rounded-[14px] py-2.5 pl-10 pr-4 text-[13px] focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
               />
             </div>
 
-            <div className="flex overflow-x-auto gap-2 pb-2 scrollbar-hide items-center">
+            <div className="flex overflow-x-auto gap-2 pb-1 scrollbar-hide items-center">
               {(allPinTypes || []).map(type => {
                 const Icon = type.icon;
                 const isActive = filter === type.id;
@@ -765,12 +769,12 @@ export const BolgemView = ({
                   <button
                     key={type.id}
                     onClick={() => setFilter(type.id)}
-                    className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold whitespace-nowrap transition-all ${
-                      isActive ? 'text-white shadow-md' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-[11px] font-bold whitespace-nowrap transition-all ${
+                      isActive ? 'text-white shadow-sm' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'
                     }`}
-                    style={isActive ? { backgroundColor: type.color } : {}}
+                    style={isActive ? { backgroundColor: type.color, borderColor: type.color } : {}}
                   >
-                    <Icon size={14} style={{ color: isActive ? '#fff' : type.color }} />
+                    <Icon size={12} style={{ color: isActive ? '#fff' : type.color }} />
                     {type.label}
                   </button>
                 );
@@ -920,20 +924,22 @@ export const BolgemView = ({
         )}
       </AnimatePresence>
 
-      <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-10 left-1/2 -translate-x-1/2 z-[450] bg-slate-900/90 backdrop-blur-xl p-2 rounded-2xl flex shadow-2xl border border-white/10 pointer-events-auto">
-        <button 
-          onClick={() => setView('map')}
-          className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${view === 'map' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-        >
-          <MapIcon size={14} /> Radar
-        </button>
-        <button 
-          onClick={() => setView('list')}
-          className={`px-8 py-3 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all ${view === 'list' ? 'bg-indigo-600 text-white' : 'text-slate-400 hover:text-white'}`}
-        >
-          <LayoutDashboard size={14} /> Analiz
-        </button>
-      </div>
+      {view === 'map' && (
+        <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-10 left-1/2 -translate-x-1/2 z-[450] bg-slate-900/90 backdrop-blur-xl p-2 rounded-[16px] flex shadow-2xl border border-white/10 pointer-events-auto">
+          <button 
+            onClick={() => setView('map')}
+            className="px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all bg-indigo-600 text-white shadow-md"
+          >
+            <MapIcon size={14} /> Radar
+          </button>
+          <button 
+            onClick={() => setView('list')}
+            className="px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all text-slate-400 hover:text-white"
+          >
+            <LayoutDashboard size={14} /> Analiz
+          </button>
+        </div>
+      )}
 
       <AnimatePresence>
         {pinActionModal && (

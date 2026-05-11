@@ -23,7 +23,7 @@ export const CampaignTaskGroup: React.FC<TaskGroupProps> = ({
     tasks, 
     onComplete, 
     onSkip, 
-    defaultOpen = true, 
+    defaultOpen = false, 
     colorClass, 
     progressMap,
     pendingTaskId 

@@ -451,17 +451,17 @@ export const Campaign90Page: React.FC = () => {
     }
 
     return (
-        <div className="w-full max-w-[1300px] mx-auto p-4 md:p-8 pb-32 min-w-0 overflow-x-hidden">
-            <div className="flex items-end gap-3 mb-5">
+        <div className="w-full max-w-[1300px] mx-auto p-4 md:p-6 pb-24 min-w-0 overflow-x-hidden">
+            <div className="flex items-center gap-3 mb-4">
                 <div>
-                    <h1 className="text-3xl md:text-4xl font-black text-slate-900 tracking-tight">
+                    <h1 className="text-2xl md:text-3xl font-black text-slate-900 tracking-tight leading-tight">
                         {mergedContent.title}
                     </h1>
-                    <p className="text-sm font-bold text-slate-500 mt-1">Hafta {campaign.current_week}: {mergedContent.phaseTitle || phaseName}</p>
+                    <p className="text-[13px] font-bold text-slate-500 mt-0.5">Hafta {campaign.current_week}: {mergedContent.phaseTitle || phaseName}</p>
                 </div>
             </div>
 
-            <div className="flex flex-col gap-5 min-w-0">
+            <div className="flex flex-col gap-4 min-w-0">
                 {/* 1. Top Summary: Campaign Progress + Today's GPA */}
                 <div data-tour="campaign-progress">
                     <CampaignTopStats 
@@ -555,12 +555,12 @@ export const Campaign90Page: React.FC = () => {
                 </div>
 
                 {/* 6. Daily Campaign Tasks */}
-                <div className="pt-0 flex flex-col gap-3" data-tour="campaign-tasks">
-                    <h2 className="text-xl font-black text-slate-900 mb-1 mt-2">Bugünün Kamp Görevleri</h2>
+                <div className="pt-0 flex flex-col gap-2.5" data-tour="campaign-tasks">
+                    <h2 className="text-lg font-black text-slate-900 mb-0.5 mt-1">Bugünün Kamp Görevleri</h2>
                     {isLoadingTasks ? (
                         <div className="py-8 text-center text-slate-500 font-medium">Görevler yükleniyor...</div>
                     ) : tasks && tasks.length > 0 ? (
-                        <>
+                        <React.Fragment key={selectedDay}>
                             <CampaignTaskGroup 
                                 title="Günün Dersi & Hazırlık" 
                                 icon={BookOpen} 
@@ -613,7 +613,7 @@ export const Campaign90Page: React.FC = () => {
                                 progressMap={taskProgressMap} 
                                 pendingTaskId={completeTaskMutation.isPending && typeof completeTaskMutation.variables === 'string' ? completeTaskMutation.variables : selectedTaskForModal?.task?.id || null}
                             />
-                        </>
+                        </React.Fragment>
                     ) : (
                         <div className="text-center py-12 text-slate-500 font-medium bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                             Bugün için bir görev atanmamış.

@@ -54,55 +54,55 @@ export const RegionStats: React.FC<RegionStatsProps> = ({ profile, pins = [] }) 
   const avgPrice = marketData?.averagePrice ? (marketData.averagePrice / 1000000).toFixed(2) + "M ₺" : "Veri Yok";
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 mb-6">
       {/* 1. Aktif Bölge */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-        <div className="w-12 h-12 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center">
-          <MapPin size={24} />
+      <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
+        <div className="w-10 h-10 bg-blue-100 text-blue-600 rounded-xl flex items-center justify-center shrink-0">
+          <MapPin size={20} />
         </div>
-        <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Aktif Bölge</p>
-          <p className="text-sm font-bold text-slate-900">{profile.region.district}, {profile.region.city}</p>
+        <div className="min-w-0">
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">Aktif Bölge</p>
+          <p className="text-xs font-bold text-slate-900 truncate">{profile.region.district}, {profile.region.city}</p>
         </div>
       </div>
 
       {/* 2. Bölge Pazar Ortalaması (Yeni) */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center bg-indigo-100 text-indigo-600`}>
-          {isLoading ? <Loader2 className="animate-spin" size={24} /> : <TrendingUp size={24} />}
+      <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
+        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 bg-indigo-100 text-indigo-600`}>
+          {isLoading ? <Loader2 className="animate-spin" size={20} /> : <TrendingUp size={20} />}
         </div>
-        <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ortalama Fiyat</p>
-          <p className="text-sm font-bold text-slate-900">
+        <div className="min-w-0">
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">Ortalama Fiyat</p>
+          <p className="text-xs font-bold text-slate-900 truncate">
             {avgPrice}
-            {marketData?.priceTrend === 'up' && <span className="text-[10px] ml-1 text-emerald-500">↑ Artış</span>}
-            {marketData?.priceTrend === 'down' && <span className="text-[10px] ml-1 text-red-500">↓ Düşüş</span>}
+            {marketData?.priceTrend === 'up' && <span className="text-[9px] ml-1 text-emerald-500">↑</span>}
+            {marketData?.priceTrend === 'down' && <span className="text-[9px] ml-1 text-red-500">↓</span>}
           </p>
         </div>
       </div>
 
       {/* 3. Talep Skoru (Gerçek API Verisi) */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-        <div className="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center">
-          {isLoading ? <Loader2 className="animate-spin" size={24} /> : <Activity size={24} />}
+      <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
+        <div className="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-xl flex items-center justify-center shrink-0">
+          {isLoading ? <Loader2 className="animate-spin" size={20} /> : <Activity size={20} />}
         </div>
-        <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Pazar Hareketliliği / Talep</p>
-          <p className={`text-sm font-bold ${activityColor}`}>
-             {marketActivity} <span className="text-xs text-slate-400">({displayScore}/100)</span>
+        <div className="min-w-0">
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">Hareketlilik</p>
+          <p className={`text-xs font-bold truncate ${activityColor}`}>
+             {marketActivity} <span className="text-[10px] text-slate-400">({displayScore})</span>
           </p>
         </div>
       </div>
 
       {/* 4. Esnaf Ağı (Dinamik Hesaplama) */}
-      <div className="bg-white p-4 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-4">
-        <div className="w-12 h-12 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center">
-          <Users size={24} />
+      <div className="bg-white p-3 rounded-2xl shadow-sm border border-slate-100 flex items-center gap-3">
+        <div className="w-10 h-10 bg-purple-100 text-purple-600 rounded-xl flex items-center justify-center shrink-0">
+          <Users size={20} />
         </div>
-        <div>
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Ağ Çapı (Esnaf / Pin)</p>
-          <p className="text-sm font-bold text-slate-900">
-            {totalPins} İşaret ({esnafCount} Esnaf)
+        <div className="min-w-0">
+          <p className="text-[9px] font-bold text-slate-400 uppercase tracking-wider truncate">Ağ Çapı (Esnaf / Pin)</p>
+          <p className="text-xs font-bold text-slate-900 truncate">
+            {totalPins} Nokta ({esnafCount} E)
           </p>
         </div>
       </div>
