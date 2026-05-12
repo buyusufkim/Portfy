@@ -770,24 +770,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                             setActiveTab("campaign-90");
                           }
                         }}
-                        className={`flex flex-col sm:flex-row sm:items-center justify-between p-3 sm:p-2.5 hover:bg-slate-50 transition-colors rounded-2xl sm:rounded-xl border border-slate-100 sm:border-transparent hover:border-slate-200 group min-h-[64px] ${(item.type === "gamified" || item.type === "campaign") ? "cursor-pointer" : ""}`}
+                        className={`flex flex-row items-start gap-3 p-3 sm:p-2.5 hover:bg-slate-50 transition-colors rounded-xl border border-slate-100 sm:border-transparent hover:border-slate-200 group min-h-[64px] ${(item.type === "gamified" || item.type === "campaign") ? "cursor-pointer" : ""}`}
                       >
-                        <div className="flex items-start gap-3 sm:gap-4 min-w-0 pr-2 w-full sm:w-auto">
-                          <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.colorClass} saturate-[0.8] shadow-sm`}>
-                            <item.icon size={20} />
-                          </div>
-                          <div className="min-w-0 flex-1">
-                            <h4 className="text-[13px] sm:text-sm font-bold text-slate-800 line-clamp-2 md:truncate">
+                        <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${item.colorClass} saturate-[0.8] shadow-sm mt-0.5`}>
+                          <item.icon size={20} />
+                        </div>
+                        <div className="min-w-0 flex-1 flex flex-col justify-center">
+                          <div className="flex justify-between items-start gap-2 mb-0.5">
+                            <h4 className="text-[13px] sm:text-sm font-bold text-slate-800 line-clamp-2 md:truncate min-w-0">
                               {item.title}
                             </h4>
-                            <p className="text-[11px] text-slate-500 font-medium line-clamp-1 mt-0.5">
-                              {item.desc || item.subtitle}
-                            </p>
-                          </div>
-                        </div>
-                        
-                        <div className="shrink-0 flex items-center justify-start sm:justify-end w-full sm:w-auto mt-2 sm:mt-0 sm:ml-2 border-t sm:border-t-0 border-slate-100 pt-2 sm:pt-0">
-                            <div className={`px-2.5 py-1 text-[9px] sm:text-[10px] font-bold rounded-md ${
+                            <div className={`shrink-0 px-2 py-0.5 text-[9px] font-bold rounded-md ${
                               item.type === "alert" ? "bg-red-50 text-red-700" :
                               item.type === "drip" ? "bg-orange-50 text-orange-700" :
                               item.type === "smart_rec" ? "bg-amber-50 text-amber-700" :
@@ -806,6 +799,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                              item.type === "campaign" ? "90 Gün Kampı" :
                              "Planlı Görev"}
                             </div>
+                          </div>
+                          <p className="text-[11px] text-slate-500 font-medium line-clamp-1">
+                            {item.desc || item.subtitle}
+                          </p>
                         </div>
                       </div>
                     ))}
