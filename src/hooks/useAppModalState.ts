@@ -23,6 +23,7 @@ export function useAppModalState() {
   const [documentAutomationLead, setDocumentAutomationLead] = useState<Lead | null>(null);
   const [showLeadMethodModal, setShowLeadMethodModal] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [showRescueModal, setShowRescueModal] = useState(false);
 
   const closeAllModals = useCallback(() => {
     setShowQuickAdd(false);
@@ -42,6 +43,7 @@ export function useAppModalState() {
     setShowRegionSetup(false);
     setShowLeadMethodModal(false);
     setShowScanner(false);
+    setShowRescueModal(false);
   }, []);
 
   return {
@@ -66,6 +68,7 @@ export function useAppModalState() {
     documentAutomationLead, setDocumentAutomationLead,
     showLeadMethodModal, setShowLeadMethodModal,
     showScanner, setShowScanner,
+    showRescueModal, setShowRescueModal,
     closeAllModals,
   };
 }

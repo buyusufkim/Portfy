@@ -29,7 +29,7 @@ export const AdminAudit: React.FC = () => {
   );
 
   return (
-    <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm overflow-hidden">
+    <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
       <div className="p-6 md:p-8 border-b border-slate-100 flex items-center justify-between">
          <div>
            <h3 className="text-lg font-black text-slate-900 tracking-tight flex items-center gap-2">

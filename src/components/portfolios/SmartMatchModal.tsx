@@ -49,7 +49,7 @@ export const SmartMatchModal: React.FC<SmartMatchModalProps> = ({ show, onClose,
         >
           <motion.div 
             initial={{ scale: 0.95, opacity: 0, y: 20 }} animate={{ scale: 1, opacity: 1, y: 0 }} exit={{ scale: 0.95, opacity: 0, y: 20 }}
-            className="bg-slate-50 w-full max-w-3xl rounded-[32px] overflow-hidden shadow-2xl flex flex-col max-h-[85vh]"
+            className="bg-slate-50 w-full max-w-3xl rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[85vh]"
           >
             {/* Header */}
             <div className="bg-white px-8 py-6 border-b border-slate-100 flex justify-between items-center shrink-0 sticky top-0 z-10">

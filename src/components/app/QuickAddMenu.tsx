@@ -61,7 +61,7 @@ export const QuickAddMenu = ({
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 30, stiffness: 350 }}
-            className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[40px] z-[70] shadow-2xl overflow-hidden"
+            className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl z-[70] shadow-2xl overflow-hidden"
           >
             {/* Tutamaç */}
             <div className="w-12 h-1 bg-[#E2E8F0] rounded-full mx-auto mt-4" />

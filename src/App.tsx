@@ -218,6 +218,7 @@ function MainApp() {
     documentAutomationLead, setDocumentAutomationLead,
     showLeadMethodModal, setShowLeadMethodModal,
     showScanner, setShowScanner,
+    showRescueModal, setShowRescueModal,
     closeAllModals,
   } = useAppModalState();
 
@@ -402,6 +403,8 @@ function MainApp() {
     personalTasks,
     tasks,
     rescueSession,
+    showRescueModal,
+    setShowRescueModal,
     missedOpportunities,
     setShowDailyRadar,
     setPendingEarlyStartReason,

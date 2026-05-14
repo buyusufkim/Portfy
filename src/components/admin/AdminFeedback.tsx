@@ -107,7 +107,7 @@ export const AdminConfirmModal = ({ confirm, onClose }: { confirm: AdminConfirmS
             initial={{ opacity: 0, scale: 0.95, y: 10 }} 
             animate={{ opacity: 1, scale: 1, y: 0 }} 
             exit={{ opacity: 0, scale: 0.95, y: 10 }}
-            className="bg-white w-full max-w-sm rounded-[24px] shadow-2xl overflow-hidden relative z-10 border border-slate-100 p-6 flex flex-col items-center text-center"
+            className="bg-white w-full max-w-sm rounded-3xl shadow-2xl overflow-hidden relative z-10 border border-slate-100 p-6 flex flex-col items-center text-center"
           >
             <div className={`w-16 h-16 rounded-2xl flex items-center justify-center mb-4 ${
               confirm.intent === 'danger' ? 'bg-red-50 text-red-500' :

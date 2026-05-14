@@ -13,7 +13,7 @@ export const CampaignEducationCard: React.FC<Props> = ({ curriculum, readOnly = 
     const [quizAnswers, setQuizAnswers] = useState<Record<number, number>>({});
 
     return (
-        <Card className="bg-white border border-slate-200 rounded-[20px] overflow-hidden shadow-sm">
+        <Card className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
             <div className="p-4 md:p-5 relative">
                 <div className="absolute right-0 top-0 opacity-[0.03] text-slate-900 pointer-events-none">
                     <BookOpen size={100} />

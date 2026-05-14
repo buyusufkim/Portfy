@@ -222,7 +222,7 @@ export const AdminCampaign90Tab: React.FC<AdminCampaign90TabProps> = ({ showAdmi
       </div>
 
       {/* USERS TABLE */}
-      <div className="bg-white rounded-[24px] overflow-hidden border border-slate-100 shadow-sm">
+      <div className="bg-white rounded-3xl overflow-hidden border border-slate-100 shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>

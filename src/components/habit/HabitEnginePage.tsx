@@ -118,7 +118,7 @@ export const HabitEnginePage: React.FC = () => {
             <motion.button 
               whileTap={{ scale: 0.98 }}
               onClick={() => setShowCloser(true)}
-              className="w-full bg-slate-900 text-white p-8 rounded-[40px] flex items-center justify-between group shadow-2xl shadow-slate-900/20"
+              className="w-full bg-slate-900 text-white p-8 rounded-3xl flex items-center justify-between group shadow-2xl shadow-slate-900/20"
             >
               <div className="flex items-center gap-5 text-left">
                 <div className="w-14 h-14 bg-slate-800 rounded-2xl flex items-center justify-center text-indigo-400 shadow-inner">

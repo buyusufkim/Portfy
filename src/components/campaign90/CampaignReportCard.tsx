@@ -214,7 +214,7 @@ Sonraki Hedef: ${report.reportType === 'day90' ? report.nextFocus : report.mento
 
                             {/* Day 90 / Next steps */}
                             {report.reportType === 'day90' && (
-                                <div className="mt-4 bg-slate-900 text-white rounded-[20px] p-5 relative overflow-hidden shadow-sm">
+                                <div className="mt-4 bg-slate-900 text-white rounded-2xl p-5 relative overflow-hidden shadow-sm">
                                     <div className="relative z-10">
                                         <div className="inline-flex text-[9px] font-black tracking-widest text-[#00D2B4] uppercase px-2 py-0.5 rounded bg-[#00D2B4]/10 border border-[#00D2B4]/20 mb-2">
                                             MEZUNİYET

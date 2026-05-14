@@ -14,7 +14,7 @@ export const RevenueOverview: React.FC<RevenueOverviewProps> = ({ stats, loading
     return (
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {[1, 2, 3].map((i) => (
-          <div key={i} className="h-32 bg-slate-100 animate-pulse rounded-[32px]" />
+          <div key={i} className="h-32 bg-slate-100 animate-pulse rounded-3xl" />
         ))}
       </div>
     );
@@ -27,7 +27,7 @@ export const RevenueOverview: React.FC<RevenueOverviewProps> = ({ stats, loading
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-slate-900 rounded-[40px] p-8 text-white relative overflow-hidden shadow-2xl shadow-slate-900/20"
+          className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden shadow-2xl shadow-slate-900/20"
         >
           <div className="relative z-10 space-y-4">
             <div className="flex items-center justify-between">
@@ -55,7 +55,7 @@ export const RevenueOverview: React.FC<RevenueOverviewProps> = ({ stats, loading
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="bg-white rounded-[40px] p-8 border border-slate-100 shadow-xl shadow-slate-200/50"
+          className="bg-white rounded-3xl p-8 border border-slate-100 shadow-xl shadow-slate-200/50"
         >
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -82,7 +82,7 @@ export const RevenueOverview: React.FC<RevenueOverviewProps> = ({ stats, loading
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.2 }}
-          className="bg-orange-50 rounded-[40px] p-8 border border-orange-100 shadow-xl shadow-orange-100/50"
+          className="bg-orange-50 rounded-3xl p-8 border border-orange-100 shadow-xl shadow-orange-100/50"
         >
           <div className="space-y-4">
             <div className="flex items-center justify-between">
@@ -107,8 +107,8 @@ export const RevenueOverview: React.FC<RevenueOverviewProps> = ({ stats, loading
 
       {/* Risk and Alerts */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="bg-red-50 border border-red-100 p-6 rounded-[32px] flex items-center gap-6">
-          <div className="w-16 h-16 bg-red-100 rounded-[24px] flex items-center justify-center text-red-600 shrink-0">
+        <div className="bg-red-50 border border-red-100 p-6 rounded-3xl flex items-center gap-6">
+          <div className="w-16 h-16 bg-red-100 rounded-3xl flex items-center justify-center text-red-600 shrink-0">
             <AlertTriangle size={32} />
           </div>
           <div className="space-y-1">
@@ -119,8 +119,8 @@ export const RevenueOverview: React.FC<RevenueOverviewProps> = ({ stats, loading
           </div>
         </div>
 
-        <div className="bg-slate-50 border border-slate-200 p-6 rounded-[32px] flex items-center gap-6">
-          <div className="w-16 h-16 bg-slate-200 rounded-[24px] flex items-center justify-center text-slate-500 shrink-0">
+        <div className="bg-slate-50 border border-slate-200 p-6 rounded-3xl flex items-center gap-6">
+          <div className="w-16 h-16 bg-slate-200 rounded-3xl flex items-center justify-center text-slate-500 shrink-0">
             <Clock size={32} />
           </div>
           <div className="space-y-1">

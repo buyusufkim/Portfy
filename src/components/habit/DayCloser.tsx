@@ -99,7 +99,7 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete
                   initial={{ scale: 0 }}
                   animate={{ scale: 1 }}
                   transition={{ type: 'spring', damping: 12 }}
-                  className="w-24 h-24 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-[32px] mx-auto flex items-center justify-center text-white shadow-2xl shadow-indigo-500/40"
+                  className="w-24 h-24 bg-gradient-to-tr from-indigo-500 to-purple-600 rounded-3xl mx-auto flex items-center justify-center text-white shadow-2xl shadow-indigo-500/40"
                 >
                   <Moon size={48} />
                 </motion.div>
@@ -121,7 +121,7 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: i * 0.1 }}
-                    className="bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-[32px] space-y-3 hover:bg-white/10 transition-colors"
+                    className="bg-white/5 backdrop-blur-md border border-white/10 p-6 rounded-3xl space-y-3 hover:bg-white/10 transition-colors"
                   >
                     <div className="flex items-center justify-between">
                       <item.icon size={18} className={item.color} />
@@ -134,7 +134,7 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete
 
               <button
                 onClick={handleNext}
-                className="w-full py-6 bg-white text-slate-900 rounded-[32px] font-black text-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-white/10"
+                className="w-full py-6 bg-white text-slate-900 rounded-3xl font-black text-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-white/10"
               >
                 Günü Değerlendir <ArrowRight size={24} />
               </button>
@@ -231,7 +231,7 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete
 
               <button
                 onClick={handleNext}
-                className="w-full py-6 bg-white text-slate-900 rounded-[32px] font-black text-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-white/10"
+                className="w-full py-6 bg-white text-slate-900 rounded-3xl font-black text-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-white/10"
               >
                 Sonuçları Kayla <ArrowRight size={24} />
               </button>
@@ -262,7 +262,7 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete
               <button
                 onClick={handleNext}
                 disabled={!earlyCloseReason.trim()}
-                className="w-full py-6 bg-white text-slate-900 rounded-[32px] font-black text-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-6 bg-white text-slate-900 rounded-3xl font-black text-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl shadow-white/10 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Devam Et <ArrowRight size={24} />
               </button>
@@ -280,7 +280,7 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete
                   initial={{ rotate: -20, scale: 0 }}
                   animate={{ rotate: 0, scale: 1 }}
                   transition={{ type: 'spring', bounce: 0.5 }}
-                  className="w-32 h-32 bg-gradient-to-tr from-yellow-400 to-orange-600 rounded-[40px] mx-auto flex items-center justify-center text-white shadow-2xl shadow-orange-500/40"
+                  className="w-32 h-32 bg-gradient-to-tr from-yellow-400 to-orange-600 rounded-3xl mx-auto flex items-center justify-center text-white shadow-2xl shadow-orange-500/40"
                 >
                   <Trophy size={64} />
                 </motion.div>
@@ -290,7 +290,7 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete
                 </div>
               </div>
 
-              <div className="bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-[40px] flex items-center gap-8">
+              <div className="bg-white/5 backdrop-blur-md border border-white/10 p-8 rounded-3xl flex items-center gap-8">
                 <div className="w-20 h-20 bg-emerald-500/20 rounded-3xl flex items-center justify-center text-emerald-500 shrink-0">
                   <CheckCircle2 size={40} />
                 </div>
@@ -303,7 +303,7 @@ export const DayCloser: React.FC<DayCloserProps> = ({ stats, profile, onComplete
               <button
                 onClick={handleNext}
                 disabled={isPending}
-                className="w-full py-6 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-[32px] font-black text-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-2xl shadow-orange-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full py-6 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-3xl font-black text-xl flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-2xl shadow-orange-500/30 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isPending ? (
                   <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1, ease: "linear" }}>

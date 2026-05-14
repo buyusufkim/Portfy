@@ -17,7 +17,7 @@ export const CompetitorList: React.FC<CompetitorListProps> = ({ filteredPins, al
           const typeObj = allPinTypes.find(t => t.id === pin.type);
           const Icon = typeObj?.icon || Building2;
           return (
-            <div key={pin.id} className="bg-white p-3.5 rounded-[16px] shadow-sm border border-slate-100 flex gap-3 hover:shadow-md transition-all">
+            <div key={pin.id} className="bg-white p-3.5 rounded-2xl shadow-sm border border-slate-100 flex gap-3 hover:shadow-md transition-all">
               <div 
                 className="w-10 h-10 rounded-xl flex items-center justify-center text-white shrink-0"
                 style={{ backgroundColor: typeObj?.color || '#eab308' }}

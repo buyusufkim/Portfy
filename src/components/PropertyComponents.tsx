@@ -77,9 +77,9 @@ export const CompactPropertyCard: React.FC<{
   };
 
   return (
-    <Card onClick={onClick} className="group flex flex-row border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all rounded-[20px] cursor-pointer bg-white p-2.5 sm:p-3 gap-3 sm:gap-4 w-full items-start md:items-center">
+    <Card onClick={onClick} className="group flex flex-row border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all rounded-2xl cursor-pointer bg-white p-2.5 sm:p-3 gap-3 sm:gap-4 w-full items-start md:items-center">
       {/* Left: Image Container */}
-      <div className="relative w-24 h-24 sm:w-[120px] sm:h-[120px] rounded-[14px] overflow-hidden bg-slate-100 flex-shrink-0">
+      <div className="relative w-24 h-24 sm:w-[120px] sm:h-[120px] rounded-xl overflow-hidden bg-slate-100 flex-shrink-0">
         {property.images && property.images.length > 0 ? (
           <img 
             src={property.images[0]} 
@@ -223,7 +223,7 @@ export const VisualPropertyCard: React.FC<{
   };
 
   return (
-    <Card onClick={onClick} className="group flex flex-col h-full border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all overflow-hidden rounded-[24px] cursor-pointer">
+    <Card onClick={onClick} className="group flex flex-col h-full border border-slate-200 hover:border-indigo-300 hover:shadow-lg transition-all overflow-hidden rounded-3xl cursor-pointer">
       <div className="relative h-[160px] md:h-[180px] xl:h-[200px] overflow-hidden bg-slate-100 flex-shrink-0">
         {property.images && property.images.length > 0 ? (
           <img 
@@ -357,7 +357,7 @@ export const PipelineColumn: React.FC<{
   const totalRevenue = properties.reduce((acc, p) => acc + ((p.price || 0) * (p.commission_rate || 0) / 100), 0);
   
   return (
-    <div className="flex flex-col gap-4 min-w-[300px] w-[300px] bg-slate-50/50 p-2 rounded-3xl h-full border border-slate-100/50">
+    <div className="flex flex-col gap-4 min-w-[280px] w-[280px] sm:min-w-[300px] sm:w-[300px] bg-slate-50/50 p-2 rounded-3xl h-full border border-slate-100/50">
       <div className="flex items-center justify-between px-3 py-2">
         <div className="flex items-center gap-2">
           <h3 className="font-bold text-slate-900 text-sm tracking-tight">{title}</h3>

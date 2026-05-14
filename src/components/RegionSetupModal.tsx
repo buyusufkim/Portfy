@@ -58,7 +58,7 @@ export const RegionSetupModal: React.FC<RegionSetupModalProps> = ({ profile, onC
       <motion.div 
         initial={{ scale: 0.9, opacity: 0, y: 20 }}
         animate={{ scale: 1, opacity: 1, y: 0 }}
-        className="bg-white rounded-[40px] p-6 sm:p-8 w-full max-w-lg shadow-2xl relative my-auto sm:my-8"
+        className="bg-white rounded-3xl p-6 sm:p-8 w-full max-w-lg shadow-2xl relative my-auto sm:my-8"
       >
         <div className="relative z-10">
           <div className="flex items-start justify-between mb-6">

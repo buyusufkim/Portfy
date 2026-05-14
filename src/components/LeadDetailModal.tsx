@@ -238,7 +238,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
   return (
     <AnimatePresence>
       <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-[110] flex items-end md:items-center justify-center p-0 md:p-6">
-        <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="bg-[#F8FAFC] w-full md:max-w-6xl md:rounded-[32px] rounded-t-[32px] overflow-hidden shadow-2xl flex flex-col h-[95vh] md:h-[88vh]">
+        <motion.div initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }} className="bg-[#F8FAFC] w-full md:max-w-6xl md:rounded-3xl rounded-t-3xl overflow-hidden shadow-2xl flex flex-col h-[95vh] md:h-[88vh]">
           
           {/* Header */}
           <div className="bg-white px-4 md:px-6 py-4 border-b border-slate-100 flex justify-between items-center shrink-0">
@@ -257,7 +257,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 <div className="flex-1 flex flex-col gap-4 md:gap-6">
                    
                    {/* 1. Profil ve Özet Kartı */}
-                   <div className="bg-white p-5 md:p-8 rounded-[24px] md:rounded-[32px] border border-slate-200 shadow-sm relative">
+                   <div className="bg-white p-5 md:p-8 rounded-3xl md:rounded-3xl border border-slate-200 shadow-sm relative">
                       {/* Desktop Aksiyonlar */}
                       <div className="absolute top-6 right-6 hidden md:flex gap-2">
                          <button onClick={onEdit} className="flex items-center justify-center gap-2 px-4 py-2 bg-slate-50 border border-slate-200 rounded-2xl hover:bg-slate-100 transition-colors text-slate-700 font-bold shadow-sm">
@@ -335,7 +335,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                    <AnimatePresence>
                      {showDeleteConfirm && (
                         <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: 'auto', opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                          <div className="p-4 bg-red-50/80 rounded-[24px] border border-red-200 flex flex-col md:flex-row items-center justify-between gap-4">
+                          <div className="p-4 bg-red-50/80 rounded-3xl border border-red-200 flex flex-col md:flex-row items-center justify-between gap-4">
                             <p className="text-sm font-bold text-red-900">Bu kaydı kalıcı olarak silmek istediğinize emin misiniz?</p>
                             <div className="flex gap-2 w-full md:w-auto">
                               <button onClick={() => setShowDeleteConfirm(false)} className="flex-1 md:flex-none px-6 py-3 bg-white rounded-xl text-slate-600 font-bold text-sm border border-slate-200 hover:bg-slate-50 transition-colors">Vazgeç</button>
@@ -347,7 +347,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                    </AnimatePresence>
 
                    {/* 2. Aradın Mı CTA */}
-                   <div className="bg-orange-50 rounded-[24px] md:rounded-[32px] border-2 border-orange-100 transition-colors overflow-hidden">
+                   <div className="bg-orange-50 rounded-3xl md:rounded-3xl border-2 border-orange-100 transition-colors overflow-hidden">
                       {showCallForm ? (
                           <div className="p-5 md:p-6 space-y-5">
                              <div className="flex justify-between items-center">
@@ -407,7 +407,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                       ) : (
                           <button onClick={() => setShowCallForm(true)} className="w-full p-5 md:p-6 flex items-center justify-between hover:bg-orange-100/50 transition-colors text-left group">
                              <div className="flex items-center gap-4">
-                               <div className="w-14 h-14 bg-orange-200 text-orange-600 rounded-[20px] flex items-center justify-center shrink-0 shadow-sm border-2 border-white">
+                               <div className="w-14 h-14 bg-orange-200 text-orange-600 rounded-2xl flex items-center justify-center shrink-0 shadow-sm border-2 border-white">
                                  <Phone size={24} />
                                </div>
                                <div>
@@ -427,7 +427,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
 
                    {/* 4. Akıllı Takip Serisi */}
                    {!isRegionNetwork && (
-                       <div className="bg-white rounded-[24px] md:rounded-[32px] border border-blue-100 shadow-sm relative overflow-hidden">
+                       <div className="bg-white rounded-3xl md:rounded-3xl border border-blue-100 shadow-sm relative overflow-hidden">
                            <div className="p-5 md:p-6">
                               <div className="flex items-center justify-between mb-5">
                                   <div className="flex items-center gap-3 text-slate-900">
@@ -440,7 +440,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                                 {(Object.keys(DRIP_CAMPAIGNS) as DripEventType[]).map((key) => {
                                    const Icon = key === 'OFFER_MADE' ? FileText : key === 'SHOWING_DONE' ? MapPin : key === 'PORTFOLIO_LISTED' ? UserIcon : Tag;
                                    return (
-                                     <button key={key} onClick={() => handleStartDrip(key)} disabled={loadingDrip} className="flex flex-col items-start gap-3 p-4 bg-white border-2 border-blue-50 hover:border-blue-200 hover:bg-blue-50/50 hover:shadow-sm rounded-[20px] transition-all text-blue-800 text-left disabled:opacity-50 group">
+                                     <button key={key} onClick={() => handleStartDrip(key)} disabled={loadingDrip} className="flex flex-col items-start gap-3 p-4 bg-white border-2 border-blue-50 hover:border-blue-200 hover:bg-blue-50/50 hover:shadow-sm rounded-2xl transition-all text-blue-800 text-left disabled:opacity-50 group">
                                         <div className="w-10 h-10 rounded-2xl bg-blue-50 flex items-center justify-center shrink-0 group-hover:bg-white group-hover:scale-110 shadow-sm transition-all"><Icon size={18} className="text-blue-600"/></div>
                                         <span className="font-bold text-xs leading-tight">{DRIP_CAMPAIGNS[key].label}</span>
                                      </button>
@@ -456,7 +456,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                       {hasPhone ? (
                         <button 
                           onClick={() => setShowCallForm(true)}
-                          className="flex items-center bg-white border border-slate-200 hover:border-orange-300 hover:shadow-md rounded-[24px] p-5 transition-all group text-left"
+                          className="flex items-center bg-white border border-slate-200 hover:border-orange-300 hover:shadow-md rounded-3xl p-5 transition-all group text-left"
                         >
                           <div className="flex-1">
                              <div className="text-[10px] font-black text-orange-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Phone size={12}/> Telefon</div>
@@ -470,7 +470,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                           </div>
                         </button>
                       ) : (
-                        <div className="flex items-center bg-slate-50 border border-slate-200 rounded-[24px] p-5 opacity-70">
+                        <div className="flex items-center bg-slate-50 border border-slate-200 rounded-3xl p-5 opacity-70">
                           <div className="flex-1">
                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><Phone size={12}/> Telefon</div>
                              <div className="text-xl font-black text-slate-500">Girilmemiş</div>
@@ -482,7 +482,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                       )}
 
                       {hasPhone ? (
-                        <a href={`https://wa.me/${(lead.phone || '').replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="flex items-center bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md rounded-[24px] p-5 transition-all group text-left">
+                        <a href={`https://wa.me/${(lead.phone || '').replace(/\D/g, '')}`} target="_blank" rel="noreferrer" className="flex items-center bg-white border border-slate-200 hover:border-emerald-300 hover:shadow-md rounded-3xl p-5 transition-all group text-left">
                           <div className="flex-1">
                              <div className="text-[10px] font-black text-emerald-500 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><MessageSquare size={12}/> WhatsApp</div>
                              <div className="text-xl font-black text-slate-900">Mesaj Gönder</div>
@@ -493,7 +493,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                           </div>
                         </a>
                       ) : (
-                        <div className="flex items-center bg-slate-50 border border-slate-200 rounded-[24px] p-5 opacity-70">
+                        <div className="flex items-center bg-slate-50 border border-slate-200 rounded-3xl p-5 opacity-70">
                           <div className="flex-1">
                              <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1.5 flex items-center gap-1.5"><MessageSquare size={12}/> WhatsApp</div>
                              <div className="text-xl font-black text-slate-500">Girilmemiş</div>
@@ -507,12 +507,12 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
 
                    {/* 6. Araçlar ve Dokümanlar */}
                    {!isRegionNetwork && (
-                       <div className="bg-white rounded-[24px] border border-slate-200 shadow-sm p-4 space-y-2">
+                       <div className="bg-white rounded-3xl border border-slate-200 shadow-sm p-4 space-y-2">
                           <div className="flex items-center gap-2 text-slate-800 font-black text-sm px-2 py-1">
                              <FileText size={16} className="text-slate-400" /> Araçlar & Dokümanlar
                           </div>
                           
-                          <button onClick={() => { setDocumentAutomationLead?.(lead); setShowDocumentAutomation?.(true); onClose(); }} className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-orange-50 border border-slate-100 hover:border-orange-100 rounded-[20px] transition-all group text-left">
+                          <button onClick={() => { setDocumentAutomationLead?.(lead); setShowDocumentAutomation?.(true); onClose(); }} className="w-full flex items-center justify-between p-4 bg-slate-50 hover:bg-orange-50 border border-slate-100 hover:border-orange-100 rounded-2xl transition-all group text-left">
                              <div className="flex items-center gap-4">
                                 <div className="w-10 h-10 bg-white text-orange-500 rounded-xl shadow-sm border border-slate-100 flex items-center justify-center shrink-0 group-hover:scale-105 transition-transform"><FileText size={18} /></div>
                                 <div>
@@ -533,7 +533,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 <div className="w-full lg:w-[320px] xl:w-[380px] flex flex-col gap-4 md:gap-6 shrink-0 lg:sticky lg:top-0 lg:self-start lg:max-h-full">
                    
                    {/* Geçmiş Aktiviteler */}
-                   <div className="bg-white rounded-[24px] md:rounded-[32px] border border-slate-200 shadow-sm p-5 md:p-6 flex flex-col min-h-[300px]">
+                   <div className="bg-white rounded-3xl md:rounded-3xl border border-slate-200 shadow-sm p-5 md:p-6 flex flex-col min-h-[300px]">
                       <div className="flex items-center justify-between mb-6">
                          <div className="flex items-center gap-2.5 text-slate-900 font-black text-base">
                             <Clock size={20} className="text-slate-400" /> Aktivite Geçmişi
@@ -585,7 +585,7 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                    </div>
 
                    {/* Notlar & Özet */}
-                   <div className="bg-amber-50/50 rounded-[24px] md:rounded-[32px] border border-amber-100 shadow-sm p-6 flex flex-col">
+                   <div className="bg-amber-50/50 rounded-3xl md:rounded-3xl border border-amber-100 shadow-sm p-6 flex flex-col">
                       <div className="flex items-center justify-between mb-4">
                          <div className="flex items-center gap-2.5 text-amber-900 font-black text-base">
                             <FileText size={20} className="text-amber-500" /> Notlar

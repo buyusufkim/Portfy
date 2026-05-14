@@ -165,7 +165,7 @@ export const AdminPackagesTab: React.FC<AdminPackagesTabProps> = ({ showAdminToa
       </div>
       
       {editingPkg ? (
-        <div className="bg-white p-6 md:p-8 rounded-[24px] shadow-sm border border-slate-100 space-y-6">
+        <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100 space-y-6">
           <div className="flex justify-between items-center border-b border-slate-100 pb-4">
             <h3 className="font-bold text-xl flex items-center gap-2 text-slate-900">
               <Package className="text-indigo-600" /> Paketi Düzenle: <span className="uppercase text-indigo-600">{editingPkg.tier}</span>
@@ -235,7 +235,7 @@ export const AdminPackagesTab: React.FC<AdminPackagesTabProps> = ({ showAdminToa
                 }
                 return true;
               }).map(pkg => (
-            <div key={pkg.id} className={`p-6 rounded-[24px] shadow-sm flex flex-col justify-between group transition-all relative overflow-hidden ${pkg.is_active ? 'bg-white border border-slate-100 hover:shadow-md hover:border-slate-200' : 'bg-slate-50 border border-slate-200 opacity-80'}`}>
+            <div key={pkg.id} className={`p-6 rounded-3xl shadow-sm flex flex-col justify-between group transition-all relative overflow-hidden ${pkg.is_active ? 'bg-white border border-slate-100 hover:shadow-md hover:border-slate-200' : 'bg-slate-50 border border-slate-200 opacity-80'}`}>
               {pkg.is_popular && pkg.is_active && (
                  <div className="absolute top-0 right-0 bg-teal-500 text-white text-[10px] font-bold px-3 py-1 rounded-bl-xl tracking-wider uppercase">Popüler</div>
               )}

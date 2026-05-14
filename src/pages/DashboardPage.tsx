@@ -16,6 +16,7 @@ interface DashboardPageProps {
   personalTasks: PersonalTask[];
   tasks: Task[];
   rescueSession: RescueSession | null;
+  setShowRescueModal: (show: boolean) => void;
   missedOpportunities: MissedOpportunity[];
   setActiveTab: (tab: string) => void;
   setShowAdminPanel: (show: boolean) => void;
@@ -37,6 +38,7 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
   personalTasks,
   tasks,
   rescueSession,
+  setShowRescueModal,
   missedOpportunities,
   setActiveTab,
   setShowAdminPanel,
@@ -150,8 +152,15 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
 
   const startRescueMutation = useMutation({
     mutationFn: api.startRescueSession,
-    onSuccess: () => {
+    onSuccess: (session) => {
+      // Set query data immediately so the modal opens without waiting for refetch
+      queryClient.setQueryData([QUERY_KEYS.RESCUE_SESSION, profile?.id], session);
       queryClient.invalidateQueries({ queryKey: [QUERY_KEYS.RESCUE_SESSION, profile?.id] });
+      setShowRescueModal(true);
+      setToast({ message: "Odaklanma modu hazırlandı.", type: 'success' });
+    },
+    onError: (error: any) => {
+      setToast({ message: error.message || "Odaklanma modu başlatılamadı.", type: 'error' });
     }
   });
 
@@ -197,6 +206,8 @@ export const DashboardPage: React.FC<DashboardPageProps> = ({
       gamifiedStats={gamifiedStats || null}
       tasks={tasks}
       personalTasks={personalTasks}
+      rescueSession={rescueSession}
+      setShowRescueModal={setShowRescueModal}
       startRescueMutation={startRescueMutation}
       completeMorningRitualMutation={completeMorningRitualMutation}
       setActiveTab={setActiveTab}

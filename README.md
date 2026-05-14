@@ -17,6 +17,7 @@ To verify the project is ready for production, run:
 ```sh
 npm ci
 npm run lint
+npm run test:smoke
 npm run build
 ```
 
@@ -56,7 +57,7 @@ Ensure variables defined in `.env.example` are present in your production enviro
 ```sh
 npm ci
 npm run lint
-npm run test
+npm run test:smoke
 npm run build
 npm audit --omit=dev
 ```

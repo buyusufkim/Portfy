@@ -65,14 +65,14 @@ export const BusinessCardScannerModal = ({ isOpen, onClose, onSuccess }: Props) 
               animate={{ scale: 1, opacity: 1, y: 0 }}
               exit={{ scale: 0.95, opacity: 0, y: 20 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-[32px] shadow-2xl w-full max-w-md overflow-hidden relative"
+              className="bg-white rounded-3xl shadow-2xl w-full max-w-md overflow-hidden relative"
             >
               <button onClick={onClose} className="absolute top-4 right-4 w-10 h-10 bg-slate-100 rounded-full flex items-center justify-center text-slate-500 hover:bg-slate-200 z-10 transition-colors">
                 <X size={20} />
               </button>
 
               <div className="p-8 text-center flex flex-col items-center">
-                <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-[24px] flex items-center justify-center mb-6 shadow-inner">
+                <div className="w-20 h-20 bg-emerald-100 text-emerald-600 rounded-3xl flex items-center justify-center mb-6 shadow-inner">
                   <Camera size={40} />
                 </div>
                 <h2 className="text-2xl font-black text-slate-900 mb-2">Kartvizit Tara</h2>

@@ -22,6 +22,8 @@ interface UtilityModalsProps {
   tasks: Task[];
   fieldVisits: Building[];
   rescueSession: RescueSession | null;
+  showRescueModal: boolean;
+  setShowRescueModal: (val: boolean) => void;
   cancelRescueMutation: MutationResult<unknown, unknown>;
   completeRescueTaskMutation: MutationResult<unknown, unknown>;
   showMissedOpportunities: boolean;
@@ -49,6 +51,8 @@ export const UtilityModals: React.FC<UtilityModalsProps> = ({
   tasks,
   fieldVisits,
   rescueSession,
+  showRescueModal,
+  setShowRescueModal,
   cancelRescueMutation,
   completeRescueTaskMutation,
   showMissedOpportunities,
@@ -97,6 +101,8 @@ export const UtilityModals: React.FC<UtilityModalsProps> = ({
       />
       <RescueModeModal 
         rescueSession={rescueSession} 
+        isOpen={showRescueModal}
+        onClose={() => setShowRescueModal(false)}
         cancelRescueMutation={cancelRescueMutation} 
         completeRescueTaskMutation={completeRescueTaskMutation} 
       />

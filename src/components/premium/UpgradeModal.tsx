@@ -91,7 +91,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onA
       <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 pb-safe">
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose} />
         
-        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-5xl bg-white md:rounded-[32px] overflow-hidden shadow-2xl flex flex-col md:flex-row h-full md:h-auto md:max-h-[90vh]">
+        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-5xl bg-white md:rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row h-full md:h-auto md:max-h-[90vh]">
           {/* Comparison / Features Section */}
           <div className="bg-slate-50 px-6 py-8 md:p-10 md:w-5/12 flex flex-col relative overflow-y-auto border-r border-slate-100 shrink-0">
             <div className="relative z-10 space-y-8">

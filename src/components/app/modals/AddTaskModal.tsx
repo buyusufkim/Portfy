@@ -199,7 +199,7 @@ export const AddTaskModal: React.FC<AddTaskModalProps> = ({
             initial={{ y: "100%" }}
             animate={{ y: 0 }}
             exit={{ y: "100%" }}
-            className="bg-white w-full max-w-lg rounded-t-[40px] sm:rounded-[40px] p-6 max-h-[90vh] overflow-auto shadow-2xl flex flex-col"
+            className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-6 max-h-[90vh] overflow-auto shadow-2xl flex flex-col"
           >
             <div className="flex justify-between items-center mb-6">
               <h2 className="text-xl font-bold text-slate-900">

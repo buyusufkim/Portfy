@@ -40,7 +40,7 @@ export const WhatsAppImportModal: React.FC<WhatsAppImportModalProps> = ({
           />
           <motion.div 
             initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-            className="fixed bottom-0 left-0 right-0 bg-white rounded-t-[40px] p-8 z-[70] max-h-[90vh] overflow-y-auto"
+            className="fixed bottom-0 left-0 right-0 bg-white rounded-t-3xl p-8 z-[70] max-h-[90vh] overflow-y-auto"
           >
             <div className="w-12 h-1.5 bg-slate-100 rounded-full mx-auto mb-8" />
             <div className="flex items-center gap-4 mb-6">

@@ -80,21 +80,8 @@ export const campaign90Service = {
     const todayDate = new Date(todayStr);
     const startDate = new Date(campaign.start_date);
     
-    let diffTime = todayDate.getTime() - startDate.getTime();
-    if (diffTime < 0) diffTime = 0;
-    
-    let current_day = Math.round(diffTime / (1000 * 60 * 60 * 24)) + 1;
-    if (current_day < 1) current_day = 1;
-    if (current_day > 90) current_day = 90;
-    
-    let current_week = Math.ceil(current_day / 7);
-    if (current_week > 13) current_week = 13;
-
-    if (campaign.current_day !== current_day || campaign.current_week !== current_week) {
-        await supabase.from('advisor_campaigns').update({ current_day, current_week }).eq('id', campaign.id);
-        campaign.current_day = current_day;
-        campaign.current_week = current_week;
-    }
+    let current_day = campaign.current_day || 1;
+    let current_week = campaign.current_week || Math.ceil(current_day / 7);
     
     let templateTasks: CampaignTemplateTask[] = [];
     const dayTemplate = CAMPAIGN_90_DAYS.find(d => d.day_number === current_day);
@@ -149,7 +136,7 @@ export const campaign90Service = {
           .select('id')
           .eq('campaign_id', campaign.id)
           .eq('task_key', dTask.task_key)
-          .eq('due_date', todayStr)
+          .eq('day_number', current_day)
           .maybeSingle();
 
       if (!existing) {
@@ -183,7 +170,7 @@ export const campaign90Service = {
       .from('campaign_tasks')
       .select('*')
       .eq('campaign_id', campaign.id)
-      .eq('due_date', dateStr)
+      .eq('day_number', campaign.current_day)
       .order('created_at', { ascending: true });
       
     if (error) throw error;

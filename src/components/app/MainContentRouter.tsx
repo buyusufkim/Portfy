@@ -107,6 +107,8 @@ export interface UtilityProps {
   tasks: Task[];
   fieldVisits: Building[];
   rescueSession: RescueSession | null;
+  showRescueModal: boolean;
+  setShowRescueModal: (val: boolean) => void;
   cancelRescueMutation: MutationResult<unknown, unknown>;
   completeRescueTaskMutation: MutationResult<unknown, unknown>;
   showMissedOpportunities: boolean;
@@ -180,6 +182,7 @@ export const MainContentRouter: React.FC<MainContentRouterProps> = ({
             personalTasks={utilities.personalTasks || []}
             tasks={utilities.tasks || []}
             rescueSession={utilities.rescueSession}
+            setShowRescueModal={utilities.setShowRescueModal}
             missedOpportunities={utilities.missedOpportunities || []}
             setActiveTab={navigation.setActiveTab}
             setShowAdminPanel={navigation.setShowAdminPanel}

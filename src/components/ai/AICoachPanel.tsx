@@ -105,7 +105,7 @@ export const AICoachPanel: React.FC<{ setActiveTab?: (tab: string) => void }> = 
       <div className="xl:col-span-7 space-y-6 flex flex-col">
         
         {/* PREMIUM HERO / HEADER */}
-        <div className="bg-gradient-to-br from-[#061A32] via-[#082B55] to-[#061A32] rounded-[32px] p-8 text-white relative overflow-hidden shadow-xl border-none">
+        <div className="bg-gradient-to-br from-[#061A32] via-[#082B55] to-[#061A32] rounded-3xl p-8 text-white relative overflow-hidden shadow-xl border-none">
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#00D2B4]/10 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
           
           <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
@@ -129,7 +129,7 @@ export const AICoachPanel: React.FC<{ setActiveTab?: (tab: string) => void }> = 
         </div>
 
         {/* AI Sohbet/Çıktı Alanı */}
-        <div className="flex-1 bg-white border border-slate-100 rounded-[32px] p-6 lg:p-8 min-h-[400px] max-h-[600px] overflow-y-auto flex flex-col shadow-sm gap-6 custom-scrollbar">
+        <div className="flex-1 bg-white border border-slate-100 rounded-3xl p-6 lg:p-8 min-h-[400px] max-h-[600px] overflow-y-auto flex flex-col shadow-sm gap-6 custom-scrollbar">
           {chatHistory.map((msg, idx) => (
             <div key={idx} className={`flex gap-4 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
               
@@ -249,7 +249,7 @@ export const AICoachPanel: React.FC<{ setActiveTab?: (tab: string) => void }> = 
       <div className="xl:col-span-5 space-y-6">
 
         {/* Bugünkü Koç Yorumu */}
-        <div className="bg-white border border-slate-200 rounded-[32px] p-6 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
           <div className="flex justify-between items-start mb-3">
             <h3 className="font-bold text-slate-900 flex items-center gap-2">
               <Sparkles size={18} className="text-slate-400" />
@@ -265,7 +265,7 @@ export const AICoachPanel: React.FC<{ setActiveTab?: (tab: string) => void }> = 
         </div>
         
         {/* Operasyon Özeti */}
-        <div className="bg-white border border-slate-200 rounded-[32px] p-6 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
           <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
             <BarChart size={18} className="text-blue-500" />
             Operasyon Özeti
@@ -292,7 +292,7 @@ export const AICoachPanel: React.FC<{ setActiveTab?: (tab: string) => void }> = 
 
         {/* Günün Ana Odakları */}
         {(!insight?.mainFocus || insight.mainFocus.length === 0) ? (
-          <div className="bg-white border border-slate-200 rounded-[32px] p-6 shadow-sm">
+          <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
             <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
               <Target size={18} className="text-slate-400" />
               Günün Ana Odakları
@@ -302,7 +302,7 @@ export const AICoachPanel: React.FC<{ setActiveTab?: (tab: string) => void }> = 
             </div>
           </div>
         ) : (
-          <div className="bg-slate-900 text-white rounded-[32px] p-6 shadow-lg shadow-slate-900/10">
+          <div className="bg-slate-900 text-white rounded-3xl p-6 shadow-lg shadow-slate-900/10">
             <h3 className="font-bold text-white mb-4 flex items-center gap-2">
               <Target size={18} className="text-orange-500" />
               Günün Ana Odakları
@@ -329,7 +329,7 @@ export const AICoachPanel: React.FC<{ setActiveTab?: (tab: string) => void }> = 
         )}
 
         {/* Önerilen Görevler */}
-        <div className="bg-white border border-slate-200 rounded-[32px] p-6 shadow-sm">
+        <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm">
           <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
             <Zap size={18} className="text-yellow-500" />
             Önerilen Aksiyonlar

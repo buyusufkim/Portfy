@@ -16,7 +16,7 @@ export const DisciplineRecordsSection: React.FC = () => {
 
   if (isLoading) {
     return (
-      <Card className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 relative flex justify-center items-center h-[120px]">
+      <Card className="rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-100 relative flex justify-center items-center h-[120px]">
         <Loader2 className="animate-spin text-slate-400" size={24} />
       </Card>
     );
@@ -24,7 +24,7 @@ export const DisciplineRecordsSection: React.FC = () => {
 
   if (isError) {
     return (
-      <Card className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-red-100 relative flex flex-col items-center justify-center text-center h-[120px]">
+      <Card className="rounded-3xl p-5 sm:p-6 shadow-sm border border-red-100 relative flex flex-col items-center justify-center text-center h-[120px]">
         <ShieldAlert className="text-red-400 mb-2" size={24} />
         <h3 className="font-bold text-slate-800 text-sm">Yüklenemedi</h3>
       </Card>
@@ -40,7 +40,7 @@ export const DisciplineRecordsSection: React.FC = () => {
     <>
       <Card 
         onClick={() => setIsModalOpen(true)}
-        className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 relative cursor-pointer hover:bg-slate-50 transition-colors h-full flex flex-col"
+        className="rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-100 relative cursor-pointer hover:bg-slate-50 transition-colors h-full flex flex-col"
       >
         {/* Header / Mobile Summary */}
         <div className="flex items-center justify-between lg:border-b lg:border-slate-100 lg:pb-3">

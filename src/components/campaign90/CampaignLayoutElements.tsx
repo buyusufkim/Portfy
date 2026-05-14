@@ -39,7 +39,7 @@ export const CampaignTopStats: React.FC<StatsProps> = ({
     return (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 min-w-0">
             {/* Header Progress Card */}
-            <div className="p-5 bg-slate-900 text-white rounded-[24px] relative overflow-hidden shadow-xl shadow-slate-900/10">
+            <div className="p-5 bg-slate-900 text-white rounded-3xl relative overflow-hidden shadow-xl shadow-slate-900/10">
                 <div className="absolute -right-4 -top-4 opacity-5">
                    <Trophy size={80} />
                 </div>
@@ -101,7 +101,7 @@ export const CampaignTopStats: React.FC<StatsProps> = ({
             </div>
 
             {/* Today's GPA Card */}
-            <Card className="p-5 bg-white rounded-[24px] border border-slate-200 shadow-sm flex flex-col justify-between">
+            <Card className="p-5 bg-white rounded-3xl border border-slate-200 shadow-sm flex flex-col justify-between">
                 <div>
                    <h3 className="font-black text-slate-800 mb-0.5 flex items-center gap-1.5 text-base tracking-tight">
                        <Activity size={16} className="text-[#00D2B4]" /> 

@@ -51,7 +51,7 @@ export const PremiumDemoPage: React.FC = () => {
             <PremiumBadge tier="master" />
           </div>
           <PremiumGate featureKey="team_collaboration">
-            <div className="bg-white p-12 rounded-[40px] border border-slate-100 text-center space-y-4">
+            <div className="bg-white p-12 rounded-3xl border border-slate-100 text-center space-y-4">
               <h4 className="text-lg font-bold text-slate-900">Ekip Arkadaşlarını Davet Et</h4>
               <p className="text-slate-500 text-sm max-w-xs mx-auto">
                 Portföylerinizi ekibinizle paylaşın ve satış sürecini birlikte yönetin.

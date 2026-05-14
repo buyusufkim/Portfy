@@ -52,7 +52,7 @@ export const WhatsAppAnalysisPage: React.FC = () => {
         <motion.div 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          className="bg-slate-900 rounded-[40px] p-8 text-white relative overflow-hidden"
+          className="bg-slate-900 rounded-3xl p-8 text-white relative overflow-hidden"
         >
           <div className="relative z-10 space-y-4">
             <div className="flex items-center gap-2 text-emerald-400">

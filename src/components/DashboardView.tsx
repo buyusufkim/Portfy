@@ -13,18 +13,15 @@ import {
   ClipboardList,
   Ghost,
   Target,
-  Plus,
   MapPin,
   StickyNote,
   Calendar,
+  Clock,
   Play,
   Star,
-  Edit3,
-  Clock,
   Phone,
   UserCheck,
   LifeBuoy,
-  ChevronRight,
   Mail,
   Home,
   Sun,
@@ -44,21 +41,16 @@ import {
   PersonalTask,
   RescueSession,
   UserStats,
-  CoachInsight,
   MutationResult,
   MissedOpportunity,
   DailyPlan,
   DayClosure,
-  WeeklyReport,
   LeadAlert,
-  Lead,
   MicroGoal,
   CampaignTask,
   isAdminRole
 } from "../types";
-import { RevenueStats } from "../types/revenue";
 import { QueryClient, useMutation, useQuery } from "@tanstack/react-query";
-import { LucideIcon } from "lucide-react";
 import { TopActionItem, leadAlertDescriptions, getDedupedAlerts, isTodayOrOverdue, formatTime } from "../helpers/dashboardHelpers";
 
 import { toast } from "react-hot-toast";
@@ -72,6 +64,8 @@ interface DashboardViewProps {
   isGamifiedTasksLoading: boolean;
   completeTaskMutation: MutationResult<void, { task: GamifiedTask }>;
   startRescueMutation: MutationResult<RescueSession, void>;
+  rescueSession?: RescueSession | null;
+  setShowRescueModal?: (show: boolean) => void;
   setActiveTab: (tab: string) => void;
   setShowDayCloser: (show: boolean) => void;
   queryClient: QueryClient;
@@ -101,6 +95,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   isGamifiedTasksLoading,
   completeTaskMutation,
   startRescueMutation,
+  rescueSession,
+  setShowRescueModal,
   setActiveTab,
   setShowDayCloser,
   queryClient,
@@ -226,15 +222,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   // --- /END SETUP ---
 
   const [selectedGoalDate, setSelectedGoalDate] = useState<string>(todayISO);
-
-  const markDayStartedLocally = () => {
-    const nowIso = new Date().toISOString();
-    setOptimisticDayStartedAt(nowIso);
-    if (profile?.id) {
-      localStorage.setItem(`day_started_${profile.id}_${todayISO}`, nowIso);
-    }
-    return nowIso;
-  };
 
   const handleStartDayClick = () => {
     const [currentHour, currentMinutes] = timeLabel.split(':').map(Number);
@@ -592,7 +579,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const flowNotes = [...flowNotesTasks, ...flowNotesPersonal].slice(0, 3);
 
   // Daily Plan Indicators
-  const safePercent = (done: number, target: number) => target <= 0 ? 0 : Math.min(100, Math.round((done / target) * 100));
 
   const calcCallsTarget = dailyPlan?.planned_calls ?? 0;
   const calcCallsDone = dailyPlan?.completed_calls ?? 0;
@@ -638,7 +624,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         
           {/* HERO CARD: Bugünü Netleştir */}
           <section className="order-1">
-            <Card className={`p-5 ${weatherGradient} text-white border-none shadow-xl relative overflow-hidden rounded-[28px] flex flex-col md:flex-row justify-between gap-4 md:items-center transition-colors duration-1000`}>
+            <Card className={`p-5 ${weatherGradient} text-white border-none shadow-xl relative overflow-hidden rounded-3xl flex flex-col md:flex-row justify-between gap-4 md:items-center transition-colors duration-1000`}>
               <div className="absolute top-0 right-0 w-64 h-64 bg-[#00D2B4]/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
               
               <div className="relative z-10 flex-1">
@@ -744,7 +730,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* 1. BUGÜNÜN ÖNCELİKLERİ */}
           <section className="order-2">
-            <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
+            <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-3xl">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
                   <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">1</div>
@@ -854,7 +840,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* 2. BUGÜNKÜ HEDEF VE PLAN */}
           <section className="order-3">
-              <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
+              <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-3xl">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">2</div>
@@ -998,7 +984,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* 3. GÜNÜN NOTLARI / AKIŞ NOTLARI */}
           <section className="order-4">
-              <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
+              <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-3xl">
                 <div className="flex items-center justify-between mb-4">
                   <div className="flex items-center gap-3">
                     <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">3</div>
@@ -1045,7 +1031,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* 4. KRİTİK SİNYALLER / AKSİYON MERKEZİ */}
           {!isNewUserCampaignActive && (
           <section className="order-5">
-            <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
+            <Card className="p-4 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-3xl">
              <div className="flex items-center justify-between mb-4">
                <div className="flex items-center gap-3">
                  <div className="w-6 h-6 rounded-full bg-slate-100 text-slate-500 flex items-center justify-center text-[11px] font-bold">4</div>
@@ -1097,7 +1083,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           {/* 5. GÜNÜ KAPAT / GÜN ÖZETİ */}
           <section className="order-6">
               {isDayEnded ? (
-                <Card className="p-4 bg-[#F2FFF8] border border-emerald-100 flex items-center justify-between rounded-[24px]">
+                <Card className="p-4 bg-[#F2FFF8] border border-emerald-100 flex items-center justify-between rounded-3xl">
                   <div className="flex items-center gap-3">
                     <div className="w-12 h-12 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center">
                       <CheckCircle2 size={24} />
@@ -1110,8 +1096,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     </div>
                   </div>
                 </Card>
+              ) : !isDayStarted ? (
+                <Card className="p-4 md:p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] rounded-3xl">
+                  <div className="flex items-center gap-4 text-left w-full">
+                    <div className="w-12 h-12 rounded-full flex items-center justify-center shrink-0 bg-slate-50 text-slate-400">
+                      <Clock size={24} />
+                    </div>
+                    <div className="flex-1 text-left">
+                      <h4 className="text-sm md:text-base font-bold text-slate-900">Günü Başlat</h4>
+                      <p className="text-[11px] text-slate-500 font-medium mt-0.5 pr-4">Günü Kapat ve Odaklanma Modu aksiyonları için önce yukarıdan günü başlatmalısın.</p>
+                    </div>
+                  </div>
+                </Card>
               ) : (
-                <Card className="p-4 md:p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
+                <Card className="p-4 md:p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-3xl">
                   <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-5">
                     <div className="flex items-center gap-4 text-left w-full">
                       <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${countOverdueTasks > 0 ? "bg-orange-50 text-orange-500" : "bg-emerald-50 text-emerald-500"}`}>
@@ -1134,11 +1132,49 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     
                     <div className="flex items-center gap-3 w-full md:w-auto shrink-0 justify-end mt-2 md:mt-0">
                         {countOverdueTasks > 0 && !isNewUserCampaignActive && (
-                            <button onClick={() => startRescueMutation.mutate()} className="h-10 px-4 rounded-xl text-orange-600 bg-orange-50 border border-orange-200 font-bold text-[11px] flex items-center gap-1.5 hover:bg-orange-100 transition-colors justify-center shadow-sm flex-1 md:flex-none whitespace-nowrap">
-                              <Zap size={14} className="fill-current" /> Odaklanma Modu
+                            <button 
+                              onClick={() => {
+                                if (!isDayStarted) {
+                                  toast.error("Odaklanma Modu için önce günü başlatmalısın.");
+                                  return;
+                                }
+                                if (isDayEnded) {
+                                  toast.error("Bugün zaten kapatılmış.");
+                                  return;
+                                }
+                                if (rescueSession && rescueSession.status === 'active' && setShowRescueModal) {
+                                  setShowRescueModal(true);
+                                  return;
+                                }
+                                if (!startRescueMutation.isPending) {
+                                  startRescueMutation.mutate();
+                                }
+                              }} 
+                              disabled={startRescueMutation.isPending}
+                              className="h-10 px-4 rounded-xl text-orange-600 bg-orange-50 border border-orange-200 font-bold text-[11px] flex items-center gap-1.5 hover:bg-orange-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors justify-center shadow-sm flex-1 md:flex-none whitespace-nowrap"
+                            >
+                              {startRescueMutation.isPending ? (
+                                <>
+                                  <RefreshCw size={14} className="animate-spin" /> Hazırlanıyor...
+                                </>
+                              ) : (
+                                <>
+                                  <Zap size={14} className="fill-current" /> Odaklanma Modu
+                                </>
+                              )}
                             </button>
                         )}
-                        <button onClick={() => setShowDayCloser(true)} className="h-10 px-6 rounded-xl bg-[#061A32] text-white font-bold text-[11px] flex items-center gap-1.5 hover:bg-[#082B55] transition-colors justify-center flex-1 md:flex-none shadow-md whitespace-nowrap">
+                        <button onClick={() => {
+                          if (!isDayStarted) {
+                            toast.error("Günü kapatmak için önce günü başlatmalısın.");
+                            return;
+                          }
+                          if (isDayEnded) {
+                            toast.error("Bugün zaten kapatılmış.");
+                            return;
+                          }
+                          setShowDayCloser(true);
+                        }} className="h-10 px-6 rounded-xl bg-[#061A32] text-white font-bold text-[11px] flex items-center gap-1.5 hover:bg-[#082B55] transition-colors justify-center flex-1 md:flex-none shadow-md whitespace-nowrap">
                           <CheckCircle2 size={16} /> Günü Kapat
                         </button>
                     </div>
@@ -1153,7 +1189,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
       {showEarlyStartModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/50 backdrop-blur-sm">
-          <div className="bg-white rounded-[24px] p-6 w-full max-w-sm shadow-2xl">
+          <div className="bg-white rounded-3xl p-6 w-full max-w-sm shadow-2xl">
             <h3 className="text-lg font-black text-slate-900 mb-2">Güne Erken Başlıyorsun</h3>
             <p className="text-sm text-slate-500 mb-4">
               Mesai başlangıç saatinin {profile?.work_start_time} olduğunu görüyorum. Günü erken başlatmak için bir not eklemelisin.

@@ -165,7 +165,7 @@ export const DocumentAutomationModal: React.FC<DocumentAutomationModalProps> = (
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-white w-full max-w-5xl rounded-[40px] shadow-2xl flex flex-col max-h-[95vh] overflow-hidden"
+          className="bg-white w-full max-w-5xl rounded-3xl shadow-2xl flex flex-col max-h-[95vh] overflow-hidden"
         >
           {/* Header */}
           <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
@@ -214,7 +214,7 @@ export const DocumentAutomationModal: React.FC<DocumentAutomationModalProps> = (
                         <button
                           key={type}
                           onClick={() => { setSelectedType(type); handleNext(); }}
-                          className={`group p-8 rounded-[32px] border-2 transition-all flex flex-col items-center gap-6 text-center ${
+                          className={`group p-8 rounded-3xl border-2 transition-all flex flex-col items-center gap-6 text-center ${
                             selectedType === type 
                             ? 'bg-orange-50 border-orange-600 ring-4 ring-orange-50' 
                             : 'bg-white border-slate-100 hover:border-orange-200'
@@ -344,7 +344,7 @@ export const DocumentAutomationModal: React.FC<DocumentAutomationModalProps> = (
                     </div>
 
                     {isAddingNewLead ? (
-                      <div className="bg-slate-50 p-8 rounded-[32px] border-2 border-slate-100 space-y-6">
+                      <div className="bg-slate-50 p-8 rounded-3xl border-2 border-slate-100 space-y-6">
                         <h4 className="text-lg font-black text-slate-900 flex items-center gap-2">
                           <UserPlus className="text-orange-600" />
                           Yeni Müşteri Oluştur
@@ -506,7 +506,7 @@ export const DocumentAutomationModal: React.FC<DocumentAutomationModalProps> = (
                       </button>
                     </div>
 
-                    <div className="bg-slate-200 p-8 rounded-[40px] w-full overflow-y-auto max-h-[60vh] flex justify-center custom-scrollbar">
+                    <div className="bg-slate-200 p-8 rounded-3xl w-full overflow-y-auto max-h-[60vh] flex justify-center custom-scrollbar">
                       <div 
                         id="document-preview"
                         ref={printRef}

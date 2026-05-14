@@ -157,7 +157,7 @@ export const AdminPackageRequestsTab: React.FC<AdminPackageRequestsTabProps> = (
         </div>
       </div>
 
-      <div className="bg-white rounded-[32px] p-6 border border-slate-100 shadow-sm">
+      <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
         <div className="flex flex-col md:flex-row gap-4 justify-between items-center mb-6">
           <div className="flex bg-slate-100 rounded-xl p-1 gap-1 w-full md:w-auto">
             {['all', 'pending', 'approved', 'rejected', 'cancelled'].map(f => (

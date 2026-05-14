@@ -32,7 +32,7 @@ export const MissedOpportunitiesModal: React.FC<MissedOpportunitiesModalProps> =
           initial={{ scale: 0.9, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
-          className="bg-white w-full max-w-lg rounded-[40px] p-8 space-y-6 shadow-2xl max-h-[80vh] overflow-y-auto"
+          className="bg-white w-full max-w-lg rounded-3xl p-8 space-y-6 shadow-2xl max-h-[80vh] overflow-y-auto"
         >
           <div className="flex justify-between items-center sticky top-0 bg-white pb-4 z-10">
             <div className="flex items-center gap-3">

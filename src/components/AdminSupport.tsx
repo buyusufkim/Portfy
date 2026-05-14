@@ -41,7 +41,7 @@ export const AdminSupport: React.FC = () => {
   return (
     <div className="space-y-4">
       {tickets.length === 0 && (
-         <div className="bg-white rounded-[24px] border border-slate-100 p-16 flex flex-col items-center justify-center text-center">
+         <div className="bg-white rounded-3xl border border-slate-100 p-16 flex flex-col items-center justify-center text-center">
             <div className="w-16 h-16 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center mb-4">
                <SearchX size={32} />
             </div>
@@ -50,7 +50,7 @@ export const AdminSupport: React.FC = () => {
          </div>
       )}
       {tickets.map(t => (
-        <div key={t.id} className="p-6 bg-white rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+        <div key={t.id} className="p-6 bg-white rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
           <div className="flex flex-col md:flex-row md:justify-between items-start gap-4">
             <div>
               <div className="flex items-center gap-3">

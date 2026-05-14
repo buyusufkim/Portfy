@@ -25,7 +25,7 @@ export const LeadEntryMethodModal = ({ isOpen, onClose, onSelectManual, onSelect
             animate={{ scale: 1, opacity: 1, y: 0 }}
             exit={{ scale: 0.95, opacity: 0, y: 20 }}
             onClick={(e) => e.stopPropagation()}
-            className="bg-white rounded-[32px] shadow-2xl w-full max-w-sm overflow-hidden relative p-6"
+            className="bg-white rounded-3xl shadow-2xl w-full max-w-sm overflow-hidden relative p-6"
           >
             <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 z-10 transition-colors">
               <X size={24} />

@@ -47,7 +47,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
     <div className="space-y-6">
       {/* Temel Metrikler (Gelir & Kullanıcı) */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
             <div className="flex justify-between items-start mb-6">
               <div className="w-12 h-12 bg-slate-50 text-slate-700 rounded-2xl flex items-center justify-center shrink-0 border border-slate-100 transition-colors">
                 <DollarSign size={24} />
@@ -60,7 +60,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow relative overflow-hidden group">
             <div className="flex justify-between items-start mb-6">
               <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0 border border-indigo-100 transition-colors">
                 <Crown size={24} />
@@ -77,7 +77,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start mb-6">
               <div className="w-12 h-12 bg-slate-50 text-slate-600 rounded-2xl flex items-center justify-center shrink-0 border border-slate-100">
                 <Users size={24} />
@@ -94,7 +94,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-[24px] border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
+          <div className="bg-white p-6 rounded-3xl border border-slate-100 shadow-sm hover:shadow-md transition-shadow">
             <div className="flex justify-between items-start mb-6">
               <div className="w-12 h-12 bg-teal-50 text-teal-600 rounded-2xl flex items-center justify-center shrink-0 border border-teal-100">
                 <Activity size={24} />
@@ -116,7 +116,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="col-span-1 lg:col-span-2 space-y-6">
             {/* Etkileşim Skoru ve Büyüme (Sağlık) */}
-            <div className="bg-white border border-slate-100 rounded-[24px] p-6 shadow-sm overflow-hidden relative">
+            <div className="bg-white border border-slate-100 rounded-3xl p-6 shadow-sm overflow-hidden relative">
               <h3 className="font-bold tracking-tight text-slate-900 mb-6 flex items-center gap-2 text-lg">
                   <TrendingUp className="text-indigo-500" size={20} /> SaaS Büyüme Özeti
               </h3>
@@ -141,7 +141,7 @@ export const AdminDashboardTab: React.FC<AdminDashboardTabProps> = ({
             </div>
 
             {/* Riskli Kullanıcılar Listesi */}
-            <div className="bg-white border border-rose-100 rounded-[24px] p-6 shadow-sm overflow-hidden relative">
+            <div className="bg-white border border-rose-100 rounded-3xl p-6 shadow-sm overflow-hidden relative">
               <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-rose-400 to-amber-300"></div>
               <h3 className="font-bold tracking-tight text-slate-900 mb-6 flex justify-between items-center text-lg">
                   <span className="flex items-center gap-2"><AlertCircle className="text-rose-500" size={20} /> Dikkat Gerekenler</span>

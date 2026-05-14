@@ -85,7 +85,7 @@ export const DailyRadar: React.FC<DailyRadarProps> = ({ tasks, insight, isCampai
                     initial={{ y: 20, opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     transition={{ delay: 0.1 }}
-                    className="bg-slate-800 border border-slate-700 rounded-[24px] p-6 text-left"
+                    className="bg-slate-800 border border-slate-700 rounded-3xl p-6 text-left"
                 >
                     <div className="flex items-center gap-2 mb-3 text-orange-400 font-bold text-[11px] uppercase tracking-wider">
                         <Target size={14} /> Bugünün 90 Gün Kampı Odağı

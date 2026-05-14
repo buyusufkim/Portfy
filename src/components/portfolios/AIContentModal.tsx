@@ -66,7 +66,7 @@ export const AIContentModal: React.FC<AIContentModalProps> = ({
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white w-full max-w-lg rounded-[40px] p-8 space-y-6 shadow-2xl"
+            className="bg-white w-full max-w-lg rounded-3xl p-8 space-y-6 shadow-2xl"
           >
             <div className="flex justify-between items-center">
               <div className="flex items-center gap-3">

@@ -578,7 +578,7 @@ export const BolgemView = ({
               <div className="space-y-6 mb-6">
                 <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
                   {/* Score Card */}
-                  <div className="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-[20px] p-5 text-white shadow-xl flex flex-col justify-between h-full min-h-[220px]">
+                  <div className="bg-gradient-to-br from-indigo-900 to-slate-900 rounded-2xl p-5 text-white shadow-xl flex flex-col justify-between h-full min-h-[220px]">
                     <div className="flex justify-between items-start mb-4">
                       <div>
                         <h3 className="text-lg font-bold mb-0.5">Bölge Hakimiyeti</h3>
@@ -612,7 +612,7 @@ export const BolgemView = ({
 
                   <div className="lg:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-6">
                     {/* Today's Follow-ups */}
-                    <div className="bg-white rounded-[20px] p-5 shadow-sm border border-slate-100 flex flex-col h-full min-h-[220px]">
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col h-full min-h-[220px]">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5 uppercase tracking-wide">
                           <CheckCircle2 size={14} className="text-emerald-500" />
@@ -642,7 +642,7 @@ export const BolgemView = ({
                     </div>
 
                     {/* Weak Network */}
-                    <div className="bg-white rounded-[20px] p-5 shadow-sm border border-slate-100 flex flex-col h-full min-h-[220px]">
+                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100 flex flex-col h-full min-h-[220px]">
                       <div className="flex items-center justify-between mb-3">
                         <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5 uppercase tracking-wide">
                           <TrendingUp size={14} className="text-red-500" />
@@ -672,13 +672,13 @@ export const BolgemView = ({
                 </div>
 
                 {/* Category Distribution */}
-                <div className="bg-white rounded-[20px] p-5 shadow-sm border border-slate-100">
+                <div className="bg-white rounded-2xl p-5 shadow-sm border border-slate-100">
                    <h3 className="text-xs font-bold text-slate-900 mb-3 uppercase tracking-wide">Kategori Dağılımı</h3>
                    <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-8 gap-2">
                      {categoryDistribution.map(cat => {
                        const Icon = cat.icon || Building2;
                        return (
-                         <div key={cat.id} className="p-2 border rounded-[14px] flex flex-col items-center text-center gap-1" style={{ borderColor: cat.color + '30', backgroundColor: cat.color + '10' }}>
+                         <div key={cat.id} className="p-2 border rounded-xl flex flex-col items-center text-center gap-1" style={{ borderColor: cat.color + '30', backgroundColor: cat.color + '10' }}>
                            <Icon size={16} style={{ color: cat.color }} className="opacity-80" />
                            <span className="text-[9px] font-bold text-slate-700 line-clamp-1 break-all w-full leading-tight">{cat.label}</span>
                            <div className="text-sm font-black text-slate-900">{cat.count}</div>
@@ -757,7 +757,7 @@ export const BolgemView = ({
                 placeholder="Sokak, bina veya kişi ara..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-white border border-slate-200 rounded-[14px] py-2.5 pl-10 pr-4 text-[13px] focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
+                className="w-full bg-white border border-slate-200 rounded-xl py-2.5 pl-10 pr-4 text-[13px] focus:ring-2 focus:ring-indigo-500 outline-none shadow-sm"
               />
             </div>
 
@@ -837,7 +837,7 @@ export const BolgemView = ({
               initial={{ opacity: 0, scale: 0.95, y: 20 }} 
               animate={{ opacity: 1, scale: 1, y: 0 }} 
               exit={{ opacity: 0, scale: 0.95, y: 20 }} 
-              className="bg-slate-900 w-full max-w-2xl rounded-[32px] overflow-hidden relative z-10 shadow-2xl flex flex-col border border-white/10"
+              className="bg-slate-900 w-full max-w-2xl rounded-3xl overflow-hidden relative z-10 shadow-2xl flex flex-col border border-white/10"
             >
               <div className="p-6 border-b border-white/10 flex justify-between items-center bg-slate-900 sticky top-0">
                 <h3 className="text-xl font-bold text-white flex items-center gap-2"><MapPin size={20} className="text-indigo-500"/> Akıllı Bölge Planlama</h3>
@@ -925,16 +925,16 @@ export const BolgemView = ({
       </AnimatePresence>
 
       {view === 'map' && (
-        <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-10 left-1/2 -translate-x-1/2 z-[450] bg-slate-900/90 backdrop-blur-xl p-2 rounded-[16px] flex shadow-2xl border border-white/10 pointer-events-auto">
+        <div className="fixed bottom-[calc(5rem+env(safe-area-inset-bottom))] md:bottom-10 left-1/2 -translate-x-1/2 z-[450] bg-slate-900/90 backdrop-blur-xl p-2 rounded-2xl flex shadow-2xl border border-white/10 pointer-events-auto">
           <button 
             onClick={() => setView('map')}
-            className="px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all bg-indigo-600 text-white shadow-md"
+            className="px-4 sm:px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all bg-indigo-600 text-white shadow-md"
           >
             <MapIcon size={14} /> Radar
           </button>
           <button 
             onClick={() => setView('list')}
-            className="px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all text-slate-400 hover:text-white"
+            className="px-4 sm:px-8 py-2.5 rounded-xl text-xs font-black uppercase tracking-widest flex items-center justify-center gap-2 transition-all text-slate-400 hover:text-white"
           >
             <LayoutDashboard size={14} /> Analiz
           </button>
@@ -945,7 +945,7 @@ export const BolgemView = ({
         {pinActionModal && (
           <div className="fixed inset-0 z-[600] flex items-center justify-center px-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setPinActionModal(null)} />
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white w-full max-w-sm rounded-[24px] relative z-10 shadow-2xl p-6 overflow-hidden">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white w-full max-w-sm rounded-3xl relative z-10 shadow-2xl p-6 overflow-hidden">
                <div className="text-center mb-6">
                  <div className="w-16 h-16 bg-blue-100 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4">
                    {pinActionModal.type === 'call' && <Phone size={32} />}
@@ -1026,7 +1026,7 @@ export const BolgemView = ({
         {checkInModalData && (
           <div className="fixed inset-0 z-[600] flex items-center justify-center px-4">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setCheckInModalData(null)} />
-            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white w-full max-w-sm rounded-[24px] relative z-10 shadow-2xl p-6 overflow-hidden">
+            <motion.div initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }} className="bg-white w-full max-w-sm rounded-3xl relative z-10 shadow-2xl p-6 overflow-hidden">
                <div className="text-center mb-6">
                  <div className="w-16 h-16 bg-emerald-100 text-emerald-600 rounded-full flex items-center justify-center mx-auto mb-4">
                    <CheckCircle2 size={32} />

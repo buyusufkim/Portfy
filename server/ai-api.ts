@@ -987,6 +987,10 @@ export const handleSaveDayClosure = async (req: AuthRequest, res: Response) => {
       .eq("id", userId)
       .single();
 
+    if (!profile || !profile.last_day_started_at || getTurkeyTodayISO(new Date(profile.last_day_started_at)) !== todayStr) {
+        return res.status(403).json({ error: "Gün başlatılmadan Günü Kapatılamaz." });
+    }
+
     const nowIso = new Date().toISOString();
     let day_started_at = payload.day_started_at || null;
     let day_closed_at = payload.day_closed_at || nowIso;
@@ -1053,6 +1057,16 @@ export const handleSaveDayClosure = async (req: AuthRequest, res: Response) => {
         userId, closure_date: todayStr, wins: normalizedPayload.wins
     }));
 
+    // Check if this is the first closure today to prevent double campaign day progression
+    const { data: existingClosure } = await supabaseAdmin
+      .from("day_closure")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("closure_date", todayStr)
+      .maybeSingle();
+      
+    const isFirstClosureToday = !existingClosure;
+
     const { data, error } = await supabaseAdmin
       .from("day_closure")
       .upsert(normalizedPayload, { onConflict: "user_id, closure_date" })
@@ -1071,6 +1085,31 @@ export const handleSaveDayClosure = async (req: AuthRequest, res: Response) => {
             error: safeErrorMessage(error, "Failed to save day closure"),
             details: process.env.NODE_ENV === 'development' ? error : undefined
         });
+    }
+
+    try {
+        const campaignDayPayload = payload.campaign_day ? Number(payload.campaign_day) : undefined;
+        if (campaignDayPayload && !isNaN(campaignDayPayload) && isFirstClosureToday) {
+            const { data: campaign } = await supabaseAdmin
+                .from('advisor_campaigns')
+                .select('id, current_day')
+                .eq('user_id', userId)
+                .eq('status', 'active')
+                .maybeSingle();
+
+            if (campaign && campaign.current_day === campaignDayPayload) {
+                const nextDay = Math.min(90, campaign.current_day + 1);
+                const nextWeek = Math.ceil(nextDay / 7);
+                await supabaseAdmin.from('advisor_campaigns').update({
+                    current_day: nextDay,
+                    current_week: nextWeek,
+                    updated_at: new Date().toISOString()
+                }).eq('id', campaign.id);
+                console.log();
+            }
+        }
+    } catch (campaignUpdateErr) {
+        console.error("Failed to update campaign day after day closure:", campaignUpdateErr);
     }
 
     return res.json(data);
@@ -1355,6 +1394,71 @@ export const handleEarnXP = async (req: AuthRequest, res: Response) => {
       if (Number.isNaN(d.getTime())) return null;
       return getTurkeyTodayISO(d);
     };
+
+    if (actionType === 'RESCUE_SESSION_BONUS' || actionType === 'END_DAY') {
+      const { data: profCheck } = await supabaseAdmin.from('profiles').select('last_day_started_at').eq('id', userId).single();
+      if (!profCheck || !profCheck.last_day_started_at || getTurkeyDateFromTimestamp(profCheck.last_day_started_at) !== today) {
+        return res.status(403).json({ error: 'Gün başlatılmadan bu aksiyon çalışmaz.' });
+      }
+    }
+
+    if (actionType === 'RESCUE_SESSION_BONUS') {
+      const xpToAward = 100;
+
+      if (!entityId) {
+         return res.status(400).json({ error: "Missing sessionId for RESCUE_SESSION_BONUS" });
+      }
+
+      // Check if day already closed
+      const { data: dayClosureData } = await supabaseAdmin.from('day_closure').select('id').eq('user_id', userId).eq('closure_date', today).maybeSingle();
+      if (dayClosureData) {
+         return res.status(403).json({ error: "Gün kapatıldıktan sonra kurtarma seansı tamamlanamaz." });
+      }
+
+      // Check ownership
+      const { data: sessionData } = await supabaseAdmin.from('rescue_sessions').select('user_id').eq('id', entityId).maybeSingle();
+      if (!sessionData || sessionData.user_id !== userId) {
+         return res.status(403).json({ error: "Bu oturum size ait değil." });
+      }
+
+      // Check if already awarded
+      const { data: existingLog } = await supabaseAdmin.from('user_activity_log')
+          .select('id')
+          .eq('user_id', userId)
+          .eq('action_type', 'RESCUE_SESSION_BONUS')
+          .eq('entity_id', entityId)
+          .limit(1);
+
+      if (existingLog && existingLog.length > 0) {
+          return res.json({ success: true, message: "XP already awarded", xp_awarded: 0 });
+      }
+
+      const { data: profile } = await supabaseAdmin.from('profiles').select('total_xp, broker_level').eq('id', userId).single();
+      if (profile) {
+         const newXp = (profile.total_xp || 0) + xpToAward;
+         let newLevel = 1;
+         if (newXp >= 15000) newLevel = 4;
+         else if (newXp >= 5000) newLevel = 3;
+         else if (newXp >= 1000) newLevel = 2;
+         await supabaseAdmin.from('profiles').update({ total_xp: newXp, broker_level: newLevel }).eq('id', userId);
+         
+         const { data: currentStats } = await supabaseAdmin.from('user_stats').select('xp_earned, tasks_completed').eq('user_id', userId).eq('date', today).maybeSingle();
+         if (currentStats) {
+             await supabaseAdmin.from('user_stats').update({ xp_earned: (currentStats.xp_earned || 0) + xpToAward, tasks_completed: (currentStats.tasks_completed || 0) + 1 }).eq('user_id', userId).eq('date', today);
+         } else {
+             await supabaseAdmin.from('user_stats').insert({ user_id: userId, date: today, xp_earned: xpToAward, tasks_completed: 1, calls_made: 0, visits_made: 0 });
+         }
+
+         // Log it to prevent duplicate awards
+         await supabaseAdmin.from('user_activity_log').insert({
+             user_id: userId,
+             action_type: 'RESCUE_SESSION_BONUS',
+             entity_id: entityId,
+             xp_awarded: xpToAward
+         });
+      }
+      return res.json({ success: true, xp_awarded: xpToAward, new_total: profile ? (profile.total_xp || 0) + xpToAward : xpToAward });
+    }
 
     if (actionType === 'DAILY_FOCUS_COMPLETED') {
       if (!entityId) {

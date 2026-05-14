@@ -64,7 +64,7 @@ export const AdminAnnouncements: React.FC = () => {
 
   return (
     <div className="space-y-6">
-      <div className="bg-white p-6 md:p-8 rounded-[24px] shadow-sm border border-slate-100">
+      <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100">
         <h3 className="text-lg font-black text-slate-900 mb-6 flex items-center gap-2 tracking-tight">
           <Megaphone className="text-indigo-600" size={20} /> Yeni Duyuru
         </h3>
@@ -98,7 +98,7 @@ export const AdminAnnouncements: React.FC = () => {
 
       <div className="space-y-4">
         {announcements.map(a => (
-          <div key={a.id} className={`p-5 bg-white border border-slate-100 rounded-[24px] shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all relative overflow-hidden group ${!a.is_active ? 'opacity-60 grayscale' : ''}`}>
+          <div key={a.id} className={`p-5 bg-white border border-slate-100 rounded-3xl shadow-sm flex flex-col md:flex-row md:items-center justify-between gap-4 transition-all relative overflow-hidden group ${!a.is_active ? 'opacity-60 grayscale' : ''}`}>
              <div className={`absolute left-0 top-0 bottom-0 w-1.5 ${a.type === 'success' ? 'bg-emerald-500' : a.type === 'danger' ? 'bg-rose-500' : a.type === 'warning' ? 'bg-amber-500' : 'bg-blue-500'}`}></div>
             <div className="pl-4">
               <div className="flex items-center gap-3 mb-1.5">
@@ -118,7 +118,7 @@ export const AdminAnnouncements: React.FC = () => {
           </div>
         ))}
         {announcements.length === 0 && !loading && (
-          <div className="p-12 text-center text-slate-500 font-medium flex flex-col items-center gap-3 bg-white border border-slate-100 rounded-[24px]">
+          <div className="p-12 text-center text-slate-500 font-medium flex flex-col items-center gap-3 bg-white border border-slate-100 rounded-3xl">
              <div className="w-12 h-12 bg-slate-50 text-slate-400 rounded-full flex items-center justify-center">
                <AlertCircle size={24} />
              </div>

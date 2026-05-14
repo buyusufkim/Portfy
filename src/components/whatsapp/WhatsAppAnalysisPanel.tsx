@@ -38,7 +38,7 @@ export const WhatsAppAnalysisPanel: React.FC = () => {
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-slate-900 rounded-[40px] p-10 text-center space-y-6 border border-slate-800 relative overflow-hidden"
+        className="bg-slate-900 rounded-3xl p-10 text-center space-y-6 border border-slate-800 relative overflow-hidden"
       >
         <div className="relative z-10 space-y-6">
           <div className="w-20 h-20 bg-emerald-600 rounded-3xl mx-auto flex items-center justify-center text-white shadow-2xl shadow-emerald-600/20">
@@ -61,7 +61,7 @@ export const WhatsAppAnalysisPanel: React.FC = () => {
 
   return (
     <div className="space-y-8">
-      <section className="bg-white rounded-[40px] p-8 shadow-xl shadow-slate-200/50 border border-slate-100 space-y-6">
+      <section className="bg-white rounded-3xl p-8 shadow-xl shadow-slate-200/50 border border-slate-100 space-y-6">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600">
             <MessageSquare size={20} />
@@ -77,7 +77,7 @@ export const WhatsAppAnalysisPanel: React.FC = () => {
             value={text}
             onChange={(e) => setText(e.target.value)}
             placeholder="WhatsApp konuşmasını buraya yapıştırın..."
-            className="w-full h-48 p-6 bg-slate-50 border border-slate-100 rounded-[32px] text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all resize-none"
+            className="w-full h-48 p-6 bg-slate-50 border border-slate-100 rounded-3xl text-sm text-slate-900 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-500 transition-all resize-none"
           />
           {text && (
             <button 
@@ -92,7 +92,7 @@ export const WhatsAppAnalysisPanel: React.FC = () => {
         <button
           onClick={handleAnalyze}
           disabled={isAnalyzing || !text.trim()}
-          className="w-full py-5 bg-emerald-600 text-white rounded-[24px] font-bold text-sm flex items-center justify-center gap-3 hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-200"
+          className="w-full py-5 bg-emerald-600 text-white rounded-3xl font-bold text-sm flex items-center justify-center gap-3 hover:bg-emerald-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-emerald-200"
         >
           {isAnalyzing ? (
             <>
@@ -114,7 +114,7 @@ export const WhatsAppAnalysisPanel: React.FC = () => {
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="p-6 bg-red-50 border border-red-100 rounded-[32px] flex items-center gap-4"
+            className="p-6 bg-red-50 border border-red-100 rounded-3xl flex items-center gap-4"
           >
             <div className="w-10 h-10 bg-red-100 rounded-xl flex items-center justify-center text-red-600 shrink-0">
               <AlertCircle size={20} />

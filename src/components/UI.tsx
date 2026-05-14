@@ -26,7 +26,7 @@ export const Card: React.FC<{ children: React.ReactNode, className?: string, onC
   <div 
     id={id}
     onClick={onClick}
-    className={`bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden ${onClick ? 'cursor-pointer active:scale-[0.98] transition-all' : ''} ${className}`}
+    className={`bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden ${onClick ? 'cursor-pointer active:scale-[0.98] transition-all' : ''} ${className}`}
   >
     {children}
   </div>

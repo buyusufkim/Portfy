@@ -137,7 +137,7 @@ export const MobileNav = ({
             animate={{ y: 0 }} 
             exit={{ y: "100%" }}
             transition={{ type: "spring", damping: 25, stiffness: 300 }}
-            className="bg-white rounded-t-[32px] p-6 w-full shadow-2xl pb-[calc(2rem+env(safe-area-inset-bottom))]"
+            className="bg-white rounded-t-3xl p-6 w-full shadow-2xl pb-[calc(2rem+env(safe-area-inset-bottom))]"
             onClick={e => e.stopPropagation()}
           >
             {/* Drag Handle */}

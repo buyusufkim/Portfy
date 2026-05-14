@@ -629,7 +629,7 @@ export const TasksPage: React.FC<TasksPageProps> = ({
                 <div 
                   key={item.id}
                   onClick={() => handleRowClick(item)}
-                  className="group bg-white p-3.5 sm:p-4 rounded-[20px] sm:rounded-3xl border border-slate-100 hover:border-[#0f172a]/20 hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)] transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 cursor-pointer"
+                  className="group bg-white p-3.5 sm:p-4 rounded-2xl sm:rounded-3xl border border-slate-100 hover:border-[#0f172a]/20 hover:shadow-[0_4px_20px_-10px_rgba(0,0,0,0.1)] transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 cursor-pointer"
                 >
                   <div className="flex items-start sm:items-center gap-3 w-full sm:w-auto sm:flex-1 min-w-0">
                     <div 

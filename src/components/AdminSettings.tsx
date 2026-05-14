@@ -21,7 +21,7 @@ export const AdminSettings: React.FC<AdminSettingsProps> = ({
         <p className="text-sm text-slate-500 mt-1 font-medium">Uygulamanın çalışmasını etkileyen temel yapılandırmalar.</p>
       </div>
       
-      <div className="bg-white p-6 md:p-8 rounded-[24px] shadow-sm border border-slate-100">
+      <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100">
         <div className="flex items-start gap-4 pb-6 border-b border-slate-100">
           <div className="w-12 h-12 bg-indigo-50 text-indigo-600 rounded-2xl flex items-center justify-center shrink-0 border border-indigo-100">
             <MessageCircle size={24} />

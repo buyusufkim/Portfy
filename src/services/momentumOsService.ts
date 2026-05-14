@@ -418,7 +418,10 @@ export const momentumOsService = {
       body: JSON.stringify(payload)
     });
 
-    if (!res.ok) throw new Error("Failed to save day closure");
+    if (!res.ok) {
+        const errJson = await res.json().catch(() => ({}));
+        throw new Error(errJson.error || "Failed to save day closure");
+    }
     const data = await res.json();
     return data as DayClosure;
   },

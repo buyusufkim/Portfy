@@ -238,13 +238,13 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
       className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 pb-32 space-y-6"
     >
       {/* Premium Hero Card */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] rounded-[24px] sm:rounded-[32px] p-5 sm:p-6 lg:p-8 text-white shadow-xl border border-slate-800">
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0f172a] rounded-3xl sm:rounded-3xl p-5 sm:p-6 lg:p-8 text-white shadow-xl border border-slate-800">
         <div className="absolute inset-0 bg-white/5 bg-[radial-gradient(#fff_1px,transparent_1px)] [background-size:16px_16px] opacity-10 pointer-events-none" />
 
         <div className="relative z-10 flex flex-col sm:flex-row sm:items-center gap-5 sm:gap-6">
           <div className="flex items-start gap-4 sm:hidden mb-1">
              <div className="relative shrink-0">
-               <div className="w-[80px] h-[80px] sm:w-[96px] sm:h-[96px] bg-slate-200 rounded-3xl sm:rounded-[32px] overflow-hidden border-2 sm:border-4 border-slate-700/50 shadow-xl relative group">
+               <div className="w-[80px] h-[80px] sm:w-[96px] sm:h-[96px] bg-slate-200 rounded-3xl sm:rounded-3xl overflow-hidden border-2 sm:border-4 border-slate-700/50 shadow-xl relative group">
                  {localAvatar ? (
                    <img
                      src={localAvatar}
@@ -297,7 +297,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
           </div>
 
           <div className="hidden sm:block relative shrink-0">
-            <div className="w-[96px] h-[96px] bg-slate-200 rounded-[32px] overflow-hidden border-4 border-slate-700/50 shadow-xl relative group">
+            <div className="w-[96px] h-[96px] bg-slate-200 rounded-3xl overflow-hidden border-4 border-slate-700/50 shadow-xl relative group">
               {localAvatar ? (
                 <img
                   src={localAvatar}
@@ -478,7 +478,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
           {/* Profil Bilgileri */}
           <Card 
             onClick={() => setSelectedPanel("profile")}
-            className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 relative cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors"
+            className="rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-100 relative cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors"
           >
             {/* Header / Mobile Summary */}
             <div className="flex items-center justify-between lg:border-b lg:border-slate-100 lg:pb-3">
@@ -551,7 +551,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
           {/* Uzmanlık Alanları */}
           <Card 
             onClick={() => setSelectedPanel("expertise")}
-            className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 relative cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors"
+            className="rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-100 relative cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors"
           >
             {/* Header / Mobile Summary */}
             <div className="flex items-center justify-between lg:border-b lg:border-slate-100 lg:pb-3">
@@ -595,7 +595,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
           {/* Çalışma Stili */}
           <Card 
             onClick={() => setSelectedPanel("workingStyle")}
-            className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 relative cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors"
+            className="rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-100 relative cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors"
           >
             {/* Header / Mobile Summary */}
             <div className="flex items-center justify-between lg:border-b lg:border-slate-100 lg:pb-3">
@@ -652,7 +652,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
         {/* Yapay Zeka Koç Tonu */}
         <Card 
           onClick={() => setSelectedPanel("aiTone")}
-          className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 relative cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors"
+          className="rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-100 relative cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors"
         >
           {/* Header / Mobile Summary */}
           <div className="flex items-center justify-between lg:border-b lg:border-slate-100 lg:pb-3">
@@ -714,7 +714,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
            {/* Bildirim Tercihi */}
            <Card 
              onClick={() => setSelectedPanel("notifications")}
-             className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors relative"
+             className="rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-100 cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors relative"
            >
               <button 
                 onClick={(e) => { e.stopPropagation(); setSelectedPanel("notifications"); }}
@@ -796,7 +796,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
            {/* Bölge Ayarları */}
            <Card 
              onClick={() => setShowRegionSetup(true)}
-             className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors relative"
+             className="rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-100 cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors relative"
            >
               {/* Desktop Edit Button */}
               <button 
@@ -855,7 +855,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Card 
             onClick={() => setSelectedPanel("integrations")}
-            className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors relative"
+            className="rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-100 cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors relative"
           >
             <div className="flex justify-between items-center lg:border-b lg:border-slate-100 lg:pb-3">
                <div className="flex items-center gap-3 lg:gap-2">
@@ -879,7 +879,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
             </div>
 
             <div className="hidden lg:block mt-4 space-y-3">
-              <div className="flex items-center justify-between p-3 border border-slate-100 rounded-[16px] bg-slate-50/50">
+              <div className="flex items-center justify-between p-3 border border-slate-100 rounded-2xl bg-slate-50/50">
                  <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-yellow-100 flex items-center justify-center text-yellow-600 font-black">S</div>
                     <div>
@@ -900,7 +900,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                  </button>
               </div>
 
-              <div className="flex items-center justify-between p-3 border border-slate-100 rounded-[16px] bg-slate-50/50">
+              <div className="flex items-center justify-between p-3 border border-slate-100 rounded-2xl bg-slate-50/50">
                  <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center text-red-500 font-bold">G</div>
                     <div>
@@ -920,7 +920,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                  </button>
               </div>
 
-              <div className="flex items-center justify-between p-3 border border-slate-100 rounded-[16px] bg-slate-50/50">
+              <div className="flex items-center justify-between p-3 border border-slate-100 rounded-2xl bg-slate-50/50">
                  <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-blue-50 flex items-center justify-center text-blue-600 font-bold">f</div>
                     <div>
@@ -944,7 +944,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
 
           <Card 
             onClick={() => setSelectedPanel("security")}
-            className="rounded-[24px] p-5 sm:p-6 shadow-sm border border-slate-100 cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors relative"
+            className="rounded-3xl p-5 sm:p-6 shadow-sm border border-slate-100 cursor-pointer lg:cursor-auto hover:bg-slate-50 lg:hover:bg-white transition-colors relative"
           >
             <div className="flex justify-between items-center lg:border-b lg:border-slate-100 lg:pb-3">
                <div className="flex items-center gap-3 lg:gap-2">
@@ -1030,7 +1030,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
         {/* Admin Card */}
         {isAdminRole(profile?.role) && (
           <Card
-            className="flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors border border-purple-100 group rounded-[24px] p-5 sm:p-6 shadow-sm"
+            className="flex items-center gap-4 cursor-pointer hover:bg-slate-50 transition-colors border border-purple-100 group rounded-3xl p-5 sm:p-6 shadow-sm"
             onClick={() => setShowAdminPanel(true)}
           >
             <div className="w-12 h-12 bg-purple-50 rounded-2xl flex items-center justify-center text-purple-600 transition-transform group-hover:scale-105 shrink-0">
@@ -1056,7 +1056,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
       <div className="pt-2 flex justify-center w-full">
         <button
           onClick={logout}
-          className="w-full sm:w-auto sm:px-16 p-4 bg-white text-rose-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 rounded-[20px] font-bold text-[13px] flex items-center justify-center gap-2 transition-all border border-rose-100 shadow-sm active:scale-[0.98] outline-none"
+          className="w-full sm:w-auto sm:px-16 p-4 bg-white text-rose-600 hover:bg-rose-50 hover:text-rose-700 hover:border-rose-300 rounded-2xl font-bold text-[13px] flex items-center justify-center gap-2 transition-all border border-rose-100 shadow-sm active:scale-[0.98] outline-none"
         >
           <LogOut size={16} /> Çıkış Yap
         </button>
@@ -1080,7 +1080,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
               exit={{ y: "100%" }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
               onClick={(e) => e.stopPropagation()}
-              className="relative z-10 w-full bg-white rounded-t-[32px] sm:rounded-[32px] shadow-2xl flex flex-col overflow-hidden max-h-[90dvh] h-[90dvh] sm:h-auto sm:max-h-[85dvh] sm:max-w-lg"
+              className="relative z-10 w-full bg-white rounded-t-3xl sm:rounded-3xl shadow-2xl flex flex-col overflow-hidden max-h-[90dvh] h-[90dvh] sm:h-auto sm:max-h-[85dvh] sm:max-w-lg"
             >
               <header className="p-5 sm:p-6 border-b border-slate-100 flex items-center justify-between shrink-0">
                 <div>
@@ -1634,7 +1634,7 @@ export const ProfilView: React.FC<ProfilViewProps> = ({
                        
                        updateProfileMutation.mutate({ id: profile.id, data: dataToSave });
                     }}
-                    className={`w-full py-4 rounded-[16px] font-bold text-sm transition-all focus:ring-4 focus:ring-indigo-100 text-white ${updateProfileMutation.isPending ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 shadow-[0_4px_12px_rgba(79,70,229,0.25)] hover:shadow-[0_6px_16px_rgba(79,70,229,0.35)] -translate-y-0.5'}`}
+                    className={`w-full py-4 rounded-2xl font-bold text-sm transition-all focus:ring-4 focus:ring-indigo-100 text-white ${updateProfileMutation.isPending ? 'bg-indigo-400 cursor-not-allowed' : 'bg-indigo-600 hover:bg-indigo-700 shadow-[0_4px_12px_rgba(79,70,229,0.25)] hover:shadow-[0_6px_16px_rgba(79,70,229,0.35)] -translate-y-0.5'}`}
                   >
                     {updateProfileMutation.isPending ? 'Kaydediliyor...' : 'Kaydet'}
                   </button>

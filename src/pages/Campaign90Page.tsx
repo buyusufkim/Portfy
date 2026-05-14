@@ -548,7 +548,7 @@ export const Campaign90Page: React.FC = () => {
                 )}
 
                 {/* Gün Kapatma Yönlendirmesi */}
-                <div className="bg-indigo-50 p-6 rounded-[24px] border border-indigo-100 shadow-sm text-center">
+                <div className="bg-indigo-50 p-6 rounded-3xl border border-indigo-100 shadow-sm text-center">
                     <p className="text-indigo-900 font-medium text-sm">
                         Bugünkü kamp odağını gün sonunda <span className="font-bold">Günü Mühürle</span> ekranında değerlendireceksin.
                     </p>

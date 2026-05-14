@@ -17,9 +17,9 @@ export const rescueService = {
       .select('*')
       .eq('user_id', agentId)
       .eq('date', today)
-      .maybeSingle();
+      .limit(1);
     
-    return data as RescueSession | null;
+    return data && data.length > 0 ? (data[0] as RescueSession) : null;
   },
 
   startRescueSession: async (): Promise<RescueSession> => {
@@ -27,6 +27,41 @@ export const rescueService = {
     if (!user) throw new Error('Not authenticated');
     const agentId = user.id;
     const today = getTodayStr();
+
+    // Check if day is started
+    const { data: profile } = await supabase.from('profiles').select('last_day_started_at').eq('id', agentId).single();
+    if (!profile || !profile.last_day_started_at) {
+        throw new Error(JSON.stringify({ error: "DAY_NOT_STARTED" }));
+    }
+    const dayStartedStr = new Date(profile.last_day_started_at).toISOString().split('T')[0];
+    if (dayStartedStr !== today) {
+        throw new Error(JSON.stringify({ error: "DAY_NOT_STARTED" }));
+    }
+
+    // Check if there is an existing session
+    const { data: existingData } = await supabase
+      .from('rescue_sessions')
+      .select('*')
+      .eq('user_id', agentId)
+      .eq('date', today)
+      .limit(1);
+
+    if (existingData && existingData.length > 0) {
+      const existingSession = existingData[0] as RescueSession;
+      if (existingSession.status === 'active') {
+        return existingSession;
+      } else {
+        // Resume it
+        const { data: updated, error } = await supabase
+          .from('rescue_sessions')
+          .update({ status: 'active', expires_at: new Date(Date.now() + 60 * 60 * 1000).toISOString() })
+          .eq('id', existingSession.id)
+          .select()
+          .single();
+        if (error) throw error;
+        return updated as RescueSession;
+      }
+    }
 
     // Fetch some candidates for tasks
     const leads = await leadService.getLeads();
@@ -116,6 +151,7 @@ export const rescueService = {
       .single();
     
     if (!session) return;
+    if (session.status === 'completed') return; // Idempotent check
     
     const updatedTasks = (session.tasks as RescueTask[]).map(t => t.id === taskId ? { ...t, is_completed: true } : t);
     

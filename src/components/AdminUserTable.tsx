@@ -53,7 +53,7 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
           </div>
         </div>
         
-        <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden">
+        <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden">
           <div className="relative w-full border-b border-slate-100">
             <Search
               size={18}
@@ -81,7 +81,7 @@ export const AdminUserTable: React.FC<AdminUserTableProps> = ({
         </div>
       </div>
 
-      <div className="bg-white rounded-[24px] shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
+      <div className="bg-white rounded-3xl shadow-sm border border-slate-100 overflow-hidden overflow-x-auto">
         {loading ? (
           <div className="p-16 flex flex-col items-center justify-center text-slate-500">
             <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mb-4" />

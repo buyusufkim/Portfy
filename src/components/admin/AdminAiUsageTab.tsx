@@ -185,7 +185,7 @@ export const AdminAiUsageTab: React.FC<AdminAiUsageTabProps> = ({ showAdminToast
       {summary && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Top Features */}
-          <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-6 lg:col-span-1">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 lg:col-span-1">
             <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Cpu size={18}/> Özellik Bazlı Kullanım</h3>
             <div className="space-y-4">
               {summary.topFeatures.length === 0 && <div className="text-sm text-slate-500 font-medium">Veri yok.</div>}
@@ -205,7 +205,7 @@ export const AdminAiUsageTab: React.FC<AdminAiUsageTabProps> = ({ showAdminToast
           </div>
 
           {/* Top Users */}
-          <div className="bg-white rounded-[24px] border border-slate-100 shadow-sm p-6 lg:col-span-2">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-sm p-6 lg:col-span-2">
             <h3 className="font-bold text-slate-800 mb-4 flex items-center gap-2"><Activity size={18}/> En Çok Token Harcayanlar</h3>
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
@@ -244,7 +244,7 @@ export const AdminAiUsageTab: React.FC<AdminAiUsageTabProps> = ({ showAdminToast
       )}
 
       {/* Logs Table */}
-      <div className="bg-white rounded-[24px] p-6 border border-slate-100 shadow-sm">
+      <div className="bg-white rounded-3xl p-6 border border-slate-100 shadow-sm">
         <h3 className="font-bold text-slate-800 mb-6 flex items-center gap-2"><Zap size={18}/> Son AI Kullanım Kayıtları</h3>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">

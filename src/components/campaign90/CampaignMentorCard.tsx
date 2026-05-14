@@ -4,7 +4,7 @@ import { Play } from 'lucide-react';
 
 export const CampaignMentorCard: React.FC<{ message: string }> = ({ message }) => {
     return (
-        <Card className="p-3.5 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100 rounded-[16px] flex gap-3 items-center shadow-sm">
+        <Card className="p-3.5 bg-gradient-to-r from-orange-50 to-amber-50 border border-orange-100 rounded-2xl flex gap-3 items-center shadow-sm">
             <div className="w-8 h-8 bg-white rounded-xl shadow-sm border border-orange-100 flex items-center justify-center shrink-0">
                <Play size={14} className="fill-orange-500 text-orange-500" />
             </div>

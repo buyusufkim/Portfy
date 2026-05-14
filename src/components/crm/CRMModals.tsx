@@ -102,7 +102,7 @@ export const CRMModals: React.FC<CRMModalsProps> = ({
               initial={{ y: "100%" }}
               animate={{ y: 0 }}
               exit={{ y: "100%" }}
-              className="bg-white w-full max-w-md rounded-t-[40px] sm:rounded-[40px] p-8 max-h-[90vh] overflow-auto"
+              className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-8 max-h-[90vh] overflow-auto"
             >
               <div className="flex justify-between items-center mb-8">
                 <h2 className="text-xl font-bold text-slate-900">
@@ -209,7 +209,7 @@ export const CRMModals: React.FC<CRMModalsProps> = ({
               initial={{ scale: 0.9, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
-              className="bg-white w-full max-w-lg rounded-[40px] p-8 space-y-6 shadow-2xl"
+              className="bg-white w-full max-w-lg rounded-3xl p-8 space-y-6 shadow-2xl"
             >
               <div className="flex justify-between items-center">
                 <h2 className="text-xl font-bold text-slate-900 flex items-center gap-2">

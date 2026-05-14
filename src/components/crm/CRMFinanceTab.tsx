@@ -44,7 +44,7 @@ export const CRMFinanceTab: React.FC<CRMFinanceTabProps> = ({ profile, propertie
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* GELİR ÖZETİ */}
         <section>
-          <Card className="p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
+          <Card className="p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-3xl">
             <div className="flex items-center justify-between mb-4">
               <h3 className="text-sm font-bold text-slate-900">Gelir Özeti</h3>
               <select className="text-xs bg-slate-50 border border-slate-200 rounded-lg px-2 py-1 font-bold text-slate-600 outline-none">
@@ -113,7 +113,7 @@ export const CRMFinanceTab: React.FC<CRMFinanceTabProps> = ({ profile, propertie
 
         {/* HAFTALIK MOMENTUM */}
         <section>
-          <Card className="p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-[24px]">
+          <Card className="p-5 bg-white border border-slate-100 shadow-[0_8px_24px_rgba(15,23,42,0.06)] overflow-visible rounded-3xl">
             <div className="flex items-center justify-between mb-4">
               <div className="flex items-center gap-2">
                 <BarChart3 size={18} className="text-slate-700" />

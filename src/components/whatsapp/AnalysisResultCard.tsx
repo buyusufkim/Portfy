@@ -36,7 +36,7 @@ export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({ result }
   return (
     <div className="space-y-6">
       {/* Main Analysis Card */}
-      <section className="bg-white rounded-[40px] p-8 shadow-xl shadow-slate-200/50 border border-slate-100 space-y-8 relative overflow-hidden">
+      <section className="bg-white rounded-3xl p-8 shadow-xl shadow-slate-200/50 border border-slate-100 space-y-8 relative overflow-hidden">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">
             <div className="w-14 h-14 bg-emerald-600 rounded-2xl flex items-center justify-center text-white shadow-lg shadow-emerald-200">
@@ -61,13 +61,13 @@ export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({ result }
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-100 space-y-2">
+          <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-2">
             <div className="flex items-center gap-2 text-emerald-600 font-bold text-[10px] uppercase tracking-wider">
               <Zap size={14} className="fill-emerald-600" /> Aciliyet
             </div>
             <p className="text-sm text-slate-900 font-bold leading-relaxed">{result.urgency}</p>
           </div>
-          <div className="bg-slate-50 p-6 rounded-[32px] border border-slate-100 space-y-2">
+          <div className="bg-slate-50 p-6 rounded-3xl border border-slate-100 space-y-2">
             <div className="flex items-center gap-2 text-blue-600 font-bold text-[10px] uppercase tracking-wider">
               <DollarSign size={14} /> Bütçe Sinyali
             </div>
@@ -79,7 +79,7 @@ export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({ result }
           <div className="flex items-center gap-2 text-slate-400 font-bold text-[10px] uppercase tracking-wider">
             <Target size={14} /> Önerilen Aksiyon
           </div>
-          <div className="p-6 bg-emerald-50 border border-emerald-100 rounded-[32px] space-y-2">
+          <div className="p-6 bg-emerald-50 border border-emerald-100 rounded-3xl space-y-2">
             <p className="text-sm text-emerald-900 font-bold leading-relaxed">{result.suggested_action}</p>
             <div className="flex items-center gap-2 text-xs text-emerald-600 font-medium">
               <Calendar size={14} /> Takip Tarihi: {new Date(result.follow_up_date).toLocaleDateString('tr-TR')}
@@ -115,7 +115,7 @@ export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({ result }
         <button
           onClick={() => addToCRM(result)}
           disabled={isAddingToCRM}
-          className="w-full py-5 bg-slate-900 text-white rounded-[24px] font-bold text-sm flex items-center justify-center gap-3 hover:bg-slate-800 transition-all disabled:opacity-50 shadow-lg shadow-slate-200"
+          className="w-full py-5 bg-slate-900 text-white rounded-3xl font-bold text-sm flex items-center justify-center gap-3 hover:bg-slate-800 transition-all disabled:opacity-50 shadow-lg shadow-slate-200"
         >
           {isAddingToCRM ? (
             <RefreshCw size={20} className="animate-spin" />
@@ -127,7 +127,7 @@ export const AnalysisResultCard: React.FC<AnalysisResultCardProps> = ({ result }
         <button
           onClick={() => createFollowUp(result)}
           disabled={isCreatingFollowUp}
-          className="w-full py-5 bg-white border-2 border-slate-900 text-slate-900 rounded-[24px] font-bold text-sm flex items-center justify-center gap-3 hover:bg-slate-50 transition-all disabled:opacity-50"
+          className="w-full py-5 bg-white border-2 border-slate-900 text-slate-900 rounded-3xl font-bold text-sm flex items-center justify-center gap-3 hover:bg-slate-50 transition-all disabled:opacity-50"
         >
           {isCreatingFollowUp ? (
             <RefreshCw size={20} className="animate-spin" />

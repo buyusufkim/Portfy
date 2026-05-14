@@ -346,7 +346,7 @@ export const AddPropertyModal: React.FC<AddPropertyModalProps> = ({
         >
           <motion.div 
             initial={{ y: "100%" }} animate={{ y: 0 }} exit={{ y: "100%" }}
-            className="bg-white w-full max-w-md rounded-t-[40px] sm:rounded-[40px] p-8 max-h-[90vh] overflow-auto"
+            className="bg-white w-full max-w-md rounded-t-3xl sm:rounded-3xl p-8 max-h-[90vh] overflow-auto"
           >
             <div className="flex justify-between items-center mb-6">
               <div>

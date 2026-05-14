@@ -232,6 +232,18 @@ export function useMainMutations({
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.MICRO_GOALS, profileId]
       });
+      queryClient.invalidateQueries({
+        queryKey: ['campaign90_active']
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['campaign90_tasks']
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['campaign90_progress']
+      });
+      queryClient.invalidateQueries({
+        queryKey: ['campaign_90_report']
+      });
       if (profileId) {
         const todayStr = getTodayStr(new Date());
         localStorage.setItem(`day_ended_${profileId}_${todayStr}`, nowIso);
@@ -267,6 +279,12 @@ export function useMainMutations({
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.RESCUE_SESSION, profileId],
       });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.PROFILE, profileId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profileId],
+      });
     },
   });
 
@@ -281,6 +299,12 @@ export function useMainMutations({
     onSuccess: () => {
       queryClient.invalidateQueries({
         queryKey: [QUERY_KEYS.RESCUE_SESSION, profileId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.TASKS, profileId],
+      });
+      queryClient.invalidateQueries({
+        queryKey: [QUERY_KEYS.GAMIFICATION_STATS, profileId],
       });
     },
   });

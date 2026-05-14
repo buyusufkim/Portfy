@@ -17,7 +17,7 @@ export const NotificationToast = ({ notification, onClose }: NotificationToastPr
         exit={{ y: -100, opacity: 0 }}
         className="fixed top-0 left-1/2 -translate-x-1/2 z-[200] w-full max-w-sm px-4"
       >
-        <div className="bg-slate-900 text-white p-6 rounded-[32px] shadow-2xl border border-slate-800 flex items-center gap-4">
+        <div className="bg-slate-900 text-white p-6 rounded-3xl shadow-2xl border border-slate-800 flex items-center gap-4">
           <div className="w-12 h-12 bg-orange-600 rounded-2xl flex items-center justify-center shrink-0">
             <Bell size={24} className="animate-bounce" />
           </div>

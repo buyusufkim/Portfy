@@ -24,7 +24,7 @@ export const PipelineFunnel: React.FC<PipelineFunnelProps> = ({ properties }) =>
   const maxCount = Math.max(...Object.values(counts), 1);
 
   return (
-    <div className="bg-white rounded-[40px] p-8 border border-slate-100 shadow-xl shadow-slate-200/50 space-y-6">
+    <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-xl shadow-slate-200/50 space-y-6">
       <div className="flex justify-between items-center">
         <h3 className="text-lg font-bold text-slate-900 tracking-tight">Satış Hunisi</h3>
         <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">Aktif Portföyler</div>

@@ -69,7 +69,7 @@ export const MarketingHubModal: React.FC<MarketingHubModalProps> = ({
             initial={{ scale: 0.9, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.9, opacity: 0 }}
-            className="bg-white w-full max-w-4xl rounded-[40px] p-0 shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
+            className="bg-white w-full max-w-4xl rounded-3xl p-0 shadow-2xl max-h-[90vh] overflow-hidden flex flex-col"
           >
             <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50 flex-shrink-0">
               <div className="flex items-center gap-4">

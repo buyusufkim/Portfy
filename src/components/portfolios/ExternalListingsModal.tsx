@@ -36,7 +36,7 @@ export const ExternalListingsModal: React.FC<ExternalListingsModalProps> = ({
           initial={{ scale: 0.9, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
           exit={{ scale: 0.9, opacity: 0 }}
-          className="bg-white w-full max-w-2xl rounded-[40px] p-8 space-y-6 shadow-2xl max-h-[80vh] overflow-auto"
+          className="bg-white w-full max-w-2xl rounded-3xl p-8 space-y-6 shadow-2xl max-h-[80vh] overflow-auto"
         >
           <div className="flex justify-between items-center">
             <div className="flex items-center gap-3">

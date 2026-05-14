@@ -146,7 +146,7 @@ export const AdminTasksTab: React.FC<AdminTasksTabProps> = ({ showAdminToast, op
         </div>
       </div>
 
-      <div className="bg-white p-6 md:p-8 rounded-[24px] shadow-sm border border-slate-100 flex flex-col gap-6">
+      <div className="bg-white p-6 md:p-8 rounded-3xl shadow-sm border border-slate-100 flex flex-col gap-6">
         <div className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1 w-full"><label className="block text-xs font-bold text-slate-500 mb-2">Görev Adı</label><input type="text" value={newTaskTitle} onChange={e => setNewTaskTitle(e.target.value)} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium" /></div>
           <div className="w-full md:w-32"><label className="block text-xs font-bold text-slate-500 mb-2">Puan (XP)</label><input type="number" value={newTaskPoints} onChange={e => setNewTaskPoints(Number(e.target.value))} className="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:bg-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all text-sm font-medium" /></div>

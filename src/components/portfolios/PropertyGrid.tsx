@@ -36,7 +36,7 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
         <div className={`p-4 md:p-5 grid gap-4 ${viewMode === 'list' ? 'grid-cols-1 lg:grid-cols-2 2xl:grid-cols-3' : 'grid-cols-1 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4'}`}>
           {propertiesLoading ? (
             Array.from({ length: 6 }).map((_, i) => (
-              <div key={`skeleton-${i}`} className="bg-white rounded-[32px] border border-slate-100 p-4 space-y-4">
+              <div key={`skeleton-${i}`} className="bg-white rounded-3xl border border-slate-100 p-4 space-y-4">
                 <Skeleton className="aspect-video w-full rounded-2xl" />
                 <div className="space-y-2">
                   <Skeleton className="h-5 w-3/4" />
@@ -50,7 +50,7 @@ export const PropertyGrid: React.FC<PropertyGridProps> = ({
             ))
           ) : filteredProperties.length === 0 ? (
             <div className="text-center p-20 space-y-4 col-span-full">
-              <div className="w-20 h-20 bg-slate-100 rounded-[32px] flex items-center justify-center mx-auto text-slate-300">
+              <div className="w-20 h-20 bg-slate-100 rounded-3xl flex items-center justify-center mx-auto text-slate-300">
                 <Home size={40} />
               </div>
               {hasActiveFilters ? (

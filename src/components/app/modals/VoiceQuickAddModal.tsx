@@ -216,7 +216,7 @@ export const VoiceQuickAddModal: React.FC<VoiceQuickAddModalProps> = ({
           initial={{ y: "100%" }}
           animate={{ y: 0 }}
           exit={{ y: "100%" }}
-          className="bg-white w-full max-w-lg rounded-t-[40px] sm:rounded-[40px] p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto"
+          className="bg-white w-full max-w-lg rounded-t-3xl sm:rounded-3xl p-8 space-y-6 shadow-2xl max-h-[90vh] overflow-y-auto"
         >
           <div className="flex justify-between items-center sticky top-0 bg-white pb-4 z-10">
             <div className="flex items-center gap-3">
@@ -236,7 +236,7 @@ export const VoiceQuickAddModal: React.FC<VoiceQuickAddModalProps> = ({
           {!parsedResult ? (
             <div className="flex flex-col items-center justify-center py-8 space-y-8">
               {error ? (
-                <div className="w-full p-6 bg-red-50 rounded-[32px] border border-red-100 text-center space-y-4">
+                <div className="w-full p-6 bg-red-50 rounded-3xl border border-red-100 text-center space-y-4">
                   <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center text-red-600 mx-auto">
                     <X size={32} />
                   </div>
