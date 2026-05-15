@@ -1,8 +1,143 @@
-import React, { useState } from 'react';
-import { motion } from 'motion/react';
-import { RefreshCw, AlertCircle } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { RefreshCw, AlertCircle, Smartphone, ChevronDown, ChevronUp, Share2, Chrome } from 'lucide-react';
 import { useAuth } from '../../AuthContext';
 import { PortfyLogo } from '../PortfyLogo';
+
+type NavigatorWithStandalone = Navigator & {
+  standalone?: boolean;
+};
+
+const PWAInstallGuide = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [deviceType, setDeviceType] = useState<'ios' | 'android' | 'desktop'>('desktop');
+  const [isStandalone, setIsStandalone] = useState(false);
+
+  useEffect(() => {
+    // Detect standalone
+    const standalone = window.matchMedia('(display-mode: standalone)').matches || (window.navigator as NavigatorWithStandalone).standalone === true;
+    setIsStandalone(standalone);
+
+    // Detect device
+    const ua = navigator.userAgent.toLowerCase();
+    if (/iphone|ipad|ipod/.test(ua)) {
+      setDeviceType('ios');
+      setIsOpen(true);
+    } else if (/android/.test(ua)) {
+      setDeviceType('android');
+      setIsOpen(true);
+    } else {
+      setDeviceType('desktop');
+      setIsOpen(false);
+    }
+  }, []);
+
+  if (isStandalone) return (
+    <div className="mt-8 text-center opacity-50">
+      <p className="text-[10px] text-slate-500 uppercase tracking-widest font-bold">Uygulama Modunda Çalışıyor</p>
+    </div>
+  );
+
+  return (
+    <div className="mt-8 w-full max-w-md mx-auto">
+      <div className="bg-slate-800/40 backdrop-blur-md border border-slate-700/50 rounded-3xl overflow-hidden shadow-xl transition-all duration-300">
+        <button
+          onClick={() => setIsOpen(!isOpen)}
+          className="w-full px-6 py-4 flex items-center justify-between hover:bg-slate-700/30 transition-colors group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-500/10 rounded-xl text-indigo-400 group-hover:scale-110 transition-transform">
+              <Smartphone size={20} />
+            </div>
+            <div className="text-left">
+              <h3 className="text-sm font-semibold text-white">Portfy’yi telefona kur</h3>
+              <p className="text-[11px] text-slate-400">Ana ekrana ekle, uygulama gibi kullan.</p>
+            </div>
+          </div>
+          {isOpen ? <ChevronUp size={18} className="text-slate-500" /> : <ChevronDown size={18} className="text-slate-500" />}
+        </button>
+
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ height: 0, opacity: 0 }}
+              animate={{ height: 'auto', opacity: 1 }}
+              exit={{ height: 0, opacity: 0 }}
+              transition={{ duration: 0.3 }}
+              className="overflow-hidden"
+            >
+              <div className="px-6 pb-6 pt-1 space-y-4">
+                <p className="text-xs text-slate-400 leading-relaxed">
+                  Portfy’yi App Store veya Play Store’a gerek kalmadan telefonunun ana ekranına ekleyebilirsin.
+                </p>
+
+                <div className="grid grid-cols-1 gap-3">
+                  {/* iOS Section */}
+                  {(deviceType === 'ios' || deviceType === 'desktop') && (
+                    <div className={`p-4 rounded-2xl border ${deviceType === 'ios' ? 'bg-indigo-500/10 border-indigo-500/30' : 'bg-slate-900/40 border-slate-700/50'}`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-7 h-7 rounded-lg bg-white/90 flex items-center justify-center shadow-sm">
+                           <Share2 size={16} className="text-slate-700" />
+                        </div>
+                        <span className="text-xs font-bold text-white">iPhone / Safari</span>
+                      </div>
+                      <div className="space-y-2 ml-1">
+                        <div className="flex gap-2.5 text-[11px] text-slate-300">
+                          <span className="text-indigo-400 font-bold shrink-0">1.</span>
+                          <span>Safari üzerinden Portfy’yi aç.</span>
+                        </div>
+                        <div className="flex gap-2.5 text-[11px] text-slate-300">
+                          <span className="text-indigo-400 font-bold shrink-0">2.</span>
+                          <span>Alttaki <b>Paylaş</b> (orta kare) butonuna dokun.</span>
+                        </div>
+                        <div className="flex gap-2.5 text-[11px] text-slate-300">
+                          <span className="text-indigo-400 font-bold shrink-0">3.</span>
+                          <span>Listeyi kaydır ve <b>“Ana Ekrana Ekle”</b> seç.</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Android Section */}
+                  {(deviceType === 'android' || deviceType === 'desktop') && (
+                    <div className={`p-4 rounded-2xl border ${deviceType === 'android' ? 'bg-teal-500/10 border-teal-500/30' : 'bg-slate-900/40 border-slate-700/50'}`}>
+                      <div className="flex items-center gap-2 mb-3">
+                        <div className="w-7 h-7 rounded-lg bg-white/90 flex items-center justify-center shadow-sm">
+                           <Chrome size={16} className="text-slate-700" />
+                        </div>
+                        <span className="text-xs font-bold text-white">Android / Chrome</span>
+                      </div>
+                      <div className="space-y-2 ml-1">
+                        <div className="flex gap-2.5 text-[11px] text-slate-300">
+                          <span className="text-teal-400 font-bold shrink-0">1.</span>
+                          <span>Chrome üzerinden Portfy’yi aç.</span>
+                        </div>
+                        <div className="flex gap-2.5 text-[11px] text-slate-300">
+                          <span className="text-teal-400 font-bold shrink-0">2.</span>
+                          <span>Sağ üstteki <b>üç noktaya</b> dokun.</span>
+                        </div>
+                        <div className="flex gap-2.5 text-[11px] text-slate-300">
+                          <span className="text-teal-400 font-bold shrink-0">3.</span>
+                          <span><b>“Uygulamayı yükle”</b> seçeneğine tıkla.</span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {deviceType === 'desktop' && (
+                  <div className="text-center py-1">
+                    <p className="text-[10px] text-slate-500 italic">Telefondan açarak bu adımları takip edebilirsin.</p>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+};
 
 export const LoginScreen = () => {
   const { login, loginWithEmail, registerWithEmail } = useAuth();
@@ -13,6 +148,11 @@ export const LoginScreen = () => {
   const [phone, setPhone] = useState(''); // Yeni: Telefon numarası state'i
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
+  const [hasOauthSuccess, setHasOauthSuccess] = useState(false);
+
+  useEffect(() => {
+    setHasOauthSuccess(localStorage.getItem('oauth_success') === 'true');
+  }, []);
 
   const handleEmailAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,7 +316,7 @@ export const LoginScreen = () => {
           </button>
         </div>
 
-        {localStorage.getItem('oauth_success') && (
+        {hasOauthSuccess && (
           <motion.button 
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
@@ -187,6 +327,8 @@ export const LoginScreen = () => {
             Giriş Yaptım, Sayfayı Yenile
           </motion.button>
         )}
+
+        <PWAInstallGuide />
       </motion.div>
 
       <p className="fixed bottom-6 text-slate-500/40 text-[10px] uppercase tracking-widest font-bold z-10 hidden sm:block">
