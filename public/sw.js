@@ -1,11 +1,13 @@
-const CACHE_NAME = 'portfy-cache-v2';
+const CACHE_NAME = 'portfy-cache-v3';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
-  '/manifest.json',
+  '/manifest.json?v=2',
   '/icons/icon.svg',
-  '/icons/icon-192.png',
-  '/icons/icon-512.png'
+  '/icons/portfy-icon-192-v2.png',
+  '/icons/portfy-icon-512-v2.png',
+  '/icons/portfy-maskable-512-v2.png',
+  '/icons/portfy-apple-touch-icon-v2.png'
 ];
 
 // Installs the SW and caches static assets
