@@ -31,6 +31,7 @@ import { DesktopSidebar, MobileNav } from "./components/app/Navigation";
 import { Header } from "./components/app/Header";
 import { NotificationToast, GlobalToast } from "./components/app/Toasts";
 import { FloatingActionButton } from "./components/app/FloatingActionButton";
+import { PWAInstallPrompt } from "./components/PWAInstallPrompt";
 import { RegionSetupModal } from "./components/RegionSetupModal";
 import {
   UserProfile,
@@ -582,6 +583,9 @@ function MainApp() {
         toast={toast}
         onClose={() => setToast(null)} // Bu kısım state'i sıfırlayarak bildirimi kapatır
       />
+      
+      <PWAInstallPrompt />
+
       <FloatingActionButton onClick={() => setShowQuickAdd(true)} />
 
       <QuickAddMenu

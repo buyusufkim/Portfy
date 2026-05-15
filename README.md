@@ -20,6 +20,7 @@ npm run lint
 npm run test:smoke
 npm run build
 ```
+CI (GitHub Actions) runs these checks automatically on push and pull requests.
 
 **Vercel Deployment:** The build outputs static client files into `dist/` and runs the backend using the Vercel Serverless Functions configuration located in `api/index.ts` alongside `vercel.json` rewrite rules.
 
