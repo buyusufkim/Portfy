@@ -589,7 +589,7 @@ function MainApp() {
         showWhatsAppImport || showDailyRadar || showDayCloser || showIntegrationModal ||
         showExternalListings || showImportUrlModal || showMissedOpportunities || showRegionSetup ||
         showUpgradeModal || showAddTask || showDocumentAutomation || showLeadMethodModal || showScanner ||
-        showRescueModal || showCampaignPromo || showOnboarding
+        showRescueModal || showCampaignPromo || showOnboarding || selectedProperty !== null || selectedLead !== null
       } />
 
       <FloatingActionButton onClick={() => setShowQuickAdd(true)} />
