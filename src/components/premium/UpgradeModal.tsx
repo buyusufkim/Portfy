@@ -223,7 +223,23 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onA
               {isValidWa ? (
                 <>
                   <button 
-                    onClick={handleActivationRequest}
+                    onClick={async () => {
+                      try {
+                        setLoading(true);
+                        const { packageRequestService } = await import('../../services/packageRequestService');
+                        await packageRequestService.createPackageRequest({
+                          requested_duration: selectedDuration.id
+                        }).catch(err => {
+                          if (!err.message.includes('Zaten bekleyen')) throw err;
+                        });
+                        handleActivationRequest();
+                        onClose();
+                      } catch (err: unknown) {
+                        alert(err instanceof Error ? err.message : 'Bir hata oluştu');
+                      } finally {
+                        setLoading(false);
+                      }
+                    }}
                     disabled={loading || !selectedDuration}
                     className="w-full py-3 bg-green-50 text-green-700 border border-green-200 rounded-xl font-semibold hover:bg-green-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
                   >

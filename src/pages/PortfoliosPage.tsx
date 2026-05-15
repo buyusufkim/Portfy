@@ -7,6 +7,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion } from "motion/react";
 import { api } from "../services/api";
 import { QUERY_KEYS } from "../constants/queryKeys";
+import { PageIntroCard } from "../components/ui/PageIntroCard";
 import {
   Property,
   BrokerAccount,
@@ -585,6 +586,18 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
         searchQuery={searchQuery}
         setSearchQuery={setSearchQuery}
       />
+
+      <div className="px-4">
+        <PageIntroCard 
+          pageKey="portfolios"
+          title="Portföylerim Nasıl Kullanılır?"
+          description="Satılık ve kiralık portföylerinizi ekleyip, durumlarını takip edebilir, alıcılarla eşleştirebilirsiniz."
+          tips={[
+            "Akıllı Eşleşme ile elinizdeki portföye uygun alıcıları CRM'den eşleştirin.",
+            "Pipeline (Kanban) moduyla portföylerinizi süreç aşamalarına göre yönetin."
+          ]}
+        />
+      </div>
 
       <PropertyGrid
         viewMode={viewMode}

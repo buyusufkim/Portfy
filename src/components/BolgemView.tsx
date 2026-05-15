@@ -16,6 +16,7 @@ import { RegionStats } from './RegionStats';
 import { CompetitorList } from './CompetitorList';
 import { useBolgemPins } from './hooks/useBolgemPins';
 import { useBolgemActions, BolgemPinActionModal } from './hooks/useBolgemActions';
+import { PageIntroCard } from './ui/PageIntroCard';
 
 const defaultCenter = { lat: 38.7205, lng: 35.4826 };
 
@@ -496,6 +497,16 @@ export const BolgemView = ({
                <MessageSquare size={14} /> Saha Notları
             </button>
           </div>
+
+          <PageIntroCard 
+            pageKey="bolgem"
+            title="Bölgem Nasıl Kullanılır?"
+            description="Bölgem(Radar) uzman olduğunuz alandaki bağlantıları, esnafları ve portföyleri harita/liste üzerinden görebilmeniz için tasarlanmıştır."
+            tips={[
+              "Radar butonu ile bağlantılarınızı detaylı haritada görün.",
+              "Alt kısımdaki butonlarla kişileri CRM'e hızlıca dönüştürün."
+            ]}
+          />
 
           <RegionStats profile={profile} pins={combinedPins} />
 

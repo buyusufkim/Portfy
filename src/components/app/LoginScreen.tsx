@@ -151,7 +151,7 @@ export const LoginScreen = () => {
   const [hasOauthSuccess, setHasOauthSuccess] = useState(false);
 
   useEffect(() => {
-    setHasOauthSuccess(localStorage.getItem('oauth_success') === 'true');
+    setHasOauthSuccess(Boolean(localStorage.getItem('oauth_success')));
   }, []);
 
   const handleEmailAuth = async (e: React.FormEvent) => {

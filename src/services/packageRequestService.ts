@@ -164,17 +164,31 @@ export const packageRequestService = {
     const newEndDate = new Date(baseDate);
     newEndDate.setMonth(newEndDate.getMonth() + months);
 
-    // Update profiles
-    const { error: pError } = await supabase
-      .from('profiles')
-      .update({
-        tier: 'master',
-        subscription_type: req.requested_duration,
-        subscription_end_date: newEndDate.toISOString()
-      })
-      .eq('id', req.user_id);
-      
-    if (pError) throw pError;
+    // Call secure admin API to update user profile
+    const sessionRes = await supabase.auth.getSession();
+    const token = sessionRes.data.session?.access_token;
+    
+    if (!token) throw new Error("Admin session not found");
+
+    const updateData = {
+      tier: 'master',
+      subscription_type: req.requested_duration,
+      subscription_end_date: newEndDate.toISOString()
+    };
+    
+    const response = await fetch('/api/ai/admin/update-user', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ id: req.user_id, data: updateData })
+    });
+
+    if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error('User profile update failed: ' + (body.error || response.statusText));
+    }
 
     // Update package_requests
     const { error: updateError } = await supabase

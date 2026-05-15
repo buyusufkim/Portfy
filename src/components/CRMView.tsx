@@ -19,6 +19,7 @@ import {
 import { CRMFinanceTab } from './crm/CRMFinanceTab';
 import { Lead, LeadAlert, UserProfile, Property, Referral, MutationResult } from '../types';
 import { Card, Badge, Skeleton } from './UI';
+import { PageIntroCard } from './ui/PageIntroCard';
 import { api } from '../services/api';
 import { QUERY_KEYS } from '../constants/queryKeys';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
@@ -247,7 +248,7 @@ export const CRMView: React.FC<CRMViewProps> = ({
       className="p-4 md:p-6 space-y-6 max-w-7xl mx-auto"
     >
       {/* 1. Başlık & 2. Üst aksiyonlar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-6">
         <div>
            <h1 className="text-2xl font-black text-slate-900 tracking-tight">CRM</h1>
            <p className="text-sm font-medium text-slate-500">Müşteri, lead ve network takibini tek merkezden yönet.</p>
@@ -278,6 +279,16 @@ export const CRMView: React.FC<CRMViewProps> = ({
           </button>
         </div>
       </div>
+
+      <PageIntroCard 
+        pageKey="crm"
+        title="CRM Nasıl Kullanılır?"
+        description="Rehberinizdeki ve bölgenizdeki kişileri Müşteri, Bölge Ağı, Sıcak Lead gibi etiketlerle ayırıp gelişmiş filtreleme yapabilirsiniz."
+        tips={[
+          "Rehber sekmesinden listeye erişebilir ve kişiye tıklayarak detayını açabilirsiniz.",
+          "WhatsApp Aktar butonuyla telefonunuzdaki listeyi buraya transfer edin."
+        ]}
+      />
 
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6">
         {/* SOL ANA KOLON */}

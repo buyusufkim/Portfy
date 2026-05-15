@@ -157,14 +157,29 @@ function MainApp() {
 
       if (payload.package_action === 'pro_request') {
           try {
-              await supabase.from('support_tickets').insert({
-                  user_id: profile?.id,
-                  subject: "Portfy Pro Paket Talebi",
-                  message: `E-posta: ${profile?.email || 'Yok'}\nDeneyim: ${payload.experience_level}\nBölge: ${payload.region}\nUzmanlık: ${payload.niche}`,
-                  category: 'billing'
-              });
+              if (profile?.id) {
+                // Insert directly into package_requests for Activation
+                await supabase.from('package_requests').insert({
+                    user_id: profile.id,
+                    requested_package: 'master', // Match valid database strings
+                    requested_duration: '1-month', // Use 1-month to ensure backend acceptance
+                    amount_numeric: 0,
+                    amount_text: 'Aktivasyon Talebi. E-posta: ' + (profile.email || 'Yok') + ', Deneyim: ' + payload.experience_level,
+                    user_note: `E-posta: ${profile.email || 'Yok'}\nDeneyim: ${payload.experience_level}\nBölge: ${payload.region}\nUzmanlık: ${payload.niche}`,
+                    status: 'pending'
+                });
+
+                // Open WhatsApp dynamically as deep-link
+                const adminPhoneQuery = await supabase.from('system_settings').select('whatsapp_number').eq('id', 1).single();
+                if (adminPhoneQuery.data?.whatsapp_number && typeof window !== 'undefined') {
+                    const num = adminPhoneQuery.data.whatsapp_number.replace(/\D/g, '');
+                    const cleanedName = profile?.display_name || 'Yeni Kullanıcı';
+                    const text = `Merhaba! Portfy sisteminde yeni bir Aktivasyon Talebi var. 🚀\n👤 İsim: ${cleanedName}\n📧 E-posta: ${profile?.email || 'Yok'}\n\nLütfen Admin Panel -> Paket Talepleri sekmesinden onaylayın.`;
+                    window.open(`https://wa.me/${num}?text=${encodeURIComponent(text)}`, '_blank');
+                }
+              }
           } catch(e) {
-              console.error("Support ticket error", e);
+              console.error("Activation request error", e);
           }
       }
 

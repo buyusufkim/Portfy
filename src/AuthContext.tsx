@@ -7,6 +7,23 @@ import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { QUERY_KEYS } from './constants/queryKeys';
 import { UserProfile } from './types';
 
+type NavigatorWithStandalone = Navigator & {
+  standalone?: boolean;
+};
+
+const isStandalonePWA = () => {
+  if (typeof window === 'undefined') return false;
+  return (
+    window.matchMedia('(display-mode: standalone)').matches ||
+    (window.navigator as NavigatorWithStandalone).standalone === true
+  );
+};
+
+const isMobileDevice = () => {
+  if (typeof navigator === 'undefined') return false;
+  return /android|iphone|ipad|ipod/i.test(navigator.userAgent);
+};
+
 interface AuthContextType {
   user: User | null;
   profile: UserProfile | null;
@@ -76,8 +93,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   
   const isPopup = typeof window !== 'undefined' && (
     window.location.search.includes('popup=true') || 
-    window.location.hash.includes('access_token=') ||
-    window.location.hash.includes('error=') ||
     window.name === 'oauth_popup' ||
     (!!window.opener && window.opener !== window)
   );
@@ -166,6 +181,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   }, [isPopup, queryClient]);
 
   const login = async () => {
+    const redirectTo = `${window.location.origin}/`;
+
+    if (isStandalonePWA() || isMobileDevice()) {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo,
+        },
+      });
+      if (error) console.error('Login error:', error);
+      return;
+    }
+
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: {
