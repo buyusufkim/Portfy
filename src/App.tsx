@@ -584,7 +584,13 @@ function MainApp() {
         onClose={() => setToast(null)} // Bu kısım state'i sıfırlayarak bildirimi kapatır
       />
       
-      <PWAInstallPrompt />
+      <PWAInstallPrompt disabled={
+        showQuickAdd || showVoiceQuickAdd || showAddProperty || showAddLead || showAddVisit ||
+        showWhatsAppImport || showDailyRadar || showDayCloser || showIntegrationModal ||
+        showExternalListings || showImportUrlModal || showMissedOpportunities || showRegionSetup ||
+        showUpgradeModal || showAddTask || showDocumentAutomation || showLeadMethodModal || showScanner ||
+        showRescueModal || showCampaignPromo || showOnboarding
+      } />
 
       <FloatingActionButton onClick={() => setShowQuickAdd(true)} />
 

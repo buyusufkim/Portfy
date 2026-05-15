@@ -1,9 +1,11 @@
-const CACHE_NAME = 'portfy-cache-v1';
+const CACHE_NAME = 'portfy-cache-v2';
 const STATIC_ASSETS = [
   '/',
   '/index.html',
   '/manifest.json',
-  '/icons/icon.svg'
+  '/icons/icon.svg',
+  '/icons/icon-192.png',
+  '/icons/icon-512.png'
 ];
 
 // Installs the SW and caches static assets
@@ -48,7 +50,7 @@ self.addEventListener('fetch', (event) => {
   if (event.request.mode === 'navigate') {
     event.respondWith(
       fetch(event.request)
-        .catch(() => caches.match('/index.html'))
+        .catch(() => caches.match('/index.html').then(res => res || Response.error()))
     );
     return;
   }
@@ -65,7 +67,8 @@ self.addEventListener('fetch', (event) => {
         }
         return networkResponse;
       }).catch(() => {
-        // Just return cached or nothing
+        // Safe fallback if network fails
+        return Response.error();
       });
       return cachedResponse || fetchPromise;
     })

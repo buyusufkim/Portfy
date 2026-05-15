@@ -11,12 +11,14 @@ interface BeforeInstallPromptEvent extends Event {
   prompt(): Promise<void>;
 }
 
-export function PWAInstallPrompt() {
+export function PWAInstallPrompt({ disabled }: { disabled?: boolean }) {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
+    if (disabled) return;
+
     // Check if user dismissed prompt recently
     const dismissedAt = localStorage.getItem('pwa_prompt_dismissedAt');
     if (dismissedAt) {
@@ -27,7 +29,7 @@ export function PWAInstallPrompt() {
     }
 
     // Check if already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    if (window.matchMedia('(display-mode: standalone)').matches || (window.navigator as any).standalone === true) {
       return; 
     }
 
@@ -52,7 +54,7 @@ export function PWAInstallPrompt() {
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     };
-  }, []);
+  }, [disabled]);
 
   const handleInstallClick = async () => {
     if (!deferredPrompt) return;
@@ -63,6 +65,9 @@ export function PWAInstallPrompt() {
     if (outcome === 'accepted') {
       setShowPrompt(false);
       setDeferredPrompt(null);
+    } else {
+      // User cancelled native prompt
+      handleDismiss();
     }
   };
 
@@ -71,7 +76,7 @@ export function PWAInstallPrompt() {
     localStorage.setItem('pwa_prompt_dismissedAt', Date.now().toString());
   };
 
-  if (!showPrompt) return null;
+  if (!showPrompt || disabled) return null;
 
   return (
     <AnimatePresence>
@@ -79,7 +84,7 @@ export function PWAInstallPrompt() {
         initial={{ opacity: 0, y: 50 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, y: 50 }}
-        className="fixed bottom-24 left-4 right-4 md:left-auto md:right-8 md:bottom-8 md:w-80 bg-slate-800 text-white rounded-xl shadow-2xl p-4 z-[9999] border border-slate-700 overflow-hidden"
+        className="fixed bottom-20 left-4 right-4 md:left-auto md:right-8 md:bottom-8 md:w-80 bg-slate-800 text-white rounded-xl shadow-2xl p-4 z-40 border border-slate-700 overflow-hidden"
       >
         <button 
           onClick={handleDismiss}
