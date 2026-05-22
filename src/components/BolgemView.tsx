@@ -499,12 +499,16 @@ export const BolgemView = ({
           </div>
 
           <PageIntroCard 
-            pageKey="bolgem"
+            pageKey="bolgem_v2"
             title="Bölgem Nasıl Kullanılır?"
             description="Bölgem(Radar) uzman olduğunuz alandaki bağlantıları, esnafları ve portföyleri harita/liste üzerinden görebilmeniz için tasarlanmıştır."
             tips={[
-              "Radar butonu ile bağlantılarınızı detaylı haritada görün.",
-              "Alt kısımdaki butonlarla kişileri CRM'e hızlıca dönüştürün."
+              "Haritaya Ekle: Bina, site, esnaf, rakip ofis, müşteri veya network noktası ekler.",
+              "Network Teması: Tanıdığın kişi/esnaf/yönetici gibi ilişki odaklı kayıtlar içindir.",
+              "Bölge Noktası: Site, bina, rakip ofis, proje veya lokasyon gibi yer odaklı kayıtlar içindir.",
+              "CRM'e Ekle: Bu kişiyi takip edilecek müşteri/network kaydına dönüştürür.",
+              "Takip Tarihi: Bir sonraki ziyaret veya görüşmeyi unutmamanı sağlar.",
+              "Radar / Analiz: Radar sahayı gösterir, Analiz zayıf ve güçlü bölgelerini özetler."
             ]}
           />
 

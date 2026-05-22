@@ -589,12 +589,15 @@ export const PortfoliosPage: React.FC<PortfoliosPageProps> = ({
 
       <div className="px-4">
         <PageIntroCard 
-          pageKey="portfolios"
+          pageKey="portfolios_v2"
           title="Portföylerim Nasıl Kullanılır?"
-          description="Satılık ve kiralık portföylerinizi ekleyip, durumlarını takip edebilir, alıcılarla eşleştirebilirsiniz."
+          description="Satılık ve kiralık portföylerinizi ekleyip, pazarlama süreçlerini ve alıcı eşleşmelerini yönetebileceğiniz sayfa."
           tips={[
-            "Akıllı Eşleşme ile elinizdeki portföye uygun alıcıları CRM'den eşleştirin.",
-            "Pipeline (Kanban) moduyla portföylerinizi süreç aşamalarına göre yönetin."
+            "Portföy Ekle: Yeni gayrimenkul detaylarını sisteme girin.",
+            "Kalite Kontrol: Portföyünüzün eksik bilgilerini ve skorunu görün.",
+            "Pipeline (Kanban): Portföylerinizi süreç aşamalarına (İlgi Var, Pazarlık vb.) göre görsel olarak yönetin.",
+            "Akıllı Eşleşme: Elinizdeki portföye uygun alıcıları CRM'den otomatik eşleştirin.",
+            "Pazarlama İçerikleri: Her portföy için AI destekli ilan metni ve Instagram post metni üretin."
           ]}
         />
       </div>

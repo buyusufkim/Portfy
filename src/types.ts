@@ -146,6 +146,7 @@ export interface UserProfile {
 export interface PackageRequest {
   id: string;
   user_id: string;
+  request_type?: 'package_upgrade' | 'activation';
   requested_package: string;
   requested_duration: '1-month' | '3-month' | '6-month' | '12-month';
   amount_numeric: number;

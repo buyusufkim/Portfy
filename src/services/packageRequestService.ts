@@ -2,19 +2,21 @@ import { supabase } from '../lib/supabase';
 import { PackageRequest } from '../types';
 
 export const packageRequestService = {
-  async createPackageRequest(input: {
-    requested_duration: '1-month' | '3-month' | '6-month' | '12-month';
-    user_note?: string;
-  }) {
-    // Determine amounts based on duration
-    const amounts = {
-      '1-month': { numeric: 499, text: '499 TL' },
-      '3-month': { numeric: 1250, text: '1.250 TL' },
-      '6-month': { numeric: 1999, text: '1.999 TL' },
-      '12-month': { numeric: 2999, text: '2.999 TL' }
-    };
-    
-    // Check for existing pending requests
+  async getActivePackages() {
+    const { data, error } = await supabase
+      .from('subscription_packages')
+      .select('*')
+      .eq('is_active', true)
+      .order('price_numeric', { ascending: true });
+      
+    if (error) {
+      console.error("Failed to fetch packages", error);
+      return [];
+    }
+    return data || [];
+  },
+
+  async createActivationRequest(input: { user_note?: string }) {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) throw new Error('Not authenticated');
 
@@ -22,6 +24,56 @@ export const packageRequestService = {
       .from('package_requests')
       .select('id')
       .eq('user_id', user.id)
+      .eq('request_type', 'activation')
+      .eq('status', 'pending')
+      .limit(1);
+
+    if (checkError) throw checkError;
+
+    if (existingPending && existingPending.length > 0) {
+      // Don't throw, just return the existing one so we don't break the flow
+      return existingPending[0];
+    }
+
+    const { data, error } = await supabase
+      .from('package_requests')
+      .insert([{
+        user_id: user.id,
+        request_type: 'activation',
+        requested_package: 'activation',
+        requested_duration: '1-month', // default fallback
+        amount_numeric: 0,
+        amount_text: 'Aktivasyon Talebi',
+        user_note: input.user_note,
+        status: 'pending'
+      }])
+      .select()
+      .single();
+
+    if (error) throw error;
+    return data;
+  },
+
+  async createPackageRequest(input: {
+    requested_duration: string;
+    user_note?: string;
+  }) {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) throw new Error('Not authenticated');
+
+    const packages = await this.getActivePackages();
+    const pkg = packages.find(p => p.id === input.requested_duration || p.duration_months + '-month' === input.requested_duration);
+
+    if (!pkg) {
+      throw new Error('Seçilen paket şu an aktif değil. Lütfen tekrar deneyin.');
+    }
+    
+    // Check for existing pending package_upgrade requests
+    const { data: existingPending, error: checkError } = await supabase
+      .from('package_requests')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('request_type', 'package_upgrade')
       .eq('status', 'pending')
       .limit(1);
       
@@ -35,10 +87,11 @@ export const packageRequestService = {
       .from('package_requests')
       .insert([{
         user_id: user.id,
-        requested_package: 'master',
-        requested_duration: input.requested_duration,
-        amount_numeric: amounts[input.requested_duration].numeric,
-        amount_text: amounts[input.requested_duration].text,
+        request_type: 'package_upgrade',
+        requested_package: pkg.tier || 'master',
+        requested_duration: pkg.id,
+        amount_numeric: pkg.price_numeric,
+        amount_text: pkg.price_text,
         user_note: input.user_note
       }])
       .select()
@@ -138,43 +191,59 @@ export const packageRequestService = {
     if (reqError) throw reqError;
     if (req.status !== 'pending') throw new Error('Yalnızca bekleyen talepler onaylanabilir.');
 
-    const monthsMap: Record<string, number> = {
-      '1-month': 1,
-      '3-month': 3,
-      '6-month': 6,
-      '12-month': 12
-    };
-    
-    const months = monthsMap[req.requested_duration] || 1;
-    
-    // Read current user
-    const { data: targetUser, error: uError } = await supabase
-      .from('profiles')
-      .select('subscription_end_date')
-      .eq('id', req.user_id)
-      .single();
-      
-    if (uError) throw uError;
-
-    let baseDate = new Date();
-    if (targetUser.subscription_end_date && new Date(targetUser.subscription_end_date) > baseDate) {
-      baseDate = new Date(targetUser.subscription_end_date);
-    }
-    
-    const newEndDate = new Date(baseDate);
-    newEndDate.setMonth(newEndDate.getMonth() + months);
-
-    // Call secure admin API to update user profile
     const sessionRes = await supabase.auth.getSession();
     const token = sessionRes.data.session?.access_token;
     
     if (!token) throw new Error("Admin session not found");
 
-    const updateData = {
-      tier: 'master',
-      subscription_type: req.requested_duration,
-      subscription_end_date: newEndDate.toISOString()
-    };
+    let updateData: any = {};
+
+    if (req.request_type === 'activation') {
+      const newEndDate = new Date();
+      newEndDate.setDate(newEndDate.getDate() + 7);
+      
+      updateData = {
+        tier: 'trial',
+        subscription_type: 'trial',
+        subscription_end_date: newEndDate.toISOString()
+      };
+    } else {
+      const monthsMap: Record<string, number> = {
+        '1-month': 1,
+        '3-month': 3,
+        '6-month': 6,
+        '12-month': 12
+      };
+      
+      if (!monthsMap[req.requested_duration]) {
+        throw new Error('Geçersiz paket süresi. Talep onaylanamadı.');
+      }
+      
+      const months = monthsMap[req.requested_duration];
+      
+      // Read current user
+      const { data: targetUser, error: uError } = await supabase
+        .from('profiles')
+        .select('subscription_end_date')
+        .eq('id', req.user_id)
+        .single();
+        
+      if (uError) throw uError;
+
+      let baseDate = new Date();
+      if (targetUser.subscription_end_date && new Date(targetUser.subscription_end_date) > baseDate) {
+        baseDate = new Date(targetUser.subscription_end_date);
+      }
+      
+      const newEndDate = new Date(baseDate);
+      newEndDate.setMonth(newEndDate.getMonth() + months);
+
+      updateData = {
+        tier: 'master',
+        subscription_type: req.requested_duration,
+        subscription_end_date: newEndDate.toISOString()
+      };
+    }
     
     const response = await fetch('/api/ai/admin/update-user', {
         method: 'POST',

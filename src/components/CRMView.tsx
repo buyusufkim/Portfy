@@ -281,12 +281,15 @@ export const CRMView: React.FC<CRMViewProps> = ({
       </div>
 
       <PageIntroCard 
-        pageKey="crm"
+        pageKey="crm_v2"
         title="CRM Nasıl Kullanılır?"
-        description="Rehberinizdeki ve bölgenizdeki kişileri Müşteri, Bölge Ağı, Sıcak Lead gibi etiketlerle ayırıp gelişmiş filtreleme yapabilirsiniz."
+        description="Rehberinizdeki ve bölgenizdeki kişileri segmentlere ayırıp, takiplerinizi ve ilişkilerinizi geliştirebileceğiniz merkezdir."
         tips={[
-          "Rehber sekmesinden listeye erişebilir ve kişiye tıklayarak detayını açabilirsiniz.",
-          "WhatsApp Aktar butonuyla telefonunuzdaki listeyi buraya transfer edin."
+          "Yeni Kayıt: Manuel olarak müşteri, satıcı veya network ekleyebilirsiniz.",
+          "WhatsApp Aktar: Telefonunuzdaki listeyi (CSV formatında) buraya transfer edebilirsiniz.",
+          "Segmentler: Müşteri, Bölge Ağı, Sıcak Lead gibi etiketler kullanarak kişilerinizi sınıflandırın.",
+          "Sıcak / Sessiz Lead: Aktif ilgilenenleri ve uzun süredir görüşmediklerinizi kolayca filtreleyin.",
+          "Takip: Kişilere notlar ve hatırlatıcılar ekleyerek hiçbir fırsatı kaçırmayın."
         ]}
       />
 

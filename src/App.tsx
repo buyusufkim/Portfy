@@ -158,21 +158,16 @@ function MainApp() {
       if (payload.package_action === 'pro_request') {
           try {
               if (profile?.id) {
-                // Insert directly into package_requests for Activation
-                await supabase.from('package_requests').insert({
-                    user_id: profile.id,
-                    requested_package: 'master', // Match valid database strings
-                    requested_duration: '1-month', // Use 1-month to ensure backend acceptance
-                    amount_numeric: 0,
-                    amount_text: 'Aktivasyon Talebi. E-posta: ' + (profile.email || 'Yok') + ', Deneyim: ' + payload.experience_level,
-                    user_note: `E-posta: ${profile.email || 'Yok'}\nDeneyim: ${payload.experience_level}\nBölge: ${payload.region}\nUzmanlık: ${payload.niche}`,
-                    status: 'pending'
-                });
+                const { packageRequestService } = await import('./services/packageRequestService');
+                const user_note = `E-posta: ${profile.email || 'Yok'}\nDeneyim: ${payload.experience_level}\nBölge: ${payload.region}\nUzmanlık: ${payload.niche}`;
+                
+                await packageRequestService.createActivationRequest({ user_note });
 
                 // Open WhatsApp dynamically as deep-link
-                const adminPhoneQuery = await supabase.from('system_settings').select('whatsapp_number').eq('id', 1).single();
-                if (adminPhoneQuery.data?.whatsapp_number && typeof window !== 'undefined') {
-                    const num = adminPhoneQuery.data.whatsapp_number.replace(/\D/g, '');
+                const adminPhoneQuery = await supabase.from('system_settings').select('value').eq('key', 'whatsapp_number').single();
+                const phoneData = adminPhoneQuery.data?.value as string;
+                if (phoneData && typeof window !== 'undefined') {
+                    const num = phoneData.replace(/\D/g, '');
                     const cleanedName = profile?.display_name || 'Yeni Kullanıcı';
                     const text = `Merhaba! Portfy sisteminde yeni bir Aktivasyon Talebi var. 🚀\n👤 İsim: ${cleanedName}\n📧 E-posta: ${profile?.email || 'Yok'}\n\nLütfen Admin Panel -> Paket Talepleri sekmesinden onaylayın.`;
                     window.open(`https://wa.me/${num}?text=${encodeURIComponent(text)}`, '_blank');
@@ -180,6 +175,8 @@ function MainApp() {
               }
           } catch(e) {
               console.error("Activation request error", e);
+              setToast({ message: "Aktivasyon talebi oluşturulurken hata oluştu. Lütfen tekrar deneyin.", type: 'error' });
+              throw e; // fail the mutation if demand fails
           }
       }
 

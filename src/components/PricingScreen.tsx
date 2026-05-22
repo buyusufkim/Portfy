@@ -35,10 +35,9 @@ export const PricingScreen = () => {
       if (data) {
         setPackages(data);
         const masterOptions = data.filter(p => p.tier !== 'free');
-        if (masterOptions.length > 1) {
-          setSelectedDuration(masterOptions[1]);
-        } else if (masterOptions.length > 0) {
-          setSelectedDuration(masterOptions[0]);
+        const defaultPak = masterOptions.find(p => p.id === '1-month') || masterOptions[0];
+        if (defaultPak) {
+          setSelectedDuration(defaultPak);
         }
       }
       setLoading(false);

@@ -54,8 +54,10 @@ export const AdminPackageRequestsTab: React.FC<AdminPackageRequestsTabProps> = (
   const handleApprove = (req: PackageRequest) => {
     openAdminConfirm({
       intent: 'info',
-      title: 'Paket Talebini Onayla',
-      message: `Bu kullanıcıya ${req.requested_duration} Master erişimi tanımlanacak. Devam edilsin mi?`,
+      title: req.request_type === 'activation' ? 'Aktivasyon Talebini Onayla' : 'Paket Talebini Onayla',
+      message: req.request_type === 'activation' 
+        ? 'Bu kullanıcıya 7 günlük Deneme Sürümü erişimi tanımlanacak. Devam edilsin mi?' 
+        : `Bu kullanıcıya ${req.requested_duration} Master erişimi tanımlanacak. Devam edilsin mi?`,
       confirmLabel: 'Onayla',
       onConfirm: async () => {
         try {
@@ -117,7 +119,8 @@ export const AdminPackageRequestsTab: React.FC<AdminPackageRequestsTabProps> = (
       const q = searchQuery.toLowerCase();
       if (!req.user?.display_name.toLowerCase().includes(q) && 
           !req.user?.email.toLowerCase().includes(q) &&
-          !req.amount_text.toLowerCase().includes(q)) {
+          !req.amount_text.toLowerCase().includes(q) &&
+          !(req.user_note?.toLowerCase() || '').includes(q)) {
         return false;
       }
     }
@@ -213,8 +216,18 @@ export const AdminPackageRequestsTab: React.FC<AdminPackageRequestsTabProps> = (
                       {req.user?.phone && <div className="text-xs text-slate-500">{maskPhone(req.user.phone)}</div>}
                     </td>
                     <td className="py-4 px-4">
-                      <div className="font-bold text-slate-900">Master / {getDurationLabel(req.requested_duration)}</div>
-                      <div className="text-sm font-bold text-indigo-600">{req.amount_text}</div>
+                      {req.request_type === 'activation' ? (
+                        <>
+                          <div className="font-bold text-slate-900">Aktivasyon Talebi</div>
+                          <div className="text-sm font-bold text-indigo-600">Ücretsiz / Aktivasyon</div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="font-bold text-slate-900">Master / {getDurationLabel(req.requested_duration)}</div>
+                          <div className="text-sm font-bold text-indigo-600">{req.amount_text}</div>
+                        </>
+                      )}
+                      {req.user_note && <div className="text-xs text-slate-500 mt-1 line-clamp-2" title={req.user_note}>{req.user_note}</div>}
                     </td>
                     <td className="py-4 px-4">
                       <div className="text-xs font-bold capitalize bg-slate-100 inline-block px-2 py-1 rounded text-slate-600">

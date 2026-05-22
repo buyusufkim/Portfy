@@ -87,6 +87,8 @@ import { advisorProfileService } from "../services/advisorProfileService";
 import { campaign90Service } from "../services/campaign90Service";
 import { useWeather } from "../hooks/useWeather";
 
+import { PageIntroCard } from "./ui/PageIntroCard";
+
 export const DashboardView: React.FC<DashboardViewProps> = ({
   profile,
   gamifiedStats,
@@ -727,6 +729,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </div>
             </Card>
           </section>
+
+          <PageIntroCard 
+            pageKey="dashboard_v2"
+            title="Günlük Akış Nasıl Kullanılır?"
+            description="Tüm günü planlayıp, hedeflerinizi ve acil aksiyonlarınızı tek ekrandan görebileceğiniz merkezi yönetim panelinizdir."
+            tips={[
+              "Bugünün Öncelikleri: Sizi başarıya ulaştıracak günlük hedefler listesidir.",
+              "Akıllı Takipler: Hangi müşteri veya portföyle iletişime geçmeniz gerektiğini AI size söyler.",
+              "Hedef ve Plan: Günlük kaç arama ve görüşme yapacağınızı planlayın ve ilerlemeyi görün.",
+              "Odak Bölgesi (Timeboxing): Belirli bir saatte odaklanarak işleri daha hızlı tamamlayabilirsiniz.",
+              "Günü Başlat / Günü Kapat: Çalışma mesainizi takip altında tutup, kendi öz disiplininizi sağlarsınız."
+            ]}
+          />
 
           {/* 1. BUGÜNÜN ÖNCELİKLERİ */}
           <section className="order-2">
