@@ -55,6 +55,7 @@ import { TopActionItem, leadAlertDescriptions, getDedupedAlerts, isTodayOrOverdu
 
 import { toast } from "react-hot-toast";
 import { useTurkeyClock } from "../hooks/useTurkeyClock";
+import { isPremiumActive } from "../shared/subscriptionRules";
 
 interface DashboardViewProps {
   profile: UserProfile | null;
@@ -352,7 +353,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       };
     });
 
-  const isCampaignRestricted = activeCampaign && activeCampaign.current_day >= 8 && (!profile?.subscription_end_date || new Date(profile.subscription_end_date) < new Date()) && profile?.tier !== 'master' && profile?.tier !== 'pro' && profile?.tier !== 'elite';
+  const isCampaignRestricted = activeCampaign && activeCampaign.current_day >= 8 && !isPremiumActive(profile);
 
   const campaignItems: TopActionItem[] = (campaignTasks || [])
     .filter((ct) => ct.status !== 'completed' && ct.status !== 'skipped')
@@ -362,7 +363,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         type: "campaign" as const,
         originalItem: ct,
         id: `campaign-${ct.id}`,
-        title: isLocked ? "Pro Özellik Kilidi Aç" : ct.title,
+        title: isLocked ? "Master Kilidi Aç" : ct.title,
         subtitle: isLocked ? "Kamp Görevi" : "Kamp Görevi",
         desc: isLocked ? "Paketi aktif et" : `${ct.xp_reward || 0} XP Kazandırır`,
         icon: isLocked ? Target : Target, // wait we need Lock icon if we want? Let's assume LucideIcon Target is fine or we can omit. Let's just use Target for now since we don't have Lock imported yet maybe.

@@ -144,24 +144,39 @@ export const rescueService = {
   },
 
   completeRescueTask: async (sessionId: string, taskId: string) => {
-    const { data: session } = await supabase
+    const { data: session, error: fetchError } = await supabase
       .from('rescue_sessions')
       .select('*')
       .eq('id', sessionId)
       .single();
     
+    if (fetchError) throw fetchError;
     if (!session) return;
     if (session.status === 'completed') return; // Idempotent check
     
     const updatedTasks = (session.tasks as RescueTask[]).map(t => t.id === taskId ? { ...t, is_completed: true } : t);
+    const isAllCompleted = updatedTasks.every(t => t.is_completed);
     
-    await supabase.from('rescue_sessions').update({ tasks: updatedTasks }).eq('id', sessionId);
+    // Update tasks in DB first so backend sees them as completed for validation
+    const { error: updateError } = await supabase.from('rescue_sessions').update({ tasks: updatedTasks }).eq('id', sessionId);
+    if (updateError) throw updateError;
 
-    // If all completed, mark session as completed
-    if (updatedTasks.every(t => t.is_completed)) {
-      await supabase.from('rescue_sessions').update({ status: 'completed' }).eq('id', sessionId);
-      // Award bonus points
-      await gamificationService.earnXP('RESCUE_SESSION_BONUS', sessionId);
+    if (isAllCompleted) {
+      try {
+        await gamificationService.earnXP('RESCUE_SESSION_BONUS', sessionId);
+      } catch (err) {
+        // Revert the task so user can retry since XP failed
+        // Fetch fresh session to avoid overwriting other potential changes, although unlikely for a single user
+        const { data: freshSession } = await supabase.from('rescue_sessions').select('tasks').eq('id', sessionId).single();
+        if (freshSession && Array.isArray(freshSession.tasks)) {
+           const revertedTasks = (freshSession.tasks as RescueTask[]).map(t => t.id === taskId ? { ...t, is_completed: false } : t);
+           const { error: rollbackError } = await supabase.from('rescue_sessions').update({ tasks: revertedTasks }).eq('id', sessionId);
+           if (rollbackError) {
+             console.warn("Failed to rollback rescue task after XP failure:", rollbackError);
+           }
+        }
+        throw err;
+      }
     }
   }
 };

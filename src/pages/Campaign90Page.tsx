@@ -31,7 +31,7 @@ import { CampaignTopStats, CampaignProfessionalGuides } from '../components/camp
 import { CampaignReportCard } from '../components/campaign90/CampaignReportCard';
 import { BookOpen, Target, Briefcase, Compass, Award } from 'lucide-react';
 import { CampaignTaskCompletionModal, getCampaignTaskCompletionMode, CampaignTaskCompletionMode } from '../components/campaign90/CampaignTaskCompletionModal';
-
+import { isPremiumActive } from '../shared/subscriptionRules';
 
 const getPhaseName = (week: number) => {
     if (week === 1) return "Sünger Modu";
@@ -193,7 +193,7 @@ export const Campaign90Page: React.FC = () => {
         onError: (err: Error | unknown) => {
             console.error("Start campaign error:", err);
             if (err instanceof Error && err.message === 'trial_ended') {
-                toast.error("Kampı başlatmak için Pro pakete geçmen gerekiyor.", { duration: 4000 });
+                toast.error("Kampı başlatmak için Master pakete geçmen gerekiyor.", { duration: 4000 });
             } else {
                 toast.error(getErrorMessage(err, "Kamp başlatılırken bir hata oluştu."));
             }
@@ -398,7 +398,7 @@ export const Campaign90Page: React.FC = () => {
         }
     };
 
-    const isRestrictedDay8 = selectedDay >= 8 && (!profile?.subscription_end_date || new Date(profile.subscription_end_date) < new Date()) && profile?.tier !== 'master' && profile?.tier !== 'pro' && profile?.tier !== 'elite';
+    const isRestrictedDay8 = selectedDay >= 8 && !isPremiumActive(profile);
 
     const handleUpgradeRequest = async () => {
         try {
@@ -436,13 +436,13 @@ export const Campaign90Page: React.FC = () => {
                         </div>
                         <h2 className="text-3xl font-black text-white mb-4">7 Günlük Deneme Süren Bitti</h2>
                         <p className="text-slate-300 font-medium mb-8 text-lg">
-                            Harika gidiyorsun! 90 Gün Kampı'nın 8. günü ve sonrasına devam etmek, gelişmiş kamp raporlarına ve Portfy Pro özelliklerine erişmek için paketini aktif et.
+                            Harika gidiyorsun! 90 Gün Kampı'nın 8. günü ve sonrasına devam etmek, gelişmiş kamp raporlarına ve Portfy Master özelliklerine erişmek için paketini aktif et.
                         </p>
                         <button 
                             onClick={handleUpgradeRequest}
                             className="bg-[#00D2B4] hover:bg-[#00e3c5] text-slate-900 font-black py-4 px-8 rounded-xl transition-colors shadow-lg shadow-[#00D2B4]/20"
                         >
-                            Pro Paket Talebi Gönder
+                            Master Talebi Gönder
                         </button>
                     </div>
                 </div>

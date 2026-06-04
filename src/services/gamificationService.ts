@@ -121,6 +121,7 @@ export const gamificationService = {
       },
       body: JSON.stringify({
         actionType,
+        sessionId: actionType === 'RESCUE_SESSION_BONUS' ? entityId : undefined,
         taskId: entityId, // the backend checks leadId || propertyId || sessionId || taskId
         stats: stats || {}
       })

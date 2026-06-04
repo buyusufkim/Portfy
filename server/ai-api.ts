@@ -616,7 +616,7 @@ export const handleSubscribe = async (req: AuthRequest, res: Response) => {
     }
 
     console.log(`[handleSubscribe] SUCCESS for ${userId}`);
-    res.json({ success: true, tier: "pro", endDate });
+    res.json({ success: true, tier: "trial", endDate });
   } catch (error: unknown) {
     console.error("Subscription Error:", error);
     res.status(500).json({ error: safeErrorMessage(error, "Abonelik hatası") });
@@ -1396,68 +1396,40 @@ export const handleEarnXP = async (req: AuthRequest, res: Response) => {
     };
 
     if (actionType === 'RESCUE_SESSION_BONUS' || actionType === 'END_DAY') {
-      const { data: profCheck } = await supabaseAdmin.from('profiles').select('last_day_started_at').eq('id', userId).single();
-      if (!profCheck || !profCheck.last_day_started_at || getTurkeyDateFromTimestamp(profCheck.last_day_started_at) !== today) {
-        return res.status(403).json({ error: 'Gün başlatılmadan bu aksiyon çalışmaz.' });
+      // For END_DAY we keep this manual check as is, but for RESCUE_SESSION_BONUS we'll skip it here since the RPC does it.
+      if (actionType === 'END_DAY') {
+        const { data: profCheck } = await supabaseAdmin.from('profiles').select('last_day_started_at').eq('id', userId).single();
+        if (!profCheck || !profCheck.last_day_started_at || getTurkeyDateFromTimestamp(profCheck.last_day_started_at) !== today) {
+          return res.status(403).json({ error: 'Gün başlatılmadan bu aksiyon çalışmaz.' });
+        }
       }
     }
 
     if (actionType === 'RESCUE_SESSION_BONUS') {
-      const xpToAward = 100;
-
-      if (!entityId) {
+      const sessionId = req.body.sessionId || entityId; // Fallback to entityId if sessionId is not directly passed yet, though we will fix gamificationService to send sessionId
+      if (!sessionId) {
          return res.status(400).json({ error: "Missing sessionId for RESCUE_SESSION_BONUS" });
       }
 
-      // Check if day already closed
-      const { data: dayClosureData } = await supabaseAdmin.from('day_closure').select('id').eq('user_id', userId).eq('closure_date', today).maybeSingle();
-      if (dayClosureData) {
-         return res.status(403).json({ error: "Gün kapatıldıktan sonra kurtarma seansı tamamlanamaz." });
+      const { data: rpcResult, error: rpcError } = await supabaseAdmin.rpc('award_rescue_session_bonus', {
+         p_user_id: userId,
+         p_session_id: sessionId,
+         p_today: today
+      });
+
+      if (rpcError) {
+         console.error('RPC Error (award_rescue_session_bonus):', rpcError);
+         return res.status(500).json({ error: 'Failed to process rescue session bonus' });
       }
 
-      // Check ownership
-      const { data: sessionData } = await supabaseAdmin.from('rescue_sessions').select('user_id').eq('id', entityId).maybeSingle();
-      if (!sessionData || sessionData.user_id !== userId) {
-         return res.status(403).json({ error: "Bu oturum size ait değil." });
+      if (!rpcResult.success) {
+          // It could be 'Gün kapatıldıktan sonra...' or 'Kurtarma görevleri tamamlanmadan...'
+          // In RPC we return { success: false, error: '...' }
+          return res.status(403).json({ error: rpcResult.error || 'Failed to award XP' });
       }
 
-      // Check if already awarded
-      const { data: existingLog } = await supabaseAdmin.from('user_activity_log')
-          .select('id')
-          .eq('user_id', userId)
-          .eq('action_type', 'RESCUE_SESSION_BONUS')
-          .eq('entity_id', entityId)
-          .limit(1);
-
-      if (existingLog && existingLog.length > 0) {
-          return res.json({ success: true, message: "XP already awarded", xp_awarded: 0 });
-      }
-
-      const { data: profile } = await supabaseAdmin.from('profiles').select('total_xp, broker_level').eq('id', userId).single();
-      if (profile) {
-         const newXp = (profile.total_xp || 0) + xpToAward;
-         let newLevel = 1;
-         if (newXp >= 15000) newLevel = 4;
-         else if (newXp >= 5000) newLevel = 3;
-         else if (newXp >= 1000) newLevel = 2;
-         await supabaseAdmin.from('profiles').update({ total_xp: newXp, broker_level: newLevel }).eq('id', userId);
-         
-         const { data: currentStats } = await supabaseAdmin.from('user_stats').select('xp_earned, tasks_completed').eq('user_id', userId).eq('date', today).maybeSingle();
-         if (currentStats) {
-             await supabaseAdmin.from('user_stats').update({ xp_earned: (currentStats.xp_earned || 0) + xpToAward, tasks_completed: (currentStats.tasks_completed || 0) + 1 }).eq('user_id', userId).eq('date', today);
-         } else {
-             await supabaseAdmin.from('user_stats').insert({ user_id: userId, date: today, xp_earned: xpToAward, tasks_completed: 1, calls_made: 0, visits_made: 0 });
-         }
-
-         // Log it to prevent duplicate awards
-         await supabaseAdmin.from('user_activity_log').insert({
-             user_id: userId,
-             action_type: 'RESCUE_SESSION_BONUS',
-             entity_id: entityId,
-             xp_awarded: xpToAward
-         });
-      }
-      return res.json({ success: true, xp_awarded: xpToAward, new_total: profile ? (profile.total_xp || 0) + xpToAward : xpToAward });
+      // If success is true, it might be already awarded (xp_awarded = 0) or actually awarded (xp_awarded = 100)
+      return res.json(rpcResult);
     }
 
     if (actionType === 'DAILY_FOCUS_COMPLETED') {

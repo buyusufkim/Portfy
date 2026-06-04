@@ -68,6 +68,10 @@ export const packageRequestService = {
       throw new Error('Seçilen paket şu an aktif değil. Lütfen tekrar deneyin.');
     }
     
+    if (pkg.tier !== 'master') {
+      throw new Error('Bu paket yükseltme talebi için uygun değil.');
+    }
+    
     // Check for existing pending package_upgrade requests
     const { data: existingPending, error: checkError } = await supabase
       .from('package_requests')

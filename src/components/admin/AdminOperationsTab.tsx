@@ -179,9 +179,7 @@ export const AdminOperationsTab: React.FC<AdminOperationsTabProps> = ({ showAdmi
                   <td className="py-4 px-4 align-top w-1/3">
                     <div className="font-bold text-slate-800 flex items-center gap-2 mb-0.5">
                        {user.display_name}
-                       {user.tier === 'pro' && <span className="bg-amber-100 text-amber-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-black">Pro</span>}
-                       {user.tier === 'elite' && <span className="bg-purple-100 text-purple-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-black">Elite</span>}
-                       {user.tier === 'master' && <span className="bg-rose-100 text-rose-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-black">Master</span>}
+                       {user.tier === 'master' && <span className="bg-indigo-100 text-indigo-700 text-[9px] uppercase px-1.5 py-0.5 rounded font-black">Master</span>}
                     </div>
                     <div className="text-xs text-slate-500 font-mono">
                        {maskEmail(user.email)}

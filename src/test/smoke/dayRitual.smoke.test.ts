@@ -346,34 +346,19 @@ describe('Day Ritual Smoke Tests', () => {
 
     describe('RESCUE_SESSION_BONUS Idempotency & Security', () => {
         it('should return 403 if day is not started', async () => {
-             const yesterday = new Date();
-             yesterday.setDate(yesterday.getDate() - 1);
              mockReq.body = { actionType: 'RESCUE_SESSION_BONUS', sessionId: 's-1' };
-
-             mocks.mockSupabaseAdmin.from.mockImplementation((table: string) => {
-                 if (table === 'profiles') {
-                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { last_day_started_at: yesterday.toISOString() } }) }) }) } as any;
-                 }
-                 return {} as any;
-             });
+             // The rpc will return { success: false, error: 'Gün başlatılmadan bu aksiyon çalışmaz.' }
+             mocks.mockSupabaseAdmin.rpc.mockResolvedValue({ data: { success: false, error: 'Gün başlatılmadan bu aksiyon çalışmaz.' }, error: null });
 
              await handleEarnXP(mockReq, mockRes);
              expect(mockRes.status).toHaveBeenCalledWith(403);
+             expect(mockRes.json).toHaveBeenCalledWith({ error: 'Gün başlatılmadan bu aksiyon çalışmaz.' });
         });
 
         it('should return 403 if day is already closed', async () => {
-             const today = new Date();
              mockReq.body = { actionType: 'RESCUE_SESSION_BONUS', sessionId: 's-1' };
-
-             mocks.mockSupabaseAdmin.from.mockImplementation((table: string) => {
-                 if (table === 'profiles') {
-                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { last_day_started_at: today.toISOString() } }) }) }) } as any;
-                 }
-                 if (table === 'day_closure') {
-                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { id: 'closure-1' } }) }) }) }) } as any;
-                 }
-                 return {} as any;
-             });
+             
+             mocks.mockSupabaseAdmin.rpc.mockResolvedValue({ data: { success: false, error: 'Gün kapatıldıktan sonra kurtarma seansı tamamlanamaz.' }, error: null });
 
              await handleEarnXP(mockReq, mockRes);
              expect(mockRes.status).toHaveBeenCalledWith(403);
@@ -381,88 +366,42 @@ describe('Day Ritual Smoke Tests', () => {
         });
 
         it('should return 403 if the rescue session does not belong to the user', async () => {
-             const today = new Date();
              mockReq.body = { actionType: 'RESCUE_SESSION_BONUS', sessionId: 's-1' };
-
-             mocks.mockSupabaseAdmin.from.mockImplementation((table: string) => {
-                 if (table === 'profiles') {
-                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { last_day_started_at: today.toISOString() } }) }) }) } as any;
-                 }
-                 if (table === 'day_closure') {
-                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) }) } as any;
-                 }
-                 if (table === 'rescue_sessions') {
-                    // Returns session belonging to another user
-                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { user_id: 'another-user' } }) }) }) } as any;
-                 }
-                 return {} as any;
-             });
+             
+             mocks.mockSupabaseAdmin.rpc.mockResolvedValue({ data: { success: false, error: 'Bu oturum size ait değil.' }, error: null });
 
              await handleEarnXP(mockReq, mockRes);
              expect(mockRes.status).toHaveBeenCalledWith(403);
              expect(mockRes.json).toHaveBeenCalledWith({ error: "Bu oturum size ait değil." });
         });
 
-        it('should not award XP again for the same rescue session ID (per-session idempotency)', async () => {
-             const today = new Date();
+        it('should return 403 if session tasks are not completed', async () => {
              mockReq.body = { actionType: 'RESCUE_SESSION_BONUS', sessionId: 's-1' };
+             
+             mocks.mockSupabaseAdmin.rpc.mockResolvedValue({ data: { success: false, error: 'Kurtarma görevleri tamamlanmadan XP verilemez.' }, error: null });
 
-             mocks.mockSupabaseAdmin.from.mockImplementation((table: string) => {
-                 if (table === 'profiles') {
-                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { last_day_started_at: today.toISOString() } }) }) }) } as any;
-                 }
-                 if (table === 'day_closure') {
-                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) }) } as any;
-                 }
-                 if (table === 'rescue_sessions') {
-                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { user_id: 'test-user-id' } }) }) }) } as any;
-                 }
-                 if (table === 'user_activity_log') {
-                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue({ data: [{ id: 'log-1' }] }) }) }) }) }) } as any;
-                 }
-                 return {} as any;
-             });
+             await handleEarnXP(mockReq, mockRes);
+             expect(mockRes.status).toHaveBeenCalledWith(403);
+             expect(mockRes.json).toHaveBeenCalledWith({ error: "Kurtarma görevleri tamamlanmadan XP verilemez." });
+        });
+
+        it('should not award XP again for the same rescue session ID (unique 23505 violation simulation)', async () => {
+             mockReq.body = { actionType: 'RESCUE_SESSION_BONUS', sessionId: 's-1' };
+             
+             // RPC returns success: true, xp_awarded: 0 if already awarded
+             mocks.mockSupabaseAdmin.rpc.mockResolvedValue({ data: { success: true, message: "XP already awarded", xp_awarded: 0 }, error: null });
 
              await handleEarnXP(mockReq, mockRes);
              expect(mockRes.json).toHaveBeenCalledWith({ success: true, message: "XP already awarded", xp_awarded: 0 });
         });
 
         it('should award XP if ownership is valid and not already logged', async () => {
-             const today = new Date();
              mockReq.body = { actionType: 'RESCUE_SESSION_BONUS', sessionId: 's-1' };
-
-             const insertSpy = vi.fn().mockResolvedValue({ data: null, error: null });
-
-             mocks.mockSupabaseAdmin.from.mockImplementation((table: string) => {
-                 if (table === 'profiles') {
-                    return { 
-                        select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ single: vi.fn().mockResolvedValue({ data: { last_day_started_at: today.toISOString(), total_xp: 0 } }) }) }),
-                        update: vi.fn().mockReturnValue({ eq: vi.fn().mockResolvedValue({ data: null, error: null }) })
-                    } as any;
-                 }
-                 if (table === 'day_closure') {
-                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) }) } as any;
-                 }
-                 if (table === 'rescue_sessions') {
-                    return { select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: { user_id: 'test-user-id' } }) }) }) } as any;
-                 }
-                 if (table === 'user_activity_log') {
-                    return { 
-                        select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ limit: vi.fn().mockResolvedValue({ data: [] }) }) }) }) }),
-                        insert: insertSpy
-                    } as any;
-                 }
-                 if (table === 'user_stats') {
-                    return {
-                        select: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ eq: vi.fn().mockReturnValue({ maybeSingle: vi.fn().mockResolvedValue({ data: null }) }) }) }),
-                        insert: vi.fn().mockResolvedValue({ data: null, error: null })
-                    } as any;
-                 }
-                 return {} as any;
-             });
+             
+             mocks.mockSupabaseAdmin.rpc.mockResolvedValue({ data: { success: true, xp_awarded: 100, new_total: 100 }, error: null });
 
              await handleEarnXP(mockReq, mockRes);
-             expect(insertSpy).toHaveBeenCalledWith(expect.objectContaining({ user_id: 'test-user-id', action_type: 'RESCUE_SESSION_BONUS', entity_id: 's-1' }));
+             expect(mocks.mockSupabaseAdmin.rpc).toHaveBeenCalledWith('award_rescue_session_bonus', expect.objectContaining({ p_user_id: 'test-user-id', p_session_id: 's-1' }));
              expect(mockRes.json).toHaveBeenCalledWith(expect.objectContaining({ success: true, xp_awarded: 100 }));
         });
     });

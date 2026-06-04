@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { PortfyLogo } from './PortfyLogo';
-import { LogOut, CheckCircle2, Building2, Crown, Sparkles, ArrowRight, Briefcase } from 'lucide-react';
+import { LogOut, CheckCircle2, Crown, Sparkles, ArrowRight, Briefcase } from 'lucide-react';
 import { useAuth } from '../AuthContext';
 import { supabase } from '../lib/supabase';
+import { PUBLIC_PLANS, SubscriptionPackageRow } from '../shared/packageCatalog';
 
 interface FeatureItemProps {
   text: string;
@@ -20,8 +21,8 @@ const FeatureItem: React.FC<FeatureItemProps> = ({ text, dark = false }) => (
 export const PricingScreen = () => {
   const { subscribe, logout, isSubscribing } = useAuth();
   
-  const [packages, setPackages] = useState<any[]>([]);
-  const [selectedDuration, setSelectedDuration] = useState<any>(null);
+  const [packages, setPackages] = useState<SubscriptionPackageRow[]>([]);
+  const [selectedDuration, setSelectedDuration] = useState<SubscriptionPackageRow | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -30,11 +31,12 @@ export const PricingScreen = () => {
         .from('subscription_packages')
         .select('*')
         .eq('is_active', true)
+        .neq('tier', 'admin')
         .order('price_numeric', { ascending: true });
       
       if (data) {
         setPackages(data);
-        const masterOptions = data.filter(p => p.tier !== 'free');
+        const masterOptions = data.filter(p => p.tier === 'master');
         const defaultPak = masterOptions.find(p => p.id === '1-month') || masterOptions[0];
         if (defaultPak) {
           setSelectedDuration(defaultPak);
@@ -52,8 +54,11 @@ export const PricingScreen = () => {
     }
   };
 
+  const freeConfig = PUBLIC_PLANS.find(p => p.key === 'entrepreneur')!;
+  const masterConfig = PUBLIC_PLANS.find(p => p.key === 'master')!;
+  
   const freePkg = packages.find(p => p.tier === 'free');
-  const masterOptions = packages.filter(p => p.tier !== 'free');
+  const masterOptions = packages.filter(p => p.tier === 'master');
 
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col font-sans selection:bg-orange-100">
@@ -87,41 +92,48 @@ export const PricingScreen = () => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-stretch">
               
-              {freePkg && (
-                <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-3xl p-8 md:p-10 border border-slate-200 shadow-xl shadow-slate-200/50 flex flex-col relative">
-                  <div className="space-y-4 mb-8">
-                    <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-600 mb-6">
-                      <Briefcase size={28} />
-                    </div>
-                    <h3 className="text-2xl font-bold text-slate-900">{freePkg.name}</h3>
-                    <div className="flex items-baseline gap-1">
-                      <span className="text-5xl font-black text-slate-900">{freePkg.price_text}</span>
-                      <span className="text-slate-400 font-medium">{freePkg.interval}</span>
-                    </div>
-                    <p className="text-slate-500 font-medium">{freePkg.description}</p>
+              <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.2 }} className="bg-white rounded-3xl p-8 md:p-10 border border-slate-200 shadow-xl shadow-slate-200/50 flex flex-col relative">
+                <div className="space-y-4 mb-8">
+                  <div className="w-14 h-14 bg-slate-100 rounded-2xl flex items-center justify-center text-slate-600 mb-6">
+                    <Briefcase size={28} />
                   </div>
-                  
-                  <ul className="space-y-4 flex-1 mb-8">
-                    {(freePkg.features || []).map((f: string, i: number) => (
-                      <FeatureItem key={`free-${i}`} text={f} />
-                    ))}
-                  </ul>
-                  
-                  <button onClick={handleFreeChoice} disabled={isSubscribing} className="w-full py-4 bg-slate-100 text-slate-900 rounded-2xl font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-auto">
-                    {isSubscribing ? 'Hazırlanıyor...' : 'Ücretsiz Devam Et'} <ArrowRight size={18} />
-                  </button>
-                </motion.div>
+                  <h3 className="text-2xl font-bold text-slate-900">{freeConfig.name}</h3>
+                  <div className="flex items-baseline gap-1">
+                    <span className="text-5xl font-black text-slate-900">{freePkg?.price_text || '₺0'}</span>
+                    <span className="text-slate-400 font-medium">{freePkg?.interval || '/ ay'}</span>
+                  </div>
+                  <p className="text-slate-500 font-medium">{freeConfig.description}</p>
+                </div>
+                
+                <ul className="space-y-4 flex-1 mb-8">
+                  {freeConfig.highlights.map((f: string, i: number) => (
+                    <FeatureItem key={`free-${i}`} text={f} />
+                  ))}
+                </ul>
+                
+                <button onClick={handleFreeChoice} disabled={isSubscribing} className="w-full py-4 bg-slate-100 text-slate-900 rounded-2xl font-bold hover:bg-slate-200 transition-all flex items-center justify-center gap-2 disabled:opacity-50 mt-auto">
+                  {isSubscribing ? 'Hazırlanıyor...' : freeConfig.cta} <ArrowRight size={18} />
+                </button>
+              </motion.div>
+
+              {masterOptions.length === 0 && !loading && (
+                <div className="bg-slate-900 rounded-3xl p-8 md:p-10 shadow-2xl flex items-center justify-center border border-slate-800 text-center">
+                  <div>
+                    <h3 className="text-xl font-bold text-white mb-2">Master</h3>
+                    <p className="text-slate-400 font-medium">Master paket bilgisi şu an alınamadı. Lütfen daha sonra tekrar deneyin.</p>
+                  </div>
+                </div>
               )}
 
-              {selectedDuration && (
+              {selectedDuration && masterOptions.length > 0 && (
                 <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="bg-slate-900 rounded-3xl p-8 md:p-10 shadow-2xl shadow-slate-900/40 flex flex-col relative border border-slate-800">
                   <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-gradient-to-r from-orange-500 to-orange-600 text-white px-6 py-1.5 rounded-full text-xs font-bold uppercase tracking-widest flex items-center gap-2 shadow-lg z-20 whitespace-nowrap">
                     <Crown size={14} /> Sınırları Kaldır
                   </div>
 
                   <div className="space-y-4 mb-6 mt-2">
-                    <h3 className="text-2xl font-bold text-white">Master</h3>
-                    <p className="text-slate-400 font-medium">İhtiyacın olan tüm özellikler tek pakette. Sadece süreyi seç.</p>
+                    <h3 className="text-2xl font-bold text-white">{masterConfig.name}</h3>
+                    <p className="text-slate-400 font-medium">{masterConfig.description}</p>
                   </div>
 
                   <div className={`grid grid-cols-2 ${masterOptions.length > 2 ? 'lg:grid-cols-4' : ''} gap-2 bg-slate-800 p-1.5 rounded-2xl mb-8`}>
@@ -134,7 +146,7 @@ export const PricingScreen = () => {
                         {opt.badge && selectedDuration.id !== opt.id && (
                           <span className="absolute -top-2.5 right-0 bg-orange-500 text-white text-[8px] px-1.5 py-0.5 rounded-full z-10">{opt.badge}</span>
                         )}
-                        <span>{opt.name}</span>
+                        <span>{opt.name.replace('Master / ', '')}</span>
                       </button>
                     ))}
                   </div>
@@ -148,7 +160,7 @@ export const PricingScreen = () => {
                     <li className="flex items-center gap-3 text-sm font-bold text-white border-b border-slate-800 pb-3 mb-1">
                       <Sparkles size={18} className="text-indigo-400" /> Başlangıçtaki her şey, artı:
                     </li>
-                    {(selectedDuration.features || []).map((f: string, i: number) => (
+                    {masterConfig.highlights.map((f: string, i: number) => (
                       <FeatureItem key={`master-${i}`} text={f} dark />
                     ))}
                   </ul>

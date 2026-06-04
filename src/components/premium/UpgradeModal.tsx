@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { X, Crown, ArrowRight, MessageCircle, Check, Play } from 'lucide-react';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../AuthContext';
+import { PUBLIC_PLANS, SubscriptionPackageRow } from '../../shared/packageCatalog';
 
 interface UpgradeModalProps {
   isOpen: boolean;
@@ -32,8 +33,8 @@ const isValidWhatsAppNumber = (normalized: string): boolean => {
 
 export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onActivateTrial }) => {
   const { profile } = useAuth();
-  const [packages, setPackages] = useState<any[]>([]);
-  const [selectedDuration, setSelectedDuration] = useState<any>(null);
+  const [packages, setPackages] = useState<SubscriptionPackageRow[]>([]);
+  const [selectedDuration, setSelectedDuration] = useState<SubscriptionPackageRow | null>(null);
   const [loading, setLoading] = useState(true);
   const [waNumber, setWaNumber] = useState('');
   const [isActivatingTrial, setIsActivatingTrial] = useState(false);
@@ -44,7 +45,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onA
       setLoading(true);
       const [{ data: setData }, { data: pkgData }] = await Promise.all([
         supabase.from('system_settings').select('whatsapp_number').eq('id', 1).single(),
-        supabase.from('subscription_packages').select('*').eq('is_active', true).neq('tier', 'free').order('price_numeric', { ascending: true })
+        supabase.from('subscription_packages').select('*').eq('is_active', true).eq('tier', 'master').order('price_numeric', { ascending: true })
       ]);
       
       if (setData) setWaNumber(setData.whatsapp_number);
@@ -60,6 +61,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onA
 
   const normalizedWa = normalizeWhatsAppNumber(waNumber);
   const isValidWa = isValidWhatsAppNumber(normalizedWa);
+  const masterConfig = PUBLIC_PLANS.find(p => p.key === 'master')!;
 
   const handleActivationRequest = () => {
     if (!selectedDuration || !isValidWa) return;
@@ -90,158 +92,152 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, onA
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-[100] flex items-center justify-center p-0 md:p-6 pb-safe">
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={onClose} />
+      <div className="fixed inset-0 z-[100] flex items-end sm:items-center justify-center p-0 sm:p-6 pb-0 sm:pb-safe">
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
         
-        <motion.div initial={{ opacity: 0, scale: 0.95, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95, y: 20 }} className="relative w-full max-w-4xl bg-white md:rounded-3xl overflow-hidden shadow-2xl flex flex-col md:flex-row h-full md:h-auto md:max-h-[85vh]">
-          {/* Comparison / Features Section */}
-          <div className="bg-slate-50 px-6 py-8 md:p-8 md:w-5/12 flex flex-col relative overflow-y-auto border-r border-slate-100 shrink-0">
-            <div className="relative z-10 space-y-6">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900 leading-tight tracking-tight mb-2">Master'a Geç</h2>
-                <p className="text-slate-500 text-sm leading-relaxed">
-                  Portfy'nin tüm gücünü ve yapay zeka sınırlarını açın.
-                </p>
-              </div>
+        <motion.div initial={{ opacity: 0, y: '100%', scale: 1 }} animate={{ opacity: 1, y: 0, scale: 1 }} exit={{ opacity: 0, y: '100%', scale: 1 }} className="relative w-full max-w-lg bg-white rounded-t-3xl sm:rounded-3xl overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
+          <button onClick={onClose} className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-full transition-colors z-20">
+            <X size={20} />
+          </button>
 
-              {/* Master Plan Specs */}
-              <div className="bg-gradient-to-br from-indigo-50 to-white p-6 rounded-2xl border border-indigo-100 relative overflow-hidden shadow-sm">
-                <div className="absolute top-0 right-0 p-4 opacity-10">
-                  <Crown size={64} className="text-indigo-600"/>
-                </div>
-                <div className="flex items-center gap-2 mb-4 relative z-10">
-                  <div className="bg-indigo-600 p-1.5 rounded-lg text-white">
-                    <Crown size={16} />
-                  </div>
-                  <span className="text-base font-black text-indigo-900 tracking-tight">Master Özellikleri</span>
-                </div>
-                <ul className="text-indigo-900/80 text-sm space-y-3 font-medium relative z-10">
-                  <li className="flex items-start gap-2"><Check size={16} className="text-indigo-600 mt-0.5 shrink-0"/> Tüm modüllere sınırsız erişim</li>
-                  <li className="flex items-start gap-2"><Check size={16} className="text-indigo-600 mt-0.5 shrink-0"/> Gelişmiş AI Koç Analizleri</li>
-                  <li className="flex items-start gap-2"><Check size={16} className="text-indigo-600 mt-0.5 shrink-0"/> Tek Tıkla Portföy Pazarlama Üretimi</li>
-                  <li className="flex items-start gap-2"><Check size={16} className="text-indigo-600 mt-0.5 shrink-0"/> 90 Günlük Danışman Kampı Eğitimleri</li>
-                  <li className="flex items-start gap-2"><Check size={16} className="text-indigo-600 mt-0.5 shrink-0"/> Bölgem - Piyasa Analiz Modülü</li>
-                  <li className="flex items-start gap-2"><Check size={16} className="text-indigo-600 mt-0.5 shrink-0"/> <span className="font-bold text-indigo-700">300.000 AI token / ay</span></li>
-                </ul>
-              </div>
+          {/* Header */}
+          <div className="px-6 pt-8 pb-6 bg-slate-50 border-b border-slate-100 relative overflow-hidden shrink-0">
+            <div className="absolute -top-12 -right-12 text-indigo-500/10 pointer-events-none">
+              <Crown size={180} />
+            </div>
+            <div className="relative z-10">
+              <h2 className="text-2xl font-black text-slate-900 leading-tight tracking-tight mb-2">{masterConfig.name}'a Geç</h2>
+              <p className="text-slate-500 text-sm leading-relaxed pr-8">
+                {masterConfig.description}
+              </p>
             </div>
           </div>
 
-          {/* Checkout / Selection Section */}
-          <div className="bg-white p-5 md:p-8 md:w-7/12 flex flex-col relative overflow-y-auto w-full pb-24 md:pb-8">
-            <button onClick={onClose} className="absolute top-4 right-4 md:top-6 md:right-6 p-2 text-slate-400 hover:text-slate-700 bg-slate-50 hover:bg-slate-100 rounded-full transition-colors z-10">
-              <X size={20} />
-            </button>
-            
-            <div className="mb-6 pr-12 md:pr-0">
-              <h3 className="text-lg font-bold text-slate-900 tracking-tight">Süreyi Seçin</h3>
-            </div>
-
+          <div className="flex-1 overflow-y-auto px-6 py-6">
             {loading ? (
-              <div className="flex-1 flex items-center justify-center">
+              <div className="flex items-center justify-center py-12">
                 <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin" />
               </div>
             ) : (
-              <div className="flex flex-col flex-1">
-                {/* Segmented Control */}
-                <div className="bg-slate-100 p-1 rounded-xl flex flex-wrap gap-1 mb-8">
-                  {packages.map((opt) => {
-                    const isSelected = selectedDuration?.id === opt.id;
-                    return (
-                      <button
-                        key={opt.id}
-                        onClick={() => setSelectedDuration(opt)}
-                        className={`flex-1 min-w-[70px] py-2 px-1 rounded-lg text-xs md:text-sm font-bold transition-all ${isSelected ? 'bg-white text-indigo-700 shadow-sm ring-1 ring-black/5' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}`}
-                      >
-                        {opt.name.replace('Master / ', '')}
-                      </button>
-                    );
-                  })}
-                </div>
+              <div className="space-y-6">
+                
+                {packages.length === 0 ? (
+                  <div className="bg-slate-50 text-slate-500 text-sm font-medium p-4 rounded-xl text-center border border-slate-100">
+                    Master paket bilgisi şu an alınamadı. Lütfen daha sonra tekrar deneyin.
+                  </div>
+                ) : (
+                  <div className="bg-slate-100 p-1.5 rounded-xl flex flex-wrap gap-1">
+                    {packages.map((opt) => {
+                      const isSelected = selectedDuration?.id === opt.id;
+                      return (
+                        <button
+                          key={opt.id}
+                          onClick={() => setSelectedDuration(opt)}
+                          className={`flex-1 min-w-[70px] py-2.5 px-2 rounded-lg text-xs font-bold transition-all ${isSelected ? 'bg-white text-indigo-600 shadow-sm ring-1 ring-slate-200/50' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                          {opt.name.replace('Master / ', '')}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
 
-                {/* Price Display */}
                 {selectedDuration && (
-                  <div className="mb-8 flex flex-col gap-2">
+                  <div className="bg-white border-2 border-indigo-500 rounded-2xl p-5 shadow-sm relative">
                     {selectedDuration.badge && (
-                      <span className="self-start text-[10px] sm:text-xs font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-emerald-100 text-emerald-700 ring-1 ring-inset ring-emerald-600/20 mb-1">
+                      <span className="absolute -top-3 right-4 bg-emerald-500 text-white text-[10px] font-bold uppercase tracking-wider px-2 py-1 rounded-full shadow-sm">
                         {selectedDuration.badge}
                       </span>
                     )}
+                    <h3 className="text-sm font-bold text-slate-500 mb-1">{selectedDuration.name}</h3>
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl sm:text-5xl font-black tracking-tight text-slate-900">{selectedDuration.price_text}</span>
-                      <span className="text-sm sm:text-base text-slate-500 font-medium">{selectedDuration.interval}</span>
+                      <span className="text-4xl font-black tracking-tight text-slate-900">{selectedDuration.price_text}</span>
+                      <span className="text-slate-500 font-medium text-sm">{selectedDuration.interval}</span>
                     </div>
                   </div>
                 )}
-                
-                <div className="mt-auto pt-4 relative z-10 space-y-3 border-t border-slate-100">
-                  <button 
-                    onClick={async () => {
-                      try {
-                        setLoading(true);
-                        const { packageRequestService } = await import('../../services/packageRequestService');
-                        await packageRequestService.createPackageRequest({
-                          requested_duration: selectedDuration.id
-                        });
-                        alert('Paket talebiniz alındı. En kısa sürede iletişime geçeceğiz.');
-                        onClose();
-                      } catch (err: unknown) {
-                        alert(err instanceof Error ? err.message : 'Bir hata oluştu');
-                      } finally {
-                        setLoading(false);
-                      }
-                    }}
-                    disabled={loading || !selectedDuration}
-                    className="w-full py-3.5 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 disabled:opacity-50"
-                  >
-                    Paket Talebi Oluştur <ArrowRight size={18} className="ml-1 opacity-70" />
-                  </button>
 
-                  {isValidWa && (
-                    <button 
-                      onClick={async () => {
-                        try {
-                          setLoading(true);
-                          const { packageRequestService } = await import('../../services/packageRequestService');
-                          await packageRequestService.createPackageRequest({
-                            requested_duration: selectedDuration.id
-                          }).catch(err => {
-                            if (!err.message.includes('Zaten bekleyen')) throw err;
-                          });
-                          handleActivationRequest();
-                          onClose();
-                        } catch (err: unknown) {
-                          alert(err instanceof Error ? err.message : 'Bir hata oluştu');
-                        } finally {
-                          setLoading(false);
-                        }
-                      }}
-                      disabled={loading || !selectedDuration}
-                      className="w-full py-3 bg-green-50 text-green-700 border border-green-200 rounded-xl font-semibold hover:bg-green-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                    >
-                      <MessageCircle size={18} /> WhatsApp'tan Satış Ekibine Yaz
-                    </button>
-                  )}
-                  
-                  {!hasUsedTrial && onActivateTrial && (
-                     <button 
-                      onClick={handleTrial}
-                      disabled={isActivatingTrial || loading}
-                      className="w-full py-3 bg-indigo-50 text-indigo-700 rounded-xl font-bold hover:bg-indigo-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-                     >
-                       {isActivatingTrial ? (
-                         <div className="w-5 h-5 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin" />
-                       ) : (
-                         <>
-                           <Play fill="currentColor" size={14} className="text-indigo-600" /> 7 Gün Ücretsiz Dene
-                         </>
-                       )}
-                     </button>
-                  )}
+                <div className="space-y-3 px-1">
+                  <h4 className="text-xs font-bold uppercase text-slate-400 tracking-wider">PAKET İÇERİĞİ</h4>
+                  <ul className="text-slate-600 text-sm space-y-2.5 font-medium">
+                    {masterConfig.highlights.slice(0, 6).map((hl: string, i: number) => (
+                      <li key={i} className="flex items-start gap-2">
+                        <Check size={16} className="text-indigo-600 mt-0.5 shrink-0"/> {hl}
+                      </li>
+                    ))}
+                  </ul>
                 </div>
+
               </div>
             )}
           </div>
+
+          <div className="p-6 bg-white border-t border-slate-100 shadow-[0_-4px_24px_rgba(0,0,0,0.02)] shrink-0 space-y-3 relative z-10 w-full mb-safe">
+            <button 
+              onClick={async () => {
+                try {
+                  setLoading(true);
+                  const { packageRequestService } = await import('../../services/packageRequestService');
+                  await packageRequestService.createPackageRequest({
+                    requested_duration: selectedDuration?.id
+                  });
+                  alert('Paket talebiniz alındı. En kısa sürede iletişime geçeceğiz.');
+                  onClose();
+                } catch (err: unknown) {
+                  alert(err instanceof Error ? err.message : 'Bir hata oluştu');
+                } finally {
+                  setLoading(false);
+                }
+              }}
+              disabled={loading || !selectedDuration}
+              className="w-full py-3.5 bg-slate-900 text-white rounded-xl font-semibold hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-900/10 disabled:opacity-50"
+            >
+              Paket Talebi Oluştur
+            </button>
+
+            {isValidWa && (
+              <button 
+                onClick={async () => {
+                  try {
+                    setLoading(true);
+                    const { packageRequestService } = await import('../../services/packageRequestService');
+                    await packageRequestService.createPackageRequest({
+                      requested_duration: selectedDuration?.id
+                    }).catch(err => {
+                      if (!err.message.includes('Zaten bekleyen')) throw err;
+                    });
+                    handleActivationRequest();
+                    onClose();
+                  } catch (err: unknown) {
+                    alert(err instanceof Error ? err.message : 'Bir hata oluştu');
+                  } finally {
+                    setLoading(false);
+                  }
+                }}
+                disabled={loading || !selectedDuration}
+                className="w-full py-3 bg-green-50 text-green-700 border border-green-200 rounded-xl font-semibold hover:bg-green-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                <MessageCircle size={18} /> WhatsApp'tan Satış Ekibine Yaz
+              </button>
+            )}
+            
+            {!hasUsedTrial && onActivateTrial && (
+               <button 
+                onClick={handleTrial}
+                disabled={isActivatingTrial || loading}
+                className="w-full py-3 bg-indigo-50 text-indigo-600 rounded-xl font-bold hover:bg-indigo-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+               >
+                 {isActivatingTrial ? (
+                   <div className="w-5 h-5 border-2 border-indigo-300 border-t-indigo-600 rounded-full animate-spin" />
+                 ) : (
+                   <>
+                     <Play fill="currentColor" size={14} /> 7 Gün Ücretsiz Dene
+                   </>
+                 )}
+               </button>
+            )}
+          </div>
+          
         </motion.div>
       </div>
     </AnimatePresence>

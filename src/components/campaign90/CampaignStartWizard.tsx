@@ -653,9 +653,9 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete, mo
                                         </button>
                                     </div>
 
-                                    {/* Pro */}
+                                    {/* Master */}
                                     <div className="bg-slate-900 border-2 border-slate-800 rounded-3xl p-6 flex flex-col items-center text-center shadow-2xl hover:border-slate-700 transition-all cursor-pointer" onClick={() => handleSubmit('pro_request')}>
-                                        <h4 className="text-xl font-bold text-white mb-2">Portfy Pro</h4>
+                                        <h4 className="text-xl font-bold text-white mb-2">Master</h4>
                                         <p className="text-sm text-slate-400 font-medium mb-6">Trial sonrası tam erişim ve gelişmiş takip sistemiyle devam et.</p>
                                         <ul className="text-left space-y-3 mb-8 text-sm text-slate-300 font-medium w-full flex-grow">
                                             <li className="flex items-start gap-2"><Check size={16} className="text-[#00D2B4] shrink-0 mt-0.5"/> 90 Gün Kampı tam erişim</li>
@@ -664,9 +664,9 @@ export const CampaignStartWizard: React.FC<Props> = ({ isPending, onComplete, mo
                                             <li className="flex items-start gap-2"><Check size={16} className="text-[#00D2B4] shrink-0 mt-0.5"/> Portföy sağlık takibi</li>
                                             <li className="flex items-start gap-2"><Check size={16} className="text-[#00D2B4] shrink-0 mt-0.5"/> Öncelikli destek</li>
                                         </ul>
-                                        <div className="mb-4 text-white text-lg font-bold">Aylık 1999 TL<span className="text-xs text-slate-500 font-medium block">veya Fiyat Bilgisi Alın</span></div>
+                                        <div className="mb-4 text-white text-lg font-bold">Fiyat Bilgisi Alın</div>
                                         <button disabled={isPending} className="w-full py-3 bg-[#00D2B4] text-slate-900 rounded-xl font-bold hover:bg-[#00e3c5] transition mt-auto">
-                                            {isPending ? 'Kaydediliyor...' : 'Pro Paket Talebi Gönder'}
+                                            {isPending ? 'Kaydediliyor...' : 'Master Talebi Gönder'}
                                         </button>
                                     </div>
                                 </div>
